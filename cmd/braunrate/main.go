@@ -29,7 +29,7 @@ import (
 	"github.com/Diegobraun/braunrate/slo"
 )
 
-const versao = "0.3.0"
+const versao = "0.4.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -68,6 +68,7 @@ uso:
   braunrate executar <cenario.yaml> [opcoes]
   braunrate validar <cenario.yaml>
   braunrate importar curl "<comando curl>"    gera um cenario a partir de um curl
+  braunrate importar jmx <plano.jmx>          traduz o subconjunto comum de um plano do JMeter
   braunrate relatorio <resultado.json> [opcoes] gera HTML ou CSV de um resultado ja gravado
   braunrate comparar <antes.json> <depois.json>
   braunrate alvo [opcoes]
@@ -398,31 +399,46 @@ func importar(argumentos []string) int {
 		}
 	}
 
-	if len(resto) < 1 || resto[0] != "curl" {
-		fmt.Fprintln(os.Stderr, `informe o que importar. Hoje existe um formato:
+	if len(resto) < 1 || (resto[0] != "curl" && resto[0] != "jmx") {
+		fmt.Fprintln(os.Stderr, `informe o que importar. Hoje existem dois formatos:
   braunrate importar curl "curl -X POST https://exemplo/pedidos -d '{}'" -saida cenario.yaml
-  pbpaste | braunrate importar curl`)
+  pbpaste | braunrate importar curl
+  braunrate importar jmx plano.jmx -saida cenario.yaml`)
 		return 2
 	}
 
-	comando := strings.Join(resto[1:], " ")
-	if strings.TrimSpace(comando) == "" {
-		lido, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "nao consegui ler o comando da entrada padrao: %v\n", err)
+	var importacao importador.Importacao
+	var err error
+	if resto[0] == "jmx" {
+		if len(resto) < 2 {
+			fmt.Fprintln(os.Stderr, "informe o arquivo .jmx:\n  braunrate importar jmx plano.jmx -saida cenario.yaml")
 			return 2
 		}
-		comando = string(lido)
+		conteudo, erroDeLeitura := os.ReadFile(resto[1])
+		if erroDeLeitura != nil {
+			fmt.Fprintf(os.Stderr, "nao consegui ler %s: %v\n", resto[1], erroDeLeitura)
+			return 2
+		}
+		importacao, err = importador.DeJMX(conteudo)
+	} else {
+		comando := strings.Join(resto[1:], " ")
+		if strings.TrimSpace(comando) == "" {
+			lido, erroDeLeitura := io.ReadAll(os.Stdin)
+			if erroDeLeitura != nil {
+				fmt.Fprintf(os.Stderr, "nao consegui ler o comando da entrada padrao: %v\n", erroDeLeitura)
+				return 2
+			}
+			comando = string(lido)
+		}
+		importacao, err = importador.DeCurl(comando)
 	}
-
-	importacao, err := importador.DeCurl(comando)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 2
 	}
 
 	if _, err := cenario.Carregar([]byte(importacao.YAML)); err != nil {
-		fmt.Fprintf(os.Stderr, "gerei um cenario que eu mesmo nao aceito; isso e defeito meu, nao do seu curl:\n%v\n", err)
+		fmt.Fprintf(os.Stderr, "gerei um cenario que eu mesmo nao aceito; isso e defeito meu, nao do seu arquivo:\n%v\n", err)
 		return 1
 	}
 

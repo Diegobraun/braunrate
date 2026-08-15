@@ -3,7 +3,6 @@ package importador
 import (
 	"fmt"
 	"net/url"
-	"sort"
 	"strings"
 	"unicode"
 )
@@ -203,111 +202,29 @@ func interpretar(campos []string) (Requisicao, error) {
 	return requisicao, nil
 }
 
-// Cabecalho de credencial nunca sai no YAML: o arquivo gerado vai para o
-// repositorio, e token commitado e o jeito mais comum de vazar um.
-var cabecalhosDeSegredo = map[string]string{
-	"authorization": "TOKEN",
-	"x-api-key":     "API_KEY",
-	"api-key":       "API_KEY",
-	"cookie":        "COOKIE",
-}
-
 func montar(requisicao Requisicao) Importacao {
-	importacao := Importacao{}
-	var linhas []string
-
-	escrever := func(formato string, argumentos ...any) {
-		linhas = append(linhas, fmt.Sprintf(formato, argumentos...))
+	roteiro := Roteiro{
+		Nome: nomeDoCenario(requisicao),
+		Alvo: requisicao.Alvo,
+		Passos: []PassoImportado{{
+			Nome:           nomeDoPasso(requisicao),
+			Metodo:         requisicao.Metodo,
+			Caminho:        requisicao.Caminho,
+			Cabecalhos:     requisicao.Cabecalhos,
+			Corpo:          requisicao.Corpo,
+			SeguirRedirect: requisicao.SeguirRedirect,
+		}},
 	}
-
-	escrever("# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json")
-	escrever("nome: %q", nomeDoCenario(requisicao))
-	escrever("alvo: ${ALVO:-%s}", requisicao.Alvo)
-	escrever("")
-	semSegredo := map[string]string{}
-	var variaveis []string
-	for nome, valor := range requisicao.Cabecalhos {
-		variavel, segredo := cabecalhosDeSegredo[strings.ToLower(nome)]
-		if !segredo {
-			semSegredo[nome] = valor
-			continue
-		}
-		prefixo := ""
-		if partes := strings.SplitN(valor, " ", 2); len(partes) == 2 && !strings.Contains(partes[0], "=") {
-			prefixo = partes[0] + " "
-		}
-		local := strings.ToLower(variavel)
-		semSegredo[nome] = prefixo + "${" + local + "}"
-		variaveis = append(variaveis, fmt.Sprintf("  %s: ${%s}", local, variavel))
-		importacao.Avisos = append(importacao.Avisos,
-			fmt.Sprintf("o cabecalho %s virou ${%s}: rode com %s=... no ambiente, para nao versionar credencial", nome, local, variavel))
-	}
-
-	if len(variaveis) > 0 {
-		escrever("variaveis:")
-		sort.Strings(variaveis)
-		linhas = append(linhas, variaveis...)
-		escrever("")
-	}
-	escrever("carga:")
-	escrever("  perfis:")
-	escrever("    - rampa: { de: 1/s, ate: 20/s, durante: 30s }")
-	escrever("    - patamar: { taxa: 20/s, durante: 1m }")
-	escrever("")
-	escrever("cenario:")
-
-	corpoSimples := requisicao.Corpo == "" && len(semSegredo) == 0 && !requisicao.SeguirRedirect
-	if corpoSimples {
-		escrever("  - http: %s %s", requisicao.Metodo, requisicao.Caminho)
-		escrever("    nome: %s", nomeDoPasso(requisicao))
-	} else {
-		escrever("  - nome: %s", nomeDoPasso(requisicao))
-		escrever("    http:")
-		escrever("      metodo: %s", requisicao.Metodo)
-		escrever("      caminho: %s", requisicao.Caminho)
-		if len(semSegredo) > 0 {
-			escrever("      cabecalhos:")
-			nomes := make([]string, 0, len(semSegredo))
-			for nome := range semSegredo {
-				nomes = append(nomes, nome)
-			}
-			sort.Strings(nomes)
-			for _, nome := range nomes {
-				escrever("        %s: %q", nome, semSegredo[nome])
-			}
-		}
-		if requisicao.Corpo != "" {
-			escrever("      corpo: %s", emLinha(requisicao.Corpo))
-		}
-		if requisicao.SeguirRedirect {
-			escrever("      seguir_redirect: true")
-		}
-	}
-	escrever("    verificar:")
-	escrever("      status: 200")
-	escrever("")
-	escrever("slo:")
-	escrever("  - %s: { p95: < 500ms }", nomeDoPasso(requisicao))
-	escrever("  - global: { erros: < 1 }")
 
 	if requisicao.Usuario != "" {
-		importacao.Avisos = append(importacao.Avisos,
+		roteiro.Avisos = append(roteiro.Avisos,
 			fmt.Sprintf("o comando usava -u %s:...; declare isso no bloco 'autenticacao' com tipo: basica, e deixe a senha em variavel de ambiente", requisicao.Usuario))
 	}
 	if strings.Contains(requisicao.Caminho, "?") || temIdentificador(requisicao.Caminho) {
-		importacao.Avisos = append(importacao.Avisos,
+		roteiro.Avisos = append(roteiro.Avisos,
 			"o caminho tem valor fixo: com um valor so, o alvo responde de cache e o numero fica otimista. Troque por ${dados.coluna} e declare um bloco 'dados'")
 	}
-	importacao.Avisos = append(importacao.Avisos,
-		"os numeros de carga e de slo sao um chute de partida, nao uma medicao: ajuste antes de usar como gate")
-
-	importacao.YAML = strings.Join(linhas, "\n") + "\n"
-	return importacao
-}
-
-func emLinha(corpo string) string {
-	limpo := strings.TrimSpace(strings.ReplaceAll(corpo, "\n", " "))
-	return "'" + strings.ReplaceAll(limpo, "'", "''") + "'"
+	return GerarYAML(roteiro)
 }
 
 func nomeDoCenario(requisicao Requisicao) string {
@@ -316,54 +233,4 @@ func nomeDoCenario(requisicao Requisicao) string {
 
 func nomeDoPasso(requisicao Requisicao) string {
 	return strings.ToLower(requisicao.Metodo) + " " + recurso(requisicao.Caminho)
-}
-
-// Identificador e prefixo de versao nao entram no nome do passo: o nome e a
-// chave de agregacao do relatorio, e um nome por id daria uma linha por
-// requisicao em vez de uma linha por operacao.
-func recurso(caminho string) string {
-	semConsulta, _, _ := strings.Cut(caminho, "?")
-	var partes []string
-	for _, parte := range strings.Split(semConsulta, "/") {
-		if parte == "" || pareceIdentificador(parte) || pareceVersao(parte) {
-			continue
-		}
-		partes = append(partes, parte)
-	}
-	if len(partes) == 0 {
-		return "raiz"
-	}
-	return strings.Join(partes, " ")
-}
-
-func pareceVersao(parte string) bool {
-	if len(parte) < 2 || (parte[0] != 'v' && parte[0] != 'V') {
-		return false
-	}
-	for _, caractere := range parte[1:] {
-		if !unicode.IsDigit(caractere) {
-			return false
-		}
-	}
-	return true
-}
-
-func pareceIdentificador(parte string) bool {
-	digitos := 0
-	for _, caractere := range parte {
-		if unicode.IsDigit(caractere) {
-			digitos++
-		}
-	}
-	return digitos >= 3 || len(parte) >= 16
-}
-
-func temIdentificador(caminho string) bool {
-	semConsulta, _, _ := strings.Cut(caminho, "?")
-	for _, parte := range strings.Split(semConsulta, "/") {
-		if parte != "" && pareceIdentificador(parte) {
-			return true
-		}
-	}
-	return false
 }

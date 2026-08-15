@@ -47,7 +47,7 @@ Esta e a primeira das tres execucoes reais que sustentam a tese. Cada uma expoe 
 
 ## Estado
 
-**Fase 5 concluida** — motor de chegada aberta, HTTP, GraphQL, Kafka, RabbitMQ e passo `aguardar`, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `depurar`, `importar curl`), relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes) e variedade observada declarada no relatorio. Falta a DSL em Go e o importador de `.jmx`.
+**Fase 6 concluida** — motor de chegada aberta, HTTP, GraphQL, Kafka, RabbitMQ e passo `aguardar`, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `depurar`, `importar curl` e `importar jmx`), relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes), variedade observada e **cenario em Go equivalente ao YAML, travado por teste**.
 
 Decisao da Fase 0: **Go**, sustentada por dois criterios apenas — RSS sob carga (30 MB contra 597 MB do Java com G1, a 10.000/s) e binario unico estatico, que para o publico de QA significa instalar baixando um arquivo. Startup, precisao de agendamento e modo de falha apareceram na primeira analise com peso que nao aguentam, e estao marcados como nao-criterio no ADR. Numeros, metodologia e limites em [medicoes-fase0.md](docs/medicoes-fase0.md); a decisao com os pesos de cada criterio em [ADR 0001](docs/adr/0001-linguagem-e-runtime.md).
 
@@ -165,6 +165,34 @@ braunrate importar curl "curl 'https://api.exemplo.com/v1/pedidos/9912' -X POST 
 
 Sai um cenario que ja carrega, com carga e SLO de partida, e tres avisos honestos no terminal: o token virou variavel (`${token}`, lida de `TOKEN` no ambiente) e nao vai para o repositorio; o id fixo no caminho faz o alvo responder de cache; os numeros de carga e SLO sao chute, nao medicao.
 
+**Comecar de um plano do JMeter**, para quem tem suite pronta:
+
+```bash
+braunrate importar jmx plano.jmx -saida cenario.yaml
+```
+
+**A traducao e parcial e o que ficou de fora sai listado no terminal**, um elemento por vez, porque importador que engole o arquivo inteiro em silencio entrega um cenario que mede outra coisa:
+
+| Traduzido | Nao traduzido (sai declarado) |
+|---|---|
+| `HTTPSamplerProxy` (metodo, caminho, dominio, corpo) | Controladores (If, While, Loop), temporizadores |
+| `HeaderManager`, com credencial virando variavel de ambiente | Scripts JSR223/BeanShell |
+| `CSVDataSet` (arquivo e reciclagem) | Samplers de JDBC, JMS e outros nao-HTTP |
+| `ThreadGroup`, como **aviso**, nunca como taxa | Assercoes: todo passo sai com `status: 200` |
+| `JSONPostProcessor` e `RegexExtractor`, como instrucao de captura | Funcoes `${__...}` do JMeter |
+
+**Thread nunca vira taxa.** No JMeter uma thread so envia depois que a resposta anterior chegou: 50 threads sao 50/s se o alvo responde em 1 s e 5/s se responde em 10 s. Converter em silencio importaria a omissao coordenada junto com o plano, entao o bloco `carga` sai como chute declarado e o aviso diz o que o `.jmx` tinha:
+
+```
+atencao: o grupo "Usuarios" declara 50 threads, rampa de 30s, 300s de duracao: numero de
+thread nao vira taxa de chegada, porque thread so envia depois da resposta anterior. O bloco
+'carga' ficou com um chute; troque pela taxa que voce quer sustentar (requisicoes por segundo)
+atencao: o .jmx captura "faturaId" de "$.ultimaFatura.id": declare no passo que produz o valor,
+como captura: { faturaId: $.ultimaFatura.id }
+atencao: 1 elemento(s) do .jmx nao foram traduzidos e ficaram de fora do cenario:
+BeanShellPreProcessor (1). Confira se algum deles mudava o que era medido
+```
+
 **Ver a iteracao antes da carga**, que e onde a correlacao quebrada aparece:
 
 ```
@@ -191,6 +219,45 @@ variaveis no fim da iteracao
 
 Iteracao completa: 2 passo(s), tudo certo. Para rodar com carga:
   braunrate executar cenarios/jornada-autenticada.yaml
+```
+
+## O mesmo cenario em Go
+
+Quando o cenario passa do que o YAML expressa — laco sobre uma lista, decisao no meio da jornada, dado vindo de um sistema seu — o mesmo cenario se escreve em Go, com o mesmo motor e as mesmas metricas:
+
+```go
+c, err := dsl.Novo("Jornada autenticada").
+	Alvo("https://api.exemplo.com").
+	Autenticacao(dsl.PorToken(
+		dsl.POST("/auth/token").Corpo(map[string]any{"usuario": "ana", "senha": "${SENHA}"}),
+		dsl.Capturar("token", "$.access_token"),
+	).RenovarApos(25 * time.Minute)).
+	DadosDeArquivo("assinantes", "dados/assinantes.csv").
+	Rampa(dsl.PorSegundo(10), dsl.PorSegundo(100), 30*time.Second).
+	Patamar(dsl.PorSegundo(100), time.Minute).
+	Passo(dsl.GET("/pedidos/${assinantes.id}"),
+		dsl.Nome("consultar pedido"),
+		dsl.VerificarStatus(200),
+		dsl.Capturar("faturaId", "$.ultimaFatura.id")).
+	SLO("consultar pedido", "p95", "< 150ms").
+	SLOGlobal("erros", "< 0.1").
+	Construir()
+
+m, err := motor.Novo(c, motor.OpcoesPadrao())
+documento := m.Executar(context.Background())
+```
+
+**Migrar de YAML para Go nao e reescrever.** A DSL nao interpreta nada por conta propria: `"$.ultimaFatura.id"`, `"> 10"` e `"< 150ms"` sao lidos pelas mesmas funcoes que leem o YAML, e cada protocolo aplica seus padroes num lugar so. Um teste compara a estrutura inteira dos dois caminhos, caso a caso, e falha se um protocolo registrado, uma chave de topo ou uma forma de cenario ficar sem caso de equivalencia:
+
+```
+$ go test ./dsl/ -run TestYAMLEDSL -v
+--- PASS: TestYAMLEDSLProduzemOMesmoCenario (0.00s)
+    --- PASS: TestYAMLEDSLProduzemOMesmoCenario/http_com_variaveis,_dados,_autenticacao_por_token,_capturas_e_slo (0.00s)
+    --- PASS: TestYAMLEDSLProduzemOMesmoCenario/graphql_por_operacao (0.00s)
+    --- PASS: TestYAMLEDSLProduzemOMesmoCenario/kafka_com_aguardar_fechando_a_cadeia (0.00s)
+    --- PASS: TestYAMLEDSLProduzemOMesmoCenario/amqp_em_fila_e_em_troca_com_rota (0.00s)
+    --- PASS: TestYAMLEDSLProduzemOMesmoCenario/autenticacao_basica_e_consumo_unico_por_usuario (0.00s)
+    --- PASS: TestYAMLEDSLProduzemOMesmoCenario/autenticacao_por_cabecalho_fixo (0.00s)
 ```
 
 ## O relatorio
@@ -396,7 +463,8 @@ A comparacao nunca chama de regressao o que pode ser ruido, lista tudo que mudou
 | Kafka e RabbitMQ com entrega confirmada, sem lote | pronto |
 | Passo `aguardar`: mede a cadeia assincrona ponta a ponta | pronto |
 | Variedade observada, com resultado invalido quando a carga concentra | pronto |
-| DSL e importador de `.jmx` | Fase 6 |
+| Cenario em Go, com equivalencia YAML x DSL travada por teste | pronto |
+| `importar jmx`: requisicao, cabecalho, CSV e correlacao do plano do JMeter | parcial, declarado |
 
 ## Por que existe
 
