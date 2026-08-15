@@ -1,0 +1,336 @@
+{
+  "versao_do_formato": "1",
+  "ferramenta": "braunrate",
+  "versao": "0.3.0",
+  "ambiente": {
+    "maquina": "maquina-de-exemplo",
+    "sistema_operacional": "darwin",
+    "arquitetura": "arm64",
+    "nucleos": 10,
+    "versao_do_go": "go1.26.6"
+  },
+  "execucao": {
+    "cenario": "Jornada de cobranca",
+    "alvo": "http://127.0.0.1:8080",
+    "inicio": "2026-08-15T23:34:38.133888+01:00",
+    "fim": "2026-08-15T23:34:48.21184+01:00",
+    "duracao_ms": 10077,
+    "modelo_de_chegada": "aberto",
+    "plano_aplicado": [
+      {
+        "tipo": "rampa",
+        "de_por_segundo": 50,
+        "ate_por_segundo": 300,
+        "duracao_ms": 5000
+      },
+      {
+        "tipo": "patamar",
+        "de_por_segundo": 300,
+        "ate_por_segundo": 300,
+        "duracao_ms": 5000
+      }
+    ],
+    "maximo_de_requisicoes_simultaneas": 20000,
+    "sementes_dos_dados": {
+      "assinantes": 1
+    },
+    "obtencoes_de_autenticacao": 1
+  },
+  "agendamento": {
+    "enviadas": 2375,
+    "concluidas": 4750,
+    "despachos_atrasados": 0,
+    "descartadas_por_limite_de_voo": 0,
+    "amostras_perdidas": 0,
+    "pico_em_voo": 306,
+    "limiar_de_atraso_ms": 10,
+    "desvio_de_agendamento": {
+      "amostras": 2375,
+      "p50_ms": 0.001,
+      "p75_ms": 0.001,
+      "p90_ms": 0.001,
+      "p95_ms": 0.001,
+      "p99_ms": 0.005,
+      "p99_9_ms": 0.02,
+      "max_ms": 0.258,
+      "min_ms": 0.001,
+      "media_ms": 0.001253052631578947
+    }
+  },
+  "jornada": {
+    "iniciadas": 2375,
+    "completas": 2375,
+    "latencia_corrigida": {
+      "amostras": 2375,
+      "p50_ms": 80.575,
+      "p75_ms": 81.087,
+      "p90_ms": 266.239,
+      "p95_ms": 674.815,
+      "p99_ms": 1029.631,
+      "p99_9_ms": 1084.415,
+      "max_ms": 1085.439,
+      "min_ms": 80.256,
+      "media_ms": 143.29284715789456
+    },
+    "frase": "Todas as 2375 jornadas chegaram ao fim; metade levou ate 81 ms e 95% ate 675 ms, contados do instante em que deveriam ter comecado."
+  },
+  "passos": [
+    {
+      "nome": "consultar pedido",
+      "tipo_de_latencia": "corrigida",
+      "chave": "GET /pedidos/${assinantes.id}",
+      "protocolo": "http",
+      "contagem": 2375,
+      "sucessos": 2375,
+      "erros": 0,
+      "bytes": 225625,
+      "erros_por_classe": {},
+      "status_por_codigo": {
+        "200": 2375
+      },
+      "detalhes_de_erro": {},
+      "latencia_corrigida": {
+        "amostras": 2375,
+        "p50_ms": 40.287,
+        "p75_ms": 40.543,
+        "p90_ms": 191.999,
+        "p95_ms": 598.015,
+        "p99_ms": 953.855,
+        "p99_9_ms": 1034.751,
+        "max_ms": 1042.943,
+        "min_ms": 40.128,
+        "media_ms": 98.60712421052635
+      },
+      "latencia_de_servico": {
+        "amostras": 2375,
+        "p50_ms": 40.255,
+        "p75_ms": 40.479,
+        "p90_ms": 191.999,
+        "p95_ms": 598.015,
+        "p99_ms": 953.855,
+        "p99_9_ms": 1034.751,
+        "max_ms": 1042.943,
+        "min_ms": 40.096,
+        "media_ms": 98.54639157894746
+      }
+    },
+    {
+      "nome": "pagar fatura",
+      "tipo_de_latencia": "servico",
+      "chave": "POST /faturas/${faturaId}/pagar",
+      "protocolo": "http",
+      "contagem": 2375,
+      "sucessos": 2375,
+      "erros": 0,
+      "bytes": 149625,
+      "erros_por_classe": {},
+      "status_por_codigo": {
+        "200": 2375
+      },
+      "detalhes_de_erro": {},
+      "latencia_corrigida": {
+        "amostras": 2375,
+        "p50_ms": 40.287,
+        "p75_ms": 40.511,
+        "p90_ms": 41.375,
+        "p95_ms": 42.655,
+        "p99_ms": 42.943,
+        "p99_9_ms": 1035.775,
+        "max_ms": 1044.991,
+        "min_ms": 40.096,
+        "media_ms": 44.68573642105264
+      },
+      "latencia_de_servico": {
+        "amostras": 2375,
+        "p50_ms": 40.255,
+        "p75_ms": 40.479,
+        "p90_ms": 41.375,
+        "p95_ms": 42.655,
+        "p99_ms": 42.911,
+        "p99_9_ms": 1035.775,
+        "max_ms": 1044.991,
+        "min_ms": 40.096,
+        "media_ms": 44.673434947368406
+      }
+    }
+  ],
+  "global": {
+    "contagem": 4750,
+    "sucessos": 4750,
+    "erros": 0,
+    "taxa_de_erro": 0,
+    "taxa_efetiva_por_segundo": 471.3283190247522,
+    "latencia_corrigida": {
+      "amostras": 4750,
+      "p50_ms": 40.287,
+      "p75_ms": 40.511,
+      "p90_ms": 41.983,
+      "p95_ms": 223.615,
+      "p99_ms": 901.631,
+      "p99_9_ms": 1034.751,
+      "max_ms": 1044.991,
+      "min_ms": 40.096,
+      "media_ms": 71.64643031578956
+    },
+    "latencia_de_servico": {
+      "amostras": 4750,
+      "p50_ms": 40.255,
+      "p75_ms": 40.479,
+      "p90_ms": 41.919,
+      "p95_ms": 223.615,
+      "p99_ms": 901.631,
+      "p99_9_ms": 1034.751,
+      "max_ms": 1044.991,
+      "min_ms": 40.096,
+      "media_ms": 71.60991326315792
+    }
+  },
+  "slo": {
+    "passou": false,
+    "avaliacoes": [
+      {
+        "passo": "consultar pedido",
+        "metrica": "p95",
+        "regra": "p95: < 150ms",
+        "obtido": 598.015,
+        "limite": 150,
+        "unidade": "ms",
+        "passou": false,
+        "frase": "Falhou: \"consultar pedido\" teve latencia p95 de 598 ms, acima do limite de 150 ms.",
+        "sem_dados": false
+      },
+      {
+        "passo": "pagar fatura",
+        "metrica": "p95",
+        "regra": "p95: < 200ms",
+        "obtido": 42.655,
+        "limite": 200,
+        "unidade": "ms",
+        "passou": true,
+        "frase": "Passou: \"pagar fatura\" teve latencia p95 de 43 ms, dentro do limite de 200 ms.",
+        "sem_dados": false
+      },
+      {
+        "passo": "global",
+        "metrica": "erros",
+        "regra": "erros: < 0.1",
+        "obtido": 0,
+        "limite": 0.1,
+        "unidade": "%",
+        "passou": true,
+        "frase": "Passou: o cenario inteiro teve taxa de erro de 0.00%, dentro do limite de 0.10%.",
+        "sem_dados": false
+      }
+    ],
+    "frase": "Falhou: \"consultar pedido\" teve latencia p95 de 598 ms, acima do limite de 150 ms."
+  },
+  "avisos": [
+    {
+      "tipo": "alvo_degradado",
+      "gravidade": "media",
+      "mensagem": "a latencia do alvo cresceu ao longo da execucao enquanto o despacho continuou pontual; a degradacao e do alvo, nao do gerador",
+      "evidencia": "p99 por segundo passou de 64.1 ms para 1039.4 ms"
+    }
+  ],
+  "series_temporais": [
+    {
+      "inicio_epoch_ms": 1786833278000,
+      "enviadas": 63,
+      "concluidas": 122,
+      "erros": 0,
+      "taxa_alvo": 93.2737905,
+      "latencia_p50_ms": 40.863,
+      "latencia_p99_ms": 64.127
+    },
+    {
+      "inicio_epoch_ms": 1786833279000,
+      "enviadas": 118,
+      "concluidas": 234,
+      "erros": 0,
+      "taxa_alvo": 143.1782106,
+      "latencia_p50_ms": 40.607,
+      "latencia_p99_ms": 41.375
+    },
+    {
+      "inicio_epoch_ms": 1786833280000,
+      "enviadas": 168,
+      "concluidas": 334,
+      "erros": 0,
+      "taxa_alvo": 193.13207915,
+      "latencia_p50_ms": 40.511,
+      "latencia_p99_ms": 41.247
+    },
+    {
+      "inicio_epoch_ms": 1786833281000,
+      "enviadas": 218,
+      "concluidas": 435,
+      "erros": 0,
+      "taxa_alvo": 243.1049156,
+      "latencia_p50_ms": 40.447,
+      "latencia_p99_ms": 40.959
+    },
+    {
+      "inicio_epoch_ms": 1786833282000,
+      "enviadas": 269,
+      "concluidas": 346,
+      "erros": 0,
+      "taxa_alvo": 293.25756595,
+      "latencia_p50_ms": 444.159,
+      "latencia_p99_ms": 1039.359
+    },
+    {
+      "inicio_epoch_ms": 1786833283000,
+      "enviadas": 299,
+      "concluidas": 787,
+      "erros": 0,
+      "taxa_alvo": 300,
+      "latencia_p50_ms": 40.351,
+      "latencia_p99_ms": 287.231
+    },
+    {
+      "inicio_epoch_ms": 1786833284000,
+      "enviadas": 300,
+      "concluidas": 600,
+      "erros": 0,
+      "taxa_alvo": 300,
+      "latencia_p50_ms": 40.223,
+      "latencia_p99_ms": 40.479
+    },
+    {
+      "inicio_epoch_ms": 1786833285000,
+      "enviadas": 300,
+      "concluidas": 600,
+      "erros": 0,
+      "taxa_alvo": 300,
+      "latencia_p50_ms": 40.255,
+      "latencia_p99_ms": 40.447
+    },
+    {
+      "inicio_epoch_ms": 1786833286000,
+      "enviadas": 300,
+      "concluidas": 600,
+      "erros": 0,
+      "taxa_alvo": 300,
+      "latencia_p50_ms": 40.255,
+      "latencia_p99_ms": 40.543
+    },
+    {
+      "inicio_epoch_ms": 1786833287000,
+      "enviadas": 300,
+      "concluidas": 600,
+      "erros": 0,
+      "taxa_alvo": 300,
+      "latencia_p50_ms": 40.255,
+      "latencia_p99_ms": 40.575
+    },
+    {
+      "inicio_epoch_ms": 1786833288000,
+      "enviadas": 40,
+      "concluidas": 92,
+      "erros": 0,
+      "taxa_alvo": 300,
+      "latencia_p50_ms": 40.287,
+      "latencia_p99_ms": 40.703
+    }
+  ]
+}

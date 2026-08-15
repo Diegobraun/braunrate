@@ -37,7 +37,7 @@ Dois pontos de confiabilidade entraram na fase depois da revisao da Fase 2, porq
 | 2 | Correlacao, dados e SLO | concluida |
 | 2.5 | Autoria | concluida |
 | 3 | Relatorio (com as duas camadas de texto e a prova de auto-validacao no README) | concluida |
-| 4 | GraphQL | pendente |
+| 4 | GraphQL | concluida |
 | 5 | Mensageria e passo `aguardar` | pendente |
 | 6 | Segundo publico: DSL e importador de `.jmx` | pendente |
 | 7 | Acabamento e lancamento | pendente |
@@ -47,6 +47,14 @@ Dois pontos de confiabilidade entraram na fase depois da revisao da Fase 2, porq
 Entregue: relatorio HTML autocontido com veredito em uma frase no topo, grafico SVG desenhado sem biblioteca (o arquivo nao busca nada na rede), CSV por passo com o tipo de latencia declarado, veredito de SLO dentro do documento JSON, `braunrate relatorio` para gerar o HTML de um resultado ja gravado e `braunrate comparar` entre duas execucoes.
 
 A comparacao trata variacao abaixo de 5% como ruido, porque duas execucoes nao produzem intervalo de confianca; lista o que mudou fora do servico (maquina, plano, versao, cenario, token compartilhado); e se recusa a comparar quando alguma das duas teve o gerador saturado.
+
+## Fase 4 — GraphQL
+
+Entregue: protocolo `graphql` compilado no binario, com a operacao como chave de agregacao, erro no corpo com status 200 contado como erro (classe propria), resposta parcial declarada como parcial, e o mesmo motor, histograma e relatorio dos outros protocolos. Decisoes em [ADR 0006](adr/0006-graphql-como-unidade-de-medida.md).
+
+Fechada tambem a pendencia da Fase 3: `docs/exemplo-relatorio.html` e gerado de um resultado real congelado (`docs/exemplo-resultado.json`), com teste e passo de CI que falham se o arquivo commitado divergir do que o gerador produz hoje.
+
+**Bug encontrado e corrigido na fase**: a autenticacao guardava o contexto inteiro da primeira iteracao e o reinjetava nas seguintes, congelando os dados — toda execucao autenticada com CSV rodou sobre a primeira linha, enquanto o relatorio afirmava variedade. Detalhado no relatorio da fase, com teste de regressao ponta a ponta.
 
 ## Prova central do produto
 

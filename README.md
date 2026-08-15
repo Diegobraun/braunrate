@@ -37,7 +37,7 @@ Reproduza na sua maquina: `go test ./autovalidacao/... -v`.
 
 ## Estado
 
-**Fase 3 concluida** — motor de chegada aberta, HTTP, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `depurar`, `importar curl`) e relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes). Ainda nao existem GraphQL nem mensageria.
+**Fase 4 concluida** — motor de chegada aberta, HTTP e GraphQL, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `depurar`, `importar curl`) e relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes). Ainda nao existe mensageria.
 
 Decisao da Fase 0: **Go**, sustentada por dois criterios apenas — RSS sob carga (30 MB contra 597 MB do Java com G1, a 10.000/s) e binario unico estatico, que para o publico de QA significa instalar baixando um arquivo. Startup, precisao de agendamento e modo de falha apareceram na primeira analise com peso que nao aguentam, e estao marcados como nao-criterio no ADR. Numeros, metodologia e limites em [medicoes-fase0.md](docs/medicoes-fase0.md); a decisao com os pesos de cada criterio em [ADR 0001](docs/adr/0001-linguagem-e-runtime.md).
 
@@ -226,6 +226,47 @@ Repare no `pagar fatura`: **43 ms no 95%**, com o alvo congelado por um segundo 
 
 **Um token para a execucao inteira.** Hoje o motor faz login uma vez e reaproveita a credencial em todas as jornadas — isso nao existe em producao. Se o alvo tiver cache por identidade, rate limit por token ou sharding por usuario, o numero fica otimista (ou, no caso do rate limit, falha por 429 que nao aconteceria). O relatorio declara isso em toda execucao com autenticacao. `pool de tokens` e `token por usuario virtual` sao evolucao prevista, com a forma do YAML ja desenhada no [ADR 0005](docs/adr/0005-identidade-e-token.md).
 
+## GraphQL
+
+Cole a consulta; o nome da operacao vira a linha do relatorio:
+
+```yaml
+cenario:
+  - graphql:
+      consulta: |
+        query ConsultarPedido($id: ID!) {
+          pedido(id: $id) { id status ultimaFatura { id status } }
+        }
+      variaveis: { id: "${assinantes.id}" }
+    verificar:
+      json: { $.data.pedido.status: ABERTO }
+    captura:
+      faturaId: $.data.pedido.ultimaFatura.id
+
+slo:
+  - graphql ConsultarPedido: { p95: < 150ms }
+```
+
+Duas coisas que uma ferramenta de HTTP generico erra em GraphQL, e que aqui sao o padrao:
+
+**A operacao e a unidade de medida.** Tudo em GraphQL chega em `POST /graphql`. Agregar por URL colocaria a consulta mais barata e a mutation mais cara na mesma linha, e o p99 da mais cara sumiria na media. Por isso a chave e `graphql ConsultarPedido`, e operacao anonima e recusada na leitura do cenario — com a mensagem mostrando como dar nome.
+
+**Erro com status 200 e erro.** A especificacao manda responder `200` com `errors` no corpo. Execucao real contra o alvo embutido, onde um quarto dos assinantes nao existe:
+
+```
+Falhou: o cenario inteiro teve taxa de erro de 14.28%, acima do limite de 0.10%.
+
+Por passo
+  passo                          requisicoes    metade       95%       99%     99,9%      pior   erros
+  graphql ConsultarPedido    (1)      1.625    4.7 ms    5.1 ms    5.4 ms    5.8 ms     14 ms     406
+  graphql PagarFatura        (2)      1.219    4.7 ms    5.0 ms    5.2 ms    5.8 ms    6.0 ms       0
+
+Erros
+  erro no corpo da resposta GraphQL (com status 200)  406
+```
+
+**Todas as 2.844 respostas vieram com status HTTP 200.** Uma ferramenta que classifica por status teria reportado 0% de erro e SLO verde. Resposta parcial (`data` e `errors` juntos) tambem conta como erro, e o detalhe diz que foi parcial. Detalhes em [ADR 0006](docs/adr/0006-graphql-como-unidade-de-medida.md).
+
 ## Comparar duas execucoes
 
 ```
@@ -266,7 +307,7 @@ A comparacao nunca chama de regressao o que pode ser ruido, lista tudo que mudou
 | Autoria: schema no editor, `depurar`, `importar curl`, erros que ensinam | pronto |
 | Relatorio HTML autocontido, com veredito em uma frase | pronto |
 | JSON versionado, CSV por passo, comparacao entre execucoes | pronto |
-| GraphQL | Fase 4 |
+| GraphQL: uma linha por operacao, erro em 200 contado como erro | pronto |
 | Kafka, AMQP, passo `aguardar` | Fase 5 |
 | DSL e importador de `.jmx` | Fase 6 |
 
@@ -299,6 +340,7 @@ Tres razoes, nesta ordem:
 - [ADR 0003 — modelo de execucao e metrica](docs/adr/0003-modelo-de-execucao-e-metrica.md)
 - [ADR 0004 — extensao de protocolo](docs/adr/0004-extensao-de-protocolo.md)
 - [ADR 0005 — identidade e token](docs/adr/0005-identidade-e-token.md)
+- [ADR 0006 — GraphQL como unidade de medida](docs/adr/0006-graphql-como-unidade-de-medida.md)
 - [Schema do cenario](docs/braunrate.schema.json) — autocompletar e validacao no editor
 - [Exemplo de relatorio HTML](docs/exemplo-relatorio.html) — saida real de uma execucao que falhou o SLO
 - [Medicao dos prototipos da Fase 0](docs/medicoes-fase0.md)
