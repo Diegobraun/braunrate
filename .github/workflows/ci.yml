@@ -18,7 +18,7 @@ jobs:
 
       - name: formatacao
         run: |
-          arquivos=$(gofmt -l .)
+          arquivos=$(gofmt -l $(go list -f '{{.Dir}}' ./...))
           if [ -n "$arquivos" ]; then
             echo "arquivos fora do gofmt:"
             echo "$arquivos"
