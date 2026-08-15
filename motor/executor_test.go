@@ -16,6 +16,8 @@ type configuracaoFalsa struct{ chave string }
 func (c configuracaoFalsa) Protocolo() string        { return "falso" }
 func (c configuracaoFalsa) ChaveDeAgregacao() string { return c.chave }
 
+func (c configuracaoFalsa) Resolver(func(string) string) protocolo.Configuracao { return c }
+
 type protocoloFalso struct {
 	nome     string
 	entrou   chan struct{}
@@ -75,9 +77,13 @@ func TestDespachoSegueOInstanteAgendadoComRelogioInjetado(t *testing.T) {
 
 	opcoes := motor.OpcoesPadrao()
 	opcoes.Relogio = relogio
-	opcoes.LimiteDeVoo = 1000
+	opcoes.MaximoSimultaneas = 1000
 
-	documento := motor.Novo(cenarioFalso("falso-pontual", 100, time.Second), opcoes).Executar(context.Background())
+	m, err := motor.Novo(cenarioFalso("falso-pontual", 100, time.Second), opcoes)
+	if err != nil {
+		t.Fatalf("motor nao subiu: %v", err)
+	}
+	documento := m.Executar(context.Background())
 
 	if documento.Agendamento.Enviadas != 100 {
 		t.Errorf("enviadas = %d, esperado 100", documento.Agendamento.Enviadas)
@@ -99,12 +105,16 @@ func TestLimiteDeVooDescartaEInvalidaOResultado(t *testing.T) {
 
 	opcoes := motor.OpcoesPadrao()
 	opcoes.Relogio = motor.NovoRelogioVirtual(time.Unix(1_700_000_000, 0))
-	opcoes.LimiteDeVoo = 1
+	opcoes.MaximoSimultaneas = 1
 
 	concluido := make(chan struct{})
 	var documento = make(chan any, 1)
 	go func() {
-		documento <- motor.Novo(cenarioFalso("falso-preso", 3, time.Second), opcoes).Executar(context.Background())
+		m, err := motor.Novo(cenarioFalso("falso-preso", 3, time.Second), opcoes)
+		if err != nil {
+			panic(err)
+		}
+		documento <- m.Executar(context.Background())
 		close(concluido)
 	}()
 
@@ -129,7 +139,11 @@ func TestVerificacaoDeStatusClassificaErro(t *testing.T) {
 	opcoes := motor.OpcoesPadrao()
 	opcoes.Relogio = motor.NovoRelogioVirtual(time.Unix(1_700_000_000, 0))
 
-	documento := motor.Novo(c, opcoes).Executar(context.Background())
+	m, err := motor.Novo(c, opcoes)
+	if err != nil {
+		t.Fatalf("motor nao subiu: %v", err)
+	}
+	documento := m.Executar(context.Background())
 
 	if documento.Global.Erros != documento.Global.Contagem {
 		t.Fatalf("esperava todas as requisicoes como erro de status, obtido %d de %d",

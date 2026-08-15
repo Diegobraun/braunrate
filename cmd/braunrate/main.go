@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -17,9 +18,10 @@ import (
 	"github.com/Diegobraun/braunrate/protocolo"
 	_ "github.com/Diegobraun/braunrate/protocolo/http"
 	"github.com/Diegobraun/braunrate/relatorio"
+	"github.com/Diegobraun/braunrate/slo"
 )
 
-const versao = "0.1.0"
+const versao = "0.2.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -53,8 +55,8 @@ uso:
 
 opcoes de executar:
   -resultado <arquivo.json>   grava o documento de resultado
-  -limite-de-voo <n>          maximo de requisicoes simultaneas em voo (padrao 20000)
-  -limiar-de-atraso <dur>     atraso de despacho que conta como back-pressure (padrao 10ms)
+  -maximo-simultaneas <n>     maximo de requisicoes simultaneas (padrao 20000)
+  -atraso-tolerado <dur>      a partir daqui o gerador conta como saturado (padrao 10ms)
   -silencioso                 nao imprime progresso durante a execucao
 `, versao)
 }
@@ -62,8 +64,8 @@ opcoes de executar:
 func executar(argumentos []string) int {
 	conjunto := flag.NewFlagSet("executar", flag.ExitOnError)
 	arquivoDeResultado := conjunto.String("resultado", "", "arquivo JSON de resultado")
-	limiteDeVoo := conjunto.Int64("limite-de-voo", 20000, "maximo de requisicoes em voo")
-	limiarDeAtraso := conjunto.Duration("limiar-de-atraso", 10*time.Millisecond, "atraso que conta como back-pressure")
+	maximoSimultaneas := conjunto.Int64("maximo-simultaneas", 20000, "maximo de requisicoes simultaneas antes de desistir de disparar")
+	limiarDeAtraso := conjunto.Duration("atraso-tolerado", 10*time.Millisecond, "atraso de disparo a partir do qual o gerador e considerado saturado")
 	silencioso := conjunto.Bool("silencioso", false, "nao imprime progresso")
 	_ = conjunto.Parse(argumentos)
 
@@ -84,7 +86,8 @@ func executar(argumentos []string) int {
 
 	opcoes := motor.OpcoesPadrao()
 	opcoes.Versao = versao
-	opcoes.LimiteDeVoo = *limiteDeVoo
+	opcoes.MaximoSimultaneas = *maximoSimultaneas
+	opcoes.RaizDeDados = filepath.Dir(conjunto.Arg(0))
 	opcoes.LimiarDeAtraso = *limiarDeAtraso
 	if !*silencioso {
 		opcoes.AoProgredir = func(instantaneo metrica.Instantaneo, taxaAlvo float64, restante time.Duration) {
@@ -95,16 +98,21 @@ func executar(argumentos []string) int {
 	ctx, cancelar := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancelar()
 
-	m := motor.Novo(c, opcoes)
-	fmt.Fprintf(os.Stderr, "executando %q contra %s: %d requisicoes agendadas em %s\n",
-		c.Nome, c.Alvo, m.Plano().TotalDeRequisicoes(), m.Plano().Duracao())
+	m, err := motor.Novo(c, opcoes)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 2
+	}
+	fmt.Fprintf(os.Stderr, "executando %q contra %s: %s iteracoes em %s\n",
+		c.Nome, c.Alvo, humanizar(m.Plano().TotalDeRequisicoes()), m.Plano().Duracao())
 
 	documento := m.Executar(ctx)
 	protocolo.EncerrarTodos()
 	if !*silencioso {
 		fmt.Fprintln(os.Stderr)
 	}
-	relatorio.Resumo(os.Stdout, documento)
+	veredito := slo.Avaliar(c.SLO, documento)
+	relatorio.Resumo(os.Stdout, documento, veredito)
 
 	if *arquivoDeResultado != "" {
 		conteudo, err := json.MarshalIndent(documento, "", "  ")
@@ -121,7 +129,14 @@ func executar(argumentos []string) int {
 	if !documento.ResultadoValido() {
 		return 3
 	}
+	if !veredito.Passou {
+		return 1
+	}
 	return 0
+}
+
+func humanizar(valor int64) string {
+	return fmt.Sprintf("%d", valor)
 }
 
 func validar(argumentos []string) int {
@@ -139,8 +154,11 @@ func validar(argumentos []string) int {
 		return 2
 	}
 	plano := motor.CompilarPlano(c.Carga)
-	fmt.Printf("cenario valido: %q, %d passos, %d requisicoes agendadas em %s\n",
+	fmt.Printf("Cenario valido: %q, %d passo(s), %d iteracoes em %s.\n",
 		c.Nome, len(c.Passos), plano.TotalDeRequisicoes(), plano.Duracao())
+	if len(c.SLO) == 0 {
+		fmt.Println("Sem slo declarado: a execucao nunca vai falhar por lentidao. Adicione um bloco 'slo' para virar gate de CI.")
+	}
 	return 0
 }
 

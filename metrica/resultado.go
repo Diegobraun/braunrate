@@ -33,14 +33,16 @@ type Ambiente struct {
 }
 
 type Execucao struct {
-	Cenario       string         `json:"cenario"`
-	Alvo          string         `json:"alvo"`
-	Inicio        time.Time      `json:"inicio"`
-	Fim           time.Time      `json:"fim"`
-	DuracaoMs     int64          `json:"duracao_ms"`
-	Modelo        string         `json:"modelo_de_chegada"`
-	PlanoAplicado []FaseAplicada `json:"plano_aplicado"`
-	LimiteDeVoo   int64          `json:"limite_de_voo"`
+	Cenario           string           `json:"cenario"`
+	Alvo              string           `json:"alvo"`
+	Inicio            time.Time        `json:"inicio"`
+	Fim               time.Time        `json:"fim"`
+	DuracaoMs         int64            `json:"duracao_ms"`
+	Modelo            string           `json:"modelo_de_chegada"`
+	PlanoAplicado     []FaseAplicada   `json:"plano_aplicado"`
+	MaximoSimultaneas int64            `json:"maximo_de_requisicoes_simultaneas"`
+	Sementes          map[string]int64 `json:"sementes_dos_dados"`
+	Autenticacoes     int64            `json:"obtencoes_de_autenticacao"`
 }
 
 type FaseAplicada struct {
@@ -111,14 +113,16 @@ func (d Documento) ResultadoValido() bool {
 }
 
 type EntradaDoDocumento struct {
-	Versao      string
-	Cenario     string
-	Alvo        string
-	Modelo      string
-	Inicio      time.Time
-	Fim         time.Time
-	Fases       []FaseAplicada
-	LimiteDeVoo int64
+	Versao            string
+	Cenario           string
+	Alvo              string
+	Modelo            string
+	Inicio            time.Time
+	Fim               time.Time
+	Fases             []FaseAplicada
+	MaximoSimultaneas int64
+	Sementes          map[string]int64
+	Autenticacoes     int64
 }
 
 func MontarDocumento(c *Coletor, entrada EntradaDoDocumento) Documento {
@@ -135,14 +139,16 @@ func MontarDocumento(c *Coletor, entrada EntradaDoDocumento) Documento {
 			VersaoDoGo:         runtime.Version(),
 		},
 		Execucao: Execucao{
-			Cenario:       entrada.Cenario,
-			Alvo:          entrada.Alvo,
-			Inicio:        entrada.Inicio,
-			Fim:           entrada.Fim,
-			DuracaoMs:     entrada.Fim.Sub(entrada.Inicio).Milliseconds(),
-			Modelo:        entrada.Modelo,
-			PlanoAplicado: entrada.Fases,
-			LimiteDeVoo:   entrada.LimiteDeVoo,
+			Cenario:           entrada.Cenario,
+			Alvo:              entrada.Alvo,
+			Inicio:            entrada.Inicio,
+			Fim:               entrada.Fim,
+			DuracaoMs:         entrada.Fim.Sub(entrada.Inicio).Milliseconds(),
+			Modelo:            entrada.Modelo,
+			PlanoAplicado:     entrada.Fases,
+			MaximoSimultaneas: entrada.MaximoSimultaneas,
+			Sementes:          entrada.Sementes,
+			Autenticacoes:     entrada.Autenticacoes,
 		},
 		Agendamento: Agendamento{
 			Enviadas:                  c.Enviadas,

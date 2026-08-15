@@ -93,7 +93,7 @@ func montarDocumento(c *metrica.Coletor, inicio, fim time.Time) metrica.Document
 	c.Encerrar()
 	return metrica.MontarDocumento(c, metrica.EntradaDoDocumento{
 		Versao: "teste", Cenario: "teste", Alvo: "http://alvo", Modelo: "aberto",
-		Inicio: inicio, Fim: fim, LimiteDeVoo: 100,
+		Inicio: inicio, Fim: fim, MaximoSimultaneas: 100,
 	})
 }
 

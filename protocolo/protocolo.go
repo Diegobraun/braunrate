@@ -25,6 +25,14 @@ const (
 type Configuracao interface {
 	Protocolo() string
 	ChaveDeAgregacao() string
+	Resolver(func(string) string) Configuracao
+}
+
+// Implementada pelos protocolos que aceitam cabecalho: e por aqui que o motor
+// injeta autenticacao sem que o protocolo saiba que ela existe.
+type ConfiguracaoComCabecalhos interface {
+	Configuracao
+	ComCabecalho(nome, valor string) Configuracao
 }
 
 type Requisicao struct {

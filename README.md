@@ -2,7 +2,7 @@
 
 Ferramenta de teste de carga com medicao honesta: modelo de chegada aberto, HDR histogram e deteccao de back-pressure.
 
-Estado: **Fase 1 concluida** — motor de chegada aberta, HTTP, HDR histogram, deteccao de back-pressure e resumo de terminal funcionando. Ainda nao existem correlacao, SLO, relatorio HTML, GraphQL nem mensageria.
+Estado: **Fase 2 concluida** — motor de chegada aberta, HTTP, correlacao, autenticacao, dados, assercoes e SLO com codigo de saida. Ainda nao existem relatorio HTML, GraphQL nem mensageria.
 
 Decisao da Fase 0: **Go**, sustentada por dois criterios apenas — RSS sob carga (30 MB contra 597 MB do Java com G1, a 10.000/s) e binario unico estatico, que para o publico de QA significa instalar baixando um arquivo. Startup, precisao de agendamento e modo de falha apareceram na primeira analise com peso que nao aguentam, e estao marcados como nao-criterio no ADR. Numeros, metodologia e limites em [medicoes-fase0.md](docs/medicoes-fase0.md); a decisao com os pesos de cada criterio em [ADR 0001](docs/adr/0001-linguagem-e-runtime.md).
 
@@ -69,7 +69,49 @@ cenario:
     verificar: { status: 200 }
 ```
 
-Codigo de saida: `0` execucao valida, `2` erro de cenario, `3` **resultado invalido** — o gerador saturou e o numero nao vale.
+Codigo de saida: `0` passou, `1` **falhou o SLO**, `2` erro de cenario, `3` **resultado invalido** — o gerador saturou e o numero nao vale.
+
+Cenario com autenticacao, correlacao, dados e SLO — o exemplo completo esta em [`cenarios/jornada-autenticada.yaml`](cenarios/jornada-autenticada.yaml):
+
+```yaml
+autenticacao:
+  tipo: token
+  obter:
+    http: { metodo: POST, caminho: /auth/token, corpo: { usuario: "${usuario}", senha: "${SENHA}" } }
+    captura: { token: $.access_token }
+  renovar_apos: 25m
+
+dados:
+  assinantes: { arquivo: dados/assinantes.csv, consumo: circular }
+
+cenario:
+  - http: GET /pedidos/${assinantes.id}
+    nome: consultar pedido
+    verificar: { status: 200, json: { $.ultimaFatura.status: ABERTA } }
+    captura: { faturaId: $.ultimaFatura.id }
+
+slo:
+  - consultar pedido: { p95: < 150ms }
+  - global: { erros: < 0.1 }
+```
+
+Saida real dessa execucao:
+
+```
+Passou: as 3 regras de SLO foram atendidas.
+
+O que aconteceu
+  4.750 requisicoes em 10s, 475 por segundo, 0% de erro
+  Metade das respostas em ate 3.6 ms; 95% em ate 4.3 ms; 99% em ate 5.3 ms; a pior levou 11 ms
+
+SLO
+  ok    Passou: "consultar pedido" teve latencia p95 de 4 ms, dentro do limite de 150 ms.
+  ok    Passou: o cenario inteiro teve taxa de erro de 0.00%, dentro do limite de 0.10%.
+
+Confiabilidade da medicao
+  O gerador disparou todas as requisicoes na hora certa, entao os numeros acima valem.
+  Atraso tipico para disparar: 0.001 ms; pior caso: 2.3 ms (o tempo de resposta ja desconta isso)
+```
 
 ## O que existe hoje
 
@@ -83,7 +125,11 @@ Codigo de saida: `0` execucao valida, `2` erro de cenario, `3` **resultado inval
 | HTTP: verbos, cabecalhos, corpo JSON, redirect, timeout, cookies | pronto |
 | YAML com erro apontando linha e coluna | pronto |
 | Resumo de terminal e progresso ao vivo | pronto |
-| Correlacao, autenticacao, dados, SLO | Fase 2 |
+| Correlacao em uma linha: JSON, cabecalho e regex | pronto |
+| Autenticacao por token com renovacao, e basica | pronto |
+| Dados: CSV com politica de consumo e geracao com semente | pronto |
+| Assercoes funcionais e SLO por passo e global, com codigo de saida | pronto |
+| Autoria: schema, `depurar`, `importar curl`, erros que ensinam | Fase 2.5 |
 | Relatorio HTML, JSON completo, comparacao entre execucoes | Fase 3 |
 | GraphQL | Fase 4 |
 | Kafka, AMQP, passo `aguardar` | Fase 5 |
@@ -107,6 +153,8 @@ Tres razoes, nesta ordem:
 
 ## Documentacao
 
+- [Principios de produto](docs/principios-de-produto.md) — criterio de aceitacao de toda decisao de interface
+- [Roteiro](docs/roteiro.md)
 - [Estudo comparativo de ferramentas](docs/estudo-ferramentas.md) — base de todas as decisoes
 - [Arquitetura](docs/arquitetura.md)
 - [ADR 0001 — linguagem e runtime](docs/adr/0001-linguagem-e-runtime.md)

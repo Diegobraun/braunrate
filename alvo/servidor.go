@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -52,6 +53,9 @@ func (s *Servidor) Iniciar(endereco string) error {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.tratar)
+	mux.HandleFunc("/auth/token", s.envolver(s.tratarToken))
+	mux.HandleFunc("/pedidos/", s.envolver(s.exigirToken(s.tratarPedido)))
+	mux.HandleFunc("/faturas/", s.envolver(s.exigirToken(s.tratarPagamento)))
 	mux.HandleFunc("/saude", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.HandleFunc("/congelar", s.tratarCongelamento)
 	s.servidor = &http.Server{Handler: mux}
@@ -129,4 +133,59 @@ func (s *Servidor) tratar(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, `{"id":%d,"status":"OK","caminho":%q}`, numero, r.URL.Path)
+}
+
+// A jornada com autenticacao existe para que o exemplo do README funcione sem
+// que ninguem precise de um servico de verdade a mao.
+func (s *Servidor) envolver(tratador http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.esperarFimDaPausa()
+		if s.opcoes.Latencia > 0 {
+			time.Sleep(s.opcoes.Latencia)
+		}
+		s.atendidas.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		tratador(w, r)
+	}
+}
+
+func (s *Servidor) exigirToken(tratador http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer "+s.token() {
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprint(w, `{"erro":"token ausente ou invalido"}`)
+			return
+		}
+		tratador(w, r)
+	}
+}
+
+func (s *Servidor) token() string { return "token-de-teste" }
+
+func (s *Servidor) tratarToken(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	fmt.Fprintf(w, `{"access_token":%q,"expira_em":1800}`, s.token())
+}
+
+func (s *Servidor) tratarPedido(w http.ResponseWriter, r *http.Request) {
+	pedido := strings.TrimPrefix(r.URL.Path, "/pedidos/")
+	if pedido == "" {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, `{"erro":"informe o pedido"}`)
+		return
+	}
+	fmt.Fprintf(w, `{"id":%q,"status":"ABERTO","ultimaFatura":{"id":"f-%s","valor":199.90,"status":"ABERTA"}}`,
+		pedido, pedido)
+}
+
+func (s *Servidor) tratarPagamento(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	fatura := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/faturas/"), "/pagar")
+	fmt.Fprintf(w, `{"id":%q,"status":"PAGA","pagoEm":"2026-08-15T00:00:00Z"}`, fatura)
 }

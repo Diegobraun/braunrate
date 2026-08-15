@@ -43,3 +43,4 @@ jobs:
           ./braunrate alvo -endereco=127.0.0.1:8080 -latencia=5ms &
           sleep 1
           ./braunrate executar cenarios/ci.yaml -silencioso -resultado=resultado.json
+          ./braunrate executar cenarios/jornada-autenticada.yaml -silencioso

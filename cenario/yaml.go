@@ -92,21 +92,31 @@ func Carregar(conteudo []byte) (Cenario, error) {
 				return c, err
 			}
 			c.Passos = passos
-		case "autenticacao", "dados", "slo":
-			return c, erroNo(chave, "a chave %q ainda nao e suportada nesta versao", chave.Value)
+		case "autenticacao":
+			autenticacao, err := lerAutenticacao(valor)
+			if err != nil {
+				return c, err
+			}
+			c.Autenticacao = autenticacao
+		case "dados":
+			fontes, err := lerDados(valor)
+			if err != nil {
+				return c, err
+			}
+			c.Dados = fontes
+		case "slo":
+			regras, err := lerSLO(valor)
+			if err != nil {
+				return c, err
+			}
+			c.SLO = regras
 		default:
-			return c, erroNo(chave, "chave desconhecida no topo do cenario: %q", chave.Value)
+			return c, erroNo(chave, "chave desconhecida no topo do cenario: %q\n%s",
+				chave.Value, sugerir(chave.Value, []string{"nome", "alvo", "variaveis", "autenticacao", "dados", "carga", "cenario", "slo"}))
 		}
 	}
 
 	c.Alvo = interpolar(c.Alvo, c.Variaveis)
-	for indice := range c.Passos {
-		if configuravel, ok := c.Passos[indice].Configuracao.(interface {
-			Interpolar(func(string) string)
-		}); ok {
-			configuravel.Interpolar(func(texto string) string { return interpolar(texto, c.Variaveis) })
-		}
-	}
 	return c, nil
 }
 
@@ -293,17 +303,24 @@ func lerPasso(no *yaml.Node) (Passo, error) {
 		case "nome":
 			passo.Nome = valor.Value
 		case "verificar", "espera":
-			verificacoes, err := lerVerificacoes(valor)
+			verificacoes, assercoes, err := lerAssercoes(valor)
 			if err != nil {
 				return passo, err
 			}
 			passo.Verificacoes = verificacoes
-		case "captura", "peso":
-			return passo, erroNo(chave, "a chave %q ainda nao e suportada nesta versao", chave.Value)
+			passo.Assercoes = assercoes
+		case "captura":
+			capturas, err := lerCapturas(valor)
+			if err != nil {
+				return passo, err
+			}
+			passo.Capturas = capturas
+		case "peso":
+			return passo, erroNo(chave, "a chave %q ainda nao existe: mix ponderado de operacoes entra junto com o GraphQL", chave.Value)
 		default:
 			if _, existe := protocolo.Buscar(chave.Value); !existe {
-				return passo, erroNo(chave, "protocolo desconhecido: %q (compilados: %s)",
-					chave.Value, strings.Join(protocolo.Registrados(), ", "))
+				return passo, erroNo(chave, "nao reconheco %q como tipo de passo\n%s",
+					chave.Value, sugerir(chave.Value, append(protocolo.Registrados(), "nome", "captura", "verificar")))
 			}
 			if passo.Protocolo != "" {
 				return passo, erroNo(chave, "o passo declara mais de um protocolo: %q e %q", passo.Protocolo, chave.Value)
@@ -330,26 +347,37 @@ func lerPasso(no *yaml.Node) (Passo, error) {
 	return passo, nil
 }
 
-func lerVerificacoes(no *yaml.Node) ([]Verificacao, error) {
-	if no.Kind != yaml.MappingNode {
-		return nil, erroNo(no, "verificar precisa ser um mapa")
-	}
-	verificacoes := []Verificacao{}
-	for indice := 0; indice+1 < len(no.Content); indice += 2 {
-		chave := no.Content[indice]
-		valor := no.Content[indice+1]
-		switch chave.Value {
-		case "status":
-			status, err := strconv.Atoi(valor.Value)
-			if err != nil {
-				return nil, erroNo(valor, "status invalido: %q", valor.Value)
-			}
-			verificacoes = append(verificacoes, Verificacao{Tipo: VerificarStatus, Status: status})
-		case "corpo_contem":
-			verificacoes = append(verificacoes, Verificacao{Tipo: VerificarCorpo, Texto: valor.Value})
-		default:
-			return nil, erroNo(chave, "verificacao desconhecida: %q (use status ou corpo_contem)", chave.Value)
+func sugerir(recebido string, validas []string) string {
+	melhor, menorDistancia := "", 1<<30
+	for _, valida := range validas {
+		distancia := distanciaDeEdicao(strings.ToLower(recebido), strings.ToLower(valida))
+		if distancia < menorDistancia {
+			melhor, menorDistancia = valida, distancia
 		}
 	}
-	return verificacoes, nil
+	linhas := ""
+	if melhor != "" && menorDistancia <= 3 {
+		linhas += fmt.Sprintf("    voce quis dizer %q?\n", melhor)
+	}
+	return linhas + "    disponiveis: " + strings.Join(validas, ", ")
+}
+
+func distanciaDeEdicao(primeira, segunda string) int {
+	anterior := make([]int, len(segunda)+1)
+	atual := make([]int, len(segunda)+1)
+	for j := range anterior {
+		anterior[j] = j
+	}
+	for i := 1; i <= len(primeira); i++ {
+		atual[0] = i
+		for j := 1; j <= len(segunda); j++ {
+			custo := 1
+			if primeira[i-1] == segunda[j-1] {
+				custo = 0
+			}
+			atual[j] = min(min(atual[j-1]+1, anterior[j]+1), anterior[j-1]+custo)
+		}
+		copy(anterior, atual)
+	}
+	return anterior[len(segunda)]
 }

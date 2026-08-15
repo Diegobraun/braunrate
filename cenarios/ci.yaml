@@ -2,7 +2,6 @@ nome: Fumaca de CI
 alvo: http://127.0.0.1:8080
 
 carga:
-  modelo: aberto
   perfis:
     - rampa: { de: 50/s, ate: 200/s, durante: 3s }
     - patamar: { taxa: 200/s, durante: 3s }

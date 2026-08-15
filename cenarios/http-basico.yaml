@@ -5,7 +5,6 @@ variaveis:
   tenant: ${TENANT:-acme}
 
 carga:
-  modelo: aberto
   perfis:
     - rampa: { de: 100/s, ate: 800/s, durante: 5s }
     - patamar: { taxa: 800/s, durante: 10s }

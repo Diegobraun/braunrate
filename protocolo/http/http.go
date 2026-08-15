@@ -38,14 +38,27 @@ func (c *Configuracao) ChaveDeAgregacao() string {
 	return fmt.Sprintf("%s %s", c.Metodo, c.Caminho)
 }
 
-func (c *Configuracao) Interpolar(resolver func(string) string) {
-	c.Caminho = resolver(c.Caminho)
+func (c *Configuracao) Resolver(resolver func(string) string) protocolo.Configuracao {
+	copia := *c
+	copia.Caminho = resolver(c.Caminho)
+	copia.Cabecalhos = make(map[string]string, len(c.Cabecalhos))
 	for nome, valor := range c.Cabecalhos {
-		c.Cabecalhos[nome] = resolver(valor)
+		copia.Cabecalhos[nome] = resolver(valor)
 	}
 	if len(c.Corpo) > 0 {
-		c.Corpo = []byte(resolver(string(c.Corpo)))
+		copia.Corpo = []byte(resolver(string(c.Corpo)))
 	}
+	return &copia
+}
+
+func (c *Configuracao) ComCabecalho(nome, valor string) protocolo.Configuracao {
+	copia := *c
+	copia.Cabecalhos = make(map[string]string, len(c.Cabecalhos)+1)
+	for chave, conteudo := range c.Cabecalhos {
+		copia.Cabecalhos[chave] = conteudo
+	}
+	copia.Cabecalhos[nome] = valor
+	return &copia
 }
 
 type Protocolo struct {

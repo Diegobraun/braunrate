@@ -4,51 +4,95 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/Diegobraun/braunrate/autenticacao"
 	"github.com/Diegobraun/braunrate/cenario"
+	"github.com/Diegobraun/braunrate/contexto"
+	"github.com/Diegobraun/braunrate/correlacao"
+	"github.com/Diegobraun/braunrate/dados"
 	"github.com/Diegobraun/braunrate/metrica"
 	"github.com/Diegobraun/braunrate/protocolo"
 )
 
 type Opcoes struct {
 	Versao               string
-	LimiteDeVoo          int64
+	MaximoSimultaneas    int64
 	LimiarDeAtraso       time.Duration
 	Relogio              Relogio
+	RaizDeDados          string
 	AoProgredir          func(metrica.Instantaneo, float64, time.Duration)
 	IntervaloDeProgresso time.Duration
+	AoObservarPasso      func(Observacao)
 }
 
 func OpcoesPadrao() Opcoes {
 	return Opcoes{
-		Versao:               "0.1.0",
-		LimiteDeVoo:          20000,
+		Versao:               "0.2.0",
+		MaximoSimultaneas:    20000,
 		LimiarDeAtraso:       10 * time.Millisecond,
 		Relogio:              RelogioDoSistema{},
 		IntervaloDeProgresso: time.Second,
 	}
 }
 
-type Motor struct {
-	cenario cenario.Cenario
-	plano   Plano
-	opcoes  Opcoes
+// Observacao existe para o modo de depuracao: um usuario, uma iteracao, tudo
+// visivel. O caminho de execucao e o mesmo da carga.
+type Observacao struct {
+	Passo        string
+	Chave        string
+	Configuracao protocolo.Configuracao
+	Resposta     protocolo.Resposta
+	Capturado    map[string]string
+	Variaveis    map[string]string
+	Falhas       []string
+	Classe       protocolo.ClasseDeErro
+	Duracao      time.Duration
 }
 
-func Novo(c cenario.Cenario, opcoes Opcoes) *Motor {
+type Motor struct {
+	cenario      cenario.Cenario
+	plano        Plano
+	opcoes       Opcoes
+	fontes       []dados.Fonte
+	autenticador *autenticacao.Gerenciador
+}
+
+func Novo(c cenario.Cenario, opcoes Opcoes) (*Motor, error) {
 	if opcoes.Relogio == nil {
 		opcoes.Relogio = RelogioDoSistema{}
 	}
 	if opcoes.LimiarDeAtraso <= 0 {
 		opcoes.LimiarDeAtraso = 10 * time.Millisecond
 	}
-	return &Motor{cenario: c, plano: CompilarPlano(c.Carga), opcoes: opcoes}
+	if opcoes.MaximoSimultaneas <= 0 {
+		opcoes.MaximoSimultaneas = 20000
+	}
+
+	m := &Motor{cenario: c, plano: CompilarPlano(c.Carga), opcoes: opcoes}
+
+	for _, fonte := range c.Dados {
+		aberta, err := dados.Abrir(fonte, opcoes.RaizDeDados)
+		if err != nil {
+			return nil, err
+		}
+		m.fontes = append(m.fontes, aberta)
+	}
+
+	if c.Autenticacao != nil {
+		m.autenticador = autenticacao.Novo(*c.Autenticacao, m.executarPassoDeAutenticacao, opcoes.Relogio)
+	}
+	return m, nil
 }
 
 func (m *Motor) Plano() Plano { return m.plano }
+
+func (m *Motor) Cenario() cenario.Cenario { return m.cenario }
+
+func (m *Motor) RaizDeDados() string { return filepath.Clean(m.opcoes.RaizDeDados) }
 
 func (m *Motor) Executar(ctx context.Context) metrica.Documento {
 	relogio := m.opcoes.Relogio
@@ -64,8 +108,6 @@ func (m *Motor) Executar(ctx context.Context) metrica.Documento {
 	}
 
 	total := m.plano.TotalDeRequisicoes()
-	quantidadeDePassos := int64(len(m.cenario.Passos))
-
 	for indice := int64(0); indice < total; indice++ {
 		if ctx.Err() != nil {
 			break
@@ -75,21 +117,20 @@ func (m *Motor) Executar(ctx context.Context) metrica.Documento {
 		relogio.EsperarAte(agendado)
 		despacho := relogio.Agora()
 
-		if emVoo.Load() >= m.opcoes.LimiteDeVoo {
+		if emVoo.Load() >= m.opcoes.MaximoSimultaneas {
 			coletor.RegistrarDescartePorLimiteDeVoo()
 			continue
 		}
 
-		passo := m.cenario.Passos[indice%quantidadeDePassos]
 		atuais := emVoo.Add(1)
 		coletor.RegistrarDespacho(agendado, despacho, m.plano.TaxaEm(deslocamento), atuais)
 
 		grupo.Add(1)
-		go func(passo cenario.Passo, agendado time.Time) {
+		go func(usuarioVirtual int64, agendado time.Time) {
 			defer grupo.Done()
 			defer emVoo.Add(-1)
-			coletor.Registrar(m.executarPasso(ctx, passo, agendado))
-		}(passo, agendado)
+			m.executarIteracao(ctx, usuarioVirtual, agendado, coletor)
+		}(indice, agendado)
 	}
 
 	grupo.Wait()
@@ -98,69 +139,142 @@ func (m *Motor) Executar(ctx context.Context) metrica.Documento {
 	coletor.Encerrar()
 
 	return metrica.MontarDocumento(coletor, metrica.EntradaDoDocumento{
-		Versao:      m.opcoes.Versao,
-		Cenario:     m.cenario.Nome,
-		Alvo:        m.cenario.Alvo,
-		Modelo:      string(m.cenario.Carga.Modelo),
-		Inicio:      inicio,
-		Fim:         fim,
-		Fases:       m.fasesAplicadas(),
-		LimiteDeVoo: m.opcoes.LimiteDeVoo,
+		Versao:            m.opcoes.Versao,
+		Cenario:           m.cenario.Nome,
+		Alvo:              m.cenario.Alvo,
+		Modelo:            string(m.cenario.Carga.Modelo),
+		Inicio:            inicio,
+		Fim:               fim,
+		Fases:             m.fasesAplicadas(),
+		MaximoSimultaneas: m.opcoes.MaximoSimultaneas,
+		Sementes:          m.sementes(),
+		Autenticacoes:     m.obtencoesDeAutenticacao(),
 	})
 }
 
-// A instrumentacao vive aqui, e nao dentro do protocolo: e o que garante que
-// HTTP, GraphQL e Kafka produzam metrica comparavel (ADR 0003).
-func (m *Motor) executarPasso(ctx context.Context, passo cenario.Passo, agendado time.Time) metrica.Amostra {
-	relogio := m.opcoes.Relogio
-	implementacao, existe := protocolo.Buscar(passo.Protocolo)
-	envio := relogio.Agora()
-	if !existe {
-		return metrica.Amostra{
-			Passo: passo.Nome, Chave: passo.ChaveDeAgregacao(), Protocolo: passo.Protocolo,
-			InstanteAgendado: agendado, InstanteDeEnvio: envio, InstanteDeTermino: relogio.Agora(),
-			Classe: protocolo.ErroDeConfigacao, Detalhe: "protocolo nao compilado neste binario",
+// Cada chegada agendada e uma iteracao inteira do cenario: e o que faz o valor
+// capturado num passo chegar ao passo seguinte. Se um passo falha, a iteracao
+// para — os passos seguintes dependeriam de uma captura que nao aconteceu.
+func (m *Motor) executarIteracao(ctx context.Context, usuarioVirtual int64, agendado time.Time, coletor *metrica.Coletor) {
+	valores := contexto.Novo(usuarioVirtual, usuarioVirtual, m.cenario.Variaveis)
+
+	for _, fonte := range m.fontes {
+		registro, err := fonte.Proximo(usuarioVirtual)
+		if err != nil {
+			coletor.Registrar(metrica.Amostra{
+				Passo: "dados: " + fonte.Nome(), Chave: fonte.Nome(), Protocolo: "dados",
+				InstanteAgendado: agendado, InstanteDeEnvio: agendado, InstanteDeTermino: m.opcoes.Relogio.Agora(),
+				Classe: protocolo.ErroDeConfigacao, Detalhe: err.Error(),
+			})
+			return
 		}
+		valores.DefinirVarios(registro)
 	}
 
+	var cabecalhoDeAutenticacao [2]string
+	if m.autenticador != nil {
+		nome, valor, err := m.autenticador.Cabecalho(ctx, valores)
+		if err != nil {
+			coletor.Registrar(metrica.Amostra{
+				Passo: "autenticacao", Chave: "autenticacao", Protocolo: "http",
+				InstanteAgendado: agendado, InstanteDeEnvio: agendado, InstanteDeTermino: m.opcoes.Relogio.Agora(),
+				Classe: protocolo.ErroDeConfigacao, Detalhe: err.Error(),
+			})
+			return
+		}
+		cabecalhoDeAutenticacao = [2]string{nome, valor}
+	}
+
+	instanteDoPasso := agendado
+	for _, passo := range m.cenario.Passos {
+		amostra, _ := m.executarPasso(ctx, passo, instanteDoPasso, valores, cabecalhoDeAutenticacao)
+		coletor.Registrar(amostra)
+		instanteDoPasso = amostra.InstanteDeTermino
+		if amostra.Classe != protocolo.Sucesso {
+			return
+		}
+	}
+}
+
+func (m *Motor) executarPasso(ctx context.Context, passo cenario.Passo, agendado time.Time,
+	valores *contexto.Contexto, cabecalhoDeAutenticacao [2]string) (metrica.Amostra, Observacao) {
+
+	relogio := m.opcoes.Relogio
+	observacao := Observacao{Passo: passo.Nome, Chave: passo.ChaveDeAgregacao(), Capturado: map[string]string{}}
+	amostra := metrica.Amostra{
+		Passo: passo.Nome, Chave: passo.ChaveDeAgregacao(), Protocolo: passo.Protocolo,
+		InstanteAgendado: agendado,
+	}
+
+	implementacao, existe := protocolo.Buscar(passo.Protocolo)
+	if !existe {
+		amostra.InstanteDeEnvio = relogio.Agora()
+		amostra.InstanteDeTermino = amostra.InstanteDeEnvio
+		amostra.Classe = protocolo.ErroDeConfigacao
+		amostra.Detalhe = "protocolo nao compilado neste binario"
+		return amostra, observacao
+	}
+
+	configuracao := passo.Configuracao.Resolver(valores.Resolver)
+	if cabecalhoDeAutenticacao[0] != "" {
+		if comCabecalhos, aceita := configuracao.(protocolo.ConfiguracaoComCabecalhos); aceita {
+			configuracao = comCabecalhos.ComCabecalho(cabecalhoDeAutenticacao[0], cabecalhoDeAutenticacao[1])
+		}
+	}
+	observacao.Configuracao = configuracao
+
+	amostra.InstanteDeEnvio = relogio.Agora()
 	resposta := implementacao.Executar(ctx, protocolo.Requisicao{
 		NomeDoPasso:  passo.Nome,
-		Configuracao: passo.Configuracao,
+		Configuracao: configuracao,
 		URLBase:      m.cenario.Alvo,
-		Variaveis:    m.cenario.Variaveis,
+		Variaveis:    valores.Valores(),
 	})
-	termino := relogio.Agora()
+	amostra.InstanteDeTermino = relogio.Agora()
+	amostra.Status = resposta.Status
+	amostra.Bytes = resposta.Bytes
+	amostra.Classe = resposta.Classe
+	amostra.Detalhe = resposta.Detalhe
+	observacao.Resposta = resposta
+	observacao.Duracao = amostra.InstanteDeTermino.Sub(amostra.InstanteDeEnvio)
 
-	classe := resposta.Classe
-	detalhe := resposta.Detalhe
-	if classe == protocolo.Sucesso {
-		if falha, motivo := verificar(passo.Verificacoes, resposta); falha != protocolo.Sucesso {
-			classe = falha
-			detalhe = motivo
+	if resposta.Chave != "" {
+		amostra.Chave = resposta.Chave
+		observacao.Chave = resposta.Chave
+	}
+
+	if amostra.Classe == protocolo.Sucesso {
+		if classe, detalhe := m.verificar(passo, resposta, valores); classe != protocolo.Sucesso {
+			amostra.Classe = classe
+			amostra.Detalhe = detalhe
+			observacao.Falhas = append(observacao.Falhas, detalhe)
 		}
 	}
 
-	chave := resposta.Chave
-	if chave == "" {
-		chave = passo.ChaveDeAgregacao()
+	if amostra.Classe == protocolo.Sucesso {
+		for _, captura := range passo.Capturas {
+			valor, err := correlacao.Extrair(captura, resposta)
+			if err != nil {
+				if captura.Obrigatoria {
+					amostra.Classe = protocolo.ErroDeCorrelacao
+					amostra.Detalhe = err.Error()
+					observacao.Falhas = append(observacao.Falhas, err.Error())
+					break
+				}
+				valor = captura.Padrao
+			}
+			valores.Definir(captura.Variavel, valor)
+			observacao.Capturado[captura.Variavel] = valor
+		}
 	}
 
-	return metrica.Amostra{
-		Passo:             passo.Nome,
-		Chave:             chave,
-		Protocolo:         passo.Protocolo,
-		InstanteAgendado:  agendado,
-		InstanteDeEnvio:   envio,
-		InstanteDeTermino: termino,
-		Classe:            classe,
-		Detalhe:           detalhe,
-		Status:            resposta.Status,
-		Bytes:             resposta.Bytes,
-	}
+	observacao.Classe = amostra.Classe
+	observacao.Variaveis = valores.Valores()
+	return amostra, observacao
 }
 
-func verificar(verificacoes []cenario.Verificacao, resposta protocolo.Resposta) (protocolo.ClasseDeErro, string) {
-	for _, verificacao := range verificacoes {
+func (m *Motor) verificar(passo cenario.Passo, resposta protocolo.Resposta, valores *contexto.Contexto) (protocolo.ClasseDeErro, string) {
+	for _, verificacao := range passo.Verificacoes {
 		switch verificacao.Tipo {
 		case cenario.VerificarStatus:
 			if resposta.Status != verificacao.Status {
@@ -168,11 +282,24 @@ func verificar(verificacoes []cenario.Verificacao, resposta protocolo.Resposta) 
 			}
 		case cenario.VerificarCorpo:
 			if !bytes.Contains(resposta.Corpo, []byte(verificacao.Texto)) {
-				return protocolo.ErroDeAssercao, fmt.Sprintf("corpo nao contem %q", verificacao.Texto)
+				return protocolo.ErroDeAssercao, fmt.Sprintf("o corpo nao contem %q", verificacao.Texto)
 			}
 		}
 	}
+	for _, assercao := range passo.Assercoes {
+		if err := correlacao.Avaliar(assercao, resposta, valores.Resolver); err != nil {
+			return protocolo.ErroDeAssercao, err.Error()
+		}
+	}
 	return protocolo.Sucesso, ""
+}
+
+func (m *Motor) executarPassoDeAutenticacao(ctx context.Context, passo cenario.Passo, valores *contexto.Contexto) (protocolo.Resposta, error) {
+	amostra, observacao := m.executarPasso(ctx, passo, m.opcoes.Relogio.Agora(), valores, [2]string{})
+	if amostra.Classe != protocolo.Sucesso && amostra.Classe != protocolo.ErroDeStatus {
+		return observacao.Resposta, fmt.Errorf("%s", amostra.Detalhe)
+	}
+	return observacao.Resposta, nil
 }
 
 func (m *Motor) acompanhar(coletor *metrica.Coletor, inicio time.Time, parar <-chan struct{}) {
@@ -208,4 +335,23 @@ func (m *Motor) fasesAplicadas() []metrica.FaseAplicada {
 		})
 	}
 	return fases
+}
+
+func (m *Motor) sementes() map[string]int64 {
+	sementes := map[string]int64{}
+	for _, fonte := range m.cenario.Dados {
+		semente := fonte.Semente
+		if semente == 0 {
+			semente = 1
+		}
+		sementes[fonte.Nome] = semente
+	}
+	return sementes
+}
+
+func (m *Motor) obtencoesDeAutenticacao() int64 {
+	if m.autenticador == nil {
+		return 0
+	}
+	return m.autenticador.Obtencoes
 }

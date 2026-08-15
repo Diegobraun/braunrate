@@ -14,8 +14,11 @@ type Cenario struct {
 	Nome            string
 	Alvo            string
 	Variaveis       map[string]string
+	Autenticacao    *Autenticacao
+	Dados           []FonteDeDados
 	Carga           PlanoDeCarga
 	Passos          []Passo
+	SLO             []RegraDeSLO
 }
 
 type Passo struct {
@@ -23,6 +26,8 @@ type Passo struct {
 	Protocolo    string
 	Configuracao protocolo.Configuracao
 	Verificacoes []Verificacao
+	Capturas     []Captura
+	Assercoes    []Assercao
 	Linha        int
 }
 

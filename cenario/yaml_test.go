@@ -94,7 +94,7 @@ func TestErroApontaLinha(t *testing.T) {
 		{
 			nome:    "protocolo desconhecido",
 			entrada: "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - constante: { taxa: 1/s, durante: 1s }\ncenario:\n  - grpc: /servico\n",
-			trecho:  "protocolo desconhecido",
+			trecho:  "nao reconheco",
 			linha:   7,
 		},
 		{
@@ -137,11 +137,34 @@ func TestErroApontaLinha(t *testing.T) {
 	}
 }
 
-func TestRecursoDeFaseFuturaFalhaComMensagemClara(t *testing.T) {
-	entrada := "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - constante: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n    captura: { id: $.id }\n"
+func TestRecursoDeFaseFuturaFalhaComMensagemQueEnsina(t *testing.T) {
+	entrada := "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - constante: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n    peso: 3\n"
 	_, err := cenario.Carregar([]byte(entrada))
-	if err == nil || !strings.Contains(err.Error(), "ainda nao e suportada") {
-		t.Fatalf("esperava mensagem de recurso nao suportado, recebeu %v", err)
+	if err == nil || !strings.Contains(err.Error(), "entra junto com o GraphQL") {
+		t.Fatalf("esperava mensagem explicando quando o recurso chega, recebeu %v", err)
+	}
+}
+
+func TestChaveDeAgregacaoNaoCarregaValorInterpolado(t *testing.T) {
+	entrada := `
+nome: agregacao
+alvo: http://127.0.0.1:8080
+carga:
+  perfis:
+    - constante: { taxa: 1/s, durante: 1s }
+cenario:
+  - http: GET /pedidos/${pedidoId}
+    captura: { proximo: $.proximo.id }
+`
+	c, err := cenario.Carregar([]byte(entrada))
+	if err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if chave := c.Passos[0].ChaveDeAgregacao(); chave != "GET /pedidos/${pedidoId}" {
+		t.Errorf("chave = %q; o relatorio agrega pela rota declarada, nunca pela URL com o valor dentro", chave)
+	}
+	if len(c.Passos[0].Capturas) != 1 || c.Passos[0].Capturas[0].Origem != cenario.CapturaDeJSON {
+		t.Errorf("captura lida errado: %+v", c.Passos[0].Capturas)
 	}
 }
 
@@ -166,8 +189,8 @@ cenario:
 	if c.Variaveis["tenant"] != "acme" || c.Variaveis["regiao"] != "sul" {
 		t.Fatalf("variaveis = %v", c.Variaveis)
 	}
-	if chave := c.Passos[0].ChaveDeAgregacao(); chave != "GET /clientes/acme/sul" {
-		t.Errorf("interpolacao no caminho = %q", chave)
+	if chave := c.Passos[0].ChaveDeAgregacao(); chave != "GET /clientes/${tenant}/${regiao}" {
+		t.Errorf("chave = %q; a interpolacao acontece na execucao, nao no carregamento", chave)
 	}
 }
 

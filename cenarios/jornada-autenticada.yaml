@@ -1,0 +1,48 @@
+nome: Jornada de cobranca
+alvo: http://127.0.0.1:8080
+
+variaveis:
+  usuario: ${USUARIO:-ana}
+
+autenticacao:
+  tipo: token
+  obter:
+    http:
+      metodo: POST
+      caminho: /auth/token
+      corpo: { usuario: "${usuario}", senha: "${SENHA:-segredo}" }
+    captura: { token: $.access_token }
+  renovar_apos: 25m
+
+dados:
+  assinantes:
+    arquivo: dados/assinantes.csv
+    consumo: circular
+
+carga:
+  perfis:
+    - rampa: { de: 50/s, ate: 300/s, durante: 5s }
+    - patamar: { taxa: 300/s, durante: 5s }
+
+cenario:
+  - http: GET /pedidos/${assinantes.id}
+    nome: consultar pedido
+    verificar:
+      status: 200
+      json: { $.ultimaFatura.status: ABERTA }
+    captura:
+      faturaId: $.ultimaFatura.id
+
+  - nome: pagar fatura
+    http:
+      metodo: POST
+      caminho: /faturas/${faturaId}/pagar
+      corpo: { valor: 199.90 }
+    verificar:
+      status: 200
+      json: { $.status: PAGA }
+
+slo:
+  - consultar pedido: { p95: < 150ms }
+  - pagar fatura: { p95: < 200ms }
+  - global: { erros: < 0.1 }

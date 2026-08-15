@@ -55,7 +55,11 @@ func executarEmModeloAberto(t *testing.T, endereco string) metrica.Documento {
 
 	opcoes := motor.OpcoesPadrao()
 	opcoes.Versao = "teste"
-	return motor.Novo(c, opcoes).Executar(context.Background())
+	m, err := motor.Novo(c, opcoes)
+	if err != nil {
+		t.Fatalf("motor nao subiu: %v", err)
+	}
+	return m.Executar(context.Background())
 }
 
 // O laco fechado so envia a proxima requisicao depois que a anterior responde;
