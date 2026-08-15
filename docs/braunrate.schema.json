@@ -249,6 +249,18 @@
               "$ref": "#/$defs/graphql"
             }
           ]
+        },
+        "kafka": {
+          "$ref": "#/$defs/kafka",
+          "description": "Produz uma mensagem no topico. A chave decide a particao, entao ela precisa variar por iteracao."
+        },
+        "amqp": {
+          "$ref": "#/$defs/amqp",
+          "description": "Publica uma mensagem numa fila ou troca."
+        },
+        "aguardar": {
+          "$ref": "#/$defs/aguardar",
+          "description": "Espera a mensagem desta iteracao aparecer no destino, fechando a medicao da cadeia assincrona."
         }
       }
     },
@@ -574,6 +586,207 @@
         },
         "timeout": {
           "$ref": "#/$defs/duracao"
+        }
+      }
+    },
+    "kafka": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "topico",
+        "valor"
+      ],
+      "properties": {
+        "topico": {
+          "type": "string",
+          "examples": [
+            "pedidos"
+          ]
+        },
+        "chave": {
+          "type": "string",
+          "description": "Chave da mensagem. Chave sempre igual manda tudo para a mesma particao, e o numero fica otimista.",
+          "examples": [
+            "${pedidos.id}"
+          ]
+        },
+        "valor": {
+          "description": "Objeto vira JSON; texto vai como esta.",
+          "type": [
+            "object",
+            "array",
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "cabecalhos": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "brokers": {
+          "description": "Padrao: o alvo do cenario.",
+          "type": [
+            "array",
+            "string"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "acks": {
+          "enum": [
+            "todos",
+            "lider",
+            "nenhum"
+          ],
+          "default": "todos",
+          "description": "Quantas replicas confirmam antes de a mensagem contar como entregue."
+        },
+        "timeout": {
+          "$ref": "#/$defs/duracao"
+        }
+      }
+    },
+    "amqp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "corpo"
+      ],
+      "properties": {
+        "fila": {
+          "type": "string",
+          "description": "Caso comum: publica direto na fila, que e declarada se nao existir."
+        },
+        "troca": {
+          "type": "string"
+        },
+        "rota": {
+          "type": "string"
+        },
+        "corpo": {
+          "type": [
+            "object",
+            "array",
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "identidade": {
+          "type": "string",
+          "description": "Vai como message-id e serve de correlacao para o passo aguardar.",
+          "examples": [
+            "${pedidos.id}"
+          ]
+        },
+        "cabecalhos": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "url": {
+          "type": "string",
+          "examples": [
+            "amqp://guest:guest@127.0.0.1:5672/"
+          ]
+        },
+        "persistente": {
+          "type": "boolean",
+          "default": true
+        },
+        "confirmar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Espera o broker confirmar. Desligar mede a escrita no socket, nao a entrega."
+        },
+        "timeout": {
+          "$ref": "#/$defs/duracao"
+        }
+      }
+    },
+    "aguardar": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kafka": {
+          "type": [
+            "object",
+            "string"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "topico": {
+              "type": "string"
+            },
+            "brokers": {
+              "type": [
+                "array",
+                "string"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "amqp": {
+          "type": [
+            "object",
+            "string"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "fila": {
+              "type": "string"
+            },
+            "topico": {
+              "type": "string"
+            },
+            "url": {
+              "type": [
+                "array",
+                "string"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "chave": {
+          "type": "string",
+          "description": "Valor que identifica a mensagem desta iteracao.",
+          "examples": [
+            "${pedidos.id}"
+          ]
+        },
+        "igual_a": {
+          "type": "string",
+          "description": "Mesmo que chave."
+        },
+        "campo": {
+          "type": "string",
+          "description": "Caminho JSON dentro da mensagem, quando a correlacao nao esta na chave.",
+          "examples": [
+            "$.pedido"
+          ]
+        },
+        "timeout": {
+          "$ref": "#/$defs/duracao",
+          "default": "30s"
         }
       }
     }

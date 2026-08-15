@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+nome: Cadeia assincrona de cobranca
+alvo: ${BROKERS:-127.0.0.1:9092}
+
+dados:
+  pedidos:
+    gerar:
+      id: uuid
+      valor: numero(10,500)
+
+carga:
+  perfis:
+    - rampa: { de: 20/s, ate: 100/s, durante: 5s }
+    - patamar: { taxa: 100/s, durante: 5s }
+
+cenario:
+  - kafka:
+      topico: pedidos-cadeia
+      chave: "${pedidos.id}"
+      valor: { pedido: "${pedidos.id}", valor: "${pedidos.valor}" }
+
+  - aguardar:
+      kafka: { topico: pedidos-processados }
+      chave: "${pedidos.id}"
+      timeout: 10s
+
+slo:
+  - kafka produzir pedidos-cadeia: { p95: < 100ms }
+  - aguardar pedidos-processados: { p95: < 2s }
+  - global: { erros: < 1 }

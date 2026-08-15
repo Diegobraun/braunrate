@@ -6,6 +6,25 @@ import (
 	"strings"
 )
 
+// Broker de mensageria nao tem esquema obrigatorio: "127.0.0.1:9092" e a forma
+// que todo mundo cola de um docker-compose, e recusar isso seria pedir que a
+// pessoa aprenda uma sintaxe que nem o Kafka usa.
+func alvoValido(alvo string) bool {
+	if endereco, err := url.Parse(alvo); err == nil && endereco.Scheme != "" && endereco.Host != "" {
+		return true
+	}
+	maquina, porta, encontrou := strings.Cut(alvo, ":")
+	if !encontrou || maquina == "" || porta == "" {
+		return false
+	}
+	for _, caractere := range porta {
+		if caractere < '0' || caractere > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 func (c Cenario) Validar() error {
 	var problemas []string
 
@@ -14,8 +33,8 @@ func (c Cenario) Validar() error {
 	}
 	if strings.TrimSpace(c.Alvo) == "" {
 		problemas = append(problemas, "o cenario precisa de um alvo")
-	} else if endereco, err := url.Parse(c.Alvo); err != nil || endereco.Scheme == "" || endereco.Host == "" {
-		problemas = append(problemas, fmt.Sprintf("alvo invalido: %q (use por exemplo https://api.exemplo.com)", c.Alvo))
+	} else if !alvoValido(c.Alvo) {
+		problemas = append(problemas, fmt.Sprintf("alvo invalido: %q (use https://api.exemplo.com, kafka://127.0.0.1:9092 ou amqp://usuario:senha@127.0.0.1:5672/)", c.Alvo))
 	}
 	if len(c.Passos) == 0 {
 		problemas = append(problemas, "o cenario precisa de pelo menos um passo")

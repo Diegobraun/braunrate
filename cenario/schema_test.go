@@ -8,8 +8,11 @@ import (
 	"testing"
 
 	"github.com/Diegobraun/braunrate/protocolo"
+	_ "github.com/Diegobraun/braunrate/protocolo/aguardar"
+	_ "github.com/Diegobraun/braunrate/protocolo/amqp"
 	_ "github.com/Diegobraun/braunrate/protocolo/graphql"
 	_ "github.com/Diegobraun/braunrate/protocolo/http"
+	_ "github.com/Diegobraun/braunrate/protocolo/kafka"
 )
 
 type esquema struct {

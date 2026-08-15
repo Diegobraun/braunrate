@@ -4,8 +4,11 @@ import (
 	"strings"
 	"testing"
 
+	_ "github.com/Diegobraun/braunrate/protocolo/aguardar"
+	_ "github.com/Diegobraun/braunrate/protocolo/amqp"
 	_ "github.com/Diegobraun/braunrate/protocolo/graphql"
 	_ "github.com/Diegobraun/braunrate/protocolo/http"
+	_ "github.com/Diegobraun/braunrate/protocolo/kafka"
 )
 
 // Erro de cenario e quase sempre um erro de quem esta aprendendo o formato: a

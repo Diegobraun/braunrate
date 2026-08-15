@@ -20,8 +20,11 @@ import (
 	"github.com/Diegobraun/braunrate/metrica"
 	"github.com/Diegobraun/braunrate/motor"
 	"github.com/Diegobraun/braunrate/protocolo"
+	_ "github.com/Diegobraun/braunrate/protocolo/aguardar"
+	_ "github.com/Diegobraun/braunrate/protocolo/amqp"
 	_ "github.com/Diegobraun/braunrate/protocolo/graphql"
 	_ "github.com/Diegobraun/braunrate/protocolo/http"
+	_ "github.com/Diegobraun/braunrate/protocolo/kafka"
 	"github.com/Diegobraun/braunrate/relatorio"
 	"github.com/Diegobraun/braunrate/slo"
 )
@@ -475,6 +478,10 @@ func servirAlvo(argumentos []string) int {
 	jitter := conjunto.Duration("jitter", 0, "variacao aleatoria somada a latencia")
 	congelarApos := conjunto.Duration("congelar-apos", 0, "instante em que o alvo congela")
 	congelarPor := conjunto.Duration("congelar-por", 0, "duracao do congelamento")
+	brokers := conjunto.String("kafka", "", "brokers do Kafka para subir tambem o processador assincrono")
+	entrada := conjunto.String("entrada", "pedidos", "topico consumido pelo processador")
+	saida := conjunto.String("saida", "pedidos-processados", "topico publicado pelo processador")
+	atrasoDoProcessador := conjunto.Duration("atraso-do-processador", 20*time.Millisecond, "quanto o processador demora por mensagem")
 	_ = conjunto.Parse(argumentos)
 
 	servidor := alvo.Novo(alvo.Opcoes{
@@ -489,10 +496,29 @@ func servirAlvo(argumentos []string) int {
 	}
 	fmt.Fprintf(os.Stderr, "alvo de teste em %s (latencia %s)\n", servidor.Endereco(), *latencia)
 
+	var processador *alvo.Processador
+	if *brokers != "" {
+		processador = alvo.NovoProcessador(alvo.OpcoesDeProcessador{
+			Brokers: strings.Split(*brokers, ","),
+			Entrada: *entrada,
+			Saida:   *saida,
+			Atraso:  *atrasoDoProcessador,
+		})
+		if err := processador.Iniciar(); err != nil {
+			fmt.Fprintf(os.Stderr, "erro ao subir o processador: %v\n", err)
+			return 1
+		}
+		fmt.Fprintf(os.Stderr, "processador assincrono: %s -> %s, %s por mensagem\n", *entrada, *saida, *atrasoDoProcessador)
+	}
+
 	ctx, cancelar := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancelar()
 	<-ctx.Done()
 	_ = servidor.Encerrar()
+	if processador != nil {
+		_ = processador.Encerrar()
+		fmt.Fprintf(os.Stderr, "\nmensagens processadas: %d", processador.Processadas())
+	}
 	fmt.Fprintf(os.Stderr, "\natendidas: %d\n", servidor.Atendidas())
 	return 0
 }

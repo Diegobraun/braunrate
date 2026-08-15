@@ -6,8 +6,11 @@ import (
 	"time"
 
 	"github.com/Diegobraun/braunrate/cenario"
+	_ "github.com/Diegobraun/braunrate/protocolo/aguardar"
+	_ "github.com/Diegobraun/braunrate/protocolo/amqp"
 	_ "github.com/Diegobraun/braunrate/protocolo/graphql"
 	_ "github.com/Diegobraun/braunrate/protocolo/http"
+	_ "github.com/Diegobraun/braunrate/protocolo/kafka"
 )
 
 const cenarioMinimo = `

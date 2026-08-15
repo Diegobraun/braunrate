@@ -21,6 +21,7 @@ const (
 	ErroDeConfigacao ClasseDeErro = "configuracao"
 	ErroDeSaturacao  ClasseDeErro = "saturacao"
 	ErroDeGraphQL    ClasseDeErro = "graphql"
+	ErroDeMensageria ClasseDeErro = "mensageria"
 )
 
 type Configuracao interface {
@@ -58,6 +59,24 @@ type Resposta struct {
 	Classe     ClasseDeErro
 	Detalhe    string
 	Chave      string
+	// Fatos sobre o destino que so o protocolo conhece e que entram na
+	// variedade observada: particao do Kafka, fila do AMQP. Vazio nos
+	// protocolos que nao tem nada a declarar, e ai nao custa nada.
+	Atributos map[string]string
+}
+
+// Implementada pelo protocolo que sabe quantos destinos distintos existem do
+// lado do servidor: sem isso o relatorio nao consegue dizer que usar uma
+// particao so foi defeito, e nao um topico de uma particao.
+type ProtocoloComDisponibilidade interface {
+	Disponiveis() map[string]int64
+}
+
+// Implementada pelo protocolo que precisa estar ouvindo antes de a carga
+// comecar. Sem isso, a mensagem da primeira iteracao pode chegar antes de
+// existir quem a espere, e o timeout seria do braunrate, nao do servico.
+type ProtocoloComPreparacao interface {
+	Preparar(ctx context.Context, requisicao Requisicao) error
 }
 
 type Protocolo interface {
