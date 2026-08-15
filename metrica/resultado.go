@@ -21,6 +21,7 @@ type Documento struct {
 	Jornada         Jornada            `json:"jornada"`
 	Passos          []ResultadoDePasso `json:"passos"`
 	Global          ResultadoGlobal    `json:"global"`
+	SLO             Veredito           `json:"slo"`
 	Avisos          []Aviso            `json:"avisos"`
 	Series          []Bucket           `json:"series_temporais"`
 }

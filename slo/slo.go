@@ -8,23 +8,9 @@ import (
 	"github.com/Diegobraun/braunrate/metrica"
 )
 
-type Veredito struct {
-	Passou     bool        `json:"passou"`
-	Avaliacoes []Avaliacao `json:"avaliacoes"`
-	Frase      string      `json:"frase"`
-}
+type Veredito = metrica.Veredito
 
-type Avaliacao struct {
-	Passo    string  `json:"passo"`
-	Metrica  string  `json:"metrica"`
-	Regra    string  `json:"regra"`
-	Obtido   float64 `json:"obtido"`
-	Limite   float64 `json:"limite"`
-	Unidade  string  `json:"unidade"`
-	Passou   bool    `json:"passou"`
-	Frase    string  `json:"frase"`
-	SemDados bool    `json:"sem_dados"`
-}
+type Avaliacao = metrica.Avaliacao
 
 func Avaliar(regras []cenario.RegraDeSLO, documento metrica.Documento) Veredito {
 	veredito := Veredito{Passou: true}
