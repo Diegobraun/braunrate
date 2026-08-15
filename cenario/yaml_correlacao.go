@@ -172,7 +172,12 @@ func interpretarComparacao(alvo string, no *yaml.Node) (Assercao, error) {
 
 func lerAutenticacao(no *yaml.Node) (*Autenticacao, error) {
 	if no.Kind != yaml.MappingNode {
-		return nil, erroNo(no, "autenticacao precisa ser um mapa")
+		return nil, erroNo(no, "autenticacao precisa ser um mapa, por exemplo:\n"+
+			"  autenticacao:\n"+
+			"    tipo: token\n"+
+			"    obter:\n"+
+			"      http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: \"${SENHA}\" } }\n"+
+			"      captura: { token: $.access_token }")
 	}
 	autenticacao := &Autenticacao{Tipo: AutenticacaoPorToken, Linha: no.Line}
 
@@ -217,10 +222,14 @@ func lerAutenticacao(no *yaml.Node) (*Autenticacao, error) {
 	}
 
 	if autenticacao.Tipo == AutenticacaoPorToken && autenticacao.Obter == nil {
-		return nil, erroNo(no, "autenticacao por token precisa do bloco 'obter' com a requisicao que devolve o token")
+		return nil, erroNo(no, "autenticacao por token precisa do bloco 'obter' com a requisicao que devolve o token:\n"+
+			"    obter:\n"+
+			"      http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: \"${SENHA}\" } }\n"+
+			"      captura: { token: $.access_token }")
 	}
 	if autenticacao.Tipo == AutenticacaoBasica && (autenticacao.Usuario == "" || autenticacao.Senha == "") {
-		return nil, erroNo(no, "autenticacao basica precisa de usuario e senha")
+		return nil, erroNo(no, "autenticacao basica precisa de usuario e senha, por exemplo:\n"+
+			"  autenticacao: { tipo: basica, usuario: ana, senha: \"${SENHA}\" }")
 	}
 	if autenticacao.Cabecalho == "" && autenticacao.Tipo != AutenticacaoBasica {
 		autenticacao.Cabecalho = "Authorization: Bearer ${token}"
@@ -239,7 +248,8 @@ func lerDados(no *yaml.Node) ([]FonteDeDados, error) {
 		nome := no.Content[indice]
 		corpo := no.Content[indice+1]
 		if corpo.Kind != yaml.MappingNode {
-			return nil, erroNo(corpo, "a fonte de dados %q precisa de um mapa com 'arquivo' ou 'gerar'", nome.Value)
+			return nil, erroNo(corpo, "a fonte de dados %q precisa de um mapa com 'arquivo' ou 'gerar', por exemplo:\n"+
+				"  %s: { arquivo: dados/assinantes.csv, consumo: circular }", nome.Value, nome.Value)
 		}
 		fonte := FonteDeDados{Nome: nome.Value, Consumo: ConsumoCircular, Linha: corpo.Line}
 
@@ -299,7 +309,8 @@ func lerSLO(no *yaml.Node) ([]RegraDeSLO, error) {
 
 	for _, item := range no.Content {
 		if item.Kind != yaml.MappingNode || len(item.Content) < 2 {
-			return nil, erroNo(item, "cada regra de slo e um mapa com o nome do passo (ou 'global') e os limites")
+			return nil, erroNo(item, "cada regra de slo e um mapa com o nome do passo (ou 'global') e os limites, por exemplo:\n"+
+				"  - consultar pedido: { p95: < 150ms }")
 		}
 		alvo := item.Content[0]
 		limites := item.Content[1]

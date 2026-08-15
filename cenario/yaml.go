@@ -34,6 +34,13 @@ func erroNo(no *yaml.Node, formato string, argumentos ...any) error {
 	return ErroDeCenario{Linha: linha, Coluna: coluna, Mensagem: fmt.Sprintf(formato, argumentos...)}
 }
 
+// Listadas aqui porque o schema publicado e testado contra elas: chave que
+// existe so num dos dois lados vira autocompletar que o parser recusa.
+var (
+	ChavesDeTopo  = []string{"nome", "alvo", "variaveis", "autenticacao", "dados", "carga", "cenario", "slo"}
+	ChavesDePasso = []string{"nome", "captura", "verificar", "espera"}
+)
+
 func CarregarArquivo(caminho string) (Cenario, error) {
 	conteudo, err := os.ReadFile(caminho)
 	if err != nil {
@@ -57,7 +64,9 @@ func Carregar(conteudo []byte) (Cenario, error) {
 	}
 	documento := raiz.Content[0]
 	if documento.Kind != yaml.MappingNode {
-		return Cenario{}, erroNo(documento, "o cenario precisa ser um mapa de chaves")
+		return Cenario{}, erroNo(documento, "o cenario precisa ser um mapa de chaves, comecando por:\n"+
+			"  nome: Consulta de pedidos\n"+
+			"  alvo: http://127.0.0.1:8080")
 	}
 
 	c := Cenario{
@@ -112,7 +121,7 @@ func Carregar(conteudo []byte) (Cenario, error) {
 			c.SLO = regras
 		default:
 			return c, erroNo(chave, "chave desconhecida no topo do cenario: %q\n%s",
-				chave.Value, sugerir(chave.Value, []string{"nome", "alvo", "variaveis", "autenticacao", "dados", "carga", "cenario", "slo"}))
+				chave.Value, sugerir(chave.Value, ChavesDeTopo))
 		}
 	}
 
@@ -123,7 +132,9 @@ func Carregar(conteudo []byte) (Cenario, error) {
 func lerVariaveis(no *yaml.Node) (map[string]string, error) {
 	variaveis := map[string]string{}
 	if no.Kind != yaml.MappingNode {
-		return nil, erroNo(no, "variaveis precisa ser um mapa")
+		return nil, erroNo(no, "variaveis precisa ser um mapa, por exemplo:\n"+
+			"  variaveis:\n"+
+			"    usuario: ${USUARIO:-ana}")
 	}
 	for indice := 0; indice+1 < len(no.Content); indice += 2 {
 		nome := no.Content[indice].Value
@@ -163,7 +174,10 @@ func interpolar(texto string, variaveis map[string]string) string {
 func lerCarga(no *yaml.Node) (PlanoDeCarga, error) {
 	plano := PlanoDeCarga{Modelo: ChegadaAberta}
 	if no.Kind != yaml.MappingNode {
-		return plano, erroNo(no, "carga precisa ser um mapa")
+		return plano, erroNo(no, "carga precisa ser um mapa, por exemplo:\n"+
+			"  carga:\n"+
+			"    perfis:\n"+
+			"      - patamar: { taxa: 300/s, durante: 1m }")
 	}
 	for indice := 0; indice+1 < len(no.Content); indice += 2 {
 		chave := no.Content[indice]
@@ -176,11 +190,14 @@ func lerCarga(no *yaml.Node) (PlanoDeCarga, error) {
 			case string(ChegadaFechada):
 				return plano, erroNo(valor, "modelo fechado ainda nao e suportado; o padrao e aberto")
 			default:
-				return plano, erroNo(valor, "modelo de carga desconhecido: %q", valor.Value)
+				return plano, erroNo(valor, "modelo de carga desconhecido: %q (o unico modelo e 'aberto', e ele e o padrao: pode omitir a linha)", valor.Value)
 			}
 		case "perfis":
 			if valor.Kind != yaml.SequenceNode {
-				return plano, erroNo(valor, "perfis precisa ser uma lista")
+				return plano, erroNo(valor, "perfis precisa ser uma lista, um trecho por linha:\n"+
+					"  perfis:\n"+
+					"    - rampa: { de: 50/s, ate: 300/s, durante: 30s }\n"+
+					"    - patamar: { taxa: 300/s, durante: 5m }")
 			}
 			for _, itemNo := range valor.Content {
 				fase, err := lerFase(itemNo)
@@ -190,7 +207,7 @@ func lerCarga(no *yaml.Node) (PlanoDeCarga, error) {
 				plano.Fases = append(plano.Fases, fase)
 			}
 		default:
-			return plano, erroNo(chave, "chave desconhecida em carga: %q", chave.Value)
+			return plano, erroNo(chave, "chave desconhecida em carga: %q\n%s", chave.Value, sugerir(chave.Value, []string{"modelo", "perfis"}))
 		}
 	}
 	return plano, nil
@@ -198,7 +215,8 @@ func lerCarga(no *yaml.Node) (PlanoDeCarga, error) {
 
 func lerFase(no *yaml.Node) (Fase, error) {
 	if no.Kind != yaml.MappingNode || len(no.Content) < 2 {
-		return Fase{}, erroNo(no, "cada perfil precisa ser um mapa com um tipo (rampa, patamar, pico, constante)")
+		return Fase{}, erroNo(no, "cada perfil precisa ser um mapa com um tipo (rampa, patamar, pico, constante), por exemplo:\n"+
+			"  - patamar: { taxa: 300/s, durante: 5m }")
 	}
 	tipoNo := no.Content[0]
 	corpo := no.Content[1]
@@ -214,11 +232,12 @@ func lerFase(no *yaml.Node) (Fase, error) {
 	case "constante":
 		fase.Tipo = FaseConstante
 	default:
-		return fase, erroNo(tipoNo, "tipo de perfil desconhecido: %q (use rampa, patamar, pico ou constante)", tipoNo.Value)
+		return fase, erroNo(tipoNo, "tipo de perfil desconhecido: %q\n%s\nexemplo: - patamar: { taxa: 300/s, durante: 5m }",
+			tipoNo.Value, sugerir(tipoNo.Value, []string{"rampa", "patamar", "pico", "constante"}))
 	}
 
 	if corpo.Kind != yaml.MappingNode {
-		return fase, erroNo(corpo, "o perfil %q precisa de um mapa de parametros", tipoNo.Value)
+		return fase, erroNo(corpo, "o perfil %q precisa de um mapa de parametros, por exemplo: %s: { taxa: 300/s, durante: 5m }", tipoNo.Value, tipoNo.Value)
 	}
 	for indice := 0; indice+1 < len(corpo.Content); indice += 2 {
 		chave := corpo.Content[indice]
@@ -239,15 +258,16 @@ func lerFase(no *yaml.Node) (Fase, error) {
 		case "durante":
 			duracao, err := time.ParseDuration(valor.Value)
 			if err != nil {
-				return fase, erroNo(valor, "duracao invalida em %q: %v", valor.Value, err)
+				return fase, erroNo(valor, "duracao invalida: %q (use 30s, 5m, 1h30m)", valor.Value)
 			}
 			fase.Durante = duracao
 		default:
-			return fase, erroNo(chave, "chave desconhecida no perfil %q: %q", tipoNo.Value, chave.Value)
+			return fase, erroNo(chave, "chave desconhecida no perfil %q: %q\n%s", tipoNo.Value, chave.Value,
+				sugerir(chave.Value, []string{"de", "ate", "taxa", "durante"}))
 		}
 	}
 	if fase.Tipo == FaseRampa && fase.De == 0 && fase.Ate == 0 {
-		return fase, erroNo(corpo, "rampa precisa de 'de' e 'ate'")
+		return fase, erroNo(corpo, "rampa precisa de 'de' e 'ate', por exemplo: - rampa: { de: 50/s, ate: 300/s, durante: 30s }")
 	}
 	return fase, nil
 }
@@ -277,7 +297,9 @@ func lerTaxa(no *yaml.Node) (float64, error) {
 
 func lerPassos(no *yaml.Node) ([]Passo, error) {
 	if no.Kind != yaml.SequenceNode {
-		return nil, erroNo(no, "cenario precisa ser uma lista de passos")
+		return nil, erroNo(no, "cenario precisa ser uma lista de passos, um por linha:\n"+
+			"  cenario:\n"+
+			"    - http: GET /pedidos/1")
 	}
 	passos := make([]Passo, 0, len(no.Content))
 	for _, itemNo := range no.Content {
@@ -293,7 +315,9 @@ func lerPassos(no *yaml.Node) ([]Passo, error) {
 func lerPasso(no *yaml.Node) (Passo, error) {
 	passo := Passo{Linha: no.Line}
 	if no.Kind != yaml.MappingNode {
-		return passo, erroNo(no, "cada passo precisa ser um mapa")
+		return passo, erroNo(no, "cada passo precisa ser um mapa, por exemplo:\n"+
+			"  - http: GET /pedidos/1\n"+
+			"    nome: consultar pedido")
 	}
 	var configuracaoNo *yaml.Node
 	for indice := 0; indice+1 < len(no.Content); indice += 2 {
@@ -320,7 +344,7 @@ func lerPasso(no *yaml.Node) (Passo, error) {
 		default:
 			if _, existe := protocolo.Buscar(chave.Value); !existe {
 				return passo, erroNo(chave, "nao reconheco %q como tipo de passo\n%s",
-					chave.Value, sugerir(chave.Value, append(protocolo.Registrados(), "nome", "captura", "verificar")))
+					chave.Value, sugerir(chave.Value, append(protocolo.Registrados(), ChavesDePasso...)))
 			}
 			if passo.Protocolo != "" {
 				return passo, erroNo(chave, "o passo declara mais de um protocolo: %q e %q", passo.Protocolo, chave.Value)
@@ -330,7 +354,8 @@ func lerPasso(no *yaml.Node) (Passo, error) {
 		}
 	}
 	if passo.Protocolo == "" {
-		return passo, erroNo(no, "passo sem protocolo (compilados: %s)", strings.Join(protocolo.Registrados(), ", "))
+		return passo, erroNo(no, "passo sem protocolo (compilados: %s), por exemplo:\n"+
+			"  - http: GET /pedidos/1", strings.Join(protocolo.Registrados(), ", "))
 	}
 	implementacao, _ := protocolo.Buscar(passo.Protocolo)
 	configuracao, err := implementacao.Decodificar(configuracaoNo)

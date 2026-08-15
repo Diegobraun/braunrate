@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
 nome: Consulta de pedidos
 alvo: http://127.0.0.1:8080
 

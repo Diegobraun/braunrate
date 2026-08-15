@@ -1,0 +1,512 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json",
+  "title": "Cenario braunrate",
+  "description": "Formato do arquivo de cenario. O editor usa este arquivo para completar chaves e apontar erro antes de rodar.",
+  "type": "object",
+  "required": [
+    "nome",
+    "alvo",
+    "carga",
+    "cenario"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "nome": {
+      "type": "string",
+      "description": "Nome do cenario. Aparece no topo do relatorio."
+    },
+    "alvo": {
+      "type": "string",
+      "description": "Endereco base do servico sob teste. Ex.: http://127.0.0.1:8080. Use ${VARIAVEL} para nao versionar host real.",
+      "examples": [
+        "http://127.0.0.1:8080",
+        "${ALVO}"
+      ]
+    },
+    "variaveis": {
+      "type": "object",
+      "description": "Valores reaproveitados no cenario. ${NOME:-padrao} le da variavel de ambiente com valor de reserva.",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "boolean"
+        ]
+      }
+    },
+    "autenticacao": {
+      "$ref": "#/$defs/autenticacao"
+    },
+    "dados": {
+      "type": "object",
+      "description": "Fontes de dados. Cada chave vira um prefixo usavel como ${nome.coluna}.",
+      "additionalProperties": {
+        "$ref": "#/$defs/fonteDeDados"
+      }
+    },
+    "carga": {
+      "$ref": "#/$defs/carga"
+    },
+    "cenario": {
+      "type": "array",
+      "description": "Passos executados em ordem, do primeiro ao ultimo, uma vez por chegada agendada.",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/passo"
+      }
+    },
+    "slo": {
+      "type": "array",
+      "description": "Regras que decidem se a execucao passou. Regra falha faz o comando sair com codigo 1.",
+      "items": {
+        "$ref": "#/$defs/regraDeSLO"
+      }
+    }
+  },
+  "$defs": {
+    "taxa": {
+      "type": "string",
+      "description": "Chegadas por unidade de tempo.",
+      "pattern": "^[0-9]+(\\.[0-9]+)?/(s|m|h)$",
+      "examples": [
+        "300/s",
+        "1200/m"
+      ]
+    },
+    "duracao": {
+      "type": "string",
+      "description": "Duracao no formato do Go.",
+      "pattern": "^[0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h)$",
+      "examples": [
+        "30s",
+        "5m"
+      ]
+    },
+    "carga": {
+      "type": "object",
+      "description": "Como a carga cresce ao longo do tempo. O modelo de chegada e aberto: a taxa nao depende de o alvo responder.",
+      "additionalProperties": false,
+      "properties": {
+        "modelo": {
+          "enum": [
+            "aberto"
+          ],
+          "description": "So existe 'aberto'. Laco fechado esconde travada do alvo e nao entra no produto."
+        },
+        "perfis": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Trechos executados em sequencia.",
+          "items": {
+            "$ref": "#/$defs/perfil"
+          }
+        }
+      },
+      "required": [
+        "perfis"
+      ]
+    },
+    "perfil": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "rampa": {
+          "type": "object",
+          "description": "Taxa sobe linearmente de um valor a outro.",
+          "additionalProperties": false,
+          "required": [
+            "de",
+            "ate",
+            "durante"
+          ],
+          "properties": {
+            "de": {
+              "$ref": "#/$defs/taxa"
+            },
+            "ate": {
+              "$ref": "#/$defs/taxa"
+            },
+            "durante": {
+              "$ref": "#/$defs/duracao"
+            }
+          }
+        },
+        "patamar": {
+          "type": "object",
+          "description": "Taxa constante pelo tempo declarado.",
+          "additionalProperties": false,
+          "required": [
+            "taxa",
+            "durante"
+          ],
+          "properties": {
+            "taxa": {
+              "$ref": "#/$defs/taxa"
+            },
+            "durante": {
+              "$ref": "#/$defs/duracao"
+            }
+          }
+        },
+        "constante": {
+          "type": "object",
+          "description": "Mesmo que patamar.",
+          "additionalProperties": false,
+          "required": [
+            "taxa",
+            "durante"
+          ],
+          "properties": {
+            "taxa": {
+              "$ref": "#/$defs/taxa"
+            },
+            "durante": {
+              "$ref": "#/$defs/duracao"
+            }
+          }
+        },
+        "pico": {
+          "type": "object",
+          "description": "Salto instantaneo para a taxa declarada.",
+          "additionalProperties": false,
+          "required": [
+            "taxa",
+            "durante"
+          ],
+          "properties": {
+            "taxa": {
+              "$ref": "#/$defs/taxa"
+            },
+            "durante": {
+              "$ref": "#/$defs/duracao"
+            }
+          }
+        }
+      }
+    },
+    "passo": {
+      "type": "object",
+      "description": "Um passo do cenario. A forma curta cabe em uma linha: 'http: GET /pedidos/1'.",
+      "additionalProperties": false,
+      "properties": {
+        "nome": {
+          "type": "string",
+          "description": "Nome do passo no relatorio e nas regras de SLO. Sem nome, vale a chave de agregacao do protocolo."
+        },
+        "http": {
+          "description": "Forma curta ('GET /caminho') ou objeto com metodo, caminho, cabecalhos, corpo e timeout.",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) .+",
+              "examples": [
+                "GET /pedidos/${assinantes.id}"
+              ]
+            },
+            {
+              "$ref": "#/$defs/http"
+            }
+          ]
+        },
+        "captura": {
+          "type": "object",
+          "description": "Guarda valor da resposta para os passos seguintes. Uma linha por valor: 'faturaId: $.ultimaFatura.id'.",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "Caminho JSON, cabecalho ou expressao regular.",
+                "examples": [
+                  "$.ultimaFatura.id",
+                  "cabecalho:Location"
+                ]
+              },
+              {
+                "$ref": "#/$defs/capturaDetalhada"
+              }
+            ]
+          }
+        },
+        "verificar": {
+          "$ref": "#/$defs/verificar"
+        },
+        "espera": {
+          "$ref": "#/$defs/verificar"
+        }
+      }
+    },
+    "http": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "metodo": {
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "HEAD",
+            "OPTIONS"
+          ]
+        },
+        "caminho": {
+          "type": "string",
+          "examples": [
+            "/faturas/${faturaId}/pagar"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "description": "Mesmo que caminho."
+        },
+        "cabecalhos": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "corpo": {
+          "description": "Objeto vira JSON. Texto vai como esta.",
+          "type": [
+            "object",
+            "array",
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "timeout": {
+          "$ref": "#/$defs/duracao"
+        },
+        "seguir_redirect": {
+          "type": "boolean"
+        }
+      }
+    },
+    "capturaDetalhada": {
+      "type": "object",
+      "description": "Forma longa da captura, para quando falta valor padrao ou a captura pode falhar de proposito.",
+      "additionalProperties": false,
+      "required": [
+        "de"
+      ],
+      "properties": {
+        "de": {
+          "type": "string",
+          "examples": [
+            "$.access_token"
+          ]
+        },
+        "padrao": {
+          "type": "string",
+          "description": "Valor usado quando a captura nao encontra nada."
+        },
+        "obrigatoria": {
+          "type": "boolean",
+          "description": "Padrao true. Captura obrigatoria que falha encerra a iteracao com erro de correlacao."
+        }
+      }
+    },
+    "verificar": {
+      "type": "object",
+      "description": "O que precisa ser verdade na resposta. Falha aqui conta como erro no relatorio.",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 599
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            {
+              "type": "string",
+              "examples": [
+                "2xx",
+                "< 400"
+              ]
+            }
+          ]
+        },
+        "json": {
+          "type": "object",
+          "description": "Caminho JSON esperado. Ex.: '$.status: PAGA'. Use 'existe' para so checar presenca.",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "cabecalho": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "corpo_contem": {
+          "type": "string"
+        },
+        "corpo_casa": {
+          "type": "string",
+          "description": "Expressao regular."
+        }
+      }
+    },
+    "autenticacao": {
+      "type": "object",
+      "description": "Como o motor obtem credencial e a injeta em todos os passos. O passo nao precisa declarar cabecalho.",
+      "required": [
+        "tipo"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "tipo": {
+          "enum": [
+            "token",
+            "basica",
+            "cabecalho"
+          ]
+        },
+        "obter": {
+          "type": "object",
+          "description": "Requisicao de login, executada uma vez para a execucao inteira. Ver ADR 0005.",
+          "additionalProperties": false,
+          "properties": {
+            "http": {
+              "$ref": "#/$defs/http"
+            },
+            "captura": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "renovar_apos": {
+          "$ref": "#/$defs/duracao"
+        },
+        "cabecalho": {
+          "type": "string",
+          "description": "Nome do cabecalho. Padrao Authorization.",
+          "default": "Authorization"
+        },
+        "usuario": {
+          "type": "string"
+        },
+        "senha": {
+          "type": "string"
+        }
+      }
+    },
+    "fonteDeDados": {
+      "type": "object",
+      "description": "Arquivo CSV ou geracao sintetica. Sem isto, toda iteracao usa o mesmo valor e o alvo responde de cache.",
+      "additionalProperties": false,
+      "properties": {
+        "arquivo": {
+          "type": "string",
+          "examples": [
+            "dados/assinantes.csv"
+          ]
+        },
+        "consumo": {
+          "enum": [
+            "sequencial",
+            "aleatorio",
+            "circular",
+            "unico_por_usuario"
+          ],
+          "description": "circular repete do inicio ao fim do arquivo; unico_por_usuario nao repete valor."
+        },
+        "semente": {
+          "type": "integer",
+          "description": "Mesma semente, mesmos dados. Vai para o relatorio."
+        },
+        "gerar": {
+          "type": "object",
+          "description": "Campos sinteticos. Ex.: 'id: uuid'.",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        }
+      }
+    },
+    "regraDeSLO": {
+      "type": "object",
+      "description": "Uma regra por passo ou 'global'. Ex.: '- consultar pedido: { p95: < 150ms }'.",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "p50": {
+            "$ref": "#/$defs/limite"
+          },
+          "p75": {
+            "$ref": "#/$defs/limite"
+          },
+          "p90": {
+            "$ref": "#/$defs/limite"
+          },
+          "p95": {
+            "$ref": "#/$defs/limite"
+          },
+          "p99": {
+            "$ref": "#/$defs/limite"
+          },
+          "p99.9": {
+            "$ref": "#/$defs/limite"
+          },
+          "max": {
+            "$ref": "#/$defs/limite"
+          },
+          "erros": {
+            "$ref": "#/$defs/limite",
+            "description": "Porcentagem. '< 0.1' e um decimo de um por cento."
+          },
+          "vazao": {
+            "$ref": "#/$defs/limite"
+          }
+        }
+      }
+    },
+    "limite": {
+      "type": [
+        "string",
+        "number"
+      ],
+      "description": "Comparacao com unidade. Ex.: '< 150ms', '>= 250/s', '< 0.1'.",
+      "examples": [
+        "< 150ms",
+        "<= 2s",
+        "> 250/s",
+        "< 0.1"
+      ]
+    }
+  }
+}
