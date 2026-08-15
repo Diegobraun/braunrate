@@ -18,3 +18,5 @@ prototipos/go/braunrate-proto-go
 prototipos/java/*.jar
 medicoes/bruto/*.txt
 medicoes/bruto-descartado/
+__pycache__/
+*.pyc
