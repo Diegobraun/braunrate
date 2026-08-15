@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -59,6 +60,47 @@ func (c *Configuracao) ComCabecalho(nome, valor string) protocolo.Configuracao {
 	}
 	copia.Cabecalhos[nome] = valor
 	return &copia
+}
+
+func (c *Configuracao) Descrever() []string {
+	linhas := []string{fmt.Sprintf("%s %s", c.Metodo, c.Caminho)}
+
+	nomes := make([]string, 0, len(c.Cabecalhos))
+	for nome := range c.Cabecalhos {
+		nomes = append(nomes, nome)
+	}
+	sort.Strings(nomes)
+	for _, nome := range nomes {
+		linhas = append(linhas, fmt.Sprintf("%s: %s", nome, esconderSegredo(nome, c.Cabecalhos[nome])))
+	}
+	if c.TipoDeConteudo != "" {
+		linhas = append(linhas, "Content-Type: "+c.TipoDeConteudo)
+	}
+	if len(c.Corpo) > 0 {
+		linhas = append(linhas, "corpo: "+string(c.Corpo))
+	}
+	if c.Timeout > 0 {
+		linhas = append(linhas, "timeout: "+c.Timeout.String())
+	}
+	return linhas
+}
+
+// Token e senha aparecem cortados: a saida de depuracao costuma ir parar em
+// ticket e em captura de tela.
+func esconderSegredo(nome, valor string) string {
+	nomeMinusculo := strings.ToLower(nome)
+	if nomeMinusculo != "authorization" && !strings.Contains(nomeMinusculo, "token") &&
+		!strings.Contains(nomeMinusculo, "senha") && !strings.Contains(nomeMinusculo, "secret") {
+		return valor
+	}
+	prefixo, resto, encontrou := strings.Cut(valor, " ")
+	if !encontrou {
+		prefixo, resto = "", valor
+	}
+	if len(resto) <= 6 {
+		return strings.TrimSpace(prefixo + " ***")
+	}
+	return strings.TrimSpace(prefixo + " " + resto[:6] + "… (" + fmt.Sprint(len(resto)) + " caracteres)")
 }
 
 type Protocolo struct {

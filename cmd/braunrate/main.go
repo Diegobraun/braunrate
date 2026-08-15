@@ -5,14 +5,17 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/Diegobraun/braunrate/alvo"
 	"github.com/Diegobraun/braunrate/cenario"
+	"github.com/Diegobraun/braunrate/importador"
 	"github.com/Diegobraun/braunrate/metrica"
 	"github.com/Diegobraun/braunrate/motor"
 	"github.com/Diegobraun/braunrate/protocolo"
@@ -33,6 +36,10 @@ func main() {
 		os.Exit(executar(os.Args[2:]))
 	case "validar":
 		os.Exit(validar(os.Args[2:]))
+	case "depurar":
+		os.Exit(depurar(os.Args[2:]))
+	case "importar":
+		os.Exit(importar(os.Args[2:]))
 	case "alvo":
 		os.Exit(servirAlvo(os.Args[2:]))
 	case "versao":
@@ -48,8 +55,10 @@ func uso() {
 	fmt.Fprintf(os.Stderr, `braunrate %s
 
 uso:
+  braunrate depurar <cenario.yaml>      um usuario, uma iteracao, tudo visivel
   braunrate executar <cenario.yaml> [opcoes]
   braunrate validar <cenario.yaml>
+  braunrate importar curl "<comando curl>"    gera um cenario a partir de um curl
   braunrate alvo [opcoes]
   braunrate versao
 
@@ -137,6 +146,146 @@ func executar(argumentos []string) int {
 
 func humanizar(valor int64) string {
 	return fmt.Sprintf("%d", valor)
+}
+
+func depurar(argumentos []string) int {
+	conjunto := flag.NewFlagSet("depurar", flag.ExitOnError)
+	mostrarCorpo := conjunto.Bool("corpo", true, "mostra o corpo das respostas")
+	_ = conjunto.Parse(argumentos)
+
+	if conjunto.NArg() < 1 {
+		fmt.Fprintln(os.Stderr, "informe o arquivo de cenario")
+		return 2
+	}
+
+	c, err := cenario.CarregarArquivo(conjunto.Arg(0))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "erro no cenario: %v\n", err)
+		return 2
+	}
+	if err := c.Validar(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 2
+	}
+
+	opcoes := motor.OpcoesPadrao()
+	opcoes.Versao = versao
+	opcoes.RaizDeDados = filepath.Dir(conjunto.Arg(0))
+
+	m, err := motor.Novo(c, opcoes)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 2
+	}
+
+	fmt.Printf("depurando %q contra %s: 1 usuario, 1 iteracao, sem carga\n", c.Nome, c.Alvo)
+
+	ctx, cancelar := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancelar()
+
+	observacoes, variaveis, err := m.Depurar(ctx)
+	protocolo.EncerrarTodos()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "\nnao consegui chegar ao primeiro passo: %v\n", err)
+		return 1
+	}
+
+	falhou := false
+	for indice, observacao := range observacoes {
+		relatorio.Depuracao(os.Stdout, indice+1, observacao, *mostrarCorpo)
+		if observacao.Classe != protocolo.Sucesso {
+			falhou = true
+		}
+	}
+	relatorio.VariaveisDaIteracao(os.Stdout, variaveis)
+
+	fmt.Println()
+	if falhou {
+		fmt.Printf("A iteracao parou no passo %d. Corrija e rode de novo; a carga so vale depois que a iteracao passa.\n", len(observacoes))
+		return 1
+	}
+	if len(observacoes) < len(c.Passos) {
+		fmt.Println("A iteracao nao chegou ao fim.")
+		return 1
+	}
+	fmt.Printf("Iteracao completa: %d passo(s), tudo certo. Para rodar com carga:\n  braunrate executar %s\n",
+		len(observacoes), conjunto.Arg(0))
+	return 0
+}
+
+// O comando curl chega como um argumento so, cheio de aspas, e a pessoa cola
+// a opcao antes ou depois dele; o flag padrao para de ler no primeiro
+// argumento posicional e perderia a opcao colada no fim.
+func importar(argumentos []string) int {
+	saida := ""
+	var resto []string
+	for indice := 0; indice < len(argumentos); indice++ {
+		argumento := argumentos[indice]
+		switch {
+		case argumento == "-saida" || argumento == "--saida":
+			if indice+1 >= len(argumentos) {
+				fmt.Fprintln(os.Stderr, "a opcao -saida ficou sem o nome do arquivo")
+				return 2
+			}
+			indice++
+			saida = argumentos[indice]
+		case strings.HasPrefix(argumento, "-saida="):
+			saida = strings.TrimPrefix(argumento, "-saida=")
+		case strings.HasPrefix(argumento, "--saida="):
+			saida = strings.TrimPrefix(argumento, "--saida=")
+		default:
+			resto = append(resto, argumento)
+		}
+	}
+
+	if len(resto) < 1 || resto[0] != "curl" {
+		fmt.Fprintln(os.Stderr, `informe o que importar. Hoje existe um formato:
+  braunrate importar curl "curl -X POST https://exemplo/pedidos -d '{}'" -saida cenario.yaml
+  pbpaste | braunrate importar curl`)
+		return 2
+	}
+
+	comando := strings.Join(resto[1:], " ")
+	if strings.TrimSpace(comando) == "" {
+		lido, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "nao consegui ler o comando da entrada padrao: %v\n", err)
+			return 2
+		}
+		comando = string(lido)
+	}
+
+	importacao, err := importador.DeCurl(comando)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 2
+	}
+
+	if _, err := cenario.Carregar([]byte(importacao.YAML)); err != nil {
+		fmt.Fprintf(os.Stderr, "gerei um cenario que eu mesmo nao aceito; isso e defeito meu, nao do seu curl:\n%v\n", err)
+		return 1
+	}
+
+	destino := saida
+	if destino == "" {
+		fmt.Print(importacao.YAML)
+	} else {
+		if err := os.WriteFile(destino, []byte(importacao.YAML), 0o644); err != nil {
+			fmt.Fprintf(os.Stderr, "nao consegui gravar %s: %v\n", destino, err)
+			return 1
+		}
+		fmt.Fprintf(os.Stderr, "cenario gravado em %s\n", destino)
+	}
+
+	for _, aviso := range importacao.Avisos {
+		fmt.Fprintf(os.Stderr, "atencao: %s\n", aviso)
+	}
+	if destino != "" {
+		fmt.Fprintf(os.Stderr, "\nProximo passo, antes de qualquer carga:\n  braunrate depurar %s\n", destino)
+	} else {
+		fmt.Fprintln(os.Stderr, "\nProximo passo: grave com -saida cenario.yaml e rode 'braunrate depurar cenario.yaml'.")
+	}
+	return 0
 }
 
 func validar(argumentos []string) int {

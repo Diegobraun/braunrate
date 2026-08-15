@@ -28,6 +28,13 @@ type Configuracao interface {
 	Resolver(func(string) string) Configuracao
 }
 
+// Implementada pelos protocolos que sabem se descrever para o modo de
+// depuracao, em vez de deixar a struct interna vazar para o usuario.
+type ConfiguracaoDescritivel interface {
+	Configuracao
+	Descrever() []string
+}
+
 // Implementada pelos protocolos que aceitam cabecalho: e por aqui que o motor
 // injeta autenticacao sem que o protocolo saiba que ela existe.
 type ConfiguracaoComCabecalhos interface {
