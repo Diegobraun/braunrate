@@ -83,7 +83,7 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocolo.Configuracao, error) {
       timeout: 30s`)
 	}
 
-	configuracao := &Configuracao{Timeout: timeoutPadrao}
+	configuracao := Padrao()
 	for indice := 0; indice+1 < len(no.Content); indice += 2 {
 		chave := no.Content[indice]
 		valor := no.Content[indice+1]
@@ -110,20 +110,33 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocolo.Configuracao, error) {
 		}
 	}
 
+	if err := Validar(configuracao); err != nil {
+		return nil, err
+	}
+	return configuracao, nil
+}
+
+func Padrao() *Configuracao {
+	return &Configuracao{Timeout: timeoutPadrao}
+}
+
+// A correlacao obrigatoria vale igual na DSL: sem ela a medicao pegaria a
+// primeira mensagem que aparecesse e mediria o consumidor mais rapido.
+func Validar(configuracao *Configuracao) error {
 	if configuracao.Fonte == "" {
-		return nil, errors.New(`o passo aguardar precisa dizer onde esperar, por exemplo:
+		return errors.New(`o passo aguardar precisa dizer onde esperar, por exemplo:
   - aguardar:
       kafka: { topico: pedidos-processados }
       chave: "${pedidoId}"`)
 	}
 	if configuracao.Esperado == "" {
-		return nil, errors.New(`o passo aguardar precisa do valor que identifica a mensagem desta iteracao.
+		return errors.New(`o passo aguardar precisa do valor que identifica a mensagem desta iteracao.
 Sem isso, qualquer mensagem serviria e a medicao mediria o consumidor mais rapido, nao a cadeia:
   - aguardar:
       kafka: { topico: pedidos-processados }
       chave: "${pedidoId}"`)
 	}
-	return configuracao, nil
+	return nil
 }
 
 func lerFonte(configuracao *Configuracao, no *yaml.Node) error {

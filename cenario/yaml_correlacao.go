@@ -1,6 +1,7 @@
 package cenario
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -37,9 +38,12 @@ func lerCapturas(no *yaml.Node) ([]Captura, error) {
 	return capturas, nil
 }
 
-func interpretarExpressaoDeCaptura(nome string, no *yaml.Node) (Captura, error) {
-	expressao := strings.TrimSpace(no.Value)
-	captura := Captura{Variavel: nome, Expressao: expressao, Obrigatoria: true, Linha: no.Line}
+// A leitura da expressao e node-free porque a DSL em Go entra por aqui tambem:
+// duas interpretacoes da mesma expressao viraria captura que funciona num
+// publico e falha no outro.
+func MontarCaptura(nome, texto string) (Captura, error) {
+	expressao := strings.TrimSpace(texto)
+	captura := Captura{Variavel: nome, Expressao: expressao, Obrigatoria: true}
 
 	switch {
 	case expressao == "status":
@@ -55,13 +59,22 @@ func interpretarExpressaoDeCaptura(nome string, no *yaml.Node) (Captura, error) 
 		captura.Origem = CapturaDeRegex
 		captura.Expressao = expressao[1 : len(expressao)-1]
 	default:
-		return captura, erroNo(no, "nao entendi de onde capturar %q.\n"+
+		return captura, fmt.Errorf("nao entendi de onde capturar %q.\n"+
 			"    use uma destas formas:\n"+
 			"      %s: $.caminho.no.json      captura de um campo do corpo JSON\n"+
 			"      %s: cabecalho:X-Request-Id captura de um cabecalho da resposta\n"+
 			"      %s: /token=([a-z0-9]+)/    captura pelo primeiro grupo da expressao regular",
 			nome, nome, nome, nome)
 	}
+	return captura, nil
+}
+
+func interpretarExpressaoDeCaptura(nome string, no *yaml.Node) (Captura, error) {
+	captura, err := MontarCaptura(nome, no.Value)
+	if err != nil {
+		return captura, erroNo(no, "%v", err)
+	}
+	captura.Linha = no.Line
 	return captura, nil
 }
 
@@ -145,15 +158,21 @@ func lerAssercoes(no *yaml.Node) ([]Verificacao, []Assercao, error) {
 }
 
 func interpretarComparacao(alvo string, no *yaml.Node) (Assercao, error) {
-	texto := strings.TrimSpace(no.Value)
-	assercao := Assercao{Alvo: alvo, Operador: OperadorIgual, Valor: texto, Linha: no.Line}
+	assercao := MontarComparacao(alvo, no.Value)
+	assercao.Linha = no.Line
+	return assercao, nil
+}
+
+func MontarComparacao(alvo, bruto string) Assercao {
+	texto := strings.TrimSpace(bruto)
+	assercao := Assercao{Alvo: alvo, Operador: OperadorIgual, Valor: texto}
 
 	for _, operador := range []Operador{OperadorMenorOuIgual, OperadorMaiorOuIgual, OperadorDiferente,
 		OperadorMenor, OperadorMaior} {
 		if strings.HasPrefix(texto, string(operador)) {
 			assercao.Operador = operador
 			assercao.Valor = strings.TrimSpace(strings.TrimPrefix(texto, string(operador)))
-			return assercao, nil
+			return assercao
 		}
 	}
 	switch texto {
@@ -167,7 +186,7 @@ func interpretarComparacao(alvo string, no *yaml.Node) (Assercao, error) {
 		assercao.Operador = OperadorContem
 		assercao.Valor = strings.TrimSpace(strings.TrimPrefix(texto, "contem "))
 	}
-	return assercao, nil
+	return assercao
 }
 
 func lerAutenticacao(no *yaml.Node) (*Autenticacao, error) {
@@ -330,12 +349,20 @@ func lerSLO(no *yaml.Node) ([]RegraDeSLO, error) {
 }
 
 func lerRegraDeSLO(alvo string, metricaNo, limiteNo *yaml.Node) (RegraDeSLO, error) {
+	regra, err := MontarRegraDeSLO(alvo, metricaNo.Value, limiteNo.Value)
+	if err != nil {
+		return regra, erroNo(limiteNo, "%v", err)
+	}
+	regra.Linha = metricaNo.Line
+	return regra, nil
+}
+
+func MontarRegraDeSLO(alvo, metrica, limiteBruto string) (RegraDeSLO, error) {
 	regra := RegraDeSLO{
 		Passo:    alvo,
 		Global:   alvo == "global",
-		Metrica:  metricaNo.Value,
+		Metrica:  metrica,
 		Operador: OperadorMenorOuIgual,
-		Linha:    metricaNo.Line,
 	}
 
 	switch regra.Metrica {
@@ -347,11 +374,11 @@ func lerRegraDeSLO(alvo string, metricaNo, limiteNo *yaml.Node) (RegraDeSLO, err
 		regra.Unidade = "/s"
 		regra.Operador = OperadorMaiorOuIgual
 	default:
-		return regra, erroNo(metricaNo, "metrica de slo desconhecida: %q\n"+
+		return regra, fmt.Errorf("metrica de slo desconhecida: %q\n"+
 			"    disponiveis: p50, p75, p90, p95, p99, p99.9, max, erros, vazao", regra.Metrica)
 	}
 
-	texto := strings.TrimSpace(limiteNo.Value)
+	texto := strings.TrimSpace(limiteBruto)
 	regra.Texto = regra.Metrica + ": " + texto
 
 	for _, operador := range []Operador{OperadorMenorOuIgual, OperadorMaiorOuIgual, OperadorMenor, OperadorMaior} {
@@ -364,7 +391,7 @@ func lerRegraDeSLO(alvo string, metricaNo, limiteNo *yaml.Node) (RegraDeSLO, err
 
 	limite, err := interpretarLimite(texto, regra.Unidade)
 	if err != nil {
-		return regra, erroNo(limiteNo, "limite invalido em %q: %v\n"+
+		return regra, fmt.Errorf("limite invalido em %q: %v\n"+
 			"    exemplos: p95: < 150ms | erros: < 0.1 | vazao: > 500/s", regra.Metrica, err)
 	}
 	regra.Limite = limite

@@ -120,7 +120,7 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocolo.Configuracao, error) {
       valor: { id: "${assinantes.id}", total: 199.90 }`)
 	}
 
-	configuracao := &Configuracao{Cabecalhos: map[string]string{}, Acks: "todos"}
+	configuracao := Padrao()
 	for indice := 0; indice+1 < len(no.Content); indice += 2 {
 		chave := no.Content[indice]
 		valor := no.Content[indice+1]
@@ -168,15 +168,28 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocolo.Configuracao, error) {
 		}
 	}
 
+	if err := Validar(configuracao); err != nil {
+		return nil, err
+	}
+	return configuracao, nil
+}
+
+// Padrao e Validar sao o caminho unico de construcao: a DSL em Go recusa o
+// mesmo cenario que o YAML recusa, com a mesma mensagem.
+func Padrao() *Configuracao {
+	return &Configuracao{Cabecalhos: map[string]string{}, Acks: "todos"}
+}
+
+func Validar(configuracao *Configuracao) error {
 	if configuracao.Topico == "" {
-		return nil, errors.New(`passo kafka sem topico, por exemplo:
+		return errors.New(`passo kafka sem topico, por exemplo:
   - kafka: { topico: pedidos, valor: { id: "${assinantes.id}" } }`)
 	}
 	if len(configuracao.Valor) == 0 {
-		return nil, errors.New(`passo kafka sem valor: uma mensagem vazia nao exercita o consumidor.
+		return errors.New(`passo kafka sem valor: uma mensagem vazia nao exercita o consumidor.
   - kafka: { topico: pedidos, valor: { id: "${assinantes.id}" } }`)
 	}
-	return configuracao, nil
+	return nil
 }
 
 func lerValor(no *yaml.Node) ([]byte, error) {

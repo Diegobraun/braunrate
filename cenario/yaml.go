@@ -125,7 +125,7 @@ func Carregar(conteudo []byte) (Cenario, error) {
 		}
 	}
 
-	c.Alvo = interpolar(c.Alvo, c.Variaveis)
+	c.Alvo = Interpolar(c.Alvo, c.Variaveis)
 	return c, nil
 }
 
@@ -138,14 +138,14 @@ func lerVariaveis(no *yaml.Node) (map[string]string, error) {
 	}
 	for indice := 0; indice+1 < len(no.Content); indice += 2 {
 		nome := no.Content[indice].Value
-		variaveis[nome] = expandirDoAmbiente(no.Content[indice+1].Value)
+		variaveis[nome] = ExpandirDoAmbiente(no.Content[indice+1].Value)
 	}
 	return variaveis, nil
 }
 
 var padraoDeVariavel = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_.]*)(?::-([^}]*))?\}`)
 
-func expandirDoAmbiente(texto string) string {
+func ExpandirDoAmbiente(texto string) string {
 	return padraoDeVariavel.ReplaceAllStringFunc(texto, func(ocorrencia string) string {
 		partes := padraoDeVariavel.FindStringSubmatch(ocorrencia)
 		if valor, definida := os.LookupEnv(partes[1]); definida {
@@ -155,7 +155,7 @@ func expandirDoAmbiente(texto string) string {
 	})
 }
 
-func interpolar(texto string, variaveis map[string]string) string {
+func Interpolar(texto string, variaveis map[string]string) string {
 	if texto == "" {
 		return texto
 	}

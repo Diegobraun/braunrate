@@ -103,7 +103,7 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocolo.Configuracao, error) {
 	if no == nil {
 		return nil, errors.New("passo http sem configuracao")
 	}
-	configuracao := &Configuracao{Metodo: http.MethodGet, Cabecalhos: map[string]string{}}
+	configuracao := Padrao()
 
 	if no.Kind == yaml.ScalarNode {
 		partes := strings.Fields(no.Value)
@@ -159,10 +159,24 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocolo.Configuracao, error) {
 		}
 	}
 
-	if configuracao.Caminho == "" {
-		return nil, errors.New("passo http sem caminho")
+	if err := Validar(configuracao); err != nil {
+		return nil, err
 	}
 	return configuracao, nil
+}
+
+// Padrao e Validar existem para que a DSL em Go entre pelo mesmo lugar que o
+// YAML: um padrao que so um dos dois aplicasse viraria diferenca de medicao
+// entre os dois publicos.
+func Padrao() *Configuracao {
+	return &Configuracao{Metodo: http.MethodGet, Cabecalhos: map[string]string{}}
+}
+
+func Validar(configuracao *Configuracao) error {
+	if configuracao.Caminho == "" {
+		return errors.New("passo http sem caminho")
+	}
+	return nil
 }
 
 func lerCorpo(no *yaml.Node) ([]byte, string, error) {

@@ -111,11 +111,11 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocolo.Configuracao, error) {
 	if no == nil {
 		return nil, errors.New("passo graphql sem configuracao")
 	}
-	configuracao := &Configuracao{Caminho: caminhoPadrao, Cabecalhos: map[string]string{}, Variaveis: "{}"}
+	configuracao := Padrao()
 
 	if no.Kind == yaml.ScalarNode {
 		configuracao.Consulta = no.Value
-		return finalizar(configuracao)
+		return Finalizar(configuracao)
 	}
 	if no.Kind != yaml.MappingNode {
 		return nil, errors.New(`passo graphql precisa ser a consulta ou um mapa, por exemplo:
@@ -156,10 +156,16 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocolo.Configuracao, error) {
 			return nil, fmt.Errorf("chave desconhecida no passo graphql: %q (use consulta, operacao, variaveis, caminho, cabecalhos ou timeout)", chave.Value)
 		}
 	}
-	return finalizar(configuracao)
+	return Finalizar(configuracao)
 }
 
-func finalizar(configuracao *Configuracao) (protocolo.Configuracao, error) {
+// Padrao e Finalizar sao o caminho unico de construcao: a DSL em Go monta a
+// mesma configuracao que o YAML monta, incluindo a extracao do nome da operacao.
+func Padrao() *Configuracao {
+	return &Configuracao{Caminho: caminhoPadrao, Cabecalhos: map[string]string{}, Variaveis: "{}"}
+}
+
+func Finalizar(configuracao *Configuracao) (protocolo.Configuracao, error) {
 	if strings.TrimSpace(configuracao.Consulta) == "" {
 		return nil, errors.New(`passo graphql sem consulta, por exemplo:
   - graphql: |

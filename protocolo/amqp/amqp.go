@@ -113,7 +113,7 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocolo.Configuracao, error) {
       corpo: { id: "${assinantes.id}" }`)
 	}
 
-	configuracao := &Configuracao{Cabecalhos: map[string]string{}, Persistente: true, Confirmar: true}
+	configuracao := Padrao()
 	for indice := 0; indice+1 < len(no.Content); indice += 2 {
 		chave := no.Content[indice]
 		valor := no.Content[indice+1]
@@ -159,15 +159,26 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocolo.Configuracao, error) {
 		}
 	}
 
+	if err := Validar(configuracao); err != nil {
+		return nil, err
+	}
+	return configuracao, nil
+}
+
+func Padrao() *Configuracao {
+	return &Configuracao{Cabecalhos: map[string]string{}, Persistente: true, Confirmar: true}
+}
+
+func Validar(configuracao *Configuracao) error {
 	if configuracao.Rota == "" && configuracao.Fila == "" {
-		return nil, errors.New(`passo amqp sem destino: declare 'fila' (caso comum) ou 'troca' com 'rota'.
+		return errors.New(`passo amqp sem destino: declare 'fila' (caso comum) ou 'troca' com 'rota'.
   - amqp: { fila: pedidos, corpo: { id: "${assinantes.id}" } }`)
 	}
 	if len(configuracao.Corpo) == 0 {
-		return nil, errors.New(`passo amqp sem corpo: uma mensagem vazia nao exercita o consumidor.
+		return errors.New(`passo amqp sem corpo: uma mensagem vazia nao exercita o consumidor.
   - amqp: { fila: pedidos, corpo: { id: "${assinantes.id}" } }`)
 	}
-	return configuracao, nil
+	return nil
 }
 
 func lerCorpo(no *yaml.Node) ([]byte, error) {
