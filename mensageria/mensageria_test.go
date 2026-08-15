@@ -125,14 +125,12 @@ func TestCadeiaAssincronaMedeDoProdutorAoConsumidor(t *testing.T) {
 		Brokers: strings.Split(brokers, ","),
 		Entrada: entrada,
 		Saida:   saida,
-		Grupo:   "processador-" + saida,
 		Atraso:  atrasoDoProcessador,
 	})
 	if err := processador.Iniciar(); err != nil {
 		t.Fatalf("processador nao subiu: %v", err)
 	}
 	t.Cleanup(func() { _ = processador.Encerrar() })
-	time.Sleep(3 * time.Second)
 
 	documento, veredito := executar(t, fmt.Sprintf(cenarioDeCadeia,
 		brokers, entrada, "${pedidos.id}", saida))
@@ -178,13 +176,11 @@ func TestChaveDeParticaoFixaInvalidaOResultado(t *testing.T) {
 		Brokers: strings.Split(brokers, ","),
 		Entrada: entrada,
 		Saida:   saida,
-		Grupo:   "processador-" + saida,
 	})
 	if err := processador.Iniciar(); err != nil {
 		t.Fatalf("processador nao subiu: %v", err)
 	}
 	t.Cleanup(func() { _ = processador.Encerrar() })
-	time.Sleep(3 * time.Second)
 
 	documento, _ := executar(t, fmt.Sprintf(cenarioDeCadeia,
 		brokers, entrada, "sempre-a-mesma", saida))
