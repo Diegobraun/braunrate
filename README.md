@@ -37,7 +37,7 @@ Reproduza na sua maquina: `go test ./autovalidacao/... -v`.
 
 ## Estado
 
-**Fase 4 concluida** — motor de chegada aberta, HTTP e GraphQL, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `depurar`, `importar curl`) e relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes). Ainda nao existe mensageria.
+**Fase 5 concluida** — motor de chegada aberta, HTTP, GraphQL, Kafka, RabbitMQ e passo `aguardar`, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `depurar`, `importar curl`), relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes) e variedade observada declarada no relatorio. Falta a DSL em Go e o importador de `.jmx`.
 
 Decisao da Fase 0: **Go**, sustentada por dois criterios apenas — RSS sob carga (30 MB contra 597 MB do Java com G1, a 10.000/s) e binario unico estatico, que para o publico de QA significa instalar baixando um arquivo. Startup, precisao de agendamento e modo de falha apareceram na primeira analise com peso que nao aguentam, e estao marcados como nao-criterio no ADR. Numeros, metodologia e limites em [medicoes-fase0.md](docs/medicoes-fase0.md); a decisao com os pesos de cada criterio em [ADR 0001](docs/adr/0001-linguagem-e-runtime.md).
 
@@ -267,6 +267,66 @@ Erros
 
 **Todas as 2.844 respostas vieram com status HTTP 200.** Uma ferramenta que classifica por status teria reportado 0% de erro e SLO verde. Resposta parcial (`data` e `errors` juntos) tambem conta como erro, e o detalhe diz que foi parcial. Detalhes em [ADR 0006](docs/adr/0006-graphql-como-unidade-de-medida.md).
 
+## Mensageria e cadeia assincrona
+
+Produzir mede o broker aceitando a mensagem. O que o usuario sente e a cadeia inteira — e para isso existe o passo `aguardar`:
+
+```yaml
+cenario:
+  - kafka:
+      topico: pedidos
+      chave: "${pedidos.id}"          # chave fixa concentra tudo numa particao
+      valor: { pedido: "${pedidos.id}", valor: "${pedidos.valor}" }
+
+  - aguardar:
+      kafka: { topico: pedidos-processados }
+      chave: "${pedidos.id}"          # espera a mensagem desta iteracao, nao qualquer uma
+      timeout: 10s
+```
+
+Execucao real contra Kafka, com um processador que leva 15 ms por mensagem e uma carga de 100/s:
+
+```
+Por passo
+  passo                          requisicoes    metade       95%       99%     99,9%      pior   erros
+  aguardar pedidos-processa… (2)        800    1.78 s    4.87 s    5.26 s    5.30 s    5.32 s       0
+  kafka produzir pedidos-ca… (1)        800  0.915 ms    1.9 ms    4.9 ms     14 ms     27 ms       0
+
+A jornada inteira
+  Todas as 800 jornadas chegaram ao fim; metade levou ate 1778 ms e 95% ate 4874 ms, contados do instante em que deveriam ter comecado.
+```
+
+**Produzir custa 0,9 ms; a cadeia custa 4,87 s no 95%.** Uma ferramenta que so mede a producao teria reportado sub-milissegundo e aprovado o sistema. O consumidor nao acompanha 100/s, a fila cresce, e so a medicao ponta a ponta mostra isso.
+
+Detalhes das decisoes: [ADR 0008](docs/adr/0008-mensageria-e-cadeia-assincrona.md). Publicacao com confirmacao e o padrao (`acks: todos` no Kafka, publisher confirms no AMQP), sem lote — agrupar mensagens mediria o lote, nao a mensagem.
+
+RabbitMQ segue a mesma forma:
+
+```yaml
+  - amqp:
+      fila: pedidos
+      identidade: "${pedidos.id}"
+      corpo: { pedido: "${pedidos.id}" }
+```
+
+## Variedade observada: o relatorio diz o que aconteceu, nao o que foi declarado
+
+```
+Ambiente
+  4 valores distintos de kafka.particao.pedidos-cadeia em 800 usos
+  800 valores distintos de pedidos.id em 800 usos
+```
+
+Se a fonte tem varios valores e a execucao usou um so, o resultado e **invalido** e o comando sai com codigo 3:
+
+```
+RESULTADO INVALIDO: toda a carga caiu numa particao so de pedidos-cadeia; o resto do cluster
+ficou parado e o numero nao representa producao. Faca a chave da mensagem variar por iteracao
+            kafka.particao.pedidos-cadeia tinha 4 valores disponiveis e a execucao usou 1, em 60 usos
+```
+
+Isso nasceu de um bug nosso: a autenticacao congelava os dados da primeira iteracao e toda execucao autenticada com CSV rodava sobre a primeira linha, com o relatorio anunciando variedade que nao existiu. A medicao passa a verificar isso em caminho, corpo, cabecalho, variavel de GraphQL e chave de mensagem — um ponto so de instrumentacao, entao protocolo novo entra coberto ([ADR 0007](docs/adr/0007-variedade-observada.md)).
+
 ## Comparar duas execucoes
 
 ```
@@ -308,7 +368,9 @@ A comparacao nunca chama de regressao o que pode ser ruido, lista tudo que mudou
 | Relatorio HTML autocontido, com veredito em uma frase | pronto |
 | JSON versionado, CSV por passo, comparacao entre execucoes | pronto |
 | GraphQL: uma linha por operacao, erro em 200 contado como erro | pronto |
-| Kafka, AMQP, passo `aguardar` | Fase 5 |
+| Kafka e RabbitMQ com entrega confirmada, sem lote | pronto |
+| Passo `aguardar`: mede a cadeia assincrona ponta a ponta | pronto |
+| Variedade observada, com resultado invalido quando a carga concentra | pronto |
 | DSL e importador de `.jmx` | Fase 6 |
 
 ## Por que existe
@@ -341,6 +403,8 @@ Tres razoes, nesta ordem:
 - [ADR 0004 — extensao de protocolo](docs/adr/0004-extensao-de-protocolo.md)
 - [ADR 0005 — identidade e token](docs/adr/0005-identidade-e-token.md)
 - [ADR 0006 — GraphQL como unidade de medida](docs/adr/0006-graphql-como-unidade-de-medida.md)
+- [ADR 0007 — variedade observada](docs/adr/0007-variedade-observada.md)
+- [ADR 0008 — mensageria e cadeia assincrona](docs/adr/0008-mensageria-e-cadeia-assincrona.md)
 - [Schema do cenario](docs/braunrate.schema.json) — autocompletar e validacao no editor
 - [Exemplo de relatorio HTML](docs/exemplo-relatorio.html) — saida real de uma execucao que falhou o SLO
 - [Medicao dos prototipos da Fase 0](docs/medicoes-fase0.md)

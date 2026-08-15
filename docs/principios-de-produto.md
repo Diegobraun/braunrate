@@ -46,7 +46,7 @@ Seis principios. Cada um nomeia um erro concreto do JMeter e a regra que adotamo
 |---|---|---|
 | 1 | YAML e a unica entrada do motor; DSL e importador produzem o mesmo modelo ([ADR 0002](adr/0002-modelo-de-cenario.md)); `importar curl` escreve YAML, nao um formato proprio | — |
 | 2 | so existe CLI; `depurar` usa o mesmo motor de `executar`, e o fim da depuracao imprime o comando de carga equivalente; `importar` imprime o `depurar` seguinte | interface grafica nao existe; quando existir, exibe o comando equivalente |
-| 3 | `captura`, `verificar` e `slo` declaram intencao; `depurar` mostra a requisicao descrita pelo protocolo, nao a struct interna; `tipo de latencia` aparece como nota em portugues; em GraphQL o usuario cola a consulta e a ferramenta decide a chave de agregacao | — |
-| 4 | tudo tem padrao: `modelo`, `nome`, `consumo`, `renovar_apos`, `verificar`, `caminho` do GraphQL; o schema documenta cada chave no editor sem ocupar espaco no arquivo | — |
+| 3 | `captura`, `verificar`, `slo` e `aguardar` declaram intencao (o usuario diz qual mensagem espera, nao como consumir o topico); `depurar` mostra a requisicao descrita pelo protocolo, nao a struct interna; `tipo de latencia` aparece como nota em portugues; em GraphQL o usuario cola a consulta e a ferramenta decide a chave de agregacao | — |
+| 4 | tudo tem padrao: `modelo`, `nome`, `consumo`, `renovar_apos`, `verificar`, `caminho` do GraphQL, `acks`, `confirmar` e `timeout` da mensageria; o schema documenta cada chave no editor | — |
 | 5 | `importar curl` grava um cenario que ja roda; exemplos versionados em `cenarios/` | gravacao de trafego por proxy nao existe |
 | 6 | `braunrate depurar`: um usuario, uma iteracao, requisicao, resposta, captura e variavel visiveis, tambem em GraphQL | assercao ainda nao aparece passo a passo na depuracao quando passa |

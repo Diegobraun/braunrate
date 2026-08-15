@@ -38,7 +38,7 @@ Dois pontos de confiabilidade entraram na fase depois da revisao da Fase 2, porq
 | 2.5 | Autoria | concluida |
 | 3 | Relatorio (com as duas camadas de texto e a prova de auto-validacao no README) | concluida |
 | 4 | GraphQL | concluida |
-| 5 | Mensageria e passo `aguardar` | pendente |
+| 5 | Mensageria e passo `aguardar` | concluida |
 | 6 | Segundo publico: DSL e importador de `.jmx` | pendente |
 | 7 | Acabamento e lancamento | pendente |
 
@@ -55,6 +55,14 @@ Entregue: protocolo `graphql` compilado no binario, com a operacao como chave de
 Fechada tambem a pendencia da Fase 3: `docs/exemplo-relatorio.html` e gerado de um resultado real congelado (`docs/exemplo-resultado.json`), com teste e passo de CI que falham se o arquivo commitado divergir do que o gerador produz hoje.
 
 **Bug encontrado e corrigido na fase**: a autenticacao guardava o contexto inteiro da primeira iteracao e o reinjetava nas seguintes, congelando os dados — toda execucao autenticada com CSV rodou sobre a primeira linha, enquanto o relatorio afirmava variedade. Detalhado no relatorio da fase, com teste de regressao ponta a ponta.
+
+## Fase 5 — Mensageria, cadeia assincrona e variedade observada
+
+Entregue: protocolos `kafka` e `amqp` com entrega confirmada e sem lote, passo `aguardar` que fecha a medicao da cadeia assincrona, processador assincrono embutido no alvo de teste, e a verificacao de variedade observada que nasceu do bug de identidade da Fase 4.
+
+Decisoes em [ADR 0007](adr/0007-variedade-observada.md) e [ADR 0008](adr/0008-mensageria-e-cadeia-assincrona.md).
+
+Os testes de mensageria rodam contra Kafka e RabbitMQ de verdade no CI, e **pulam declarando** quando nao ha broker — nunca passam sem medir.
 
 ## Prova central do produto
 
