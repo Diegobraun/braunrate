@@ -235,6 +235,9 @@ func frasesDoAmbiente(documento metrica.Documento) []string {
 			documento.Ambiente.Arquitetura, documento.Ambiente.Nucleos),
 		fmt.Sprintf("braunrate %s (%s), gerador e alvo medidos como declarado acima", documento.Versao, documento.Ambiente.VersaoDoGo),
 	}
+	for _, variedade := range documento.Variedade {
+		frases = append(frases, "Variedade observada: "+variedade.Frase+".")
+	}
 	if len(documento.Execucao.Sementes) > 0 {
 		frases = append(frases, "Sementes dos dados: "+sementes(documento.Execucao.Sementes)+" — mesma semente, mesmos dados.")
 	}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -59,6 +60,7 @@ type Motor struct {
 	opcoes       Opcoes
 	fontes       []dados.Fonte
 	autenticador *autenticacao.Gerenciador
+	coletor      atomic.Pointer[metrica.Coletor]
 }
 
 func Novo(c cenario.Cenario, opcoes Opcoes) (*Motor, error) {
@@ -132,7 +134,12 @@ func (m *Motor) RaizDeDados() string { return filepath.Clean(m.opcoes.RaizDeDado
 func (m *Motor) Executar(ctx context.Context) metrica.Documento {
 	relogio := m.opcoes.Relogio
 	inicio := relogio.Agora()
+	if err := m.prepararProtocolos(ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+	}
+
 	coletor := metrica.NovoColetor(inicio, m.opcoes.LimiarDeAtraso)
+	m.coletor.Store(coletor)
 
 	var emVoo atomic.Int64
 	var grupo sync.WaitGroup
@@ -183,6 +190,7 @@ func (m *Motor) Executar(ctx context.Context) metrica.Documento {
 		Fases:             m.fasesAplicadas(),
 		MaximoSimultaneas: m.opcoes.MaximoSimultaneas,
 		Sementes:          m.sementes(),
+		Disponibilidade:   m.disponibilidade(),
 		Autenticacoes:     m.obtencoesDeAutenticacao(),
 	})
 }
@@ -237,6 +245,7 @@ func (m *Motor) executarIteracao(ctx context.Context, usuarioVirtual int64, agen
 		}
 	}
 	coletor.RegistrarJornada(agendado, instanteDoPasso, completa)
+	coletor.RegistrarUsos(valores.Usos())
 }
 
 func (m *Motor) executarPasso(ctx context.Context, passo cenario.Passo, agendado time.Time,
@@ -280,6 +289,10 @@ func (m *Motor) executarPasso(ctx context.Context, passo cenario.Passo, agendado
 	amostra.Detalhe = resposta.Detalhe
 	observacao.Resposta = resposta
 	observacao.Duracao = amostra.InstanteDeTermino.Sub(amostra.InstanteDeEnvio)
+
+	if coletor := m.coletor.Load(); coletor != nil && len(resposta.Atributos) > 0 {
+		coletor.RegistrarUsos(resposta.Atributos)
+	}
 
 	if resposta.Chave != "" {
 		amostra.Chave = resposta.Chave
@@ -378,6 +391,55 @@ func (m *Motor) fasesAplicadas() []metrica.FaseAplicada {
 		})
 	}
 	return fases
+}
+
+func (m *Motor) prepararProtocolos(ctx context.Context) error {
+	valores := contexto.Novo(0, 0, m.cenario.Variaveis)
+	for _, passo := range m.cenario.Passos {
+		implementacao, existe := protocolo.Buscar(passo.Protocolo)
+		if !existe {
+			continue
+		}
+		preparador, precisa := implementacao.(protocolo.ProtocoloComPreparacao)
+		if !precisa {
+			continue
+		}
+		erro := preparador.Preparar(ctx, protocolo.Requisicao{
+			NomeDoPasso:  passo.Nome,
+			Configuracao: passo.Configuracao.Resolver(valores.Resolver),
+			URLBase:      m.cenario.Alvo,
+		})
+		if erro != nil {
+			return fmt.Errorf("nao consegui preparar o passo %q: %w", passo.Nome, erro)
+		}
+	}
+	return nil
+}
+
+func (m *Motor) disponibilidade() metrica.Disponibilidade {
+	disponibilidade := metrica.Disponibilidade{}
+	for _, fonte := range m.fontes {
+		for nome, quantos := range fonte.Disponiveis() {
+			disponibilidade[nome] = quantos
+		}
+	}
+	for _, nome := range protocolo.Registrados() {
+		implementacao, _ := protocolo.Buscar(nome)
+		if sabe, tem := implementacao.(protocolo.ProtocoloComDisponibilidade); tem {
+			for chave, quantos := range sabe.Disponiveis() {
+				disponibilidade[chave] = quantos
+			}
+		}
+	}
+	// O token e um so por execucao por decisao declarada (ADR 0005), entao um
+	// valor unico aqui nao e defeito: a limitacao ja aparece no bloco de
+	// ambiente, e repetir como aviso grave abafaria os avisos que importam.
+	if m.cenario.Autenticacao != nil && m.cenario.Autenticacao.Obter != nil {
+		for _, captura := range m.cenario.Autenticacao.Obter.Capturas {
+			disponibilidade[captura.Variavel] = 1
+		}
+	}
+	return disponibilidade
 }
 
 func (m *Motor) sementes() map[string]int64 {

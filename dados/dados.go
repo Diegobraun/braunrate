@@ -19,6 +19,10 @@ type Fonte interface {
 	Nome() string
 	Proximo(usuarioVirtual int64) (map[string]string, error)
 	Esgotada() bool
+	// Quantos valores distintos cada variavel pode assumir. E o que permite ao
+	// relatorio dizer que usar um valor so foi defeito, e nao um cenario que
+	// declarou um valor so. Valor negativo significa indefinido.
+	Disponiveis() map[string]int64
 }
 
 func Abrir(fonte cenario.FonteDeDados, raiz string) (Fonte, error) {
@@ -74,6 +78,20 @@ func abrirCSV(fonte cenario.FonteDeDados, raiz string) (Fonte, error) {
 }
 
 func (f *fonteCSV) Nome() string { return f.nome }
+
+func (f *fonteCSV) Disponiveis() map[string]int64 {
+	disponiveis := map[string]int64{}
+	for posicao, coluna := range f.colunas {
+		distintos := map[string]struct{}{}
+		for _, registro := range f.registros {
+			if posicao < len(registro) {
+				distintos[registro[posicao]] = struct{}{}
+			}
+		}
+		disponiveis[f.nome+"."+coluna] = int64(len(distintos))
+	}
+	return disponiveis
+}
 
 func (f *fonteCSV) Esgotada() bool { return f.esgotada.Load() }
 
@@ -136,6 +154,16 @@ func novaFonteSintetica(fonte cenario.FonteDeDados) (Fonte, error) {
 func (f *fonteSintetica) Nome() string { return f.nome }
 
 func (f *fonteSintetica) Esgotada() bool { return false }
+
+// Dado sintetico nao tem lista fechada de valores: o que se sabe e que gerar
+// sempre o mesmo valor seria defeito.
+func (f *fonteSintetica) Disponiveis() map[string]int64 {
+	disponiveis := map[string]int64{}
+	for _, campo := range f.nomesOrdenados {
+		disponiveis[f.nome+"."+campo] = -1
+	}
+	return disponiveis
+}
 
 // A semente entra no relatorio de ambiente e os campos sao gerados em ordem
 // fixa: sem as duas coisas a execucao nao e reproduzivel, e resultado nao

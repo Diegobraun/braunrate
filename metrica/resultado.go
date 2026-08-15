@@ -22,6 +22,7 @@ type Documento struct {
 	Passos          []ResultadoDePasso `json:"passos"`
 	Global          ResultadoGlobal    `json:"global"`
 	SLO             Veredito           `json:"slo"`
+	Variedade       []Variedade        `json:"variedade_observada"`
 	Avisos          []Aviso            `json:"avisos"`
 	Series          []Bucket           `json:"series_temporais"`
 }
@@ -44,6 +45,7 @@ type Execucao struct {
 	PlanoAplicado     []FaseAplicada   `json:"plano_aplicado"`
 	MaximoSimultaneas int64            `json:"maximo_de_requisicoes_simultaneas"`
 	Sementes          map[string]int64 `json:"sementes_dos_dados"`
+	Disponibilidade   Disponibilidade  `json:"valores_disponiveis_por_variavel"`
 	Autenticacoes     int64            `json:"obtencoes_de_autenticacao"`
 }
 
@@ -132,6 +134,7 @@ type EntradaDoDocumento struct {
 	Fases             []FaseAplicada
 	MaximoSimultaneas int64
 	Sementes          map[string]int64
+	Disponibilidade   Disponibilidade
 	Autenticacoes     int64
 }
 
@@ -158,6 +161,7 @@ func MontarDocumento(c *Coletor, entrada EntradaDoDocumento) Documento {
 			PlanoAplicado:     entrada.Fases,
 			MaximoSimultaneas: entrada.MaximoSimultaneas,
 			Sementes:          entrada.Sementes,
+			Disponibilidade:   entrada.Disponibilidade,
 			Autenticacoes:     entrada.Autenticacoes,
 		},
 		Agendamento: Agendamento{
@@ -203,6 +207,7 @@ func MontarDocumento(c *Coletor, entrada EntradaDoDocumento) Documento {
 	}
 	documento.Jornada.Frase = frasearJornada(documento.Jornada)
 
+	documento.Variedade = c.Variedades(entrada.Disponibilidade)
 	documento.Avisos = avaliarAvisos(c, documento)
 	return documento
 }
@@ -277,6 +282,8 @@ func avaliarAvisos(c *Coletor, documento Documento) []Aviso {
 	if aviso, houve := detectarDegradacaoDoAlvo(documento); houve {
 		avisos = append(avisos, aviso)
 	}
+
+	avisos = append(avisos, AvisosDeVariedade(documento.Variedade)...)
 
 	return avisos
 }

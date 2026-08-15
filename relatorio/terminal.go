@@ -129,6 +129,9 @@ func Resumo(saida io.Writer, documento metrica.Documento, veredito slo.Veredito)
 	escrever("  %s %s/%s, %d nucleos | braunrate %s | %s",
 		documento.Ambiente.Maquina, documento.Ambiente.SistemaOperacional, documento.Ambiente.Arquitetura,
 		documento.Ambiente.Nucleos, documento.Versao, documento.Execucao.Inicio.Format("2006-01-02 15:04:05"))
+	for _, variedade := range documento.Variedade {
+		escrever("  %s", variedade.Frase)
+	}
 	if len(documento.Execucao.Sementes) > 0 {
 		escrever("  Sementes dos dados: %s (mesma semente, mesmos dados)", sementes(documento.Execucao.Sementes))
 	}

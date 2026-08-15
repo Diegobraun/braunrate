@@ -37,6 +37,7 @@ type Coletor struct {
 	PicoEmVoo                 int64
 	LimiarDeAtraso            time.Duration
 
+	variedade         map[string]*contadorDeVariedade
 	jornadas          *hdrhistogram.Histogram
 	JornadasIniciadas int64
 	JornadasCompletas int64
@@ -52,6 +53,7 @@ func NovoColetor(inicio time.Time, limiarDeAtraso time.Duration) *Coletor {
 func NovoColetorComCapacidade(inicio time.Time, limiarDeAtraso time.Duration, capacidade int) *Coletor {
 	c := &Coletor{
 		agregados:           map[string]*Agregado{},
+		variedade:           map[string]*contadorDeVariedade{},
 		buckets:             map[int64]*Bucket{},
 		desvioDeAgendamento: hdrhistogram.New(menorLatenciaUs, maiorLatenciaUs, digitosDePrecisao),
 		jornadas:            hdrhistogram.New(menorLatenciaUs, maiorLatenciaUs, digitosDePrecisao),
@@ -150,6 +152,30 @@ func (c *Coletor) RegistrarJornada(agendado, fim time.Time, completa bool) {
 		c.JornadasCompletas++
 	}
 	gravar(c.jornadas, fim.Sub(agendado))
+}
+
+// Os usos de uma iteracao chegam juntos e sao contados fora do caminho quente
+// de histograma: e uma escrita por iteracao, nao uma por requisicao.
+func (c *Coletor) RegistrarUsos(usos map[string]string) {
+	if len(usos) == 0 {
+		return
+	}
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	for nome, valor := range usos {
+		contador, existe := c.variedade[nome]
+		if !existe {
+			contador = &contadorDeVariedade{vistos: map[string]struct{}{}}
+			c.variedade[nome] = contador
+		}
+		contador.registrar(valor)
+	}
+}
+
+func (c *Coletor) Variedades(disponivel Disponibilidade) []Variedade {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	return montarVariedades(c.variedade, disponivel)
 }
 
 func (c *Coletor) Jornadas() Distribuicao {

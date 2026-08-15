@@ -13,6 +13,7 @@ type Contexto struct {
 	Iteracao       int64
 	mutex          sync.RWMutex
 	valores        map[string]string
+	usos           map[string]string
 }
 
 func Novo(usuarioVirtual, iteracao int64, base map[string]string) *Contexto {
@@ -20,7 +21,7 @@ func Novo(usuarioVirtual, iteracao int64, base map[string]string) *Contexto {
 	for nome, valor := range base {
 		valores[nome] = valor
 	}
-	return &Contexto{UsuarioVirtual: usuarioVirtual, Iteracao: iteracao, valores: valores}
+	return &Contexto{UsuarioVirtual: usuarioVirtual, Iteracao: iteracao, valores: valores, usos: map[string]string{}}
 }
 
 func (c *Contexto) Definir(nome, valor string) {
@@ -64,6 +65,7 @@ func (c *Contexto) Resolver(texto string) string {
 		partes := padraoDeVariavel.FindStringSubmatch(ocorrencia)
 		nome, padrao := partes[1], partes[2]
 		if valor, existe := c.Valor(nome); existe {
+			c.anotarUso(nome, valor)
 			return valor
 		}
 		if valor, definida := os.LookupEnv(nome); definida {
@@ -71,6 +73,28 @@ func (c *Contexto) Resolver(texto string) string {
 		}
 		return padrao
 	})
+}
+
+// Cada substituicao feita fica anotada porque e daqui que sai a variedade
+// observada: caminho, corpo, cabecalho, variavel de GraphQL e chave de
+// mensagem passam todos por aqui, entao um so ponto cobre o cenario inteiro.
+func (c *Contexto) anotarUso(nome, valor string) {
+	c.mutex.Lock()
+	c.usos[nome] = valor
+	c.mutex.Unlock()
+}
+
+func (c *Contexto) Usos() map[string]string {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	if len(c.usos) == 0 {
+		return nil
+	}
+	copia := make(map[string]string, len(c.usos))
+	for nome, valor := range c.usos {
+		copia[nome] = valor
+	}
+	return copia
 }
 
 func NaoResolvidas(texto string) []string {
