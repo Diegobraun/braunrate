@@ -1,0 +1,25 @@
+nome: Consulta de pedidos
+alvo: http://127.0.0.1:8080
+
+variaveis:
+  tenant: ${TENANT:-acme}
+
+carga:
+  modelo: aberto
+  perfis:
+    - rampa: { de: 100/s, ate: 800/s, durante: 5s }
+    - patamar: { taxa: 800/s, durante: 10s }
+    - pico: { taxa: 2000/s, durante: 3s }
+
+cenario:
+  - http: GET /pedidos/${tenant}
+    nome: consultar pedido
+    verificar: { status: 200 }
+
+  - nome: criar pedido
+    http:
+      metodo: POST
+      caminho: /pedidos
+      cabecalhos: { X-Tenant: "${tenant}" }
+      corpo: { valor: 199.90, descricao: "assinatura mensal" }
+    verificar: { status: 200 }
