@@ -133,7 +133,7 @@ func Resumo(saida io.Writer, documento metrica.Documento, veredito slo.Veredito)
 		escrever("  %s", variedade.Frase)
 	}
 	if len(documento.Execucao.Sementes) > 0 {
-		escrever("  Sementes dos dados: %s (mesma semente, mesmos dados)", sementes(documento.Execucao.Sementes))
+		escrever("  Semente das fontes sinteticas: %s (a mesma semente gera os mesmos valores de novo)", sementes(documento.Execucao.Sementes))
 	}
 	if documento.Execucao.Autenticacoes > 0 {
 		escrever("  Autenticacao obtida %d vez(es) e reaproveitada por todas as jornadas.", documento.Execucao.Autenticacoes)

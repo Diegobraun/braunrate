@@ -39,7 +39,7 @@ Dois pontos de confiabilidade entraram na fase depois da revisao da Fase 2, porq
 | 3 | Relatorio (com as duas camadas de texto e a prova de auto-validacao no README) | concluida |
 | 4 | GraphQL | concluida |
 | 5 | Mensageria e passo `aguardar` | concluida |
-| 6 | Segundo publico: DSL e importador de `.jmx` | pendente |
+| 6 | Segundo publico: DSL e importador de `.jmx` | concluida |
 | 7 | Acabamento e lancamento | pendente |
 
 ## Fase 3 — Relatorio
@@ -63,6 +63,14 @@ Entregue: protocolos `kafka` e `amqp` com entrega confirmada e sem lote, passo `
 Decisoes em [ADR 0007](adr/0007-variedade-observada.md) e [ADR 0008](adr/0008-mensageria-e-cadeia-assincrona.md).
 
 Os testes de mensageria rodam contra Kafka e RabbitMQ de verdade no CI, e **pulam declarando** quando nao ha broker — nunca passam sem medir.
+
+## Fase 6 — Segundo publico
+
+Entregue: DSL em Go que monta o mesmo `cenario.Cenario` que o YAML monta e vai para o mesmo motor, com a equivalencia travada por teste caso a caso e por teste de cobertura (protocolo, chave de topo, origem de captura, tipo de assercao, perfil, autenticacao e consumo sem caso de equivalencia quebram o build). Decisao em [ADR 0009](adr/0009-equivalencia-entre-yaml-e-dsl.md).
+
+Entregue tambem: `importar jmx`, traducao **parcial e declarada** do plano do JMeter — requisicao HTTP, cabecalho (com credencial virando variavel de ambiente), CSVDataSet e correlacao viram cenario ou aviso; thread nunca vira taxa; o que nao foi traduzido sai listado elemento a elemento.
+
+Medido nesta fase: o teto do gerador produzindo em Kafka (15.000 msg/s confirmadas com 6 particoes, 5.000/s com uma, em loopback nesta maquina), e a deteccao de saturacao com passo de mensageria, agora coberta por teste contra broker de verdade.
 
 ## Prova central do produto
 

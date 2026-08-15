@@ -239,7 +239,7 @@ func frasesDoAmbiente(documento metrica.Documento) []string {
 		frases = append(frases, "Variedade observada: "+variedade.Frase+".")
 	}
 	if len(documento.Execucao.Sementes) > 0 {
-		frases = append(frases, "Sementes dos dados: "+sementes(documento.Execucao.Sementes)+" — mesma semente, mesmos dados.")
+		frases = append(frases, "Semente das fontes sinteticas: "+sementes(documento.Execucao.Sementes)+" — a mesma semente gera os mesmos valores de novo.")
 	}
 	if documento.Execucao.Autenticacoes > 0 {
 		frases = append(frases, fmt.Sprintf("Autenticacao obtida %d vez(es) e reaproveitada por todas as jornadas. Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.",

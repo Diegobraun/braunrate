@@ -442,9 +442,15 @@ func (m *Motor) disponibilidade() metrica.Disponibilidade {
 	return disponibilidade
 }
 
+// Semente so existe para fonte sintetica: anotar semente de um CSV sugeriria
+// que o arquivo foi sorteado, e a frase do relatorio sobre variedade e a
+// variedade observada ([ADR 0007]), nunca a semente declarada.
 func (m *Motor) sementes() map[string]int64 {
 	sementes := map[string]int64{}
 	for _, fonte := range m.cenario.Dados {
+		if !fonte.Sintetica() {
+			continue
+		}
 		semente := fonte.Semente
 		if semente == 0 {
 			semente = 1

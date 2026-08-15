@@ -119,16 +119,16 @@ Passou: as 3 regras de SLO foram atendidas.
 
 O que aconteceu
   4.750 requisicoes em 10s, 475 por segundo, 0% de erro
-  Metade das respostas em ate 4.4 ms; 95% em ate 5.1 ms; 99% em ate 5.5 ms; a pior levou 13 ms
+  Metade das respostas em ate 5.4 ms; 95% em ate 5.8 ms; 99% em ate 6.2 ms; a pior levou 14 ms
 
 A jornada inteira
-  Todas as 2375 jornadas chegaram ao fim; metade levou ate 9 ms e 95% ate 10 ms, contados do instante em que deveriam ter comecado.
-  metade 8.8 ms | 95% 10 ms | 99% 11 ms | pior 19 ms
+  Todas as 2375 jornadas chegaram ao fim; metade levou ate 11 ms e 95% ate 12 ms, contados do instante em que deveriam ter comecado.
+  metade 11 ms | 95% 12 ms | 99% 12 ms | pior 20 ms
 
 Por passo
   passo                          requisicoes    metade       95%       99%     99,9%      pior   erros
-  consultar pedido           (1)      2.375    4.4 ms    5.2 ms    5.6 ms    6.3 ms     13 ms       0
-  pagar fatura               (2)      2.375    4.4 ms    5.1 ms    5.4 ms    6.0 ms    6.8 ms       0
+  consultar pedido           (1)      2.375    5.4 ms    5.9 ms    6.3 ms     13 ms     14 ms       0
+  pagar fatura               (2)      2.375    5.3 ms    5.8 ms    6.1 ms    6.9 ms     12 ms       0
 
   (1) tempo contado do instante em que a requisicao deveria ter partido — inclui
       qualquer atraso e por isso nao esconde travada do alvo.
@@ -136,13 +136,20 @@ Por passo
       esse passo depende do valor capturado antes dele, nao existe instante
       agendado proprio. Para a leitura honesta da jornada, use "A jornada inteira".
 
+SLO
+  ok    Passou: "consultar pedido" teve latencia p95 de 6 ms, dentro do limite de 150 ms.
+  ok    Passou: "pagar fatura" teve latencia p95 de 6 ms, dentro do limite de 200 ms.
+  ok    Passou: o cenario inteiro teve taxa de erro de 0.00%, dentro do limite de 0.10%.
+
 Confiabilidade da medicao
   O gerador disparou todas as requisicoes na hora certa, entao os numeros acima valem.
-  Atraso tipico para disparar: 0.001 ms; pior caso: 0.476 ms (o tempo de resposta ja desconta isso)
+  Atraso tipico para disparar: 0.001 ms; pior caso: 5.4 ms (o tempo de resposta ja desconta isso)
 
 Ambiente
-  Mac darwin/arm64, 10 nucleos | braunrate 0.2.0 | 2026-08-15 22:59:13
-  Sementes dos dados: assinantes=1 (mesma semente, mesmos dados)
+  Mac darwin/arm64, 10 nucleos | braunrate 0.4.0 | 2026-08-16 00:54:30
+  4 valores distintos de assinantes.id em 2.375 usos
+  4 valores distintos de faturaId em 2.375 usos
+  1 unico valor de token em 2.375 usos
   Autenticacao obtida 1 vez(es) e reaproveitada por todas as jornadas.
   Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.
 ```
@@ -498,6 +505,7 @@ Tres razoes, nesta ordem:
 - [ADR 0006 — GraphQL como unidade de medida](docs/adr/0006-graphql-como-unidade-de-medida.md)
 - [ADR 0007 — variedade observada](docs/adr/0007-variedade-observada.md)
 - [ADR 0008 — mensageria e cadeia assincrona](docs/adr/0008-mensageria-e-cadeia-assincrona.md)
+- [ADR 0009 — equivalencia entre YAML e DSL](docs/adr/0009-equivalencia-entre-yaml-e-dsl.md)
 - [Schema do cenario](docs/braunrate.schema.json) — autocompletar e validacao no editor
 - [Exemplo de relatorio HTML](docs/exemplo-relatorio.html) — saida real de uma execucao que falhou o SLO
 - [Medicao dos prototipos da Fase 0](docs/medicoes-fase0.md)
