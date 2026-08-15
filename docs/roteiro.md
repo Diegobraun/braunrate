@@ -21,14 +21,21 @@ Escopo:
 
 **Criterio de aceitacao, em termos de usuario e nao de engenheiro**: uma pessoa que nunca viu o braunrate, com o binario, o schema e um exemplo, cria um cenario funcional para um endpoint autenticado **sem ler documentacao alem das mensagens da propria ferramenta**.
 
+Dois pontos de confiabilidade entraram na fase depois da revisao da Fase 2, porque afetam a credibilidade do numero:
+
+5. **Latencia do segundo passo em diante.** So o primeiro passo tem instante agendado proprio. O relatorio distingue visualmente os dois tipos com nota em portugues comum, e passa a medir o **tempo total da iteracao contado do instante agendado** — a metrica que continua honesta para a jornada inteira.
+6. **Token compartilhado.** Um token para a execucao inteira nao existe em producao. O padrao continua, com a limitacao declarada no relatorio e no README, e a evolucao registrada no [ADR 0005](adr/0005-identidade-e-token.md).
+
+**Como o criterio de aceitacao foi verificado**: o teste de deriva entre schema e parser cobre o autocompletar; `importar curl` gera cenario que o proprio parser aceita (teste); `depurar` mostra requisicao, resposta, captura e variaveis, e termina imprimindo o comando de carga; sete mensagens de erro tipicas foram checadas por teste quanto a linha, sugestao e exemplo minimo. O que **nao** foi verificado: nenhuma pessoa de fora executou o percurso ainda — isso continua pendente e so uma sessao com um QA real fecha o criterio.
+
 ## Fases
 
 | Fase | Nome | Estado |
 |---|---|---|
 | 0 | Decisao de linguagem, cenario e execucao | concluida |
 | 1 | Motor e HTTP | concluida |
-| 2 | Correlacao, dados e SLO | em andamento |
-| 2.5 | **Autoria** | nova, antes da Fase 3 |
+| 2 | Correlacao, dados e SLO | concluida |
+| 2.5 | Autoria | concluida |
 | 3 | Relatorio (com as duas camadas de texto e a prova de auto-validacao no README) | pendente |
 | 4 | GraphQL | pendente |
 | 5 | Mensageria e passo `aguardar` | pendente |

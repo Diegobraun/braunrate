@@ -44,9 +44,9 @@ Seis principios. Cada um nomeia um erro concreto do JMeter e a regra que adotamo
 
 | Principio | Onde ja vale | Onde ainda nao vale |
 |---|---|---|
-| 1 | YAML e a unica entrada do motor; DSL e importador produzem o mesmo modelo ([ADR 0002](adr/0002-modelo-de-cenario.md)) | — |
-| 2 | so existe CLI; `depurar` usa o mesmo motor de `executar` | interface grafica nao existe; quando existir, exibe o comando equivalente |
-| 3 | `captura`, `verificar` e `slo` declaram intencao; nao ha pre/post-processor | revisao de mensagens feita na Fase 2 |
-| 4 | tudo tem padrao: `modelo`, `nome`, `consumo`, `renovar_apos`, `verificar` | — |
-| 5 | exemplos versionados em `cenarios/` | `importar curl` e gravacao entram na Fase 2.5 |
-| 6 | `braunrate depurar` entra na Fase 2.5 | ainda nao existe |
+| 1 | YAML e a unica entrada do motor; DSL e importador produzem o mesmo modelo ([ADR 0002](adr/0002-modelo-de-cenario.md)); `importar curl` escreve YAML, nao um formato proprio | — |
+| 2 | so existe CLI; `depurar` usa o mesmo motor de `executar`, e o fim da depuracao imprime o comando de carga equivalente; `importar` imprime o `depurar` seguinte | interface grafica nao existe; quando existir, exibe o comando equivalente |
+| 3 | `captura`, `verificar` e `slo` declaram intencao; `depurar` mostra a requisicao descrita pelo protocolo, nao a struct interna; `tipo de latencia` aparece como nota em portugues, nao como termo do motor | — |
+| 4 | tudo tem padrao: `modelo`, `nome`, `consumo`, `renovar_apos`, `verificar`; o schema documenta cada chave no editor sem ocupar espaco no arquivo | — |
+| 5 | `importar curl` grava um cenario que ja roda; exemplos versionados em `cenarios/` | gravacao de trafego por proxy nao existe |
+| 6 | `braunrate depurar`: um usuario, uma iteracao, requisicao, resposta, captura e variavel visiveis | assercao ainda nao aparece passo a passo na depuracao quando passa |
