@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Diegobraun/braunrate/protocolo"
+	_ "github.com/Diegobraun/braunrate/protocolo/graphql"
 	_ "github.com/Diegobraun/braunrate/protocolo/http"
 )
 

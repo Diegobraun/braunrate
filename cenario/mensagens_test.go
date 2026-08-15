@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	_ "github.com/Diegobraun/braunrate/protocolo/graphql"
 	_ "github.com/Diegobraun/braunrate/protocolo/http"
 )
 

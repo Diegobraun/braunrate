@@ -20,6 +20,7 @@ const (
 	ErroDeCorrelacao ClasseDeErro = "correlacao"
 	ErroDeConfigacao ClasseDeErro = "configuracao"
 	ErroDeSaturacao  ClasseDeErro = "saturacao"
+	ErroDeGraphQL    ClasseDeErro = "graphql"
 )
 
 type Configuracao interface {

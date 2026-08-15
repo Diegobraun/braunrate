@@ -7,15 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"net/http/cookiejar"
-	"net/url"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/Diegobraun/braunrate/protocolo"
+	"github.com/Diegobraun/braunrate/protocolo/transporte"
 	"gopkg.in/yaml.v3"
 )
 
@@ -71,7 +69,7 @@ func (c *Configuracao) Descrever() []string {
 	}
 	sort.Strings(nomes)
 	for _, nome := range nomes {
-		linhas = append(linhas, fmt.Sprintf("%s: %s", nome, esconderSegredo(nome, c.Cabecalhos[nome])))
+		linhas = append(linhas, fmt.Sprintf("%s: %s", nome, transporte.EsconderSegredo(nome, c.Cabecalhos[nome])))
 	}
 	if c.TipoDeConteudo != "" {
 		linhas = append(linhas, "Content-Type: "+c.TipoDeConteudo)
@@ -85,60 +83,13 @@ func (c *Configuracao) Descrever() []string {
 	return linhas
 }
 
-// Token e senha aparecem cortados: a saida de depuracao costuma ir parar em
-// ticket e em captura de tela.
-func esconderSegredo(nome, valor string) string {
-	nomeMinusculo := strings.ToLower(nome)
-	if nomeMinusculo != "authorization" && !strings.Contains(nomeMinusculo, "token") &&
-		!strings.Contains(nomeMinusculo, "senha") && !strings.Contains(nomeMinusculo, "secret") {
-		return valor
-	}
-	prefixo, resto, encontrou := strings.Cut(valor, " ")
-	if !encontrou {
-		prefixo, resto = "", valor
-	}
-	if len(resto) <= 6 {
-		return strings.TrimSpace(prefixo + " ***")
-	}
-	return strings.TrimSpace(prefixo + " " + resto[:6] + "… (" + fmt.Sprint(len(resto)) + " caracteres)")
-}
-
 type Protocolo struct {
 	cliente *http.Client
 	opcoes  protocolo.Opcoes
 }
 
 func Novo(opcoes protocolo.Opcoes) *Protocolo {
-	transporte := &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		MaxIdleConns:          0,
-		MaxIdleConnsPerHost:   65536,
-		MaxConnsPerHost:       opcoes.ConexoesPorDestino,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: time.Second,
-		ForceAttemptHTTP2:     true,
-	}
-	cliente := &http.Client{Transport: transporte, Timeout: opcoes.Timeout}
-	if opcoes.ManterCookies {
-		if jarra, err := cookiejar.New(nil); err == nil {
-			cliente.Jar = jarra
-		}
-	}
-	if !opcoes.SeguirRedirect {
-		cliente.CheckRedirect = func(*http.Request, []*http.Request) error {
-			return http.ErrUseLastResponse
-		}
-	} else {
-		maximo := opcoes.MaximoDeRedirects
-		cliente.CheckRedirect = func(_ *http.Request, anteriores []*http.Request) error {
-			if len(anteriores) >= maximo {
-				return fmt.Errorf("mais de %d redirects", maximo)
-			}
-			return nil
-		}
-	}
-	return &Protocolo{cliente: cliente, opcoes: opcoes}
+	return &Protocolo{cliente: transporte.NovoCliente(opcoes), opcoes: opcoes}
 }
 
 func (p *Protocolo) Nome() string { return "http" }
@@ -235,7 +186,7 @@ func (p *Protocolo) Executar(ctx context.Context, requisicao protocolo.Requisica
 		return protocolo.Resposta{Classe: protocolo.ErroDeConfigacao, Detalhe: "configuracao nao e de http"}
 	}
 
-	endereco, err := montarURL(requisicao.URLBase, configuracao.Caminho)
+	endereco, err := transporte.MontarURL(requisicao.URLBase, configuracao.Caminho)
 	if err != nil {
 		return protocolo.Resposta{Classe: protocolo.ErroDeConfigacao, Detalhe: err.Error()}
 	}
@@ -264,13 +215,13 @@ func (p *Protocolo) Executar(ctx context.Context, requisicao protocolo.Requisica
 
 	resposta, err := p.cliente.Do(pedido)
 	if err != nil {
-		return protocolo.Resposta{Classe: classificar(err), Detalhe: resumirErro(err)}
+		return protocolo.Resposta{Classe: transporte.Classificar(err), Detalhe: transporte.ResumirErro(err)}
 	}
 	defer resposta.Body.Close()
 
 	conteudo, err := io.ReadAll(resposta.Body)
 	if err != nil {
-		return protocolo.Resposta{Status: resposta.StatusCode, Classe: classificar(err), Detalhe: resumirErro(err)}
+		return protocolo.Resposta{Status: resposta.StatusCode, Classe: transporte.Classificar(err), Detalhe: transporte.ResumirErro(err)}
 	}
 
 	classe := protocolo.Sucesso
@@ -288,48 +239,4 @@ func (p *Protocolo) Executar(ctx context.Context, requisicao protocolo.Requisica
 		Classe:     classe,
 		Detalhe:    detalhe,
 	}
-}
-
-func montarURL(base, caminho string) (string, error) {
-	if strings.HasPrefix(caminho, "http://") || strings.HasPrefix(caminho, "https://") {
-		return caminho, nil
-	}
-	if base == "" {
-		return "", fmt.Errorf("passo com caminho relativo %q e cenario sem alvo", caminho)
-	}
-	enderecoBase, err := url.Parse(base)
-	if err != nil {
-		return "", fmt.Errorf("alvo invalido: %q", base)
-	}
-	relativo, err := url.Parse(caminho)
-	if err != nil {
-		return "", fmt.Errorf("caminho invalido: %q", caminho)
-	}
-	return enderecoBase.ResolveReference(relativo).String(), nil
-}
-
-func classificar(err error) protocolo.ClasseDeErro {
-	if errors.Is(err, context.DeadlineExceeded) {
-		return protocolo.ErroDeTimeout
-	}
-	var erroDeRede net.Error
-	if errors.As(err, &erroDeRede) && erroDeRede.Timeout() {
-		return protocolo.ErroDeTimeout
-	}
-	return protocolo.ErroDeRede
-}
-
-func resumirErro(err error) string {
-	texto := err.Error()
-	for _, padrao := range []string{"connection refused", "connection reset", "no such host",
-		"too many open files", "cannot assign requested address", "context deadline exceeded",
-		"EOF", "broken pipe"} {
-		if strings.Contains(texto, padrao) {
-			return padrao
-		}
-	}
-	if len(texto) > 120 {
-		return texto[:120]
-	}
-	return texto
 }

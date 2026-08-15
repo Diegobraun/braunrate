@@ -100,7 +100,7 @@ func Resumo(saida io.Writer, documento metrica.Documento, veredito slo.Veredito)
 	if len(erros) > 0 {
 		escrever("Erros")
 		for _, linha := range erros {
-			escrever("  %-32s %s", linha.classe, milhar(linha.quantidade))
+			escrever("  %-50s %s", linha.classe, milhar(linha.quantidade))
 		}
 		escrever("")
 	}
@@ -165,6 +165,7 @@ var nomeDeClasse = map[string]string{
 	"correlacao":   "nao consegui capturar um valor",
 	"configuracao": "erro de configuracao do cenario",
 	"saturacao":    "gerador saturado",
+	"graphql":      "erro no corpo da resposta GraphQL (com status 200)",
 }
 
 func errosPorClasse(documento metrica.Documento) []linhaDeErro {

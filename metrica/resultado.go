@@ -321,6 +321,8 @@ func ClasseLegivel(classe protocolo.ClasseDeErro) string {
 		return "correlacao perdida"
 	case protocolo.ErroDeSaturacao:
 		return "saturacao do gerador"
+	case protocolo.ErroDeGraphQL:
+		return "erro no corpo da resposta GraphQL"
 	default:
 		return string(classe)
 	}

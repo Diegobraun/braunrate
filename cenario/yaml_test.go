@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Diegobraun/braunrate/cenario"
+	_ "github.com/Diegobraun/braunrate/protocolo/graphql"
 	_ "github.com/Diegobraun/braunrate/protocolo/http"
 )
 

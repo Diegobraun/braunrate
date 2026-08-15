@@ -235,6 +235,20 @@
         },
         "espera": {
           "$ref": "#/$defs/verificar"
+        },
+        "graphql": {
+          "description": "Operacao GraphQL. A consulta pode vir sozinha (o nome da operacao sai dela) ou dentro de um mapa com variaveis.",
+          "oneOf": [
+            {
+              "type": "string",
+              "examples": [
+                "query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }"
+              ]
+            },
+            {
+              "$ref": "#/$defs/graphql"
+            }
+          ]
         }
       }
     },
@@ -507,6 +521,61 @@
         "> 250/s",
         "< 0.1"
       ]
+    },
+    "graphql": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "consulta": {
+          "type": "string",
+          "description": "Texto da operacao. O nome dela vira a linha do relatorio, entao nao use operacao anonima."
+        },
+        "query": {
+          "type": "string",
+          "description": "Mesmo que consulta."
+        },
+        "operacao": {
+          "type": "string",
+          "description": "Nome da operacao. So precisa quando a consulta traz mais de uma.",
+          "examples": [
+            "ConsultarPedido"
+          ]
+        },
+        "variaveis": {
+          "description": "Variaveis da operacao. Aceita ${dados.coluna} e valores capturados.",
+          "type": [
+            "object",
+            "string"
+          ],
+          "examples": [
+            {
+              "id": "${assinantes.id}"
+            }
+          ]
+        },
+        "caminho": {
+          "type": "string",
+          "default": "/graphql",
+          "description": "Endpoint GraphQL. O padrao serve para quase todo servico."
+        },
+        "url": {
+          "type": "string",
+          "description": "Mesmo que caminho."
+        },
+        "cabecalhos": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "timeout": {
+          "$ref": "#/$defs/duracao"
+        }
+      }
     }
   }
 }

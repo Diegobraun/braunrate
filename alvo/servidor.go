@@ -56,6 +56,7 @@ func (s *Servidor) Iniciar(endereco string) error {
 	mux.HandleFunc("/auth/token", s.envolver(s.tratarToken))
 	mux.HandleFunc("/pedidos/", s.envolver(s.exigirToken(s.tratarPedido)))
 	mux.HandleFunc("/faturas/", s.envolver(s.exigirToken(s.tratarPagamento)))
+	mux.HandleFunc("/graphql", s.envolver(s.exigirToken(s.tratarGraphQL)))
 	mux.HandleFunc("/saude", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.HandleFunc("/congelar", s.tratarCongelamento)
 	s.servidor = &http.Server{Handler: mux}

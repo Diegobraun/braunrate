@@ -20,6 +20,7 @@ import (
 	"github.com/Diegobraun/braunrate/metrica"
 	"github.com/Diegobraun/braunrate/motor"
 	"github.com/Diegobraun/braunrate/protocolo"
+	_ "github.com/Diegobraun/braunrate/protocolo/graphql"
 	_ "github.com/Diegobraun/braunrate/protocolo/http"
 	"github.com/Diegobraun/braunrate/relatorio"
 	"github.com/Diegobraun/braunrate/slo"
