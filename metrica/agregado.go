@@ -14,7 +14,18 @@ const (
 	digitosDePrecisao = 3
 )
 
+type TipoDeLatencia string
+
+const (
+	// O passo que abre a iteracao conta do instante agendado, entao esta
+	// protegido contra omissao coordenada. Os seguintes contam de quando o
+	// passo anterior terminou — nao existe instante agendado para eles.
+	LatenciaCorrigida TipoDeLatencia = "corrigida"
+	LatenciaDeServico TipoDeLatencia = "servico"
+)
+
 type Amostra struct {
+	TipoDeLatencia    TipoDeLatencia
 	Passo             string
 	Chave             string
 	Protocolo         string
@@ -39,6 +50,7 @@ type Agregado struct {
 	Passo             string
 	Chave             string
 	Protocolo         string
+	TipoDeLatencia    TipoDeLatencia
 	latenciaCorrigida *hdrhistogram.Histogram
 	latenciaDeServico *hdrhistogram.Histogram
 	Contagem          int64
@@ -63,6 +75,9 @@ func NovoAgregado(passo, chave, nomeDoProtocolo string) *Agregado {
 }
 
 func (a *Agregado) Registrar(amostra Amostra) {
+	if a.TipoDeLatencia == "" {
+		a.TipoDeLatencia = amostra.TipoDeLatencia
+	}
 	a.Contagem++
 	a.Bytes += amostra.Bytes
 	if amostra.Status > 0 {

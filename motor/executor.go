@@ -90,6 +90,41 @@ func Novo(c cenario.Cenario, opcoes Opcoes) (*Motor, error) {
 
 func (m *Motor) Plano() Plano { return m.plano }
 
+// Depurar roda uma unica iteracao pelo mesmo caminho da carga: mesmo motor,
+// mesma resolucao de variavel, mesma captura. So a carga muda.
+func (m *Motor) Depurar(ctx context.Context) ([]Observacao, map[string]string, error) {
+	valores := contexto.Novo(0, 0, m.cenario.Variaveis)
+
+	for _, fonte := range m.fontes {
+		registro, err := fonte.Proximo(0)
+		if err != nil {
+			return nil, valores.Valores(), err
+		}
+		valores.DefinirVarios(registro)
+	}
+
+	var cabecalhoDeAutenticacao [2]string
+	if m.autenticador != nil {
+		nome, valor, err := m.autenticador.Cabecalho(ctx, valores)
+		if err != nil {
+			return nil, valores.Valores(), err
+		}
+		cabecalhoDeAutenticacao = [2]string{nome, valor}
+	}
+
+	var observacoes []Observacao
+	instante := m.opcoes.Relogio.Agora()
+	for _, passo := range m.cenario.Passos {
+		amostra, observacao := m.executarPasso(ctx, passo, instante, valores, cabecalhoDeAutenticacao)
+		observacoes = append(observacoes, observacao)
+		instante = amostra.InstanteDeTermino
+		if amostra.Classe != protocolo.Sucesso {
+			break
+		}
+	}
+	return observacoes, valores.Valores(), nil
+}
+
 func (m *Motor) Cenario() cenario.Cenario { return m.cenario }
 
 func (m *Motor) RaizDeDados() string { return filepath.Clean(m.opcoes.RaizDeDados) }
@@ -186,14 +221,22 @@ func (m *Motor) executarIteracao(ctx context.Context, usuarioVirtual int64, agen
 	}
 
 	instanteDoPasso := agendado
-	for _, passo := range m.cenario.Passos {
+	completa := true
+	for indice, passo := range m.cenario.Passos {
 		amostra, _ := m.executarPasso(ctx, passo, instanteDoPasso, valores, cabecalhoDeAutenticacao)
+		if indice == 0 {
+			amostra.TipoDeLatencia = metrica.LatenciaCorrigida
+		} else {
+			amostra.TipoDeLatencia = metrica.LatenciaDeServico
+		}
 		coletor.Registrar(amostra)
 		instanteDoPasso = amostra.InstanteDeTermino
 		if amostra.Classe != protocolo.Sucesso {
-			return
+			completa = false
+			break
 		}
 	}
+	coletor.RegistrarJornada(agendado, instanteDoPasso, completa)
 }
 
 func (m *Motor) executarPasso(ctx context.Context, passo cenario.Passo, agendado time.Time,

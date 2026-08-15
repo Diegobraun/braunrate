@@ -50,14 +50,37 @@ func Resumo(saida io.Writer, documento metrica.Documento, veredito slo.Veredito)
 		milissegundos(global.Latencia.P99), milissegundos(global.Latencia.Maximo))
 	escrever("")
 
+	if documento.Jornada.Iniciadas > 0 {
+		escrever("A jornada inteira")
+		escrever("  %s", documento.Jornada.Frase)
+		escrever("  metade %s | 95%% %s | 99%% %s | pior %s",
+			milissegundos(documento.Jornada.Latencia.P50), milissegundos(documento.Jornada.Latencia.P95),
+			milissegundos(documento.Jornada.Latencia.P99), milissegundos(documento.Jornada.Latencia.Maximo))
+		escrever("")
+	}
+
 	escrever("Por passo")
-	escrever("  %-28s %10s %9s %9s %9s %9s %9s %7s", "passo", "requisicoes", "metade", "95%", "99%", "99,9%", "pior", "erros")
+	escrever("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7s", "passo", "", "requisicoes", "metade", "95%", "99%", "99,9%", "pior", "erros")
+	temPassoDeServico := false
 	for _, passo := range documento.Passos {
-		escrever("  %-28s %10s %9s %9s %9s %9s %9s %7d",
-			cortar(passo.Nome, 28), milhar(passo.Contagem),
+		marca := "(1)"
+		if passo.TipoDeLatencia == string(metrica.LatenciaDeServico) {
+			marca = "(2)"
+			temPassoDeServico = true
+		}
+		escrever("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7d",
+			cortar(passo.Nome, 26), marca, milhar(passo.Contagem),
 			milissegundos(passo.Latencia.P50), milissegundos(passo.Latencia.P95),
 			milissegundos(passo.Latencia.P99), milissegundos(passo.Latencia.P999),
 			milissegundos(passo.Latencia.Maximo), passo.Erros)
+	}
+	escrever("")
+	escrever("  (1) tempo contado do instante em que a requisicao deveria ter partido — inclui")
+	escrever("      qualquer atraso e por isso nao esconde travada do alvo.")
+	if temPassoDeServico {
+		escrever("  (2) tempo de resposta puro, contado de quando o passo anterior terminou. Como")
+		escrever("      esse passo depende do valor capturado antes dele, nao existe instante")
+		escrever("      agendado proprio. Para a leitura honesta da jornada, use \"A jornada inteira\".")
 	}
 	escrever("")
 
@@ -110,7 +133,8 @@ func Resumo(saida io.Writer, documento metrica.Documento, veredito slo.Veredito)
 		escrever("  Sementes dos dados: %s (mesma semente, mesmos dados)", sementes(documento.Execucao.Sementes))
 	}
 	if documento.Execucao.Autenticacoes > 0 {
-		escrever("  Autenticacao obtida %d vez(es) durante a execucao", documento.Execucao.Autenticacoes)
+		escrever("  Autenticacao obtida %d vez(es) e reaproveitada por todas as jornadas.", documento.Execucao.Autenticacoes)
+		escrever("  Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.")
 	}
 	escrever("")
 }

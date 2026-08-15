@@ -37,6 +37,10 @@ type Coletor struct {
 	PicoEmVoo                 int64
 	LimiarDeAtraso            time.Duration
 
+	jornadas          *hdrhistogram.Histogram
+	JornadasIniciadas int64
+	JornadasCompletas int64
+
 	entrada chan Amostra
 	pronto  chan struct{}
 }
@@ -50,6 +54,7 @@ func NovoColetorComCapacidade(inicio time.Time, limiarDeAtraso time.Duration, ca
 		agregados:           map[string]*Agregado{},
 		buckets:             map[int64]*Bucket{},
 		desvioDeAgendamento: hdrhistogram.New(menorLatenciaUs, maiorLatenciaUs, digitosDePrecisao),
+		jornadas:            hdrhistogram.New(menorLatenciaUs, maiorLatenciaUs, digitosDePrecisao),
 		inicio:              inicio,
 		LimiarDeAtraso:      limiarDeAtraso,
 		entrada:             make(chan Amostra, capacidade),
@@ -133,6 +138,24 @@ func (c *Coletor) RegistrarDespacho(agendado, despacho time.Time, taxaAlvo float
 	bucket := c.bucketDe(agendado)
 	bucket.Enviadas++
 	bucket.TaxaAlvo = taxaAlvo
+}
+
+// A jornada e a unica metrica que continua contada do instante agendado do
+// inicio ao fim: e a que vale para a experiencia do usuario final.
+func (c *Coletor) RegistrarJornada(agendado, fim time.Time, completa bool) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.JornadasIniciadas++
+	if completa {
+		c.JornadasCompletas++
+	}
+	gravar(c.jornadas, fim.Sub(agendado))
+}
+
+func (c *Coletor) Jornadas() Distribuicao {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	return distribuicaoDe(c.jornadas)
 }
 
 func (c *Coletor) RegistrarDescartePorLimiteDeVoo() {

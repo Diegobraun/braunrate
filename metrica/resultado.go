@@ -18,6 +18,7 @@ type Documento struct {
 	Ambiente        Ambiente           `json:"ambiente"`
 	Execucao        Execucao           `json:"execucao"`
 	Agendamento     Agendamento        `json:"agendamento"`
+	Jornada         Jornada            `json:"jornada"`
 	Passos          []ResultadoDePasso `json:"passos"`
 	Global          ResultadoGlobal    `json:"global"`
 	Avisos          []Aviso            `json:"avisos"`
@@ -63,8 +64,16 @@ type Agendamento struct {
 	Desvio                    Distribuicao `json:"desvio_de_agendamento"`
 }
 
+type Jornada struct {
+	Iniciadas int64        `json:"iniciadas"`
+	Completas int64        `json:"completas"`
+	Latencia  Distribuicao `json:"latencia_corrigida"`
+	Frase     string       `json:"frase"`
+}
+
 type ResultadoDePasso struct {
 	Nome              string           `json:"nome"`
+	TipoDeLatencia    string           `json:"tipo_de_latencia"`
 	Chave             string           `json:"chave"`
 	Protocolo         string           `json:"protocolo"`
 	Contagem          int64            `json:"contagem"`
@@ -186,6 +195,13 @@ func MontarDocumento(c *Coletor, entrada EntradaDoDocumento) Documento {
 		documento.Global.TaxaEfetiva = float64(global.Contagem) / duracao
 	}
 
+	documento.Jornada = Jornada{
+		Iniciadas: c.JornadasIniciadas,
+		Completas: c.JornadasCompletas,
+		Latencia:  c.Jornadas(),
+	}
+	documento.Jornada.Frase = frasearJornada(documento.Jornada)
+
 	documento.Avisos = avaliarAvisos(c, documento)
 	return documento
 }
@@ -201,6 +217,7 @@ func converterPasso(a *Agregado) ResultadoDePasso {
 	}
 	return ResultadoDePasso{
 		Nome:              a.Passo,
+		TipoDeLatencia:    string(a.TipoDeLatencia),
 		Chave:             a.Chave,
 		Protocolo:         a.Protocolo,
 		Contagem:          a.Contagem,
@@ -306,4 +323,16 @@ func ClasseLegivel(classe protocolo.ClasseDeErro) string {
 	default:
 		return string(classe)
 	}
+}
+
+func frasearJornada(jornada Jornada) string {
+	if jornada.Iniciadas == 0 {
+		return "Nenhuma jornada foi executada."
+	}
+	if jornada.Completas < jornada.Iniciadas {
+		return fmt.Sprintf("%d de %d jornadas chegaram ao fim; metade delas levou ate %.0f ms e 95%% ate %.0f ms, contados do instante em que deveriam ter comecado.",
+			jornada.Completas, jornada.Iniciadas, jornada.Latencia.P50, jornada.Latencia.P95)
+	}
+	return fmt.Sprintf("Todas as %d jornadas chegaram ao fim; metade levou ate %.0f ms e 95%% ate %.0f ms, contados do instante em que deveriam ter comecado.",
+		jornada.Iniciadas, jornada.Latencia.P50, jornada.Latencia.P95)
 }
