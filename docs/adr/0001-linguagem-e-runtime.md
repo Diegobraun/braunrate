@@ -11,7 +11,9 @@ O estudo (§9.1) deixa a escolha em aberto entre JVM com virtual threads — que
 
 Dois prototipos descartaveis de ~200 linhas resolveram o mesmo problema minimo (chegada aberta, HDR histogram, latencia contada do instante agendado, deteccao de back-pressure) contra o mesmo alvo, na mesma maquina. Metodologia, ambiente e limites do experimento em [medicoes-fase0.md](../medicoes-fase0.md).
 
-## Numeros que decidiram
+## Numeros medidos
+
+A tabela e o que a bateria produziu. Quais destes numeros efetivamente sustentam a decisao, e quais nao sustentam, esta em [Decisao](#decisao) — a primeira versao deste ADR dava peso alto a criterios que nao aguentam o peso.
 
 | Criterio | Java 25 (virtual threads) | Go 1.26 (goroutines) | Razao |
 |---|---|---|---|
@@ -22,53 +24,68 @@ Dois prototipos descartaveis de ~200 linhas resolveram o mesmo problema minimo (
 | RSS sob carga a 10.000/s | 596,8 MB (G1) / 2.003,8 MB (ZGC) | 30,1 MB | 20x a 66x |
 | Startup ate apto a gerar carga | 587,2 ± 27,8 ms | 42,8 ± 0,9 ms | 14x |
 | Custo marginal de CPU por requisicao | 122 us | 76 us | 1,6x |
-| Modo de falha ao saturar | espiral: 364 mil a 970 mil requisicoes em voo, 686 mil `Too many open files`, RSS 1,6 GB | degradacao com 0 erros ate o teto; acima dele a execucao as vezes nao conclui, sem causa identificada | qualitativo |
+| Modo de falha ao saturar | espiral: 364 mil a 970 mil requisicoes em voo, 686 mil `Too many open files`, RSS 1,6 GB | degradacao com 0 erros ate o teto; acima dele a execucao as vezes nao conclui, sem causa identificada | comparacao invalida: nenhum dos dois prototipos tinha limite de voo explicito |
 
-O numero mais importante nao e a vazao: e o **desvio de agendamento**. Uma ferramenta cuja tese e "latencia contada do instante agendado" nao pode errar o instante agendado em 3 ms enquanto mede um alvo de 5 ms — o erro do instrumento fica na mesma ordem de grandeza do fenomeno medido.
+### Qual coletor produziu cada numero
 
-**A causa do desvio no Java e pausa de GC, e ZGC corrige a maior parte dela**: a 5.000/s o p99 cai de 1.218 us para 5 us, e a 10.000/s de 2.936 us para 255 us. Isso reduz a vantagem do Go nesse eixo de ~1.000x para ~85x, e cobra RSS: 2.003 MB sob carga a 10.000/s, contra 30 MB do Go. Ou seja: **Java com ZGC seria viavel**, e a decisao nao pode se apoiar so nesse eixo.
+A bateria de taxa rodou o Java com o coletor **padrao do JDK 25, o G1**. A bateria de coletor cobriu apenas **5.000/s e 10.000/s** — nunca as taxas em que o Java colapsou. Logo: **a taxa maxima sustentada do Java (10.000/s) esta subestimada**, porque foi medida na configuracao com pior desvio de agendamento e sem ZGC. Nao refizemos a bateria: a decisao nao muda e o custo nao se paga. Fica registrado que o numero e um piso, nao um teto.
 
-O segundo criterio, e onde a diferenca nao tem ajuste que resolva, e o **modo de falha**. Quando o Java nao acompanha, ele nao degrada: entra em espiral, porque cada requisicao atrasada segura uma conexao, e `java.net.http.HttpClient` em HTTP/1.1 abre conexao nova para cada requisicao concorrente. O resultado e exaustao de descritores de arquivo e uma execucao inteira invalidada. Para uma ferramenta de medicao isso e pior do que ser lenta.
+### O teto de taxa mede o par gerador+alvo, nao o gerador
 
-O prototipo Go tambem tem um limite mal explicado: acima de ~30.000/s, algumas execucoes travam sem produzir saida. Isso esta declarado em [medicoes-fase0.md](../medicoes-fase0.md) §3 e nao foi resolvido — nao muda a comparacao, porque acontece a 3x a taxa em que o Java ja colapsou, mas entra como risco conhecido para a Fase 1.
+O diagnostico a 40.000/s mostra o processo alvo consumindo **214,9% de CPU** (2,1 dos 10 nucleos), zero erro e 211 requisicoes em voo no gerador. Ou seja: nas taxas altas quem estava perto da saturacao era o alvo local, que divide a mesma maquina. **Os valores de 10.000/s e 30.000/s medem o par, nao a capacidade do gerador.** Qualquer numero de taxa maxima desta fase deve ser lido assim; corrigir isso e item da Fase 1 (alvo externo ou muito mais barato).
 
 ## Decisao
 
 **Go.**
 
-Peso de cada criterio, incluindo os que nao sao medicao:
+### Os dois criterios que sustentam a decisao
 
-| Criterio | Peso | Vencedor | Observacao |
-|---|---|---|---|
-| Precisao de agendamento | alto | Go | e a tese do produto |
-| Modo de falha sob saturacao | alto | Go | espiral do Java invalida a execucao |
-| Distribuicao do binario | alto | Go | binario estatico por plataforma; o alvo e CI e maquina de QA, nao servidor com JVM instalada |
-| Custo de recursos (RSS, startup) | medio | Go | importa em CI e em execucao distribuida futura |
-| Vazao sustentada | medio | Go | 3x com cliente padrao dos dois lados |
-| Ergonomia da DSL para o publico dev | medio | **Java** | DSL fluente com autocomplete e integracao JUnit e melhor em Java; em Go a DSL vira pacote com builders e `go test` |
-| Ecossistema Kafka e AMQP | medio | **Java** | clientes oficiais e maduros; Go tem `franz-go` e `rabbitmq/amqp091-go`, suficientes, mas Avro e Schema Registry sao mais fracos |
-| SPI de protocolo em runtime | baixo | **Java** | `ServiceLoader` resolve; `plugin` do Go e inviavel na pratica — protocolo entra compilado, como no k6 |
-| Custo de GraalVM | — | — | `native-image` corrigiria startup e RSS, mas nao o desvio de agendamento, e adiciona toolchain, tempo de build e configuracao de reflexao para clientes Kafka |
+| Criterio | Numero | Por que e material |
+|---|---|---|
+| **RSS sob carga** | 30 MB no Go contra 597 MB no Java (G1) a 10.000/s; 2.004 MB com ZGC | O gerador roda em runner de CI com limite de memoria e em pod de cluster. Um gerador que pede 2 GB para gerar 10 mil requisicoes por segundo restringe onde o teste pode rodar — e isso muda o produto, nao so o benchmark. |
+| **Binario unico estatico** | um arquivo por plataforma, sem runtime instalado | Para o publico de QA, instalar e baixar um arquivo. Vale mais que qualquer numero de vazao: e a diferenca entre a ferramenta ser adotada e ficar num README. |
 
-Go perde em tres criterios reais, todos de custo de desenvolvimento nosso. Ganha nos criterios que o usuario sente: precisao da medicao, comportamento sob saturacao, e um binario que roda sem instalar runtime.
+Nada alem disso sustenta a escolha. O que segue e a lista do que **nao** sustenta, apesar de ter aparecido com peso alto na primeira versao deste ADR.
+
+### O que NAO sustenta a decisao
+
+| Criterio | Numero medido | Por que nao conta |
+|---|---|---|
+| **Startup** | 587 ms contra 43 ms | **Nao-criterio.** Um teste de carga roda minutos. Meio segundo no inicio de uma execucao de 5 minutos e 0,17% do tempo. Nao muda nada para ninguem. |
+| **Precisao de agendamento** | 3.077 us (G1) / **255 us (ZGC)** contra 3 us | **Nao-criterio apos ZGC.** 255 us e 0,2% de um sinal medido em dezenas de milissegundos. Nao e perceptivel pelo usuario e nao move percentil de relatorio. O eixo so parecia decisivo enquanto o Java estava com G1. |
+| **Modo de falha sob saturacao** | 364 mil em voo e 686 mil `Too many open files` no Java, contra 211 em voo no Go | **Possivel artefato dos prototipos, nao evidencia.** O prototipo Java nao tinha limite de concorrencia em voo; o Go, na pratica, se manteve em 8.031 goroutines e 211 em voo. Comparamos dois harness diferentes, nao dois runtimes. Sem limite de voo dos dois lados, esse numero nao prova nada sobre a JVM. |
+| **Taxa maxima sustentada** | 10.000/s contra 30.000/s | Limitado pelo alvo, como registrado acima; e medido no Java so com G1. Serve de sinal, nao de prova. |
+
+### Criterios em que Go perde, e que aceitamos
+
+| Criterio | Vencedor | Custo aceito |
+|---|---|---|
+| Ergonomia da DSL para o publico dev | Java | DSL fluente com autocomplete e integracao JUnit e melhor em Java. Em Go a DSL vira pacote com builders e `go test`. Ver [ADR 0002](0002-modelo-de-cenario.md) §6 para quem e o publico de cada construtor. |
+| Ecossistema Kafka e AMQP | Java | `franz-go` e `rabbitmq/amqp091-go` dao conta do escopo priorizado; Avro e Schema Registry sao mais fracos. Ver [ADR 0004](0004-extensao-de-protocolo.md). |
+| Extensao de protocolo em runtime | Java | `ServiceLoader` resolveria; em Go o protocolo entra compilado. Herdamos a friccao do k6 e declaramos isso. Ver [ADR 0004](0004-extensao-de-protocolo.md). |
+
+### A tese de concorrencia barata continua valendo — por outro caminho
+
+A tese de "codigo de cenario linear e bloqueante com concorrencia alta" nasceu como argumento **contra Gatling e contra codigo reativo**, nao contra Go. Escrever cenario com callback, `Flux` ou `CompletableFuture` e o que torna teste de carga ilegivel para quem nao e especialista — e virtual threads eram a resposta da JVM a isso.
+
+Esse sempre foi o modelo nativo do Go: goroutine com codigo sequencial e bloqueante e o jeito normal de escrever, nao um recurso novo. **Escolher Go satisfaz a tese por outro caminho, nao a abandona.** O que muda e de onde vem a concorrencia barata, nao a forma do codigo do cenario.
 
 ### O que aceitamos junto com a decisao
 
-1. **Protocolo novo entra compilado**, nao carregado em runtime. O estudo (§3.9) critica exatamente isso no k6. Mitigacao: o registro de protocolos e uma interface pequena e estavel (ADR 0003 §3), e `braunrate` pode ser reconstruido com protocolos extras sem tocar no motor. SPI em runtime volta a ser avaliada se virar demanda real.
-2. **DSL em Go e menos elegante** que uma DSL Java. Mitigacao: o YAML e a interface principal (ADR 0002); a DSL existe para o caso complexo e ganha tipagem e `go test`, nao fluencia maxima.
-3. **Avro e Schema Registry** ficam mais caros. Estao em "desejavel (depois)" no backlog do estudo — nao bloqueia a v1.
-4. **hdrhistogram-go nao e seguro para escrita concorrente.** O prototipo mostrou o custo do mutex. No produto, a instrumentacao usa histograma por worker com merge periodico — que e exatamente o que a arquitetura mergeavel do ADR 0003 ja exige.
+1. **Protocolo novo entra compilado.** Registrado em [ADR 0004](0004-extensao-de-protocolo.md).
+2. **Avro e Schema Registry sao mais caros em Go.** Estao em "desejavel (depois)" no backlog do estudo — seguimos.
+3. **hdrhistogram-go nao e seguro para escrita concorrente.** O prototipo mostrou o custo do mutex. No produto, a instrumentacao usa histograma por worker com merge periodico — que e o que a arquitetura mergeavel do [ADR 0003](0003-modelo-de-execucao-e-metrica.md) ja exige.
 
 ### O que nao pesou
 
 - Preferencia pessoal por qualquer das duas.
-- "Java tem mais bibliotecas": verdadeiro e irrelevante para o escopo priorizado (HTTP, GraphQL, Kafka, AMQP), todos bem cobertos em Go.
-- Vazao bruta maxima: o estudo declara explicitamente que competir com wrk esta fora de escopo.
+- "Java tem mais bibliotecas": verdadeiro e irrelevante para o escopo priorizado.
+- Vazao bruta maxima: competir com wrk esta fora de escopo por decisao do estudo.
 
 ## Alternativas descartadas
 
-- **Java 25 com virtual threads, configuracao padrao (G1)**: perdeu no criterio que define o produto (precisao de agendamento) e tem modo de falha destrutivo.
-- **Java 25 com ZGC e cliente HTTP alternativo (Netty)**: e a alternativa seria, e a medicao mostra que o eixo de agendamento seria recuperado (255 us no p99 a 10.000/s). Descartada por tres motivos, nesta ordem: o resultado passa a depender de ajuste fino de GC e de troca do cliente padrao — uma ferramenta de medicao precisa ser correta sem isso; o RSS sobe para 2 GB no mesmo ponto em que o Go usa 30 MB; e a distribuicao continua exigindo runtime instalado.
+- **Java 25 com virtual threads, configuracao padrao (G1)**: descartado por RSS (597 MB contra 30 MB) e por exigir runtime instalado. Nao por agendamento nem por modo de falha — esses dois nao aguentam o peso, como registrado acima.
+- **Java 25 com ZGC**: e a alternativa seria. Recupera o agendamento (255 us no p99 a 10.000/s, irrelevante para o usuario) e piora exatamente o criterio que decide: 2.004 MB de RSS sob carga a 10.000/s, contra 30 MB do Go. Somado a distribuicao com runtime, e o que a descarta.
 - **Java com GraalVM native-image**: resolve startup e RSS, nao resolve agendamento, e cobra toolchain e configuracao de reflexao.
 - **Rust**: nao foi medido. Ganharia em recursos e precisao, perderia em velocidade de desenvolvimento e no ecossistema de clientes Kafka/AMQP maduro. Nao foi considerado porque o estudo (§9.1) delimitou a decisao a JVM e Go — registrar aqui que a alternativa existe e nao foi avaliada e mais honesto do que fingir que foi descartada por merito.
 
@@ -77,4 +94,12 @@ Go perde em tres criterios reais, todos de custo de desenvolvimento nosso. Ganha
 - O binario e distribuido por plataforma e como imagem Docker; nao ha dependencia de runtime instalado.
 - O agendador usa espera hibrida com espera ativa final; o custo e aproximadamente um nucleo dedicado ao agendador, medido e declarado no relatorio.
 - A instrumentacao usa histograma por worker com merge, nunca um histograma global sob mutex.
-- Protocolo novo exige rebuild; isso vai declarado no README para nao surpreender quem vem do JMeter.
+- Protocolo novo exige rebuild; declarado no README como limitacao conhecida ([ADR 0004](0004-extensao-de-protocolo.md)).
+
+### O que a Fase 1 precisa corrigir desta medicao
+
+Tres itens, todos consequencia direta das ressalvas acima:
+
+1. **Alvo externo ou muito mais barato.** Enquanto o alvo consome 2,1 nucleos da mesma maquina, o teto medido e do par, nao do gerador. Sem isso nao existe numero confiavel acima de ~30.000/s.
+2. **Limite de requisicoes em voo por construcao no motor**, e nos dois lados de qualquer comparacao futura. O comportamento na borda tem que ser resultado de teste, nao acidente de prototipo — foi essa ausencia que invalidou o criterio de modo de falha.
+3. **Reproduzir o travamento do Go acima de 30.000/s** com o agendador de verdade e o alvo novo. Se nao reproduzir, registrar; se reproduzir, investigar antes de seguir.

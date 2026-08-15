@@ -4,7 +4,7 @@ Ferramenta de teste de carga com medicao honesta: modelo de chegada aberto, HDR 
 
 Estado: **Fase 0 concluida — decisao de arquitetura tomada**. Nao existe binario utilizavel ainda: o que existe sao dois prototipos descartaveis, a medicao que comparou os dois e os ADRs que saem dela.
 
-Decisao da Fase 0: **Go**, por precisao de agendamento (3 us de desvio p99 a 10.000/s contra 3.077 us do Java com G1), modo de falha sob saturacao e distribuicao em binario unico. Numeros, metodologia e limites em [medicoes-fase0.md](docs/medicoes-fase0.md); a decisao com os pesos de cada criterio em [ADR 0001](docs/adr/0001-linguagem-e-runtime.md).
+Decisao da Fase 0: **Go**, sustentada por dois criterios apenas — RSS sob carga (30 MB contra 597 MB do Java com G1, a 10.000/s) e binario unico estatico, que para o publico de QA significa instalar baixando um arquivo. Startup, precisao de agendamento e modo de falha apareceram na primeira analise com peso que nao aguentam, e estao marcados como nao-criterio no ADR. Numeros, metodologia e limites em [medicoes-fase0.md](docs/medicoes-fase0.md); a decisao com os pesos de cada criterio em [ADR 0001](docs/adr/0001-linguagem-e-runtime.md).
 
 ## Por que existe
 
@@ -18,6 +18,8 @@ Tres razoes, nesta ordem:
 
 **Dentro:** HTTP/HTTPS e REST; GraphQL de primeira classe; Kafka e RabbitMQ (produzir e consumir); passo `aguardar` com timeout; correlacao, variaveis e fluxo de autenticacao; CSV com politica de consumo e geracao sintetica com semente; perfis de carga (rampa, patamar, pico, taxa constante); SLO com codigo de saida; relatorio HTML autocontido, JSON, CSV e resumo de terminal; comparacao entre execucoes; importador de `.jmx` para o subconjunto comum.
 
+**Limitacao conhecida:** protocolo fora da lista acima exige recompilar o binario — a mesma friccao que o k6 tem. E consequencia da escolha de Go ([ADR 0004](docs/adr/0004-extensao-de-protocolo.md)), esta declarada aqui de proposito, e o processo de build reprodutivel para protocolo fora-de-arvore sera documentado. Avro e Schema Registry sao mais fracos em Go que na JVM e ficam para depois da v1.
+
 **Fora:** motor de browser real; nuvem gerenciada, dashboard multiusuario, conta de time; LDAP, FTP, SMTP, JMS classico; competir em vazao bruta com wrk; execucao distribuida na v1 — a arquitetura nao pode impedi-la, mas ela nao entra agora.
 
 ## Documentacao
@@ -27,6 +29,7 @@ Tres razoes, nesta ordem:
 - [ADR 0001 — linguagem e runtime](docs/adr/0001-linguagem-e-runtime.md)
 - [ADR 0002 — modelo de cenario](docs/adr/0002-modelo-de-cenario.md)
 - [ADR 0003 — modelo de execucao e metrica](docs/adr/0003-modelo-de-execucao-e-metrica.md)
+- [ADR 0004 — extensao de protocolo](docs/adr/0004-extensao-de-protocolo.md)
 - [Medicao dos prototipos da Fase 0](docs/medicoes-fase0.md)
 
 ## Licenca

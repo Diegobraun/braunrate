@@ -74,6 +74,20 @@ Chaves em portugues sem acento (`cenario`, `carga`, `captura`, `espera`, `aguard
 - `alvo` no topo e URL base; passo pode sobrescrever com URL absoluta.
 - `peso` so tem sentido dentro de um bloco de escolha ponderada; solto na lista de passos ele e ambiguo (o exemplo do prompt o usa assim). Na Fase 4 entra `escolher:` com lista de alternativas ponderadas, e `peso` solto vira erro de validacao com mensagem apontando o `escolher:`.
 
+### 6. Publico de cada construtor, apos a decisao por Go
+
+A decisao do [ADR 0001](0001-linguagem-e-runtime.md) muda quem e o publico da DSL. O time alvo escreve Java; a DSL passa a ser em Go. Entao:
+
+| Construtor | Publico | Papel |
+|---|---|---|
+| **YAML** | QA **e** dev | Formato de primeira classe para os dois. Nao e "o formato do QA" — e o formato do produto. Cenario versionado junto do servico, revisado em pull request, escrito por quem entende o negocio. |
+| **DSL Go** | quem estende a ferramenta, e casos que o YAML nao expressa | Segundo nivel, nao segundo produto. Cobre expressao calculada, condicao complexa, geracao de payload e integracao com codigo proprio. |
+| **Importador `.jmx`** | quem migra acervo | Produz YAML; nao e um terceiro caminho de execucao. |
+
+Consequencia direta: **o investimento vai para o YAML**. Mensagem de erro apontando linha e coluna, validacao completa, exemplos e documentacao sao prioridade sobre fluencia da DSL. Um recurso que so existir na DSL e um recurso mal projetado.
+
+O que **nao** muda: o teste de equivalencia da Fase 6 continua obrigatorio. Ele constroi o mesmo cenario pelos dois caminhos e compara a representacao normalizada do modelo. Se divergirem, o build quebra.
+
 ## Alternativas descartadas
 
 - **Dois caminhos independentes** (YAML interpretado, DSL compilada): mais rapido de entregar, e a divergencia comeca no primeiro recurso novo. Mata a razao 2 da tese.
