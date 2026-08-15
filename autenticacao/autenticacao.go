@@ -26,6 +26,7 @@ type Gerenciador struct {
 
 	mutex     sync.Mutex
 	valores   map[string]string
+	obtido    bool
 	obtidoEm  time.Time
 	Obtencoes int64
 }
@@ -68,11 +69,12 @@ func (g *Gerenciador) garantirToken(ctx context.Context, valores *contexto.Conte
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 
-	if len(g.valores) > 0 && !g.venceu() {
+	if g.obtido && !g.venceu() {
 		return nil
 	}
 
-	valoresDaObtencao := contexto.Novo(0, 0, valores.Valores())
+	entrada := valores.Valores()
+	valoresDaObtencao := contexto.Novo(0, 0, entrada)
 	resposta, err := g.executar(ctx, *g.configuracao.Obter, valoresDaObtencao)
 	if err != nil {
 		return fmt.Errorf("nao consegui obter a autenticacao: %w", err)
@@ -81,11 +83,19 @@ func (g *Gerenciador) garantirToken(ctx context.Context, valores *contexto.Conte
 		return fmt.Errorf("a requisicao de autenticacao respondeu %d; confira usuario, senha e caminho em 'autenticacao.obter'", resposta.Status)
 	}
 
+	// So o que a requisicao de autenticacao produziu fica guardado. Guardar o
+	// contexto inteiro congelaria os dados da primeira iteracao e os reinjetaria
+	// em todas as outras: toda a carga cairia sobre a primeira linha do CSV, com
+	// o relatorio afirmando variedade que nao existiu.
 	obtidos := map[string]string{}
 	for nome, valor := range valoresDaObtencao.Valores() {
+		if anterior, existia := entrada[nome]; existia && anterior == valor {
+			continue
+		}
 		obtidos[nome] = valor
 	}
 	g.valores = obtidos
+	g.obtido = true
 	g.obtidoEm = g.relogio.Agora()
 	g.Obtencoes++
 	return nil
