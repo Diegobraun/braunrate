@@ -36,11 +36,17 @@ Dois pontos de confiabilidade entraram na fase depois da revisao da Fase 2, porq
 | 1 | Motor e HTTP | concluida |
 | 2 | Correlacao, dados e SLO | concluida |
 | 2.5 | Autoria | concluida |
-| 3 | Relatorio (com as duas camadas de texto e a prova de auto-validacao no README) | pendente |
+| 3 | Relatorio (com as duas camadas de texto e a prova de auto-validacao no README) | concluida |
 | 4 | GraphQL | pendente |
 | 5 | Mensageria e passo `aguardar` | pendente |
 | 6 | Segundo publico: DSL e importador de `.jmx` | pendente |
 | 7 | Acabamento e lancamento | pendente |
+
+## Fase 3 — Relatorio
+
+Entregue: relatorio HTML autocontido com veredito em uma frase no topo, grafico SVG desenhado sem biblioteca (o arquivo nao busca nada na rede), CSV por passo com o tipo de latencia declarado, veredito de SLO dentro do documento JSON, `braunrate relatorio` para gerar o HTML de um resultado ja gravado e `braunrate comparar` entre duas execucoes.
+
+A comparacao trata variacao abaixo de 5% como ruido, porque duas execucoes nao produzem intervalo de confianca; lista o que mudou fora do servico (maquina, plano, versao, cenario, token compartilhado); e se recusa a comparar quando alguma das duas teve o gerador saturado.
 
 ## Prova central do produto
 
