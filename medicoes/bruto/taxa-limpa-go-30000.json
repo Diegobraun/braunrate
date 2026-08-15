@@ -1,0 +1,96 @@
+{
+  "experimento": "taxa-limpa",
+  "prototipo": "go",
+  "taxa_alvo": 30000,
+  "latencia_do_alvo_ms": 5,
+  "colapsos": 0,
+  "erros_por_classe": {},
+  "execucoes": [
+    {
+      "prototipo": "go-goroutines",
+      "taxa_alvo": 30000,
+      "taxa_efetiva": 30000.4,
+      "enviadas": 600007,
+      "concluidas": 600007,
+      "erros": 0,
+      "medidas": 450005,
+      "drenou": true,
+      "erros_por_classe": {},
+      "pico_em_andamento": 974,
+      "despachos_atrasados": 0,
+      "cpu_ns_por_requisicao": 105953,
+      "cpu_percentual_de_um_nucleo": 317.9,
+      "latencia_corrigida_us": {
+        "p50": 5131,
+        "p90": 5207,
+        "p99": 6719,
+        "p999": 7891,
+        "max": 9575,
+        "amostras": 450005
+      },
+      "latencia_de_servico_us": {
+        "p50": 5107,
+        "p90": 5179,
+        "p99": 6267,
+        "p999": 7547,
+        "max": 9223,
+        "amostras": 450005
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 1,
+        "p90": 1,
+        "p99": 11,
+        "p999": 233,
+        "max": 1952,
+        "amostras": 450005
+      },
+      "startup_ms": 34.6,
+      "rss_repouso_mb": 11.3,
+      "rss_sob_carga_mb": 75.5,
+      "latencia_do_alvo_ms": 5
+    },
+    {
+      "prototipo": "go-goroutines",
+      "taxa_alvo": 30000,
+      "taxa_efetiva": 30000.4,
+      "enviadas": 600007,
+      "concluidas": 600007,
+      "erros": 0,
+      "medidas": 450005,
+      "drenou": true,
+      "erros_por_classe": {},
+      "pico_em_andamento": 1757,
+      "despachos_atrasados": 2000,
+      "cpu_ns_por_requisicao": 105009,
+      "cpu_percentual_de_um_nucleo": 315.0,
+      "latencia_corrigida_us": {
+        "p50": 5147,
+        "p90": 5703,
+        "p99": 36703,
+        "p999": 55679,
+        "max": 70655,
+        "amostras": 450005
+      },
+      "latencia_de_servico_us": {
+        "p50": 5119,
+        "p90": 5487,
+        "p99": 23599,
+        "p999": 47455,
+        "max": 61727,
+        "amostras": 450005
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 1,
+        "p90": 1,
+        "p99": 4239,
+        "p999": 18047,
+        "max": 29231,
+        "amostras": 450005
+      },
+      "startup_ms": 42.0,
+      "rss_repouso_mb": 11.2,
+      "rss_sob_carga_mb": 111.3,
+      "latencia_do_alvo_ms": 5
+    }
+  ]
+}

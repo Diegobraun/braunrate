@@ -1,0 +1,194 @@
+{
+  "experimento": "gc",
+  "prototipo": "java-zgc",
+  "taxa_alvo": 10000,
+  "latencia_do_alvo_ms": 5,
+  "taxa_efetiva": {
+    "media": 10000.0,
+    "min": 10000.0,
+    "max": 10000.1,
+    "margem": 0.1,
+    "n": 2
+  },
+  "startup_ms": {
+    "media": 321.4,
+    "min": 319.6,
+    "max": 323.1,
+    "margem": 1.8,
+    "n": 2
+  },
+  "rss_repouso_mb": {
+    "media": 127.4,
+    "min": 127.3,
+    "max": 127.5,
+    "margem": 0.1,
+    "n": 2
+  },
+  "rss_sob_carga_mb": {
+    "media": 1808.3,
+    "min": 1612.8,
+    "max": 2003.8,
+    "margem": 195.5,
+    "n": 2
+  },
+  "cpu_ns_por_requisicao": {
+    "media": 262678.0,
+    "min": 257332,
+    "max": 268024,
+    "margem": 5346.0,
+    "n": 2
+  },
+  "cpu_percentual_de_um_nucleo": {
+    "media": 262.6,
+    "min": 257.3,
+    "max": 268.0,
+    "margem": 5.3,
+    "n": 2
+  },
+  "desvio_p50_us": {
+    "media": 1.0,
+    "min": 1,
+    "max": 1,
+    "margem": 0.0,
+    "n": 2
+  },
+  "desvio_p99_us": {
+    "media": 255.0,
+    "min": 18,
+    "max": 492,
+    "margem": 237.0,
+    "n": 2
+  },
+  "desvio_max_us": {
+    "media": 12701.0,
+    "min": 8171,
+    "max": 17231,
+    "margem": 4530.0,
+    "n": 2
+  },
+  "latencia_corrigida_p99_us": {
+    "media": 14421.0,
+    "min": 8187,
+    "max": 20655,
+    "margem": 6234.0,
+    "n": 2
+  },
+  "latencia_de_servico_p99_us": {
+    "media": 12909.0,
+    "min": 7931,
+    "max": 17887,
+    "margem": 4978.0,
+    "n": 2
+  },
+  "pico_em_andamento": {
+    "media": 1456.0,
+    "min": 1165,
+    "max": 1747,
+    "margem": 291.0,
+    "n": 2
+  },
+  "erros": {
+    "media": 0.0,
+    "min": 0,
+    "max": 0,
+    "margem": 0.0,
+    "n": 2
+  },
+  "despachos_atrasados": {
+    "media": 85.0,
+    "min": 0,
+    "max": 170,
+    "margem": 85.0,
+    "n": 2
+  },
+  "colapsos": 0,
+  "erros_por_classe": {},
+  "execucoes": [
+    {
+      "prototipo": "java-virtual-threads",
+      "taxa_alvo": 10000,
+      "taxa_efetiva": 10000.1,
+      "enviadas": 200000,
+      "concluidas": 200000,
+      "erros": 0,
+      "medidas": 150000,
+      "drenou": true,
+      "erros_por_classe": {},
+      "pico_em_andamento": 1165,
+      "despachos_atrasados": 170,
+      "cpu_ns_por_requisicao": 257332,
+      "cpu_percentual_de_um_nucleo": 257.3,
+      "latencia_corrigida_us": {
+        "p50": 5175,
+        "p90": 5363,
+        "p99": 20655,
+        "p999": 105023,
+        "max": 136575,
+        "amostras": 150000
+      },
+      "latencia_de_servico_us": {
+        "p50": 5163,
+        "p90": 5347,
+        "p99": 17887,
+        "p999": 102335,
+        "max": 132479,
+        "amostras": 150000
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 1,
+        "p90": 1,
+        "p99": 492,
+        "p999": 10663,
+        "max": 17231,
+        "amostras": 150000
+      },
+      "startup_ms": 323.1,
+      "rss_repouso_mb": 127.3,
+      "rss_sob_carga_mb": 1612.8,
+      "latencia_do_alvo_ms": 5
+    },
+    {
+      "prototipo": "java-virtual-threads",
+      "taxa_alvo": 10000,
+      "taxa_efetiva": 10000.0,
+      "enviadas": 200000,
+      "concluidas": 200000,
+      "erros": 0,
+      "medidas": 150000,
+      "drenou": true,
+      "erros_por_classe": {},
+      "pico_em_andamento": 1747,
+      "despachos_atrasados": 0,
+      "cpu_ns_por_requisicao": 268024,
+      "cpu_percentual_de_um_nucleo": 268.0,
+      "latencia_corrigida_us": {
+        "p50": 5191,
+        "p90": 5335,
+        "p99": 8187,
+        "p999": 30335,
+        "max": 42495,
+        "amostras": 150000
+      },
+      "latencia_de_servico_us": {
+        "p50": 5179,
+        "p90": 5323,
+        "p99": 7931,
+        "p999": 24735,
+        "max": 34559,
+        "amostras": 150000
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 1,
+        "p90": 1,
+        "p99": 18,
+        "p999": 4579,
+        "max": 8171,
+        "amostras": 150000
+      },
+      "startup_ms": 319.6,
+      "rss_repouso_mb": 127.5,
+      "rss_sob_carga_mb": 2003.8,
+      "latencia_do_alvo_ms": 5
+    }
+  ]
+}

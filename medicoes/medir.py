@@ -47,15 +47,35 @@ def subir_alvo(latencia_ms):
     raise RuntimeError("alvo nao subiu")
 
 
+VARIANTES_JAVA = {
+    "java": [],
+    "java-zgc": ["-XX:+UseZGC"],
+    "java-parallel": ["-XX:+UseParallelGC"],
+}
+
+
 def comando(prototipo, taxa, duracao, aquecimento, espera_antes):
     url = f"http://127.0.0.1:{PORTA}/pedido"
     if prototipo == "go":
         return [str(GO_BINARIO), f"-alvo={url}", f"-taxa={taxa}",
                 f"-duracao={duracao}s", f"-aquecimento={aquecimento}s",
                 f"-espera-antes={espera_antes}s"]
-    return ["java", "-cp", f"{JAVA_CLASSES}:{JAVA_JAR}", "PrototipoJava",
+    return ["java", *VARIANTES_JAVA[prototipo], "-cp", f"{JAVA_CLASSES}:{JAVA_JAR}", "PrototipoJava",
             f"-alvo={url}", f"-taxa={taxa}", f"-duracao={duracao}",
             f"-aquecimento={aquecimento}", f"-espera-antes={espera_antes}"]
+
+
+def colapso(prototipo, taxa, latencia_ms, startup_ms, rss_repouso, rss_pico):
+    """Execucao que nao terminou dentro do teto: o ponto conta como nao sustentado."""
+    vazio = {"p50": 0, "p90": 0, "p99": 0, "p999": 0, "max": 0, "amostras": 0}
+    return {"prototipo": prototipo, "taxa_alvo": taxa, "taxa_efetiva": 0.0, "enviadas": 0,
+            "concluidas": 0, "erros": 0, "medidas": 0, "drenou": False, "erros_por_classe": {},
+            "pico_em_andamento": 0, "despachos_atrasados": 0, "cpu_ns_por_requisicao": 0,
+            "cpu_percentual_de_um_nucleo": 0.0, "latencia_corrigida_us": dict(vazio),
+            "latencia_de_servico_us": dict(vazio), "desvio_de_agendamento_us": dict(vazio),
+            "startup_ms": round(startup_ms, 1), "rss_repouso_mb": round(rss_repouso / 1024, 1),
+            "rss_sob_carga_mb": round(rss_pico / 1024, 1), "latencia_do_alvo_ms": latencia_ms,
+            "colapsou": True}
 
 
 def medir_startup(prototipo, repeticoes):
@@ -106,10 +126,17 @@ def executar(prototipo, taxa, latencia_ms, duracao=15, aquecimento=5, espera_ant
 
         amostrador = threading.Thread(target=amostrar, daemon=True)
         amostrador.start()
-        saida, _ = processo.communicate(timeout=duracao + aquecimento + 180)
+        try:
+            saida, _ = processo.communicate(timeout=duracao + aquecimento + 180)
+        except subprocess.TimeoutExpired:
+            processo.kill()
+            processo.communicate()
+            saida = ""
         parar.set()
         amostrador.join(timeout=2)
 
+        if not saida.strip():
+            return colapso(prototipo, taxa, latencia_ms, startup_ms, rss_repouso, pico["valor"])
         resultado = json.loads(saida)
         resultado["startup_ms"] = round(startup_ms, 1)
         resultado["rss_repouso_mb"] = round(rss_repouso / 1024, 1)
@@ -120,6 +147,14 @@ def executar(prototipo, taxa, latencia_ms, duracao=15, aquecimento=5, espera_ant
         alvo.send_signal(signal.SIGTERM)
         alvo.wait(timeout=10)
         time.sleep(0.4)
+
+
+def juntar_classes(execucoes):
+    total = {}
+    for execucao in execucoes:
+        for classe, quantidade in execucao.get("erros_por_classe", {}).items():
+            total[classe] = total.get(classe, 0) + quantidade
+    return dict(sorted(total.items(), key=lambda par: -par[1]))
 
 
 def resumo(valores):
@@ -144,16 +179,20 @@ def main():
         print(json.dumps(saida, indent=2))
         return
 
+    prototipos = ("java", "go")
     if experimento == "taxa":
-        casos = [(t, 5) for t in (1000, 5000, 10000, 20000, 30000, 40000, 60000)]
+        casos = [(t, 5) for t in (1000, 5000, 10000, 20000, 30000, 40000)]
     elif experimento == "concorrencia":
         casos = [(t, 1000) for t in (1000, 5000, 10000, 20000, 50000)]
+    elif experimento == "gc":
+        casos = [(t, 5) for t in (5000, 10000)]
+        prototipos = ("java", "java-zgc", "java-parallel")
     else:
-        raise SystemExit("experimento deve ser 'taxa', 'concorrencia' ou 'startup'")
+        raise SystemExit("experimento deve ser 'taxa', 'concorrencia', 'gc' ou 'startup'")
 
     tudo = []
     for taxa, latencia in casos:
-        for prototipo in ("java", "go"):
+        for prototipo in prototipos:
             execucoes = []
             for repeticao in range(repeticoes):
                 print(f"[{experimento}] {prototipo} taxa={taxa} latencia={latencia}ms rep={repeticao+1}",
@@ -178,6 +217,8 @@ def main():
                 "pico_em_andamento": resumo([e["pico_em_andamento"] for e in execucoes]),
                 "erros": resumo([e["erros"] for e in execucoes]),
                 "despachos_atrasados": resumo([e["despachos_atrasados"] for e in execucoes]),
+                "colapsos": sum(1 for e in execucoes if e.get("colapsou")),
+                "erros_por_classe": juntar_classes(execucoes),
                 "execucoes": execucoes,
             }
             tudo.append(agregado)

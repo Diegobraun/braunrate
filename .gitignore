@@ -16,4 +16,5 @@ resultados/
 prototipos/java/lib/
 prototipos/go/braunrate-proto-go
 prototipos/java/*.jar
-medicoes/bruto/
+medicoes/bruto/*.txt
+medicoes/bruto-descartado/

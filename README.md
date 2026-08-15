@@ -2,7 +2,9 @@
 
 Ferramenta de teste de carga com medicao honesta: modelo de chegada aberto, HDR histogram e deteccao de back-pressure.
 
-Estado: **Fase 0 — decisao de arquitetura**. Nao existe binario utilizavel ainda.
+Estado: **Fase 0 concluida — decisao de arquitetura tomada**. Nao existe binario utilizavel ainda: o que existe sao dois prototipos descartaveis, a medicao que comparou os dois e os ADRs que saem dela.
+
+Decisao da Fase 0: **Go**, por precisao de agendamento (3 us de desvio p99 a 10.000/s contra 3.077 us do Java com G1), modo de falha sob saturacao e distribuicao em binario unico. Numeros, metodologia e limites em [medicoes-fase0.md](docs/medicoes-fase0.md); a decisao com os pesos de cada criterio em [ADR 0001](docs/adr/0001-linguagem-e-runtime.md).
 
 ## Por que existe
 

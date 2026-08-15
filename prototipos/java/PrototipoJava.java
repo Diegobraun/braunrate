@@ -6,6 +6,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,6 +31,19 @@ public class PrototipoJava {
     static final AtomicLong despachosAtrasados = new AtomicLong();
     static final AtomicInteger emAndamento = new AtomicInteger();
     static final AtomicInteger picoEmAndamento = new AtomicInteger();
+    static final ConcurrentHashMap<String, Long> errosPorClasse = new ConcurrentHashMap<>();
+
+    static String classificarErro(Exception excecao) {
+        String mensagem = excecao.getMessage() == null ? "" : excecao.getMessage();
+        String classe = excecao.getClass().getSimpleName();
+        for (String padrao : new String[]{"Too many open files", "Connection refused", "timed out",
+                "Connection reset", "EOF", "assign requested address", "No route to host"}) {
+            if (mensagem.contains(padrao)) {
+                return classe + ": " + padrao;
+            }
+        }
+        return classe;
+    }
 
     public static void main(String[] argumentos) throws Exception {
         Map<String, String> opcoes = lerOpcoes(argumentos);
@@ -106,6 +120,7 @@ public class PrototipoJava {
                     concluidas.incrementAndGet();
                 } catch (Exception e) {
                     erros.incrementAndGet();
+                    errosPorClasse.merge(classificarErro(e), 1L, Long::sum);
                 } finally {
                     emAndamento.decrementAndGet();
                 }
@@ -115,7 +130,7 @@ public class PrototipoJava {
 
         long fimDoDespacho = System.nanoTime();
         executor.shutdown();
-        boolean drenou = executor.awaitTermination(60, TimeUnit.SECONDS);
+        boolean drenou = executor.awaitTermination(30, TimeUnit.SECONDS);
         long cpuGasto = sistema.getProcessCpuTime() - cpuNoInicio;
         long relogioGasto = fimDoDespacho - relogioNoInicio;
 
@@ -132,6 +147,15 @@ public class PrototipoJava {
         saida.append("  \"erros\": ").append(erros.get()).append(",\n");
         saida.append("  \"medidas\": ").append(medidas).append(",\n");
         saida.append("  \"drenou\": ").append(drenou).append(",\n");
+        saida.append("  \"erros_por_classe\": {");
+        StringBuilder classes = new StringBuilder();
+        errosPorClasse.forEach((classe, quantidade) -> {
+            if (!classes.isEmpty()) {
+                classes.append(", ");
+            }
+            classes.append('"').append(classe.replace('"', '\'')).append("\": ").append(quantidade);
+        });
+        saida.append(classes).append("},\n");
         saida.append("  \"pico_em_andamento\": ").append(picoEmAndamento.get()).append(",\n");
         saida.append("  \"despachos_atrasados\": ").append(despachosAtrasados.get()).append(",\n");
         saida.append("  \"cpu_ns_por_requisicao\": ").append(medidas > 0 ? cpuGasto / medidas : 0).append(",\n");

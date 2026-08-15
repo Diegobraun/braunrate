@@ -1,0 +1,194 @@
+{
+  "experimento": "gc",
+  "prototipo": "java-zgc",
+  "taxa_alvo": 5000,
+  "latencia_do_alvo_ms": 5,
+  "taxa_efetiva": {
+    "media": 5000.1,
+    "min": 5000.1,
+    "max": 5000.1,
+    "margem": 0.0,
+    "n": 2
+  },
+  "startup_ms": {
+    "media": 316.1,
+    "min": 280.4,
+    "max": 351.8,
+    "margem": 35.7,
+    "n": 2
+  },
+  "rss_repouso_mb": {
+    "media": 127.4,
+    "min": 127.3,
+    "max": 127.5,
+    "margem": 0.1,
+    "n": 2
+  },
+  "rss_sob_carga_mb": {
+    "media": 1238.0,
+    "min": 1237.4,
+    "max": 1238.6,
+    "margem": 0.6,
+    "n": 2
+  },
+  "cpu_ns_por_requisicao": {
+    "media": 306656.5,
+    "min": 303110,
+    "max": 310203,
+    "margem": 3546.5,
+    "n": 2
+  },
+  "cpu_percentual_de_um_nucleo": {
+    "media": 153.3,
+    "min": 151.6,
+    "max": 155.1,
+    "margem": 1.8,
+    "n": 2
+  },
+  "desvio_p50_us": {
+    "media": 1.0,
+    "min": 1,
+    "max": 1,
+    "margem": 0.0,
+    "n": 2
+  },
+  "desvio_p99_us": {
+    "media": 5.0,
+    "min": 4,
+    "max": 6,
+    "margem": 1.0,
+    "n": 2
+  },
+  "desvio_max_us": {
+    "media": 3158.0,
+    "min": 2133,
+    "max": 4183,
+    "margem": 1025.0,
+    "n": 2
+  },
+  "latencia_corrigida_p99_us": {
+    "media": 5519.0,
+    "min": 5231,
+    "max": 5807,
+    "margem": 288.0,
+    "n": 2
+  },
+  "latencia_de_servico_p99_us": {
+    "media": 5467.0,
+    "min": 5215,
+    "max": 5719,
+    "margem": 252.0,
+    "n": 2
+  },
+  "pico_em_andamento": {
+    "media": 238.5,
+    "min": 226,
+    "max": 251,
+    "margem": 12.5,
+    "n": 2
+  },
+  "erros": {
+    "media": 0.0,
+    "min": 0,
+    "max": 0,
+    "margem": 0.0,
+    "n": 2
+  },
+  "despachos_atrasados": {
+    "media": 0.0,
+    "min": 0,
+    "max": 0,
+    "margem": 0.0,
+    "n": 2
+  },
+  "colapsos": 0,
+  "erros_por_classe": {},
+  "execucoes": [
+    {
+      "prototipo": "java-virtual-threads",
+      "taxa_alvo": 5000,
+      "taxa_efetiva": 5000.1,
+      "enviadas": 100000,
+      "concluidas": 100000,
+      "erros": 0,
+      "medidas": 75000,
+      "drenou": true,
+      "erros_por_classe": {},
+      "pico_em_andamento": 226,
+      "despachos_atrasados": 0,
+      "cpu_ns_por_requisicao": 310203,
+      "cpu_percentual_de_um_nucleo": 155.1,
+      "latencia_corrigida_us": {
+        "p50": 5111,
+        "p90": 5147,
+        "p99": 5807,
+        "p999": 18847,
+        "max": 29503,
+        "amostras": 75000
+      },
+      "latencia_de_servico_us": {
+        "p50": 5095,
+        "p90": 5135,
+        "p99": 5719,
+        "p999": 18719,
+        "max": 24671,
+        "amostras": 75000
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 1,
+        "p90": 1,
+        "p99": 6,
+        "p999": 672,
+        "max": 4183,
+        "amostras": 75000
+      },
+      "startup_ms": 351.8,
+      "rss_repouso_mb": 127.5,
+      "rss_sob_carga_mb": 1237.4,
+      "latencia_do_alvo_ms": 5
+    },
+    {
+      "prototipo": "java-virtual-threads",
+      "taxa_alvo": 5000,
+      "taxa_efetiva": 5000.1,
+      "enviadas": 100000,
+      "concluidas": 100000,
+      "erros": 0,
+      "medidas": 75000,
+      "drenou": true,
+      "erros_por_classe": {},
+      "pico_em_andamento": 251,
+      "despachos_atrasados": 0,
+      "cpu_ns_por_requisicao": 303110,
+      "cpu_percentual_de_um_nucleo": 151.6,
+      "latencia_corrigida_us": {
+        "p50": 5103,
+        "p90": 5127,
+        "p99": 5231,
+        "p999": 9087,
+        "max": 17119,
+        "amostras": 75000
+      },
+      "latencia_de_servico_us": {
+        "p50": 5087,
+        "p90": 5115,
+        "p99": 5215,
+        "p999": 8383,
+        "max": 14831,
+        "amostras": 75000
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 1,
+        "p90": 1,
+        "p99": 4,
+        "p999": 12,
+        "max": 2133,
+        "amostras": 75000
+      },
+      "startup_ms": 280.4,
+      "rss_repouso_mb": 127.3,
+      "rss_sob_carga_mb": 1238.6,
+      "latencia_do_alvo_ms": 5
+    }
+  ]
+}

@@ -1,0 +1,194 @@
+{
+  "experimento": "concorrencia",
+  "prototipo": "java",
+  "taxa_alvo": 5000,
+  "latencia_do_alvo_ms": 1000,
+  "taxa_efetiva": {
+    "media": 5000.1,
+    "min": 5000.1,
+    "max": 5000.1,
+    "margem": 0.0,
+    "n": 2
+  },
+  "startup_ms": {
+    "media": 1271.9,
+    "min": 1264.6,
+    "max": 1279.2,
+    "margem": 7.3,
+    "n": 2
+  },
+  "rss_repouso_mb": {
+    "media": 124.5,
+    "min": 124.2,
+    "max": 124.8,
+    "margem": 0.3,
+    "n": 2
+  },
+  "rss_sob_carga_mb": {
+    "media": 741.0,
+    "min": 731.0,
+    "max": 751.0,
+    "margem": 10.0,
+    "n": 2
+  },
+  "cpu_ns_por_requisicao": {
+    "media": 339025.5,
+    "min": 338147,
+    "max": 339904,
+    "margem": 878.5,
+    "n": 2
+  },
+  "cpu_percentual_de_um_nucleo": {
+    "media": 169.6,
+    "min": 169.1,
+    "max": 170.0,
+    "margem": 0.5,
+    "n": 2
+  },
+  "desvio_p50_us": {
+    "media": 1.0,
+    "min": 1,
+    "max": 1,
+    "margem": 0.0,
+    "n": 2
+  },
+  "desvio_p99_us": {
+    "media": 291.0,
+    "min": 21,
+    "max": 561,
+    "margem": 270.0,
+    "n": 2
+  },
+  "desvio_max_us": {
+    "media": 13055.0,
+    "min": 12527,
+    "max": 13583,
+    "margem": 528.0,
+    "n": 2
+  },
+  "latencia_corrigida_p99_us": {
+    "media": 1006591.0,
+    "min": 1005567,
+    "max": 1007615,
+    "margem": 1024.0,
+    "n": 2
+  },
+  "latencia_de_servico_p99_us": {
+    "media": 1003519.0,
+    "min": 1001983,
+    "max": 1005055,
+    "margem": 1536.0,
+    "n": 2
+  },
+  "pico_em_andamento": {
+    "media": 5250.0,
+    "min": 5204,
+    "max": 5296,
+    "margem": 46.0,
+    "n": 2
+  },
+  "erros": {
+    "media": 0.0,
+    "min": 0,
+    "max": 0,
+    "margem": 0.0,
+    "n": 2
+  },
+  "despachos_atrasados": {
+    "media": 63.0,
+    "min": 39,
+    "max": 87,
+    "margem": 24.0,
+    "n": 2
+  },
+  "colapsos": 0,
+  "erros_por_classe": {},
+  "execucoes": [
+    {
+      "prototipo": "java-virtual-threads",
+      "taxa_alvo": 5000,
+      "taxa_efetiva": 5000.1,
+      "enviadas": 100000,
+      "concluidas": 100000,
+      "erros": 0,
+      "medidas": 75000,
+      "drenou": true,
+      "erros_por_classe": {},
+      "pico_em_andamento": 5204,
+      "despachos_atrasados": 39,
+      "cpu_ns_por_requisicao": 338147,
+      "cpu_percentual_de_um_nucleo": 169.1,
+      "latencia_corrigida_us": {
+        "p50": 1000447,
+        "p90": 1000447,
+        "p99": 1005567,
+        "p999": 1011199,
+        "max": 1013759,
+        "amostras": 75000
+      },
+      "latencia_de_servico_us": {
+        "p50": 1000447,
+        "p90": 1000447,
+        "p99": 1001983,
+        "p999": 1010175,
+        "max": 1013247,
+        "amostras": 75000
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 1,
+        "p90": 1,
+        "p99": 21,
+        "p999": 8927,
+        "max": 12527,
+        "amostras": 75000
+      },
+      "startup_ms": 1279.2,
+      "rss_repouso_mb": 124.8,
+      "rss_sob_carga_mb": 731.0,
+      "latencia_do_alvo_ms": 1000
+    },
+    {
+      "prototipo": "java-virtual-threads",
+      "taxa_alvo": 5000,
+      "taxa_efetiva": 5000.1,
+      "enviadas": 100000,
+      "concluidas": 100000,
+      "erros": 0,
+      "medidas": 75000,
+      "drenou": true,
+      "erros_por_classe": {},
+      "pico_em_andamento": 5296,
+      "despachos_atrasados": 87,
+      "cpu_ns_por_requisicao": 339904,
+      "cpu_percentual_de_um_nucleo": 170.0,
+      "latencia_corrigida_us": {
+        "p50": 1000447,
+        "p90": 1000447,
+        "p99": 1007615,
+        "p999": 1018879,
+        "max": 1035263,
+        "amostras": 75000
+      },
+      "latencia_de_servico_us": {
+        "p50": 1000447,
+        "p90": 1000447,
+        "p99": 1005055,
+        "p999": 1018879,
+        "max": 1031679,
+        "amostras": 75000
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 1,
+        "p90": 1,
+        "p99": 561,
+        "p999": 10303,
+        "max": 13583,
+        "amostras": 75000
+      },
+      "startup_ms": 1264.6,
+      "rss_repouso_mb": 124.2,
+      "rss_sob_carga_mb": 751.0,
+      "latencia_do_alvo_ms": 1000
+    }
+  ]
+}

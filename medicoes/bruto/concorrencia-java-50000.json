@@ -1,0 +1,206 @@
+{
+  "experimento": "concorrencia",
+  "prototipo": "java",
+  "taxa_alvo": 50000,
+  "latencia_do_alvo_ms": 1000,
+  "taxa_efetiva": {
+    "media": 5114.6,
+    "min": 0.1,
+    "max": 10229.0,
+    "margem": 5114.4,
+    "n": 2
+  },
+  "startup_ms": {
+    "media": 1302.7,
+    "min": 1296.1,
+    "max": 1309.2,
+    "margem": 6.6,
+    "n": 2
+  },
+  "rss_repouso_mb": {
+    "media": 125.1,
+    "min": 124.9,
+    "max": 125.2,
+    "margem": 0.1,
+    "n": 2
+  },
+  "rss_sob_carga_mb": {
+    "media": 1676.5,
+    "min": 1298.5,
+    "max": 2054.5,
+    "margem": 378.0,
+    "n": 2
+  },
+  "cpu_ns_por_requisicao": {
+    "media": 19319390125.0,
+    "min": 304750,
+    "max": 38638475500,
+    "margem": 19319085375.0,
+    "n": 2
+  },
+  "cpu_percentual_de_um_nucleo": {
+    "media": 413.5,
+    "min": 311.7,
+    "max": 515.2,
+    "margem": 101.8,
+    "n": 2
+  },
+  "desvio_p50_us": {
+    "media": 1.0,
+    "min": 1,
+    "max": 1,
+    "margem": 0.0,
+    "n": 2
+  },
+  "desvio_p99_us": {
+    "media": 5896.0,
+    "min": 41,
+    "max": 11751,
+    "margem": 5855.0,
+    "n": 2
+  },
+  "desvio_max_us": {
+    "media": 22411.0,
+    "min": 14071,
+    "max": 30751,
+    "margem": 8340.0,
+    "n": 2
+  },
+  "latencia_corrigida_p99_us": {
+    "media": 12521471.0,
+    "min": 1056767,
+    "max": 23986175,
+    "margem": 11464704.0,
+    "n": 2
+  },
+  "latencia_de_servico_p99_us": {
+    "media": 2487295.0,
+    "min": 1052671,
+    "max": 3921919,
+    "margem": 1434624.0,
+    "n": 2
+  },
+  "pico_em_andamento": {
+    "media": 498307.5,
+    "min": 25690,
+    "max": 970925,
+    "margem": 472617.5,
+    "n": 2
+  },
+  "erros": {
+    "media": 900323.0,
+    "min": 800778,
+    "max": 999868,
+    "margem": 99545.0,
+    "n": 2
+  },
+  "despachos_atrasados": {
+    "media": 5176.0,
+    "min": 219,
+    "max": 10133,
+    "margem": 4957.0,
+    "n": 2
+  },
+  "colapsos": 0,
+  "erros_por_classe": {
+    "IOException: Too many open files": 1754032,
+    "ConnectException: assign requested address": 36513,
+    "HttpConnectTimeoutException: timed out": 9712,
+    "HttpTimeoutException: timed out": 389
+  },
+  "execucoes": [
+    {
+      "prototipo": "java-virtual-threads",
+      "taxa_alvo": 50000,
+      "taxa_efetiva": 10229.0,
+      "enviadas": 1000000,
+      "concluidas": 199222,
+      "erros": 800778,
+      "medidas": 153435,
+      "drenou": true,
+      "erros_por_classe": {
+        "IOException: Too many open files": 800778
+      },
+      "pico_em_andamento": 25690,
+      "despachos_atrasados": 10133,
+      "cpu_ns_por_requisicao": 304750,
+      "cpu_percentual_de_um_nucleo": 311.7,
+      "latencia_corrigida_us": {
+        "p50": 1001471,
+        "p90": 1017343,
+        "p99": 1056767,
+        "p999": 1131519,
+        "max": 1150975,
+        "amostras": 153435
+      },
+      "latencia_de_servico_us": {
+        "p50": 1001471,
+        "p90": 1014271,
+        "p99": 1052671,
+        "p999": 1131519,
+        "max": 1150975,
+        "amostras": 153435
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 1,
+        "p90": 1,
+        "p99": 11751,
+        "p999": 21599,
+        "max": 30751,
+        "amostras": 750000
+      },
+      "startup_ms": 1309.2,
+      "rss_repouso_mb": 124.9,
+      "rss_sob_carga_mb": 1298.5,
+      "latencia_do_alvo_ms": 1000
+    },
+    {
+      "prototipo": "java-virtual-threads",
+      "taxa_alvo": 50000,
+      "taxa_efetiva": 0.1,
+      "enviadas": 1000000,
+      "concluidas": 132,
+      "erros": 999868,
+      "medidas": 2,
+      "drenou": true,
+      "erros_por_classe": {
+        "HttpTimeoutException: timed out": 389,
+        "HttpConnectTimeoutException: timed out": 9712,
+        "IOException: Too many open files": 953254,
+        "ConnectException: assign requested address": 36513
+      },
+      "pico_em_andamento": 970925,
+      "despachos_atrasados": 219,
+      "cpu_ns_por_requisicao": 38638475500,
+      "cpu_percentual_de_um_nucleo": 515.2,
+      "latencia_corrigida_us": {
+        "p50": 20037631,
+        "p90": 23986175,
+        "p99": 23986175,
+        "p999": 23986175,
+        "max": 23986175,
+        "amostras": 2
+      },
+      "latencia_de_servico_us": {
+        "p50": 3919871,
+        "p90": 3921919,
+        "p99": 3921919,
+        "p999": 3921919,
+        "max": 3921919,
+        "amostras": 2
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 1,
+        "p90": 1,
+        "p99": 41,
+        "p999": 5539,
+        "max": 14071,
+        "amostras": 750000
+      },
+      "startup_ms": 1296.1,
+      "rss_repouso_mb": 125.2,
+      "rss_sob_carga_mb": 2054.5,
+      "latencia_do_alvo_ms": 1000
+    }
+  ]
+}

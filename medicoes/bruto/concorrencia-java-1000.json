@@ -1,0 +1,194 @@
+{
+  "experimento": "concorrencia",
+  "prototipo": "java",
+  "taxa_alvo": 1000,
+  "latencia_do_alvo_ms": 1000,
+  "taxa_efetiva": {
+    "media": 1000.1,
+    "min": 1000.1,
+    "max": 1000.1,
+    "margem": 0.0,
+    "n": 2
+  },
+  "startup_ms": {
+    "media": 1274.1,
+    "min": 1267.8,
+    "max": 1280.4,
+    "margem": 6.3,
+    "n": 2
+  },
+  "rss_repouso_mb": {
+    "media": 125.3,
+    "min": 124.6,
+    "max": 126.0,
+    "margem": 0.7,
+    "n": 2
+  },
+  "rss_sob_carga_mb": {
+    "media": 364.6,
+    "min": 354.6,
+    "max": 374.6,
+    "margem": 10.0,
+    "n": 2
+  },
+  "cpu_ns_por_requisicao": {
+    "media": 1239163.0,
+    "min": 1226357,
+    "max": 1251969,
+    "margem": 12806.0,
+    "n": 2
+  },
+  "cpu_percentual_de_um_nucleo": {
+    "media": 123.9,
+    "min": 122.6,
+    "max": 125.2,
+    "margem": 1.3,
+    "n": 2
+  },
+  "desvio_p50_us": {
+    "media": 1.0,
+    "min": 1,
+    "max": 1,
+    "margem": 0.0,
+    "n": 2
+  },
+  "desvio_p99_us": {
+    "media": 4.0,
+    "min": 4,
+    "max": 4,
+    "margem": 0.0,
+    "n": 2
+  },
+  "desvio_max_us": {
+    "media": 10387.0,
+    "min": 10135,
+    "max": 10639,
+    "margem": 252.0,
+    "n": 2
+  },
+  "latencia_corrigida_p99_us": {
+    "media": 1000959.0,
+    "min": 1000959,
+    "max": 1000959,
+    "margem": 0.0,
+    "n": 2
+  },
+  "latencia_de_servico_p99_us": {
+    "media": 1000959.0,
+    "min": 1000959,
+    "max": 1000959,
+    "margem": 0.0,
+    "n": 2
+  },
+  "pico_em_andamento": {
+    "media": 1014.0,
+    "min": 1012,
+    "max": 1016,
+    "margem": 2.0,
+    "n": 2
+  },
+  "erros": {
+    "media": 0.0,
+    "min": 0,
+    "max": 0,
+    "margem": 0.0,
+    "n": 2
+  },
+  "despachos_atrasados": {
+    "media": 1.0,
+    "min": 1,
+    "max": 1,
+    "margem": 0.0,
+    "n": 2
+  },
+  "colapsos": 0,
+  "erros_por_classe": {},
+  "execucoes": [
+    {
+      "prototipo": "java-virtual-threads",
+      "taxa_alvo": 1000,
+      "taxa_efetiva": 1000.1,
+      "enviadas": 20000,
+      "concluidas": 20000,
+      "erros": 0,
+      "medidas": 15000,
+      "drenou": true,
+      "erros_por_classe": {},
+      "pico_em_andamento": 1012,
+      "despachos_atrasados": 1,
+      "cpu_ns_por_requisicao": 1251969,
+      "cpu_percentual_de_um_nucleo": 125.2,
+      "latencia_corrigida_us": {
+        "p50": 1000447,
+        "p90": 1000447,
+        "p99": 1000959,
+        "p999": 1007615,
+        "max": 1011711,
+        "amostras": 15000
+      },
+      "latencia_de_servico_us": {
+        "p50": 1000447,
+        "p90": 1000447,
+        "p99": 1000959,
+        "p999": 1004031,
+        "max": 1011711,
+        "amostras": 15000
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 1,
+        "p90": 1,
+        "p99": 4,
+        "p999": 4179,
+        "max": 10135,
+        "amostras": 15000
+      },
+      "startup_ms": 1280.4,
+      "rss_repouso_mb": 124.6,
+      "rss_sob_carga_mb": 374.6,
+      "latencia_do_alvo_ms": 1000
+    },
+    {
+      "prototipo": "java-virtual-threads",
+      "taxa_alvo": 1000,
+      "taxa_efetiva": 1000.1,
+      "enviadas": 20000,
+      "concluidas": 20000,
+      "erros": 0,
+      "medidas": 15000,
+      "drenou": true,
+      "erros_por_classe": {},
+      "pico_em_andamento": 1016,
+      "despachos_atrasados": 1,
+      "cpu_ns_por_requisicao": 1226357,
+      "cpu_percentual_de_um_nucleo": 122.6,
+      "latencia_corrigida_us": {
+        "p50": 1000447,
+        "p90": 1000447,
+        "p99": 1000959,
+        "p999": 1007615,
+        "max": 1012223,
+        "amostras": 15000
+      },
+      "latencia_de_servico_us": {
+        "p50": 1000447,
+        "p90": 1000447,
+        "p99": 1000959,
+        "p999": 1003519,
+        "max": 1011711,
+        "amostras": 15000
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 1,
+        "p90": 1,
+        "p99": 4,
+        "p999": 3935,
+        "max": 10639,
+        "amostras": 15000
+      },
+      "startup_ms": 1267.8,
+      "rss_repouso_mb": 126.0,
+      "rss_sob_carga_mb": 354.6,
+      "latencia_do_alvo_ms": 1000
+    }
+  ]
+}

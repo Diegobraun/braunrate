@@ -1,0 +1,97 @@
+{
+  "experimento": "taxa-limpa",
+  "prototipo": "go",
+  "taxa_alvo": 40000,
+  "latencia_do_alvo_ms": 5,
+  "colapsos": 1,
+  "erros_por_classe": {},
+  "execucoes": [
+    {
+      "prototipo": "go",
+      "taxa_alvo": 40000,
+      "taxa_efetiva": 0.0,
+      "enviadas": 0,
+      "concluidas": 0,
+      "erros": 0,
+      "medidas": 0,
+      "drenou": false,
+      "erros_por_classe": {},
+      "pico_em_andamento": 0,
+      "despachos_atrasados": 0,
+      "cpu_ns_por_requisicao": 0,
+      "cpu_percentual_de_um_nucleo": 0.0,
+      "latencia_corrigida_us": {
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "p999": 0,
+        "max": 0,
+        "amostras": 0
+      },
+      "latencia_de_servico_us": {
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "p999": 0,
+        "max": 0,
+        "amostras": 0
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "p999": 0,
+        "max": 0,
+        "amostras": 0
+      },
+      "startup_ms": 35.4,
+      "rss_repouso_mb": 11.2,
+      "rss_sob_carga_mb": 2600.8,
+      "latencia_do_alvo_ms": 5,
+      "colapsou": true
+    },
+    {
+      "prototipo": "go-goroutines",
+      "taxa_alvo": 40000,
+      "taxa_efetiva": 40000.1,
+      "enviadas": 800000,
+      "concluidas": 800000,
+      "erros": 0,
+      "medidas": 600000,
+      "drenou": true,
+      "erros_por_classe": {},
+      "pico_em_andamento": 3420,
+      "despachos_atrasados": 0,
+      "cpu_ns_por_requisicao": 100001,
+      "cpu_percentual_de_um_nucleo": 400.0,
+      "latencia_corrigida_us": {
+        "p50": 5159,
+        "p90": 5547,
+        "p99": 10503,
+        "p999": 33695,
+        "max": 54655,
+        "amostras": 600000
+      },
+      "latencia_de_servico_us": {
+        "p50": 5135,
+        "p90": 5343,
+        "p99": 9063,
+        "p999": 27247,
+        "max": 50847,
+        "amostras": 600000
+      },
+      "desvio_de_agendamento_us": {
+        "p50": 1,
+        "p90": 1,
+        "p99": 70,
+        "p999": 1928,
+        "max": 6731,
+        "amostras": 600000
+      },
+      "startup_ms": 27.4,
+      "rss_repouso_mb": 11.3,
+      "rss_sob_carga_mb": 182.7,
+      "latencia_do_alvo_ms": 5
+    }
+  ]
+}

@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -64,6 +67,31 @@ func dormirAte(instanteAlvo time.Time) {
 	}
 }
 
+func esperarComTeto(grupo *sync.WaitGroup, teto time.Duration) bool {
+	pronto := make(chan struct{})
+	go func() {
+		grupo.Wait()
+		close(pronto)
+	}()
+	select {
+	case <-pronto:
+		return true
+	case <-time.After(teto):
+		return false
+	}
+}
+
+func classificarErro(err error) string {
+	texto := err.Error()
+	for _, padrao := range []string{"too many open files", "connection refused", "Client.Timeout",
+		"connection reset", "EOF", "cannot assign requested address", "no route to host"} {
+		if strings.Contains(texto, padrao) {
+			return padrao
+		}
+	}
+	return "outro"
+}
+
 func cpuGastoNs() int64 {
 	var uso syscall.Rusage
 	syscall.Getrusage(syscall.RUSAGE_SELF, &uso)
@@ -99,6 +127,8 @@ func main() {
 
 	m := novoMedidor()
 	var enviadas, concluidas, erros, despachosAtrasados atomic.Int64
+	errosPorClasse := map[string]int64{}
+	var mutexErros sync.Mutex
 	var emAndamento, picoEmAndamento atomic.Int64
 	var grupo sync.WaitGroup
 
@@ -109,6 +139,21 @@ func main() {
 	cpuNoInicio := cpuGastoNs()
 	relogioNoInicio := inicio
 	medindo := false
+
+	pararHeartbeat := make(chan struct{})
+	go func() {
+		tique := time.NewTicker(2 * time.Second)
+		defer tique.Stop()
+		for {
+			select {
+			case <-pararHeartbeat:
+				return
+			case <-tique.C:
+				fmt.Fprintf(os.Stderr, "heartbeat goroutines=%d em_voo=%d enviadas=%d concluidas=%d erros=%d\n",
+					runtime.NumGoroutine(), emAndamento.Load(), enviadas.Load(), concluidas.Load(), erros.Load())
+			}
+		}
+	}()
 
 	for indice := int64(0); ; indice++ {
 		agendado := inicio.Add(time.Duration(indice) * intervalo)
@@ -147,6 +192,10 @@ func main() {
 			resposta, err := cliente.Get(*alvo)
 			if err != nil {
 				erros.Add(1)
+				classe := classificarErro(err)
+				mutexErros.Lock()
+				errosPorClasse[classe]++
+				mutexErros.Unlock()
 				return
 			}
 			io.Copy(io.Discard, resposta.Body)
@@ -163,7 +212,8 @@ func main() {
 	}
 
 	fimDoDespacho := time.Now()
-	grupo.Wait()
+	close(pararHeartbeat)
+	drenou := esperarComTeto(&grupo, 30*time.Second)
 	cpuGasto := cpuGastoNs() - cpuNoInicio
 	relogioGasto := fimDoDespacho.Sub(relogioNoInicio).Nanoseconds()
 
@@ -183,7 +233,11 @@ func main() {
 	fmt.Printf("  \"concluidas\": %d,\n", concluidas.Load())
 	fmt.Printf("  \"erros\": %d,\n", erros.Load())
 	fmt.Printf("  \"medidas\": %d,\n", medidas)
-	fmt.Printf("  \"drenou\": true,\n")
+	fmt.Printf("  \"drenou\": %t,\n", drenou)
+	mutexErros.Lock()
+	classes, _ := json.Marshal(errosPorClasse)
+	mutexErros.Unlock()
+	fmt.Printf("  \"erros_por_classe\": %s,\n", classes)
 	fmt.Printf("  \"pico_em_andamento\": %d,\n", picoEmAndamento.Load())
 	fmt.Printf("  \"despachos_atrasados\": %d,\n", despachosAtrasados.Load())
 	fmt.Printf("  \"cpu_ns_por_requisicao\": %d,\n", cpuPorRequisicao)
