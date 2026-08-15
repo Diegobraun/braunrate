@@ -35,6 +35,16 @@ $ go test ./autovalidacao/... -v
 
 Reproduza na sua maquina: `go test ./autovalidacao/... -v`.
 
+### Tres provas, tres pontos cegos
+
+Esta e a primeira das tres execucoes reais que sustentam a tese. Cada uma expoe um ponto cego diferente, e nenhuma delas e opiniao:
+
+| Prova | Numero | Ponto cego que expoe |
+|---|---|---|
+| Alvo congelado por 1 s (acima) | 977,4 ms contra 2,9 ms | **Omissao coordenada**: laco fechado para de enviar quando o alvo trava, e a espera some da conta |
+| [GraphQL com erro em 200](#graphql) | 406 erros em 2.844 respostas, todas com status 200 | **Erro classificado por status**: quem le o codigo HTTP reporta 0% de erro e SLO verde |
+| [Cadeia assincrona](#mensageria-e-cadeia-assincrona) | 0,9 ms para produzir contra 4,87 s de jornada | **Medir so a producao**: o broker aceita rapido, e o efeito que o usuario espera chega segundos depois |
+
 ## Estado
 
 **Fase 5 concluida** — motor de chegada aberta, HTTP, GraphQL, Kafka, RabbitMQ e passo `aguardar`, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `depurar`, `importar curl`), relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes) e variedade observada declarada no relatorio. Falta a DSL em Go e o importador de `.jmx`.
@@ -299,6 +309,21 @@ A jornada inteira
 **Produzir custa 0,9 ms; a cadeia custa 4,87 s no 95%.** Uma ferramenta que so mede a producao teria reportado sub-milissegundo e aprovado o sistema. O consumidor nao acompanha 100/s, a fila cresce, e so a medicao ponta a ponta mostra isso.
 
 Detalhes das decisoes: [ADR 0008](docs/adr/0008-mensageria-e-cadeia-assincrona.md). Publicacao com confirmacao e o padrao (`acks: todos` no Kafka, publisher confirms no AMQP), sem lote — agrupar mensagens mediria o lote, nao a mensagem.
+
+### Quanto o gerador aguenta produzindo (medido)
+
+Sem lote, uma mensagem por chegada agendada e com confirmacao, a vazao maxima e menor que a de ferramentas que agrupam. O numero, medido:
+
+| Topico | Ultima taxa valida | p50 / p95 da producao | Primeira taxa invalida |
+|---|---|---|---|
+| 6 particoes | **15.000 msg/s** | 1,4 ms / 41 ms | 18.000/s (4.884 descartadas) |
+| 1 particao | **5.000 msg/s** | 0,2 ms / 56 ms | 8.000/s (8.059 descartadas) |
+
+Em 15.000/s o desvio de agendamento ficou em 0,001 ms tipico e 0,56 ms no pior caso, com pico de 861 mensagens em voo: **quem saturou primeiro nao foi o escalonador do braunrate, foi o caminho de entrega confirmada contra o broker.** Por isso o numero da tabela e o teto do par gerador+broker nesta maquina, e nao um teto puro do gerador.
+
+**Ambiente:** Apple M2 Pro, 10 nucleos, Redpanda v24.2.7 em loopback no mesmo host, 10 s por execucao, um passo de producao por iteracao. Broker remoto, replicacao real e mensagem maior mudam o numero. Meça no seu ambiente antes de citar este.
+
+Se o gerador nao sustentar a producao, o resultado sai **invalido com codigo de saida 3**, exatamente como em HTTP — a deteccao de back-pressure acontece no escalonador, antes de qualquer protocolo, e esta coberta por teste com Kafka de verdade (`TestGeradorSaturadoProduzindoInvalidaOResultado`).
 
 RabbitMQ segue a mesma forma:
 

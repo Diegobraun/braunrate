@@ -311,3 +311,71 @@ func TestAMQPPublicaEEsperaNaMesmaFila(t *testing.T) {
 		t.Errorf("faltou a linha da publicacao no relatorio: %+v", documento.Passos)
 	}
 }
+
+const cenarioDeSaturacao = `
+nome: Saturacao produzindo
+alvo: %s
+
+dados:
+  pedidos:
+    gerar: { id: uuid }
+
+carga:
+  perfis:
+    - constante: { taxa: 3000/s, durante: 1s }
+
+cenario:
+  - kafka:
+      topico: %s
+      chave: "${pedidos.id}"
+      valor: { pedido: "${pedidos.id}" }
+`
+
+// Back-pressure nao e assunto de protocolo: o escalonador e o mesmo. Se o
+// gerador nao sustenta a producao, o numero da cadeia fica errado do mesmo
+// jeito que numa carga HTTP, e o aviso precisa ter a mesma gravidade.
+func TestGeradorSaturadoProduzindoInvalidaOResultado(t *testing.T) {
+	brokers := brokerKafka(t)
+	topicoDeCarga := topico(t, brokers, "saturacao", 1)
+
+	raiz := t.TempDir()
+	caminho := filepath.Join(raiz, "cenario.yaml")
+	if err := os.WriteFile(caminho, []byte(fmt.Sprintf(cenarioDeSaturacao, brokers, topicoDeCarga)), 0o644); err != nil {
+		t.Fatalf("nao consegui escrever o cenario: %v", err)
+	}
+	c, err := cenario.CarregarArquivo(caminho)
+	if err != nil {
+		t.Fatalf("cenario nao carregou: %v", err)
+	}
+
+	opcoes := motor.OpcoesPadrao()
+	opcoes.RaizDeDados = raiz
+	opcoes.MaximoSimultaneas = 1
+
+	m, err := motor.Novo(c, opcoes)
+	if err != nil {
+		t.Fatalf("motor nao subiu: %v", err)
+	}
+	documento := m.Executar(context.Background())
+	t.Cleanup(func() { protocolo.EncerrarTodos() })
+
+	var achou bool
+	for _, aviso := range documento.Avisos {
+		if aviso.Tipo != "gerador_saturado" {
+			continue
+		}
+		achou = true
+		if aviso.Gravidade != metrica.GravidadeAlta {
+			t.Errorf("gravidade = %q, esperava alta: o numero nao vale", aviso.Gravidade)
+		}
+	}
+	if !achou {
+		t.Fatalf("gerador que nao sustentou a producao precisa avisar; avisos: %+v", documento.Avisos)
+	}
+	if documento.ResultadoValido() {
+		t.Error("resultado com gerador saturado produzindo nao pode ser dado como valido")
+	}
+	if documento.Agendamento.DescartadasPorLimiteDeVoo == 0 && documento.Agendamento.DespachosAtrasados == 0 {
+		t.Error("a saturacao precisa aparecer no agendamento, e nao so no texto")
+	}
+}
