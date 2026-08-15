@@ -15,6 +15,7 @@ import (
 
 	"github.com/Diegobraun/braunrate/alvo"
 	"github.com/Diegobraun/braunrate/cenario"
+	"github.com/Diegobraun/braunrate/comparacao"
 	"github.com/Diegobraun/braunrate/importador"
 	"github.com/Diegobraun/braunrate/metrica"
 	"github.com/Diegobraun/braunrate/motor"
@@ -24,7 +25,7 @@ import (
 	"github.com/Diegobraun/braunrate/slo"
 )
 
-const versao = "0.2.0"
+const versao = "0.3.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -38,6 +39,10 @@ func main() {
 		os.Exit(validar(os.Args[2:]))
 	case "depurar":
 		os.Exit(depurar(os.Args[2:]))
+	case "relatorio":
+		os.Exit(gerarRelatorio(os.Args[2:]))
+	case "comparar":
+		os.Exit(comparar(os.Args[2:]))
 	case "importar":
 		os.Exit(importar(os.Args[2:]))
 	case "alvo":
@@ -59,11 +64,15 @@ uso:
   braunrate executar <cenario.yaml> [opcoes]
   braunrate validar <cenario.yaml>
   braunrate importar curl "<comando curl>"    gera um cenario a partir de um curl
+  braunrate relatorio <resultado.json> [opcoes] gera HTML ou CSV de um resultado ja gravado
+  braunrate comparar <antes.json> <depois.json>
   braunrate alvo [opcoes]
   braunrate versao
 
 opcoes de executar:
   -resultado <arquivo.json>   grava o documento de resultado
+  -html <arquivo.html>        grava o relatorio HTML autocontido
+  -csv <arquivo.csv>          grava uma linha por passo, para planilha
   -maximo-simultaneas <n>     maximo de requisicoes simultaneas (padrao 20000)
   -atraso-tolerado <dur>      a partir daqui o gerador conta como saturado (padrao 10ms)
   -silencioso                 nao imprime progresso durante a execucao
@@ -73,17 +82,20 @@ opcoes de executar:
 func executar(argumentos []string) int {
 	conjunto := flag.NewFlagSet("executar", flag.ExitOnError)
 	arquivoDeResultado := conjunto.String("resultado", "", "arquivo JSON de resultado")
+	arquivoHTML := conjunto.String("html", "", "arquivo HTML de relatorio")
+	arquivoCSV := conjunto.String("csv", "", "arquivo CSV com uma linha por passo")
 	maximoSimultaneas := conjunto.Int64("maximo-simultaneas", 20000, "maximo de requisicoes simultaneas antes de desistir de disparar")
 	limiarDeAtraso := conjunto.Duration("atraso-tolerado", 10*time.Millisecond, "atraso de disparo a partir do qual o gerador e considerado saturado")
 	silencioso := conjunto.Bool("silencioso", false, "nao imprime progresso")
-	_ = conjunto.Parse(argumentos)
+	posicionais := analisar(conjunto, argumentos)
 
-	if conjunto.NArg() < 1 {
+	if len(posicionais) < 1 {
 		fmt.Fprintln(os.Stderr, "informe o arquivo de cenario")
 		return 2
 	}
+	arquivoDeCenario := posicionais[0]
 
-	c, err := cenario.CarregarArquivo(conjunto.Arg(0))
+	c, err := cenario.CarregarArquivo(arquivoDeCenario)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "erro no cenario: %v\n", err)
 		return 2
@@ -96,7 +108,7 @@ func executar(argumentos []string) int {
 	opcoes := motor.OpcoesPadrao()
 	opcoes.Versao = versao
 	opcoes.MaximoSimultaneas = *maximoSimultaneas
-	opcoes.RaizDeDados = filepath.Dir(conjunto.Arg(0))
+	opcoes.RaizDeDados = filepath.Dir(arquivoDeCenario)
 	opcoes.LimiarDeAtraso = *limiarDeAtraso
 	if !*silencioso {
 		opcoes.AoProgredir = func(instantaneo metrica.Instantaneo, taxaAlvo float64, restante time.Duration) {
@@ -121,16 +133,25 @@ func executar(argumentos []string) int {
 		fmt.Fprintln(os.Stderr)
 	}
 	veredito := slo.Avaliar(c.SLO, documento)
+	documento.SLO = veredito
 	relatorio.Resumo(os.Stdout, documento, veredito)
 
 	if *arquivoDeResultado != "" {
-		conteudo, err := json.MarshalIndent(documento, "", "  ")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "erro ao serializar resultado: %v\n", err)
+		if err := gravarJSON(*arquivoDeResultado, documento); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
 		}
-		if err := os.WriteFile(*arquivoDeResultado, conteudo, 0o644); err != nil {
-			fmt.Fprintf(os.Stderr, "erro ao gravar resultado: %v\n", err)
+	}
+	if *arquivoHTML != "" {
+		if err := gravarHTML(*arquivoHTML, documento); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
+		}
+		fmt.Fprintf(os.Stderr, "relatorio em %s\n", *arquivoHTML)
+	}
+	if *arquivoCSV != "" {
+		if err := gravarCSV(*arquivoCSV, documento); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
 		}
 	}
@@ -144,6 +165,140 @@ func executar(argumentos []string) int {
 	return 0
 }
 
+// O flag padrao para de ler opcao no primeiro argumento posicional, entao
+// "executar cenario.yaml -html x.html" ignorava a opcao em silencio. Aqui a
+// lista e percorrida ate o fim, com as opcoes valendo antes ou depois do
+// arquivo.
+func analisar(conjunto *flag.FlagSet, argumentos []string) []string {
+	var posicionais []string
+	for {
+		if err := conjunto.Parse(argumentos); err != nil {
+			return posicionais
+		}
+		if conjunto.NArg() == 0 {
+			return posicionais
+		}
+		posicionais = append(posicionais, conjunto.Arg(0))
+		argumentos = conjunto.Args()[1:]
+	}
+}
+
+func gravarJSON(caminho string, documento metrica.Documento) error {
+	conteudo, err := json.MarshalIndent(documento, "", "  ")
+	if err != nil {
+		return fmt.Errorf("erro ao serializar resultado: %v", err)
+	}
+	if err := os.WriteFile(caminho, conteudo, 0o644); err != nil {
+		return fmt.Errorf("erro ao gravar resultado: %v", err)
+	}
+	return nil
+}
+
+func gravarHTML(caminho string, documento metrica.Documento) error {
+	arquivo, err := os.Create(caminho)
+	if err != nil {
+		return fmt.Errorf("erro ao criar %s: %v", caminho, err)
+	}
+	defer arquivo.Close()
+	if err := relatorio.HTML(arquivo, documento); err != nil {
+		return fmt.Errorf("erro ao gerar o relatorio HTML: %v", err)
+	}
+	return nil
+}
+
+func gravarCSV(caminho string, documento metrica.Documento) error {
+	arquivo, err := os.Create(caminho)
+	if err != nil {
+		return fmt.Errorf("erro ao criar %s: %v", caminho, err)
+	}
+	defer arquivo.Close()
+	if err := relatorio.CSV(arquivo, documento); err != nil {
+		return fmt.Errorf("erro ao gerar o CSV: %v", err)
+	}
+	return nil
+}
+
+func lerDocumento(caminho string) (metrica.Documento, error) {
+	var documento metrica.Documento
+	conteudo, err := os.ReadFile(caminho)
+	if err != nil {
+		return documento, fmt.Errorf("nao consegui ler %s: %v", caminho, err)
+	}
+	if err := json.Unmarshal(conteudo, &documento); err != nil {
+		return documento, fmt.Errorf("%s nao e um resultado do braunrate: %v", caminho, err)
+	}
+	if documento.Ferramenta != "braunrate" {
+		return documento, fmt.Errorf("%s nao foi gerado pelo braunrate; use o arquivo de -resultado", caminho)
+	}
+	if documento.VersaoDoFormato != metrica.VersaoDoFormatoDeResultado {
+		return documento, fmt.Errorf("%s esta no formato de resultado %q e esta versao le o formato %q",
+			caminho, documento.VersaoDoFormato, metrica.VersaoDoFormatoDeResultado)
+	}
+	return documento, nil
+}
+
+func gerarRelatorio(argumentos []string) int {
+	conjunto := flag.NewFlagSet("relatorio", flag.ExitOnError)
+	arquivoHTML := conjunto.String("html", "", "arquivo HTML a gerar")
+	arquivoCSV := conjunto.String("csv", "", "arquivo CSV a gerar")
+	posicionais := analisar(conjunto, argumentos)
+
+	if len(posicionais) < 1 {
+		fmt.Fprintln(os.Stderr, `informe o resultado gravado, por exemplo:
+  braunrate relatorio saida.json -html relatorio.html`)
+		return 2
+	}
+	documento, err := lerDocumento(posicionais[0])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 2
+	}
+
+	if *arquivoHTML == "" && *arquivoCSV == "" {
+		*arquivoHTML = "relatorio.html"
+	}
+	if *arquivoHTML != "" {
+		if err := gravarHTML(*arquivoHTML, documento); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
+		}
+		fmt.Printf("relatorio em %s\n", *arquivoHTML)
+	}
+	if *arquivoCSV != "" {
+		if err := gravarCSV(*arquivoCSV, documento); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
+		}
+		fmt.Printf("csv em %s\n", *arquivoCSV)
+	}
+	return 0
+}
+
+func comparar(argumentos []string) int {
+	if len(argumentos) < 2 {
+		fmt.Fprintln(os.Stderr, `informe as duas execucoes, a antiga primeiro:
+  braunrate comparar antes.json depois.json`)
+		return 2
+	}
+	antes, err := lerDocumento(argumentos[0])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 2
+	}
+	depois, err := lerDocumento(argumentos[1])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 2
+	}
+
+	resultado := comparacao.Comparar(antes, depois)
+	relatorio.Comparacao(os.Stdout, resultado)
+	if !resultado.Comparavel {
+		return 3
+	}
+	return 0
+}
+
 func humanizar(valor int64) string {
 	return fmt.Sprintf("%d", valor)
 }
@@ -151,14 +306,15 @@ func humanizar(valor int64) string {
 func depurar(argumentos []string) int {
 	conjunto := flag.NewFlagSet("depurar", flag.ExitOnError)
 	mostrarCorpo := conjunto.Bool("corpo", true, "mostra o corpo das respostas")
-	_ = conjunto.Parse(argumentos)
+	posicionais := analisar(conjunto, argumentos)
 
-	if conjunto.NArg() < 1 {
+	if len(posicionais) < 1 {
 		fmt.Fprintln(os.Stderr, "informe o arquivo de cenario")
 		return 2
 	}
+	arquivoDeCenario := posicionais[0]
 
-	c, err := cenario.CarregarArquivo(conjunto.Arg(0))
+	c, err := cenario.CarregarArquivo(arquivoDeCenario)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "erro no cenario: %v\n", err)
 		return 2
@@ -170,7 +326,7 @@ func depurar(argumentos []string) int {
 
 	opcoes := motor.OpcoesPadrao()
 	opcoes.Versao = versao
-	opcoes.RaizDeDados = filepath.Dir(conjunto.Arg(0))
+	opcoes.RaizDeDados = filepath.Dir(arquivoDeCenario)
 
 	m, err := motor.Novo(c, opcoes)
 	if err != nil {
@@ -209,7 +365,7 @@ func depurar(argumentos []string) int {
 		return 1
 	}
 	fmt.Printf("Iteracao completa: %d passo(s), tudo certo. Para rodar com carga:\n  braunrate executar %s\n",
-		len(observacoes), conjunto.Arg(0))
+		len(observacoes), arquivoDeCenario)
 	return 0
 }
 
