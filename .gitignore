@@ -20,5 +20,5 @@ medicoes/bruto/*.txt
 medicoes/bruto-descartado/
 __pycache__/
 *.pyc
-braunrate
-resultado.json
+/braunrate
+/resultado.json
