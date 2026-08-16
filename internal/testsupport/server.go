@@ -26,6 +26,7 @@ type Server struct {
 	created    atomic.Int64
 	mutexPausa sync.RWMutex
 	fimDaPausa time.Time
+	armarPausa sync.Once
 	random     *rand.Rand
 	randomMu   sync.Mutex
 	server     *http.Server
@@ -63,13 +64,6 @@ func (server *Server) Start(address string) error {
 	mux.HandleFunc("/congelar", server.handleFreeze)
 	server.server = &http.Server{Handler: mux}
 
-	if server.options.FreezeFor > 0 {
-		go func() {
-			time.Sleep(server.options.FreezeAfter)
-			server.Freeze(server.options.FreezeFor)
-		}()
-	}
-
 	go func() { _ = server.server.Serve(listener) }()
 	return nil
 }
@@ -89,7 +83,25 @@ func (server *Server) Freeze(duration time.Duration) {
 	server.mutexPausa.Unlock()
 }
 
+// The freeze is counted from the first request, not from Start. Counting from
+// Start put it on the wall clock of the whole test — engine setup, data loading
+// and a busy machine all shifted the run relative to the freeze, and the window
+// could fall outside the measurement. Anchored on the first request it lands in
+// the same place every time.
+func (server *Server) armFreeze() {
+	if server.options.FreezeFor <= 0 {
+		return
+	}
+	server.armarPausa.Do(func() {
+		go func() {
+			time.Sleep(server.options.FreezeAfter)
+			server.Freeze(server.options.FreezeFor)
+		}()
+	})
+}
+
 func (server *Server) waitForResume() {
+	server.armFreeze()
 	server.mutexPausa.RLock()
 	end := server.fimDaPausa
 	server.mutexPausa.RUnlock()
