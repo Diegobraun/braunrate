@@ -22,7 +22,7 @@ Classificacao: **bloqueia** (a pessoa nao termina sozinha), **atrasa** (termina,
 | 7 | Caminho fixo escapa da verificacao de variedade | A | atrasa |
 | 8 | Passo que nunca executou some do relatorio | B | atrasa |
 | 9 | Linha de erro nao diz o status nem o passo | B | atrasa |
-| 10 | Erro de sintaxe YAML sai cru, em ingles, sem arquivo nem coluna | C | atrasa |
+| 10 | ~~Erro de sintaxe YAML sai cru, em ingles, sem arquivo nem coluna~~ — **resolvido** | C | atrasa |
 | 11 | Timeout do `aguardar` diz "tempo esgotado" e imprime campo vazio | C | atrasa |
 | 12 | Arquivo inexistente responde em ingles e nao ensina o proximo passo | A | incomoda |
 | 13 | Sugestao de "voce quis dizer" dispara para palavra sem relacao | A | incomoda |
@@ -202,7 +202,7 @@ Objetivo: publicar no Kafka e esperar o efeito **via HTTP**, partindo so do que 
 
 **4 comandos, 3 edicoes.** Nao terminou.
 
-### C10 — Erro de sintaxe YAML sai cru, em ingles, sem arquivo nem coluna (atrasa)
+### C10 — Erro de sintaxe YAML sai cru, em ingles, sem arquivo nem coluna (atrasa) — RESOLVIDO
 
 ```
 $ braunrate validar cenario.yaml
@@ -210,6 +210,16 @@ erro no cenario: yaml: line 18: did not find expected ',' or '}'
 ```
 
 A causa era `${pedidos.id}` sem aspas dentro de um mapa em linha — o caso mais comum de todos, porque `${` e `}` sao justamente o que o YAML em linha usa. Todo o resto do produto responde em portugues, com `arquivo:linha:coluna` e um exemplo; este caminho nao.
+
+**Resolvido.** O erro do parser YAML e traduzido, e a mensagem muda conforme o que esta na linha:
+
+```
+erro no cenario: cenario.yaml:9:38: mapa em linha que nao fecha. Dentro de { } o YAML trata '{' e '}' como estrutura, e ${variavel} carrega os dois.
+    ponha o valor entre aspas, por exemplo:
+      kafka: { topico: pedidos, chave: "${pedidos.id}" }
+```
+
+Cobre tambem caminho JSON com colchete, `#` dentro de mapa em linha, tabulacao no lugar de espaco e dois-pontos em valor sem aspas.
 
 ### C3 — Esperar efeito por HTTP e impossivel, e a mensagem nao diz o que fazer (bloqueia)
 

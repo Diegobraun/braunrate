@@ -58,7 +58,7 @@ func ParseFile(path string) (Spec, error) {
 func Parse(content []byte) (Spec, error) {
 	var root yaml.Node
 	if err := yaml.Unmarshal(content, &root); err != nil {
-		return Spec{}, err
+		return Spec{}, translateYAMLError(content, err)
 	}
 	if len(root.Content) == 0 {
 		return Spec{}, ScenarioError{Line: 1, Message: "cenario vazio"}
