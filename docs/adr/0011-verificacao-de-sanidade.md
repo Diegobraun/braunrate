@@ -48,3 +48,13 @@ Cenario sem bloco `slo` continua executando e reportando. A verificacao nao exig
 - Terminal e HTML mostram os achados num lugar so, no topo; o aviso grave nao e mais impresso duas vezes.
 - Cada caso tem teste que **prova falhar sem o codigo dele**: o teste roda a mesma execucao vazia com todas as verificacoes menos a sua e exige que ela passe como valida. Sem isso, o teste nao provaria nada sobre a verificacao que diz cobrir.
 - O exemplo publicado em `docs/exemplo-relatorio.html` continua byte a byte igual: documento sem bloco de sanidade cai na regra antiga.
+
+## Adendo — o corte de 1% e um penhasco, e isso e escolha
+
+A investigacao do flake do `graphql-cobranca` (2026-08-16) mostrou o mesmo cenario alternando entre saida 0 e saida 3 numa maquina carregada, com **1.625 de 1.625 jornadas completas e zero erros nas duas**. A unica diferenca era a proporcao de despachos atrasados: 0,43% numa, 1,85% na outra, em torno do corte de 1%.
+
+Nao ha corrida nem defeito no alvo: a regra fez o que devia, e a maquina e que nao sustentou 200/s com pontualidade. O corte continua binario de proposito — abaixo dele o atraso nao move o numero, acima ele mede o gerador — e agora esta preso por teste que escolhe os atrasos em vez de medi-los, com os dois lados do penhasco (9 e 10 atrasados em 1.000).
+
+A consequencia pratica ficou no CI: rodar exemplo em runner compartilhado aceita saida 3 **quando o unico motivo for gerador saturado**, e quebra em qualquer outro. Aceitar todo 3 seria mascarar; recusar todo 3 seria chamar de defeito uma resposta correta da ferramenta.
+
+A investigacao ainda achou uma contradicao no relatorio: o aviso de degradacao do alvo afirmava "enquanto o despacho continuou pontual" sem nunca verificar a pontualidade, e saiu impresso logo abaixo do aviso de que 4% dos despachos atrasaram. Com o gerador escorregando, as duas causas nao se separam de fora, e a resposta honesta e nao afirmar nada sobre o alvo.

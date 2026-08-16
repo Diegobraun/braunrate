@@ -90,6 +90,7 @@ jobs:
         run: |
           ./braunrate target -address=127.0.0.1:8080 -latency=5ms &
           sleep 1
-          ./braunrate execute examples/ci.yaml -quiet -result=resultado.json
-          ./braunrate execute examples/jornada-autenticada.yaml -quiet
-          ./braunrate execute examples/graphql-cobranca.yaml -quiet
+          chmod +x .github/executar-exemplo.sh
+          .github/executar-exemplo.sh examples/ci.yaml
+          .github/executar-exemplo.sh examples/jornada-autenticada.yaml
+          .github/executar-exemplo.sh examples/graphql-cobranca.yaml
