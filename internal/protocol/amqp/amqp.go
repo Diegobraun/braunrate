@@ -388,3 +388,5 @@ func summarize(text string) string {
 	}
 	return text
 }
+
+func (config *Config) RequestBody() []byte { return config.Body }

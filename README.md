@@ -825,6 +825,27 @@ ficou parado e o numero nao representa producao. Faca a chave da mensagem variar
 
 Isso nasceu de um bug nosso: a autenticacao congelava os dados da primeira iteracao e toda execucao autenticada com CSV rodava sobre a primeira linha, com o relatorio anunciando variedade que nao existiu. A medicao passa a verificar isso em caminho, corpo, cabecalho, variavel de GraphQL e chave de mensagem — um ponto so de instrumentacao, entao protocolo novo entra coberto ([ADR 0007](docs/adr/0007-variedade-observada.md)).
 
+### Onde os valores cairam, e nao so quantos foram
+
+Contagem de distintos responde "um valor ou muitos". Ela nao responde **onde** os valores ficaram, e mil ids diferentes do mesmo cliente exercitam uma fatia so do alvo:
+
+```
+Ambiente
+  100 valores distintos de pedidos.id em 100 usos, todos comecando com "CLI-A-"
+  61 valores distintos de pedidos.valor em 100 usos, entre 10 e 89
+```
+
+O corpo entra pela **forma** — os campos que carrega e o tipo de cada um — nunca pelo conteudo: contar corpos distintos contaria ids distintos. Campo a mais, campo ausente, tipo trocado e lista vazia sao formas diferentes; lista de 3 e lista de 4 sao a mesma. Forma unica nao rende linha nem aviso, porque e o caso normal. Campo que saiu vazio rende:
+
+```
+Confiabilidade da medicao
+  Atencao: o corpo de "criar pedido" saiu com campo vazio; se isso nao for proposital,
+           o alvo exercitou um caminho que producao nao ve
+           cupom: vazio, id: texto, total: texto
+```
+
+Gravidade media, nao alta: existe cenario que quer mandar campo em branco, e a ferramenta nao distingue esse de uma interpolacao que resolveu para nada. O que ela pode fazer e dizer que aconteceu.
+
 ## Comparar duas execucoes
 
 ```

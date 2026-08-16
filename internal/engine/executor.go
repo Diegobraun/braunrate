@@ -390,6 +390,19 @@ func (executor *Executor) runStep(runContext context.Context, step scenario.Step
 	}
 	observation.Config = config
 
+	// The shape is taken from the resolved config, which is the body as it goes
+	// on the wire: taking it from the declared step would measure the template
+	// and report a variety that the substitution may not have produced.
+	if collector := executor.collector.Load(); collector != nil {
+		if carries, has := config.(protocol.WithBody); has {
+			if body := carries.RequestBody(); len(body) > 0 {
+				collector.RecordUses(map[string]string{
+					metrics.BodyShapeName + step.Name: metrics.BodyShape(body),
+				})
+			}
+		}
+	}
+
 	sample.SentAt = clock.Now()
 	response := implementation.Execute(runContext, protocol.Request{
 		StepName:  step.Name,

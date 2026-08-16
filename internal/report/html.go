@@ -299,6 +299,9 @@ func environmentSentences(document metrics.Document) []string {
 		sentences = append(sentences, "Mensageria: "+broker+".")
 	}
 	for _, variety := range document.Variety {
+		if !variety.Notable() {
+			continue
+		}
 		sentences = append(sentences, "Variedade observada: "+variety.Sentence+".")
 	}
 	if len(document.Run.Seeds) > 0 {

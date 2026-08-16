@@ -353,3 +353,7 @@ func summarize(text string) string {
 	}
 	return text
 }
+
+// The shape that matters in GraphQL is the one of the variables: the query is
+// fixed by the scenario, and it is the variables that change per iteration.
+func (config *Config) RequestBody() []byte { return []byte(config.Vars) }

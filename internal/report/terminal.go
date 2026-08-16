@@ -153,6 +153,9 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 		write("  Mensageria: %s", broker)
 	}
 	for _, variety := range document.Variety {
+		if !variety.Notable() {
+			continue
+		}
 		write("  %s", variety.Sentence)
 	}
 	if len(document.Run.Seeds) > 0 {

@@ -592,3 +592,6 @@ func (implementation *Protocol) watchLag(config *Config, brokers []string, broke
 	go watcher.watch(implementation.watchContext)
 	return nil
 }
+
+// The value of the message is its body: what a consumer has to know how to read.
+func (config *Config) RequestBody() []byte { return config.Value }

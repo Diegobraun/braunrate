@@ -4,6 +4,36 @@ Registro das decisoes tomadas durante o trabalho autonomo da noite de 2026-08-16
 Ordenado por risco: primeiro o que muda o que o usuario ve, o que contraria ADR
 existente e o que e caro de reverter; depois o resto.
 
+## Item 8 — forma de corpo entra na variedade pelo mesmo cano dos valores
+
+Alternativa considerada: uma metrica separada, com contador, secao e aviso proprios.
+
+Por que esta: a forma do corpo e uma variedade observada como qualquer outra — conta distintos, tem teto, vira frase e vira aviso. Passa-la pelo `RecordUses` que ja existe, com o prefixo `corpo.` no nome, deu a metrica inteira sem maquina nova. O preco e que o nome da variavel virou um espaco reservado: quem tiver uma variavel chamada `corpo.algo` colide.
+
+Reversibilidade: medio — a metrica sai facil, mas o campo `formas_observadas` ja tera sido gravado em resultado de quem rodou.
+
+Toca o usuario: sim. Corpo com campo vazio passa a render aviso de gravidade media, entao execucao que saia limpa passa a sair com uma observacao. Nao muda codigo de saida: media nao invalida.
+
+## Item 8 — forma unica de corpo nao rende linha no relatorio
+
+Alternativa considerada: imprimir a forma de todo passo com corpo, para o relatorio ficar completo.
+
+Por que esta: todo passo com corpo tem exatamente uma forma no caso normal. Uma linha por passo em toda execucao soterraria as linhas que dizem alguma coisa — que e a mesma razao pela qual o ADR 0007 se recusa a avisar sobre fonte que so tem um valor. A forma continua no JSON; o que fica de fora e a frase.
+
+Reversibilidade: barato — `Notable()` e um metodo so, consultado nos dois relatorios.
+
+Toca o usuario: sim, por omissao: a forma de corpo so aparece na tela quando ha mais de uma ou quando algum campo saiu vazio.
+
+## Item 8 — o prefixo comum so e declarado a partir de 4 caracteres
+
+Alternativa considerada: declarar qualquer prefixo comum, por menor que fosse.
+
+Por que esta: dois ids que comecam com o mesmo digito compartilham um prefixo de 1 caractere, e dizer isso em toda execucao com valor numerico em texto encheria o bloco de ambiente de frase sem conteudo. Quatro caracteres e onde um prefixo comeca a parecer com "mesmo cliente", "mesma regiao", "mesmo tenant".
+
+Reversibilidade: barato — uma constante.
+
+Toca o usuario: sim, no que aparece: valores com prefixo curto em comum nao ganham a frase de faixa.
+
 ## Conserto — a frase da comparacao parava de afirmar mais do que ela sabe
 
 Alternativa considerada: deixar como estava, porque nenhum teste reclamava.

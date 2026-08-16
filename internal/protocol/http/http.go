@@ -265,3 +265,7 @@ func hasHeader(headers map[string]string, name string) bool {
 	}
 	return false
 }
+
+// RequestBody is what the engine measures the shape of. The field cannot serve
+// as the method, so the name says what it is for.
+func (config *Config) RequestBody() []byte { return config.Body }

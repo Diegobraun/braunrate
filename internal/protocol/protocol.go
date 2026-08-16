@@ -82,6 +82,15 @@ type Response struct {
 	Attributes map[string]string
 }
 
+// WithBody is implemented by protocols whose request carries a body, so the
+// engine can measure the shape of what was sent. It answers the question a
+// count of distinct bodies cannot: how many different shapes the target had to
+// handle (ADR 0007).
+type WithBody interface {
+	Config
+	RequestBody() []byte
+}
+
 // WithAvailability is implemented by protocols that know how many distinct
 // destinations exist server-side: without it the report cannot tell a
 // single-partition defect from a single-partition topic.
