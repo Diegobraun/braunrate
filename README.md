@@ -8,32 +8,32 @@ O alvo de teste embutido congela por 1 s no meio da execucao. Mesma pausa, mesmo
 
 | Modelo | p99 reportado | Amostras |
 |---|---|---|
-| **braunrate (chegada aberta, latencia contada do instante agendado)** | **977,4 ms** | 600 |
-| Laco fechado (um usuario virtual em sequencia, como JMeter e Locust medem) | 2,9 ms | 783 |
+| **braunrate (chegada aberta, latencia contada do instante agendado)** | **976,4 ms** | 600 |
+| Laco fechado (um usuario virtual em sequencia, como JMeter e Locust medem) | 3,3 ms | 793 |
 
-**974,6 ms escondidos pelo laco fechado.** O laco fechado nao mente por bug: quando o alvo trava, ele simplesmente para de enviar, e as requisicoes que deveriam ter partido nunca entram na conta. E a omissao coordenada.
+**973,1 ms escondidos pelo laco fechado.** O laco fechado nao mente por bug: quando o alvo trava, ele simplesmente para de enviar, e as requisicoes que deveriam ter partido nunca entram na conta. E a omissao coordenada.
 
 Isso nao e alegacao de marketing: e um teste automatizado que roda no CI a cada push. Se a medicao mentir, o build quebra.
 
 ```
-$ go test ./autovalidacao/... -v
-=== RUN   TestMedicaoRefleteCongelamentoDoAlvo
-    modelo aberto: p50 2.7 ms | p99 973.8 ms | max 1005.6 ms | n 600
---- PASS: TestMedicaoRefleteCongelamentoDoAlvo (3.01s)
-=== RUN   TestCongelamentoDoAlvoNaoEhConfundidoComSaturacaoDoGerador
+$ go test ./internal/selfcheck/... -v
+=== RUN   TestMeasurementReflectsTargetFreeze
+    modelo aberto: p50 2.7 ms | p99 976.9 ms | max 1005.6 ms | n 600
+--- PASS: TestMeasurementReflectsTargetFreeze (3.01s)
+=== RUN   TestTargetFreezeIsNotConfusedWithGeneratorSaturation
     aviso correto: a latencia do alvo cresceu ao longo da execucao enquanto o despacho
     continuou pontual; a degradacao e do alvo, nao do gerador | p99 por segundo passou
-    de 3.5 ms para 993.3 ms
---- PASS: TestCongelamentoDoAlvoNaoEhConfundidoComSaturacaoDoGerador (3.01s)
-=== RUN   TestLacoFechadoEsconderiaAPausaQueOModeloAbertoMostra
+    de 3.2 ms para 996.9 ms
+--- PASS: TestTargetFreezeIsNotConfusedWithGeneratorSaturation (3.01s)
+=== RUN   TestClosedLoopWouldHideThePauseOpenModelShows
     mesma pausa de 1s no mesmo alvo:
-      modelo aberto (braunrate): p99 977.4 ms sobre 600 amostras
-      laco fechado:              p99 2.9 ms sobre 783 amostras
-      omissao coordenada: 974.6 ms escondidos pelo laco fechado
---- PASS: TestLacoFechadoEsconderiaAPausaQueOModeloAbertoMostra (6.01s)
+      modelo aberto (braunrate): p99 976.4 ms sobre 600 amostras
+      laco fechado:              p99 3.3 ms sobre 793 amostras
+      omissao coordenada: 973.1 ms escondidos pelo laco fechado
+--- PASS: TestClosedLoopWouldHideThePauseOpenModelShows (6.01s)
 ```
 
-Reproduza na sua maquina: `go test ./autovalidacao/... -v`.
+Reproduza na sua maquina: `go test ./internal/selfcheck/... -v`.
 
 ### Tres provas, tres pontos cegos
 
@@ -41,7 +41,7 @@ Esta e a primeira das tres execucoes reais que sustentam a tese. Cada uma expoe 
 
 | Prova | Numero | Ponto cego que expoe |
 |---|---|---|
-| Alvo congelado por 1 s (acima) | 977,4 ms contra 2,9 ms | **Omissao coordenada**: laco fechado para de enviar quando o alvo trava, e a espera some da conta |
+| Alvo congelado por 1 s (acima) | 976,4 ms contra 3,3 ms | **Omissao coordenada**: laco fechado para de enviar quando o alvo trava, e a espera some da conta |
 | [GraphQL com erro em 200](#graphql) | 406 erros em 2.844 respostas, todas com status 200 | **Erro classificado por status**: quem le o codigo HTTP reporta 0% de erro e SLO verde |
 | [Cadeia assincrona](#mensageria-e-cadeia-assincrona) | 0,9 ms para produzir contra 4,87 s de jornada | **Medir so a producao**: o broker aceita rapido, e o efeito que o usuario espera chega segundos depois |
 
