@@ -26,7 +26,7 @@ Consequencias praticas:
    - o autor cria um modulo Go que importa `braunrate/protocolo` e registra a implementacao em `init()`;
    - um arquivo `braunrate.build.yaml` declara os modulos extras e suas versoes;
    - `braunrate construir` gera um binario com os protocolos declarados, fixando versoes via `go.sum` — o build e reprodutivel e auditavel;
-   - o binario resultante reporta, em `braunrate versao` e no bloco de ambiente do relatorio, quais protocolos foram compilados e em que versao.
+   - o binario resultante reporta, em `braunrate version` e no bloco de ambiente do relatorio, quais protocolos foram compilados e em que versao.
 4. **Isso vai no README como limitacao conhecida**, na secao de escopo, junto com o que esta fora. Nunca como surpresa depois da adocao. Texto obrigatorio: protocolo fora da lista exige rebuild.
 
 ## Serializacao: Avro e Schema Registry

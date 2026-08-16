@@ -79,18 +79,18 @@ jobs:
       - name: exemplo publicado esta atualizado
         run: |
           go build -o braunrate ./cmd/braunrate
-          ./braunrate relatorio docs/exemplo-resultado.json -html=docs/exemplo-relatorio.html
+          ./braunrate report docs/exemplo-resultado.json -html=docs/exemplo-relatorio.html
           if ! git diff --quiet -- docs/exemplo-relatorio.html; then
             echo "docs/exemplo-relatorio.html esta desatualizado; regenere com:"
-            echo "  go run ./cmd/braunrate relatorio docs/exemplo-resultado.json -html=docs/exemplo-relatorio.html"
+            echo "  go run ./cmd/braunrate report docs/exemplo-resultado.json -html=docs/exemplo-relatorio.html"
             git --no-pager diff --stat -- docs/exemplo-relatorio.html
             exit 1
           fi
 
       - name: execucao real contra o alvo embutido
         run: |
-          ./braunrate alvo -endereco=127.0.0.1:8080 -latencia=5ms &
+          ./braunrate target -address=127.0.0.1:8080 -latency=5ms &
           sleep 1
-          ./braunrate executar examples/ci.yaml -silencioso -resultado=resultado.json
-          ./braunrate executar examples/jornada-autenticada.yaml -silencioso
-          ./braunrate executar examples/graphql-cobranca.yaml -silencioso
+          ./braunrate execute examples/ci.yaml -quiet -result=resultado.json
+          ./braunrate execute examples/jornada-autenticada.yaml -quiet
+          ./braunrate execute examples/graphql-cobranca.yaml -quiet

@@ -15,8 +15,8 @@ Tres consequencias, todas obrigatorias daqui em diante:
 Escopo:
 
 1. **Schema JSON publicado**, com a linha `# yaml-language-server: $schema=...` no topo dos exemplos, dando autocomplete e validacao no VS Code.
-2. **`braunrate depurar cenario.yaml`**: um usuario virtual, uma iteracao, mostrando cada passo — requisicao, resposta, o que foi capturado, valor de cada variavel, resultado de cada assercao. Equivalente ao View Results Tree do JMeter.
-3. **`braunrate importar curl`**: converte um comando cURL colado em passo pronto, com cabecalhos, corpo e autenticacao.
+2. **`braunrate debug cenario.yaml`**: um usuario virtual, uma iteracao, mostrando cada passo — requisicao, resposta, o que foi capturado, valor de cada variavel, resultado de cada assercao. Equivalente ao View Results Tree do JMeter.
+3. **`braunrate import curl`**: converte um comando cURL colado em passo pronto, com cabecalhos, corpo e autenticacao.
 4. **Mensagens de erro que ensinam**: linha e coluna, o que esta errado, sugestao por similaridade, lista de opcoes validas e um exemplo minimo.
 
 **Criterio de aceitacao, em termos de usuario e nao de engenheiro**: uma pessoa que nunca viu o braunrate, com o binario, o schema e um exemplo, cria um cenario funcional para um endpoint autenticado **sem ler documentacao alem das mensagens da propria ferramenta**.
@@ -44,7 +44,7 @@ Dois pontos de confiabilidade entraram na fase depois da revisao da Fase 2, porq
 
 ## Fase 3 — Relatorio
 
-Entregue: relatorio HTML autocontido com veredito em uma frase no topo, grafico SVG desenhado sem biblioteca (o arquivo nao busca nada na rede), CSV por passo com o tipo de latencia declarado, veredito de SLO dentro do documento JSON, `braunrate relatorio` para gerar o HTML de um resultado ja gravado e `braunrate comparar` entre duas execucoes.
+Entregue: relatorio HTML autocontido com veredito em uma frase no topo, grafico SVG desenhado sem biblioteca (o arquivo nao busca nada na rede), CSV por passo com o tipo de latencia declarado, veredito de SLO dentro do documento JSON, `braunrate report` para gerar o HTML de um resultado ja gravado e `braunrate compare` entre duas execucoes.
 
 A comparacao trata variacao abaixo de 5% como ruido, porque duas execucoes nao produzem intervalo de confianca; lista o que mudou fora do servico (maquina, plano, versao, cenario, token compartilhado); e se recusa a comparar quando alguma das duas teve o gerador saturado.
 

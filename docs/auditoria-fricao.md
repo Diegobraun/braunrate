@@ -7,6 +7,8 @@
 
 Classificacao: **bloqueia** (a pessoa nao termina sozinha), **atrasa** (termina, por tentativa e erro), **incomoda**.
 
+> Os comandos aparecem aqui com o nome que tinham no percurso — `executar`, `validar`, `depurar`. Depois da auditoria eles passaram para ingles (`execute`, `validate`, `debug`); a saida colada abaixo nao foi reescrita porque e transcricao, nao exemplo.
+
 ## Resumo
 
 | # | Achado | Jornada | Classe |

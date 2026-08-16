@@ -68,7 +68,7 @@ func noJourneyCompleted(document Document, _ DocumentInput) []SanityFinding {
 	}
 	return []SanityFinding{{
 		Kind:     "jornada_incompleta",
-		Message:  "nenhuma jornada chegou ao fim, entao o cenario nao exercitou a sequencia que declarou. Rode 'braunrate depurar' para ver onde a iteracao para",
+		Message:  "nenhuma jornada chegou ao fim, entao o cenario nao exercitou a sequencia que declarou. Rode 'braunrate debug' para ver onde a iteracao para",
 		Evidence: fmt.Sprintf("%s jornadas iniciadas, 0 completas", thousands(document.Journey.Started)),
 	}}
 }

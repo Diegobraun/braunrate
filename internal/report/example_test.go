@@ -38,7 +38,7 @@ func TestPublishedExampleIsUpToDate(t *testing.T) {
 	if string(committed) != generated.String() {
 		t.Errorf(`docs/exemplo-relatorio.html esta diferente do que o gerador produz hoje.
 Regenere com:
-  go run ./cmd/braunrate relatorio docs/exemplo-resultado.json -html=docs/exemplo-relatorio.html`)
+  go run ./cmd/braunrate report docs/exemplo-resultado.json -html=docs/exemplo-relatorio.html`)
 	}
 }
 

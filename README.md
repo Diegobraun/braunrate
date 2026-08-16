@@ -56,12 +56,12 @@ Decisao da Fase 0: **Go**, sustentada por dois criterios apenas — RSS sob carg
 ```bash
 go build -o braunrate ./cmd/braunrate
 
-braunrate alvo -latencia=5ms &                     # alvo de teste embutido
-braunrate validar examples/http-basico.yaml        # valida sem executar
-braunrate depurar examples/http-basico.yaml        # uma iteracao, tudo visivel
-braunrate executar examples/http-basico.yaml       # executa e resume no terminal
-braunrate executar examples/http-basico.yaml -html=relatorio.html -resultado=saida.json
-braunrate comparar antes.json depois.json          # o que mudou entre duas execucoes
+braunrate target -latency=5ms &                     # alvo de teste embutido
+braunrate validate examples/http-basico.yaml        # valida sem executar
+braunrate debug examples/http-basico.yaml        # uma iteracao, tudo visivel
+braunrate execute examples/http-basico.yaml       # executa e resume no terminal
+braunrate execute examples/http-basico.yaml -html=relatorio.html -result=saida.json
+braunrate compare antes.json depois.json          # o que mudou entre duas execucoes
 ```
 
 Cenario minimo:
@@ -167,7 +167,7 @@ Com a extensao YAML do VS Code (ou qualquer editor com yaml-language-server), o 
 **Comecar de um curl** em vez de comecar do zero:
 
 ```bash
-braunrate importar curl "curl 'https://api.exemplo.com/v1/pedidos/9912' -X POST -H 'Authorization: Bearer abc.def' -d '{\"valor\": 199.90}'" -saida cenario.yaml
+braunrate import curl "curl 'https://api.exemplo.com/v1/pedidos/9912' -X POST -H 'Authorization: Bearer abc.def' -d '{\"valor\": 199.90}'" -output cenario.yaml
 ```
 
 Sai um cenario que ja carrega, com carga e SLO de partida, e tres avisos honestos no terminal: o token virou variavel (`${token}`, lida de `TOKEN` no ambiente) e nao vai para o repositorio; o id fixo no caminho faz o alvo responder de cache; os numeros de carga e SLO sao chute, nao medicao.
@@ -175,7 +175,7 @@ Sai um cenario que ja carrega, com carga e SLO de partida, e tres avisos honesto
 **Comecar de um plano do JMeter**, para quem tem suite pronta:
 
 ```bash
-braunrate importar jmx plano.jmx -saida cenario.yaml
+braunrate import jmx plano.jmx -output cenario.yaml
 ```
 
 **A traducao e parcial e o que ficou de fora sai listado no terminal**, um elemento por vez, porque importador que engole o arquivo inteiro em silencio entrega um cenario que mede outra coisa:
@@ -203,7 +203,7 @@ BeanShellPreProcessor (1). Confira se algum deles mudava o que era medido
 **Ver a iteracao antes da carga**, que e onde a correlacao quebrada aparece:
 
 ```
-$ braunrate depurar examples/jornada-autenticada.yaml
+$ braunrate debug examples/jornada-autenticada.yaml
 depurando "Jornada de cobranca" contra http://127.0.0.1:8080: 1 usuario, 1 iteracao, sem carga
 
 passo 1 — consultar pedido   [ok em 3.4ms]
@@ -225,7 +225,7 @@ variaveis no fim da iteracao
   assinantes.id = 1001
 
 Iteracao completa: 2 passo(s), tudo certo. Para rodar com carga:
-  braunrate executar examples/jornada-autenticada.yaml
+  braunrate execute examples/jornada-autenticada.yaml
 ```
 
 ## O mesmo cenario em Go
@@ -270,9 +270,9 @@ $ go test ./dsl/ -run TestYAMLEDSL -v
 ## O relatorio
 
 ```bash
-braunrate executar examples/jornada-autenticada.yaml -html=relatorio.html -resultado=saida.json -csv=passos.csv
-braunrate relatorio saida.json -html=relatorio.html     # gera depois, a partir do resultado gravado
-braunrate comparar ontem.json hoje.json                 # o que mudou entre duas execucoes
+braunrate execute examples/jornada-autenticada.yaml -html=relatorio.html -result=saida.json -csv=passos.csv
+braunrate report saida.json -html=relatorio.html     # gera depois, a partir do resultado gravado
+braunrate compare ontem.json hoje.json                 # o que mudou entre duas execucoes
 ```
 
 O topo do HTML e uma frase, nao uma tabela. [Exemplo real](docs/exemplo-relatorio.html) (baixe e abra: o GitHub nao renderiza HTML), gerado da execucao abaixo. O arquivo nao busca script, fonte nem imagem: abre em rede fechada e sobrevive anexado em ticket.
@@ -416,7 +416,7 @@ Nem todo sistema assincrono publica o resultado num topico: muitos so mostram o 
       timeout: 30s
 ```
 
-**A granularidade e declarada, nao escondida.** Medir por sondagem so mede em degraus do intervalo: o valor sai sempre maior ou igual ao real, nunca menor. Por isso o relatorio traz a linha *"o passo X espera sondando a cada 200ms: a latencia dele tem essa granularidade e fica maior que a real, nunca menor"*, e `braunrate depurar` mostra o mesmo antes de qualquer carga. Intervalo menor mede mais fino e pesa mais no alvo — a escolha e de quem escreve, com o efeito impresso.
+**A granularidade e declarada, nao escondida.** Medir por sondagem so mede em degraus do intervalo: o valor sai sempre maior ou igual ao real, nunca menor. Por isso o relatorio traz a linha *"o passo X espera sondando a cada 200ms: a latencia dele tem essa granularidade e fica maior que a real, nunca menor"*, e `braunrate debug` mostra o mesmo antes de qualquer carga. Intervalo menor mede mais fino e pesa mais no alvo — a escolha e de quem escreve, com o efeito impresso.
 
 Sem `ate` o passo e recusado: a primeira resposta encerraria a espera e a medicao seria do tempo de responder, nao do tempo ate o efeito acontecer.
 
@@ -434,14 +434,14 @@ RabbitMQ segue a mesma forma:
 Toda execucao passa por uma verificacao de sanidade **antes** de o SLO ser lido. Ela nao pergunta se o alvo foi bem; pergunta se a execucao mediu o que se propos a medir. Quando a resposta e nao, o SLO nem chega a ser avaliado e o comando sai com **codigo 3**:
 
 ```
-$ braunrate executar cenario.yaml
+$ braunrate execute cenario.yaml
 Consulta sem autenticacao — contra http://127.0.0.1:8099
 
 Resultado invalido: a execucao nao mediu o que se propos a medir. Isto nao e veredito sobre o
 alvo — e a medicao que nao vale, e por isso nenhuma regra de SLO foi avaliada.
 
   - nenhuma jornada chegou ao fim, entao o cenario nao exercitou a sequencia que declarou.
-    Rode 'braunrate depurar' para ver onde a iteracao para
+    Rode 'braunrate debug' para ver onde a iteracao para
     60 jornadas iniciadas, 0 completas
   - o passo "consultar pedido" falhou em 100% das requisicoes; nenhuma resposta bem-sucedida
     entrou na medicao dele
@@ -489,7 +489,7 @@ Isso nasceu de um bug nosso: a autenticacao congelava os dados da primeira itera
 ## Comparar duas execucoes
 
 ```
-$ braunrate comparar antes.json depois.json
+$ braunrate compare antes.json depois.json
 
 Ficou mais lento: jornada inteira (95%): 71 vezes mais lento — de 10 ms para 675 ms. Com 2 ressalva(s) que podem explicar a diferenca sozinhas.
 

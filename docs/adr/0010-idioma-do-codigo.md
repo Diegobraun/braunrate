@@ -25,6 +25,8 @@ Em portugues: chave de YAML (`nome`, `alvo`, `carga`, `cenario`, `slo`, `dados`,
 
 A fronteira e o que sai na tela. Nenhum identificador mistura os dois idiomas.
 
+**Emenda de 2026-08-16 — a linha de comando fica em ingles.** Subcomando e opcao passam a ser `execute`, `validate`, `debug`, `report`, `compare`, `new`, `import`, `target`, `version`, `-result`, `-quiet`, `-max-concurrent`, `-late-threshold`, `-body`, `-address`, `-latency`, `-freeze-after`, `-freeze-for`, `-input`, `-output`, `-processor-delay`. O motivo e convencao de ferramenta de linha de comando: `k6 run`, `jmeter`, `ab` e `go test` usam verbo em ingles, e quem digita o comando esta num terminal, nao lendo um relatorio. **O que o comando imprime continua em portugues**, e as chaves do YAML tambem — o cenario nao mudou uma letra. Custou renomear README, docs, ADRs e CI de uma vez; nao ha usuario externo com script para quebrar, e adiar so aumentaria o custo.
+
 Ao lado da traducao, tres regras de nome passaram a valer: o pacote ja e contexto e nao se repete no tipo (`metrics.Document`, nao `metrics.MetricsDocument`); nome diz o que a coisa e, nao como foi feita; e interface pequena, nomeada pelo comportamento (`Describable`, `Preparable`, `WithHeaders`).
 
 ## Alternativas descartadas

@@ -98,7 +98,7 @@ func split(command string) ([]string, error) {
 		fields = append(fields, current.String())
 	}
 	if len(fields) == 0 {
-		return nil, fmt.Errorf("nao recebi nenhum comando; use:\n  braunrate importar curl \"curl -X POST https://exemplo/pedidos -d '{}'\"\nou passe o comando pela entrada padrao")
+		return nil, fmt.Errorf("nao recebi nenhum comando; use:\n  braunrate import curl \"curl -X POST https://exemplo/pedidos -d '{}'\"\nou passe o comando pela entrada padrao")
 	}
 	return fields, nil
 }

@@ -77,7 +77,7 @@ sequenceDiagram
     participant I as Instrumentacao
     participant R as Relatorio
 
-    U->>C: braunrate executar cenario.yaml
+    U->>C: braunrate execute cenario.yaml
     C->>M: carregar e validar
     M-->>C: cenario valido (ou erro apontando linha)
     C->>A: plano de carga + cenario
