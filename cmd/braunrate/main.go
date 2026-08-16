@@ -95,6 +95,7 @@ func execute(args []string) int {
 	maxInflight := set.Int64("max-concurrent", 20000, "maximo de requisicoes simultaneas antes de desistir de disparar")
 	lateThreshold := set.Duration("late-threshold", 10*time.Millisecond, "atraso de disparo a partir do qual o gerador e considerado saturado")
 	silencioso := set.Bool("quiet", false, "nao imprime progresso")
+	baselinePath := set.String("baseline", "", "resultado de uma execucao anterior, para as regras de regressao")
 	positional := analisar(set, args)
 
 	if len(positional) < 1 {
@@ -140,8 +141,17 @@ func execute(args []string) int {
 	if !*silencioso {
 		fmt.Fprintln(os.Stderr)
 	}
+	var baseline *slo.Baseline
+	if *baselinePath != "" {
+		before, err := readDocument(*baselinePath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 2
+		}
+		baseline = &slo.Baseline{Comparison: comparison.Compare(before, document), Path: *baselinePath}
+	}
 	if document.Valid() {
-		document.SLO = slo.Evaluate(c.SLO, document)
+		document.SLO = slo.Evaluate(c.SLO, document, baseline)
 	}
 	// A failed write to stdout does not change what happened to the target, so
 	// the verdict below stands; what cannot happen is the report vanishing in
@@ -529,6 +539,9 @@ func validate(args []string) int {
 		c.Name, len(c.Steps), plan.TotalRequests(), plan.Duration())
 	if len(c.SLO) == 0 {
 		fmt.Println("Sem slo declarado: a execucao nunca vai falhar por lentidao. Adicione um bloco 'slo' para virar gate de CI.")
+	}
+	for _, warning := range scenario.GateWarnings(c) {
+		fmt.Println(warning)
 	}
 	return 0
 }

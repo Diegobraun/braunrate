@@ -250,9 +250,7 @@ func convertStep(a *Aggregate) StepResult {
 	}
 }
 
-// lateDispatchLimit is where punctual dispatch stops being a rounding detail
-// and starts moving the numbers: at this point the generator, not the target,
-// is what the histogram is measuring.
+// Past this, the histogram is measuring the generator, not the target.
 const lateDispatchLimit = 0.01
 
 func lateProportion(scheduling Scheduling) float64 {
@@ -316,12 +314,10 @@ func evaluateWarnings(c *Collector, document Document) []Warning {
 	return warnings
 }
 
-// The claim here is "the target degraded while dispatch stayed punctual", so
-// punctuality has to be checked before it is stated. Without this guard the
-// report printed both sentences at once: the generator missed 4% of its
-// dispatches, and right below, that dispatch had stayed punctual. When the
-// generator slipped, the two causes cannot be told apart from the outside, and
-// the honest answer is to say nothing about the target.
+// The warning claims dispatch stayed punctual, so punctuality is checked before
+// it is stated: without this the report printed both "4% of dispatches were
+// late" and "dispatch stayed punctual". With the generator slipping, the two
+// causes cannot be told apart from outside.
 func detectTargetDegradation(document Document) (Warning, bool) {
 	series := document.Series
 	if len(series) < 4 {

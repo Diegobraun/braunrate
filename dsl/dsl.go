@@ -231,6 +231,14 @@ func (c *Builder) OverallSLO(metric, limit string) *Builder {
 	return c.SLO("global", metric, limit)
 }
 
+func (c *Builder) JourneySLO(metric, limit string) *Builder {
+	return c.SLO("jornada", metric, limit)
+}
+
+func (c *Builder) RegressionSLO(metric, limit string) *Builder {
+	return c.SLO("regressao", metric, limit)
+}
+
 type Authenticator struct {
 	auth scenario.Auth
 	err  error

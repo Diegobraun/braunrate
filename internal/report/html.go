@@ -41,6 +41,7 @@ type htmlVerdict struct {
 	Class       string
 	Subtitle    string
 	Evaluations []metrics.Evaluation
+	Undeclared  []string
 }
 
 type htmlStep struct {
@@ -152,7 +153,7 @@ func buildPage(document metrics.Document) htmlPage {
 }
 
 func buildVerdict(document metrics.Document) htmlVerdict {
-	verdict := htmlVerdict{Evaluations: document.SLO.Evaluations}
+	verdict := htmlVerdict{Evaluations: document.SLO.Evaluations, Undeclared: document.SLO.Undeclared}
 
 	if !document.Valid() {
 		verdict.Class = "invalido"
@@ -420,6 +421,7 @@ ul.frases li:last-child { border-bottom: none; }
 .slo li { display: flex; gap: 10px; align-items: baseline; }
 .slo .ok { color: var(--passou); font-weight: 700; }
 .slo .nao { color: var(--falhou); font-weight: 700; }
+.slo .sem { color: var(--suave); font-weight: 700; }
 svg { width: 100%; height: auto; }
 svg .grade { stroke: var(--borda); stroke-width: 1; }
 svg .eixo { fill: var(--suave); font-size: 12px; }
@@ -500,7 +502,10 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 <h2>SLO</h2>
 <ul class="frases slo">
   {{range .Verdict.Evaluations}}
-  <li>{{if .Passed}}<span class="ok">ok</span>{{else}}<span class="nao">falha</span>{{end}}<span>{{.Sentence}}</span></li>
+  <li>{{if .Untrustworthy}}<span class="sem">sem veredito</span>{{else if .Passed}}<span class="ok">ok</span>{{else}}<span class="nao">falha</span>{{end}}<span>{{.Sentence}}</span></li>
+  {{end}}
+  {{range .Verdict.Undeclared}}
+  <li><span class="sem">nao declarado</span><span>{{.}}</span></li>
   {{end}}
 </ul>
 {{end}}

@@ -88,7 +88,7 @@ func executeGraphQL(t *testing.T, lines string) (metrics.Document, slo.Verdict) 
 		t.Fatalf("motor nao subiu: %v", err)
 	}
 	document := m.Execute(context.Background())
-	return document, slo.Evaluate(c.SLO, document)
+	return document, slo.Evaluate(c.SLO, document, nil)
 }
 
 func TestGraphQLYieldsOneRowPerOperation(t *testing.T) {

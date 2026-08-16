@@ -5,9 +5,8 @@ import (
 	"io"
 )
 
-// lineWriter keeps the first write error and stops writing after it. A report
-// is one message: half of it delivered on a broken pipe or a full disk is worse
-// than none, and the caller has to be able to say the report did not come out.
+// Keeps the first write error and stops: half a report on a broken pipe is
+// worse than none, and the caller has to be able to say it did not come out.
 type lineWriter struct {
 	out io.Writer
 	err error

@@ -6,6 +6,7 @@ package metrics
 type Verdict struct {
 	Passed      bool         `json:"passou"`
 	Evaluations []Evaluation `json:"avaliacoes"`
+	Undeclared  []string     `json:"criterios_nao_declarados"`
 	Sentence    string       `json:"frase"`
 }
 
@@ -19,4 +20,7 @@ type Evaluation struct {
 	Passed   bool    `json:"passou"`
 	Sentence string  `json:"frase"`
 	NoData   bool    `json:"sem_dados"`
+	// Untrustworthy marks a rule that was measured but cannot judge: the
+	// comparison behind it has a caveat that explains the difference on its own.
+	Untrustworthy bool `json:"comparacao_nao_confiavel"`
 }

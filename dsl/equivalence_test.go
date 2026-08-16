@@ -89,8 +89,9 @@ cenario:
 
 slo:
   - consultar pedido: { p95: < 150ms, max: < 1s }
-  - POST /pedidos: { vazao: "> 50/s" }
-  - global: { erros: < 0.1 }
+  - jornada: { p95: < 2s, p99: < 5s }
+  - global: { erros: < 0.1, sucesso: ">= 99.9", taxa_efetiva: "> 50/s" }
+  - regressao: { jornada_p95: "<= 10% pior" }
 `,
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Jornada autenticada").
@@ -130,8 +131,12 @@ slo:
 					FollowRedirects(false)).
 				SLO("consultar pedido", "p95", "< 150ms").
 				SLO("consultar pedido", "max", "< 1s").
-				SLO("POST /pedidos", "vazao", "> 50/s").
+				JourneySLO("p95", "< 2s").
+				JourneySLO("p99", "< 5s").
 				OverallSLO("erros", "< 0.1").
+				OverallSLO("sucesso", ">= 99.9").
+				OverallSLO("taxa_efetiva", "> 50/s").
+				RegressionSLO("jornada_p95", "<= 10% pior").
 				Build()
 		},
 	},
@@ -427,6 +432,7 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 	authObtains := map[scenario.AuthKind]bool{}
 	consumePolicies := map[scenario.ConsumePolicy]bool{}
 	metrics := map[string]bool{}
+	scopes := map[scenario.SLOScope]bool{}
 	operators := map[scenario.Operator]bool{}
 
 	for _, testCase := range testCases {
@@ -457,6 +463,7 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 		}
 		for _, rule := range built.SLO {
 			metrics[rule.Metrica] = true
+			scopes[rule.Scope] = true
 		}
 	}
 
@@ -477,7 +484,10 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 	missing(t, "politica de consumo", []scenario.ConsumePolicy{
 		scenario.ConsumeCircular, scenario.ConsumeSequential, scenario.ConsumeRandom, scenario.ConsumeUniquePerUser,
 	}, consumePolicies)
-	missing(t, "metrica de slo", []string{"p95", "p99", "max", "erros", "vazao"}, metrics)
+	missing(t, "metrica de slo", []string{"p95", "p99", "max", "erros", "sucesso", "taxa_efetiva", "jornada_p95"}, metrics)
+	missing(t, "escopo de slo", []scenario.SLOScope{
+		scenario.ScopeStep, scenario.ScopeOverall, scenario.ScopeJourney, scenario.ScopeRegression,
+	}, scopes)
 	missing(t, "operador de comparacao", []scenario.Operator{
 		scenario.OpEqual, scenario.OpGreater, scenario.OpExists, scenario.OpContains,
 	}, operators)

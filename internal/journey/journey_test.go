@@ -108,7 +108,7 @@ func execute(t *testing.T) (metrics.Document, slo.Verdict) {
 		t.Fatalf("motor nao subiu: %v", err)
 	}
 	document := m.Execute(context.Background())
-	return document, slo.Evaluate(c.SLO, document)
+	return document, slo.Evaluate(c.SLO, document, nil)
 }
 
 func TestJourneyWithAuthCorrelationAndDataWorksEndToEnd(t *testing.T) {
@@ -186,7 +186,7 @@ func TestFailedAssertionSeparatesFunctionalFromSLOFailure(t *testing.T) {
 	opts.DataRoot = root
 	m, _ := engine.New(c, opts)
 	document := m.Execute(context.Background())
-	verdict := slo.Evaluate(c.SLO, document)
+	verdict := slo.Evaluate(c.SLO, document, nil)
 
 	if document.Steps[0].ErrorsByClass["assercao"] == 0 {
 		t.Fatalf("esperava falha funcional classificada como assercao: %+v", document.Steps[0].ErrorsByClass)

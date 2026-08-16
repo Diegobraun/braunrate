@@ -7,14 +7,9 @@ import (
 	"time"
 )
 
-// Sanity answers one question before any SLO is evaluated: does this result
-// mean anything? Three bugs of the same family motivated it — data frozen on
-// the first iteration, a smoke scenario running 100% 401 and passing green,
-// and variety that only got checked when someone asked. All three were
-// syntactically perfect runs with an empty meaning and a green suite.
-//
-// Checked separates "this run was verified and is valid" from a document
-// written by an older version, which has no sanity block at all.
+// Sanity answers, before any SLO is read, whether the result means anything.
+// Checked separates a verified run from a document written by an older version,
+// which has no sanity block at all.
 type Sanity struct {
 	Checked  bool            `json:"verificada"`
 	Valid    bool            `json:"valida"`
@@ -28,9 +23,8 @@ type SanityFinding struct {
 	Evidence string `json:"evidencia"`
 }
 
-// The invalid sentence never states anything about the target: a run where
-// every request failed may well be the target falling over, and saying
-// otherwise would be a second wrong claim on top of the first.
+// Says nothing about the target: a run where everything failed may well be the
+// target falling over, and claiming otherwise would be a second wrong claim.
 const invalidSentence = "Resultado invalido: a execucao nao mediu o que se propos a medir. Isto nao e veredito sobre o alvo — e a medicao que nao vale, e por isso nenhuma regra de SLO foi avaliada."
 
 type sanityCheck struct {
@@ -97,9 +91,8 @@ func declaredStepWithoutSamples(document Document, input DocumentInput) []Sanity
 	return findings
 }
 
-// A step that failed every time still produces latency, and that latency is
-// the time the target took to refuse — never the time it takes to do the work
-// the scenario meant to measure.
+// Latency of a step that always failed is the time the target took to refuse,
+// never the time of the work the scenario meant to measure.
 func everythingFailed(document Document, _ DocumentInput) []SanityFinding {
 	var failed []StepResult
 	var ran int
@@ -134,11 +127,9 @@ func everythingFailed(document Document, _ DocumentInput) []SanityFinding {
 	return findings
 }
 
-// Wall-clock time is the wrong ruler here: the last request of a 3 s profile at
-// 20/s is scheduled at 2,95 s, so a healthy run legitimately ends before the
-// declared window closes. What says the curve was applied whole is how much of
-// it left the generator — dispatched plus dropped, since a drop still means the
-// loop got there.
+// Wall clock is the wrong ruler: a 3 s profile at 20/s schedules its last
+// request at 2,95 s, so a complete run ends before the window closes. Dropped
+// counts as applied — the loop did get there.
 func runShorterThanPlan(document Document, input DocumentInput) []SanityFinding {
 	if input.PlannedRequests <= 0 {
 		return nil
@@ -157,10 +148,6 @@ func runShorterThanPlan(document Document, input DocumentInput) []SanityFinding 
 	}}
 }
 
-// Generator saturation and collapsed variety were already detected as
-// high-severity warnings. They keep their own message and now flow through the
-// same decision point as the rest, so there is a single place that says a
-// result does not count.
 func invalidatingWarnings(document Document, _ DocumentInput) []SanityFinding {
 	var findings []SanityFinding
 	for _, warning := range document.Warnings {

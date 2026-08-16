@@ -14,15 +14,25 @@ import (
 const AcceptedNoise = 0.05
 
 type Comparison struct {
-	Before     Identification   `json:"antes"`
-	After      Identification   `json:"depois"`
-	Sentence   string           `json:"frase"`
-	Comparable bool             `json:"comparavel"`
-	Caveats    []string         `json:"ressalvas"`
-	Journey    Difference       `json:"jornada"`
-	Overall    Difference       `json:"global"`
-	Steps      []StepDifference `json:"passos"`
-	Error      CountDifference  `json:"taxa_de_erro"`
+	Before             Identification        `json:"antes"`
+	After              Identification        `json:"depois"`
+	Sentence           string                `json:"frase"`
+	Comparable         bool                  `json:"comparavel"`
+	Caveats            []Caveat              `json:"ressalvas"`
+	Journey            Difference            `json:"jornada"`
+	Overall            Difference            `json:"global"`
+	JourneyPercentiles map[string]Difference `json:"jornada_por_percentil"`
+	OverallPercentiles map[string]Difference `json:"global_por_percentil"`
+	Steps              []StepDifference      `json:"passos"`
+	Error              CountDifference       `json:"taxa_de_erro"`
+}
+
+// Blocking marks a caveat that explains the whole difference by itself. Only
+// those take the verdict away from a regression gate; treating every caveat as
+// blocking would disable the gate on any authenticated scenario.
+type Caveat struct {
+	Text     string `json:"texto"`
+	Blocking bool   `json:"impede_comparacao"`
 }
 
 type Identification struct {
@@ -75,6 +85,8 @@ func Compare(before, after metrics.Document) Comparison {
 
 	c.Journey = compareDistribution("jornada inteira (95%)", before.Journey.Latency.P95, after.Journey.Latency.P95)
 	c.Overall = compareDistribution("todas as requisicoes (95%)", before.Overall.Latency.P95, after.Overall.Latency.P95)
+	c.JourneyPercentiles = comparePercentiles("jornada inteira", before.Journey.Latency, after.Journey.Latency)
+	c.OverallPercentiles = comparePercentiles("todas as requisicoes", before.Overall.Latency, after.Overall.Latency)
 	c.Steps = compareSteps(before, after)
 	c.Error = compareErrors(before, after)
 	c.Sentence = phrase(c, before, after)
@@ -92,33 +104,39 @@ func identify(document metrics.Document) Identification {
 
 // Comparing two runs only holds when both measured the same thing the same
 // way; each difference here can explain the whole change on its own.
-func collectCaveats(before, after metrics.Document) []string {
-	var caveats []string
+func collectCaveats(before, after metrics.Document) []Caveat {
+	var caveats []Caveat
+	blocking := func(format string, args ...any) {
+		caveats = append(caveats, Caveat{Text: fmt.Sprintf(format, args...), Blocking: true})
+	}
 
 	if before.Run.Spec != after.Run.Spec {
-		caveats = append(caveats, fmt.Sprintf("os cenarios sao diferentes: %q e %q", before.Run.Spec, after.Run.Spec))
+		blocking("os cenarios sao diferentes: %q e %q", before.Run.Spec, after.Run.Spec)
 	}
 	if before.Run.Target != after.Run.Target {
-		caveats = append(caveats, fmt.Sprintf("os alvos sao diferentes: %s e %s", before.Run.Target, after.Run.Target))
+		blocking("os alvos sao diferentes: %s e %s", before.Run.Target, after.Run.Target)
 	}
 	if before.Environment.Host != after.Environment.Host || before.Environment.Cores != after.Environment.Cores {
-		caveats = append(caveats, fmt.Sprintf("as maquinas geradoras sao diferentes: %s com %d nucleos e %s com %d nucleos",
-			before.Environment.Host, before.Environment.Cores, after.Environment.Host, after.Environment.Cores))
+		blocking("as maquinas geradoras sao diferentes: %s com %d nucleos e %s com %d nucleos",
+			before.Environment.Host, before.Environment.Cores, after.Environment.Host, after.Environment.Cores)
 	}
 	if planSummary(before) != planSummary(after) {
-		caveats = append(caveats, fmt.Sprintf("os planos de carga sao diferentes: %s e %s", planSummary(before), planSummary(after)))
+		blocking("os planos de carga sao diferentes: %s e %s", planSummary(before), planSummary(after))
 	}
 	if before.Version != after.Version {
-		caveats = append(caveats, fmt.Sprintf("as execucoes usaram versoes diferentes do braunrate: %s e %s", before.Version, after.Version))
+		blocking("as execucoes usaram versoes diferentes do braunrate: %s e %s", before.Version, after.Version)
 	}
-	if before.Run.AuthObtains > 0 || after.Run.AuthObtains > 0 {
-		caveats = append(caveats, "as duas execucoes usaram um token para tudo; cache ou sharding por identidade afeta as duas do mesmo jeito, mas nao some da comparacao")
+	if before.Run.Model != after.Run.Model {
+		blocking("os modelos de chegada sao diferentes: %s e %s", before.Run.Model, after.Run.Model)
 	}
 	if !before.Valid() {
-		caveats = append(caveats, "a execucao anterior tem resultado invalido: o gerador saturou e o numero dela nao vale como base")
+		blocking("a execucao anterior tem resultado invalido e o numero dela nao vale como base")
 	}
 	if !after.Valid() {
-		caveats = append(caveats, "a execucao nova tem resultado invalido: o gerador saturou e o numero dela nao vale como comparacao")
+		blocking("a execucao nova tem resultado invalido e o numero dela nao vale como comparacao")
+	}
+	if before.Run.AuthObtains > 0 || after.Run.AuthObtains > 0 {
+		caveats = append(caveats, Caveat{Text: "as duas execucoes usaram um token para tudo; cache ou sharding por identidade afeta as duas do mesmo jeito, mas nao some da comparacao"})
 	}
 	return caveats
 }
@@ -135,6 +153,23 @@ func planSummary(document metrics.Document) string {
 		summary += fmt.Sprintf("%s ate %.0f/s por %ds", phase.Kind, phase.To, phase.DurationMs/1000)
 	}
 	return summary
+}
+
+func comparePercentiles(name string, before, after metrics.Distribution) map[string]Difference {
+	pairs := map[string][2]float64{
+		"p50":   {before.P50, after.P50},
+		"p75":   {before.P75, after.P75},
+		"p90":   {before.P90, after.P90},
+		"p95":   {before.P95, after.P95},
+		"p99":   {before.P99, after.P99},
+		"p99.9": {before.P999, after.P999},
+		"max":   {before.Max, after.Max},
+	}
+	byPercentile := make(map[string]Difference, len(pairs))
+	for percentile, pair := range pairs {
+		byPercentile[percentile] = compareDistribution(fmt.Sprintf("%s (%s)", name, percentile), pair[0], pair[1])
+	}
+	return byPercentile
 }
 
 func compareDistribution(name string, before, after float64) Difference {

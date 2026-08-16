@@ -360,23 +360,17 @@ func readSLORule(target string, metricNode, limitNode *yaml.Node) (SLORule, erro
 
 func ParseSLORule(target, metric, rawLimit string) (SLORule, error) {
 	rule := SLORule{
+		Scope:    scopeOf(target),
 		Step:     target,
-		Overall:  target == "global",
 		Metrica:  metric,
 		Operator: OpLessOrEqual,
 	}
+	if rule.Scope != ScopeStep {
+		rule.Step = ""
+	}
 
-	switch rule.Metrica {
-	case "p50", "p75", "p90", "p95", "p99", "p99.9", "max":
-		rule.Unit = "ms"
-	case "erros":
-		rule.Unit = "%"
-	case "vazao":
-		rule.Unit = "/s"
-		rule.Operator = OpGreaterOrEqual
-	default:
-		return rule, fmt.Errorf("metrica de slo desconhecida: %q\n"+
-			"    disponiveis: p50, p75, p90, p95, p99, p99.9, max, erros, vazao", rule.Metrica)
+	if err := describeMetric(&rule); err != nil {
+		return rule, err
 	}
 
 	text := strings.TrimSpace(rawLimit)
@@ -393,10 +387,75 @@ func ParseSLORule(target, metric, rawLimit string) (SLORule, error) {
 	limit, err := parseLimit(text, rule.Unit)
 	if err != nil {
 		return rule, fmt.Errorf("limite invalido em %q: %v\n"+
-			"    exemplos: p95: < 150ms | erros: < 0.1 | vazao: > 500/s", rule.Metrica, err)
+			"    exemplos: p95: < 150ms | erros: < 0.1 | sucesso: >= 99.9 | taxa_efetiva: >= 200/s | jornada_p95: <= 10%% pior", rule.Metrica, err)
 	}
 	rule.Limit = limit
 	return rule, nil
+}
+
+func scopeOf(target string) SLOScope {
+	switch target {
+	case "global":
+		return ScopeOverall
+	case "jornada":
+		return ScopeJourney
+	case "regressao":
+		return ScopeRegression
+	default:
+		return ScopeStep
+	}
+}
+
+// Each metric carries the direction that reads naturally: "sucesso: 99.9" means
+// at least that, the way "erros: 0.1" means at most that.
+func describeMetric(rule *SLORule) error {
+	if rule.Scope == ScopeRegression {
+		if !isRegressionMetric(rule.Metrica) {
+			return fmt.Errorf("metrica de regressao desconhecida: %q\n"+
+				"    disponiveis: jornada_p50, jornada_p95, jornada_p99, global_p95, global_p99\n"+
+				"    exemplo: - regressao: { jornada_p95: <= 10%% pior }", rule.Metrica)
+		}
+		rule.Unit = "% pior"
+		return nil
+	}
+
+	switch rule.Metrica {
+	case "p50", "p75", "p90", "p95", "p99", "p99.9", "max":
+		rule.Unit = "ms"
+	case "erros":
+		rule.Unit = "%"
+	case "sucesso":
+		rule.Unit = "%"
+		rule.Operator = OpGreaterOrEqual
+	case "vazao", "taxa_efetiva":
+		if rule.Scope != ScopeOverall {
+			return fmt.Errorf("%q so existe em global, porque e a taxa da execucao inteira\n"+
+				"    escreva:  - global: { %s: >= 200/s }", rule.Metrica, rule.Metrica)
+		}
+		rule.Unit = "/s"
+		rule.Operator = OpGreaterOrEqual
+	default:
+		return fmt.Errorf("metrica de slo desconhecida: %q\n"+
+			"    disponiveis: p50, p75, p90, p95, p99, p99.9, max, erros, sucesso, taxa_efetiva", rule.Metrica)
+	}
+
+	if rule.Scope == ScopeJourney && (rule.Metrica == "erros" || rule.Metrica == "sucesso") {
+		return fmt.Errorf("%q nao existe em jornada: jornada que nao chega ao fim ja invalida a execucao\n"+
+			"    para taxa de erro escreva:  - global: { %s: ... }", rule.Metrica, rule.Metrica)
+	}
+	return nil
+}
+
+func isRegressionMetric(metric string) bool {
+	prefix, percentile, found := strings.Cut(metric, "_")
+	if !found || (prefix != "jornada" && prefix != "global") {
+		return false
+	}
+	switch percentile {
+	case "p50", "p75", "p90", "p95", "p99", "p99.9", "max":
+		return true
+	}
+	return false
 }
 
 func parseLimit(text, unit string) (float64, error) {
@@ -414,6 +473,9 @@ func parseLimit(text, unit string) (float64, error) {
 		return float64(duration.Microseconds()) / 1000, nil
 	case "%":
 		return strconv.ParseFloat(strings.TrimSuffix(text, "%"), 64)
+	case "% pior":
+		text = strings.TrimSpace(strings.TrimSuffix(text, "pior"))
+		return strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(text, "%")), 64)
 	default:
 		return strconv.ParseFloat(strings.TrimSuffix(text, "/s"), 64)
 	}

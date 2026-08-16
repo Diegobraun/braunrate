@@ -65,3 +65,27 @@ func (c Spec) Validate() error {
 	}
 	return fmt.Errorf("cenario invalido:\n  - %s", strings.Join(problems, "\n  - "))
 }
+
+// GateWarnings reports what a declared gate leaves out. A scenario with several
+// steps and only step rules approves each piece and says nothing about the wait
+// the user actually feels, which is the sum of them.
+func GateWarnings(c Spec) []string {
+	if len(c.SLO) == 0 {
+		return nil
+	}
+	declared := map[SLOScope]bool{}
+	for _, rule := range c.SLO {
+		declared[rule.Scope] = true
+	}
+
+	var warnings []string
+	if len(c.Steps) > 1 && !declared[ScopeJourney] {
+		warnings = append(warnings, fmt.Sprintf(
+			"Atencao: o gate mede %d passos isolados e deixa de fora a jornada inteira, que e o tempo que o usuario espera.\n"+
+				"    declare tambem:  - jornada: { p95: < 2s, p99: < 5s }", len(c.Steps)))
+	}
+	if declared[ScopeRegression] {
+		warnings = append(warnings, "Atencao: ha regra de regressao declarada; ela so e verificada com 'braunrate execute ... -baseline=execucao-anterior.json'.")
+	}
+	return warnings
+}

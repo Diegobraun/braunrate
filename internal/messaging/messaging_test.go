@@ -82,7 +82,7 @@ func execute(t *testing.T, content string) (metrics.Document, slo.Verdict) {
 	}
 	document := m.Execute(context.Background())
 	t.Cleanup(func() { protocol.CloseAll() })
-	return document, slo.Evaluate(c.SLO, document)
+	return document, slo.Evaluate(c.SLO, document, nil)
 }
 
 const chainScenario = `

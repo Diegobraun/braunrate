@@ -483,7 +483,7 @@
     },
     "regraDeSLO": {
       "type": "object",
-      "description": "Uma regra por passo ou 'global'. Ex.: '- consultar pedido: { p95: < 150ms }'.",
+      "description": "Uma regra por passo, ou por 'global', 'jornada' e 'regressao'. Ex.: '- jornada: { p95: < 2s }'.",
       "minProperties": 1,
       "maxProperties": 1,
       "additionalProperties": {
@@ -516,7 +516,72 @@
             "description": "Porcentagem. '< 0.1' e um decimo de um por cento."
           },
           "vazao": {
-            "$ref": "#/$defs/limite"
+            "$ref": "#/$defs/limite",
+            "description": "Nome antigo de taxa_efetiva, so em 'global'."
+          },
+          "sucesso": {
+            "$ref": "#/$defs/limite",
+            "description": "Porcentagem. '>= 99.9' e a leitura espelhada de 'erros: < 0.1'."
+          },
+          "taxa_efetiva": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'global'. Requisicoes concluidas por segundo. Ex.: '>= 200/s'."
+          },
+          "jornada_p50": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          },
+          "jornada_p75": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          },
+          "jornada_p90": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          },
+          "jornada_p95": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          },
+          "jornada_p99": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          },
+          "jornada_p99.9": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          },
+          "jornada_max": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          },
+          "global_p50": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          },
+          "global_p75": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          },
+          "global_p90": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          },
+          "global_p95": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          },
+          "global_p99": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          },
+          "global_p99.9": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          },
+          "global_max": {
+            "$ref": "#/$defs/limite",
+            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
           }
         }
       }

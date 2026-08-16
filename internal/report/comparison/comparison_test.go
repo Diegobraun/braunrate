@@ -66,7 +66,10 @@ func TestDifferentEnvironmentBecomesCaveatNotConclusion(t *testing.T) {
 	after.Run.AppliedPlan = []metrics.AppliedPhase{{Kind: "patamar", To: 900, DurationMs: 10000}}
 
 	c := comparison.Compare(before, after)
-	together := strings.Join(c.Caveats, " | ")
+	together := ""
+	for _, caveat := range c.Caveats {
+		together += caveat.Text + " | "
+	}
 	if !strings.Contains(together, "maquinas geradoras sao diferentes") {
 		t.Errorf("maquina diferente precisa virar ressalva: %v", c.Caveats)
 	}

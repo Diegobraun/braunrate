@@ -97,10 +97,16 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 		write("SLO")
 		for _, evaluation := range verdict.Evaluations {
 			mark := "ok  "
-			if !evaluation.Passed {
+			switch {
+			case evaluation.Untrustworthy:
+				mark = "?    "
+			case !evaluation.Passed:
 				mark = "FALHA"
 			}
 			write("  %-5s %s", mark, evaluation.Sentence)
+		}
+		for _, missing := range verdict.Undeclared {
+			write("  --    %s", missing)
 		}
 		write("")
 	}

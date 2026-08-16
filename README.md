@@ -56,12 +56,12 @@ Decisao da Fase 0: **Go**, sustentada por dois criterios apenas — RSS sob carg
 ```bash
 go build -o braunrate ./cmd/braunrate
 
-braunrate target -latency=5ms &                     # alvo de teste embutido
-braunrate validate examples/http-basico.yaml        # valida sem executar
-braunrate debug examples/http-basico.yaml        # uma iteracao, tudo visivel
-braunrate execute examples/http-basico.yaml       # executa e resume no terminal
+braunrate target -latency=5ms &                # alvo de teste embutido
+braunrate validate examples/http-basico.yaml   # valida sem executar
+braunrate debug examples/http-basico.yaml      # uma iteracao, tudo visivel
+braunrate execute examples/http-basico.yaml    # executa e resume no terminal
 braunrate execute examples/http-basico.yaml -html=relatorio.html -result=saida.json
-braunrate compare antes.json depois.json          # o que mudou entre duas execucoes
+braunrate compare antes.json depois.json       # o que mudou entre duas execucoes
 ```
 
 Cenario minimo:
@@ -107,6 +107,7 @@ cenario:
 
 slo:
   - consultar pedido: { p95: < 150ms }
+  - jornada: { p95: < 2s, p99: < 5s }
   - global: { erros: < 0.1 }
 ```
 
@@ -115,20 +116,20 @@ Saida real dessa execucao:
 ```
 Jornada de cobranca — contra http://127.0.0.1:8080
 
-Passou: as 3 regras de SLO foram atendidas.
+Passou: as 5 regras de SLO foram atendidas.
 
 O que aconteceu
   4.750 requisicoes em 10s, 475 por segundo, 0% de erro
-  Metade das respostas em ate 5.4 ms; 95% em ate 5.8 ms; 99% em ate 6.2 ms; a pior levou 14 ms
+  Metade das respostas em ate 5.5 ms; 95% em ate 6.2 ms; 99% em ate 6.8 ms; a pior levou 14 ms
 
 A jornada inteira
   Todas as 2375 jornadas chegaram ao fim; metade levou ate 11 ms e 95% ate 12 ms, contados do instante em que deveriam ter comecado.
-  metade 11 ms | 95% 12 ms | 99% 12 ms | pior 20 ms
+  metade 11 ms | 95% 12 ms | 99% 13 ms | pior 20 ms
 
 Por passo
   passo                          requisicoes    metade       95%       99%     99,9%      pior   erros
-  consultar pedido           (1)      2.375    5.4 ms    5.9 ms    6.3 ms     13 ms     14 ms       0
-  pagar fatura               (2)      2.375    5.3 ms    5.8 ms    6.1 ms    6.9 ms     12 ms       0
+  consultar pedido           (1)      2.375    5.5 ms    6.2 ms    6.9 ms     11 ms     14 ms       0
+  pagar fatura               (2)      2.375    5.3 ms    6.2 ms    6.7 ms    7.5 ms     10 ms       0
 
   (1) tempo contado do instante em que a requisicao deveria ter partido — inclui
       qualquer atraso e por isso nao esconde travada do alvo.
@@ -139,14 +140,17 @@ Por passo
 SLO
   ok    Passou: "consultar pedido" teve latencia p95 de 6 ms, dentro do limite de 150 ms.
   ok    Passou: "pagar fatura" teve latencia p95 de 6 ms, dentro do limite de 200 ms.
+  ok    Passou: a jornada inteira teve latencia p95 de 12 ms, dentro do limite de 2000 ms.
+  ok    Passou: a jornada inteira teve latencia p99 de 13 ms, dentro do limite de 5000 ms.
   ok    Passou: o cenario inteiro teve taxa de erro de 0.00%, dentro do limite de 0.10%.
+  --    regressao: sem criterio declarado — o gate aprova sem comparar com a execucao anterior
 
 Confiabilidade da medicao
   O gerador disparou todas as requisicoes na hora certa, entao os numeros acima valem.
-  Atraso tipico para disparar: 0.001 ms; pior caso: 5.4 ms (o tempo de resposta ja desconta isso)
+  Atraso tipico para disparar: 0.001 ms; pior caso: 1.1 ms (o tempo de resposta ja desconta isso)
 
 Ambiente
-  Mac darwin/arm64, 10 nucleos | braunrate 0.4.0 | 2026-08-16 00:54:30
+  Mac darwin/arm64, 10 nucleos | braunrate 0.4.0 | 2026-08-16 03:03:37
   4 valores distintos de assinantes.id em 2.375 usos
   4 valores distintos de faturaId em 2.375 usos
   1 unico valor de token em 2.375 usos
@@ -266,6 +270,69 @@ $ go test ./dsl/ -run TestYAMLEDSL -v
     --- PASS: TestYAMLEDSLProduzemOMesmoCenario/autenticacao_basica_e_consumo_unico_por_usuario (0.00s)
     --- PASS: TestYAMLEDSLProduzemOMesmoCenario/autenticacao_por_cabecalho_fixo (0.00s)
 ```
+
+## O que serve de criterio
+
+Um gate feito so de regra por passo aprova cada pedaco e nao diz nada sobre a espera que o usuario sente, que e a soma deles. Por isso o bloco `slo` tem quatro escopos, e o relatorio mostra tambem **o que nao foi declarado**:
+
+```yaml
+slo:
+  - consultar pedido: { p95: < 150ms }              # um passo
+  - jornada: { p95: < 2s, p99: < 5s }               # a espera inteira, ponta a ponta
+  - global: { sucesso: ">= 99.9", taxa_efetiva: ">= 90/s" }
+  - regressao: { jornada_p95: "<= 10% pior" }       # contra uma execucao anterior
+```
+
+Saida real dessa declaracao, contra o alvo embutido:
+
+```
+SLO
+  ok    Passou: "consultar pedido" teve latencia p95 de 6 ms, dentro do limite de 150 ms.
+  ok    Passou: a jornada inteira teve latencia p95 de 12 ms, dentro do limite de 2000 ms.
+  ok    Passou: a jornada inteira teve latencia p99 de 13 ms, dentro do limite de 5000 ms.
+  ok    Passou: o cenario inteiro teve taxa de sucesso de 100.00%, no minimo de 99.90%.
+  ok    Passou: o cenario inteiro teve taxa efetiva de 200/s, no minimo de 90/s.
+  --    regressao: sem criterio declarado — o gate aprova sem comparar com a execucao anterior
+```
+
+`sucesso: >= 99.9` e `erros: < 0.1` sao a mesma regra lida de dois lados, e cada uma aparece no relatorio do jeito que foi declarada.
+
+**Sem criterio de jornada, o `validate` avisa** — cenario de mais de um passo cujo gate mede so as partes:
+
+```
+$ braunrate validate cenario.yaml
+Cenario valido: "Jornada com criterios novos", 2 passo(s), 500 iteracoes em 5s.
+Atencao: o gate mede 2 passos isolados e deixa de fora a jornada inteira, que e o tempo que o usuario espera.
+    declare tambem:  - jornada: { p95: < 2s, p99: < 5s }
+```
+
+**Taxa efetiva abaixo do alvo tem duas causas opostas**: o alvo nao aguentou, ou o gerador nao produziu. A segunda e medicao invalida e sai com codigo 3 antes de qualquer SLO ser lido — nunca vira falha de servico.
+
+### Comparar com a execucao anterior como gate
+
+```bash
+braunrate execute cenario.yaml -baseline=execucao-anterior.json
+```
+
+Com o alvo 12 vezes mais lento, o criterio por passo continuou aprovando e a regressao pegou:
+
+```
+  ok    Passou: "consultar pedido" teve latencia p95 de 61 ms, dentro do limite de 150 ms.
+  FALHA Falhou: a jornada inteira (p95) ficou 931.0% pior que a base, acima do limite de 10% pior (de 12 ms para 122 ms).
+```
+
+Quando a comparacao tem ressalva que explica a diferenca sozinha — outra maquina, outro cenario, outra versao, outro modelo de chegada — **a regra nao reprova**, e diz por que:
+
+```
+  ?     Sem veredito: a jornada inteira (p95) esta 931.0% pior que a base, mas a comparacao com
+        base-outra-maquina.json nao e confiavel (as maquinas geradoras sao diferentes: ...;
+        as execucoes usaram versoes diferentes do braunrate: 0.3.0 e 0.4.0), entao a regra
+        "jornada_p95: <= 10% pior" nao reprova.
+```
+
+Reprovar ali seria culpar o servico por uma diferenca que a propria comparacao nao consegue atribuir a ele. Variacao abaixo de 5% continua sendo ruido: duas execucoes nao dao intervalo de confianca.
+
+Nada disso e obrigatorio. **Cenario sem bloco `slo` continua executando e reportando** — so nao serve de gate.
 
 ## O relatorio
 
@@ -522,6 +589,8 @@ A comparacao nunca chama de regressao o que pode ser ruido, lista tudo que mudou
 | Autenticacao por token com renovacao, e basica | pronto |
 | Dados: CSV com politica de consumo e geracao com semente | pronto |
 | Assercoes funcionais e SLO por passo e global, com codigo de saida | pronto |
+| Criterio sobre a jornada inteira, taxa de sucesso e taxa efetiva | pronto |
+| Comparacao com execucao anterior como gate, com ressalva que tira o veredito | pronto |
 | Verificacao de sanidade do resultado antes de qualquer veredito | pronto |
 | Tempo total da jornada, contado do instante agendado | pronto |
 | Autoria: schema no editor, `depurar`, `importar curl`, erros que ensinam | pronto |

@@ -22,8 +22,19 @@ func sampleDocument() metrics.Document {
 	}
 }
 
+func scopeOf(step string) scenario.SLOScope {
+	switch step {
+	case "global":
+		return scenario.ScopeOverall
+	case "jornada":
+		return scenario.ScopeJourney
+	default:
+		return scenario.ScopeStep
+	}
+}
+
 func rule(step, metricName string, operator scenario.Operator, limit float64, unit string) scenario.SLORule {
-	return scenario.SLORule{Step: step, Overall: step == "global", Metrica: metricName,
+	return scenario.SLORule{Step: step, Scope: scopeOf(step), Metrica: metricName,
 		Operator: operator, Limit: limit, Unit: unit,
 		Text: metricName + " " + string(operator) + " limite"}
 }
@@ -32,7 +43,7 @@ func TestSLOThatPassesAndThatFails(t *testing.T) {
 	verdict := slo.Evaluate([]scenario.SLORule{
 		rule("consultar pedido", "p95", scenario.OpLess, 150, "ms"),
 		rule("criar pedido", "p95", scenario.OpLess, 150, "ms"),
-	}, sampleDocument())
+	}, sampleDocument(), nil)
 
 	if verdict.Passed {
 		t.Fatal("o veredito deveria falhar: consultar pedido teve p95 de 210 ms")
@@ -48,7 +59,7 @@ func TestSLOThatPassesAndThatFails(t *testing.T) {
 func TestFailureSentenceIsReadableByNonEngineers(t *testing.T) {
 	verdict := slo.Evaluate([]scenario.SLORule{
 		rule("consultar pedido", "p95", scenario.OpLess, 150, "ms"),
-	}, sampleDocument())
+	}, sampleDocument(), nil)
 
 	expected := `Falhou: "consultar pedido" teve latencia p95 de 210 ms, acima do limite de 150 ms.`
 	if verdict.Sentence != expected {
@@ -59,7 +70,7 @@ func TestFailureSentenceIsReadableByNonEngineers(t *testing.T) {
 func TestErrorRateIsEvaluatedAsPercentage(t *testing.T) {
 	verdict := slo.Evaluate([]scenario.SLORule{
 		rule("criar pedido", "erros", scenario.OpLessOrEqual, 0, "%"),
-	}, sampleDocument())
+	}, sampleDocument(), nil)
 
 	if verdict.Passed {
 		t.Fatal("criar pedido teve 5 erros em 1000; a regra de 0% deveria falhar")
@@ -73,7 +84,7 @@ func TestOverallRuleUsesWholeScenarioNumbers(t *testing.T) {
 	verdict := slo.Evaluate([]scenario.SLORule{
 		rule("global", "erros", scenario.OpLess, 1, "%"),
 		rule("global", "p99", scenario.OpLess, 300, "ms"),
-	}, sampleDocument())
+	}, sampleDocument(), nil)
 
 	if !verdict.Passed {
 		t.Fatalf("as duas regras globais deveriam passar: %+v", verdict.Evaluations)
@@ -86,7 +97,7 @@ func TestOverallRuleUsesWholeScenarioNumbers(t *testing.T) {
 func TestUnknownStepFailsWithClearMessage(t *testing.T) {
 	verdict := slo.Evaluate([]scenario.SLORule{
 		rule("passo que nao existe", "p95", scenario.OpLess, 100, "ms"),
-	}, sampleDocument())
+	}, sampleDocument(), nil)
 
 	if verdict.Passed {
 		t.Fatal("regra apontando para passo inexistente nao pode passar em silencio")
@@ -97,7 +108,7 @@ func TestUnknownStepFailsWithClearMessage(t *testing.T) {
 }
 
 func TestNoRulesMeansNoVerdict(t *testing.T) {
-	verdict := slo.Evaluate(nil, sampleDocument())
+	verdict := slo.Evaluate(nil, sampleDocument(), nil)
 	if !verdict.Passed {
 		t.Error("sem regras declaradas nao ha o que falhar")
 	}

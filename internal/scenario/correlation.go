@@ -96,9 +96,18 @@ func (f DataSource) Synthetic() bool {
 	return f.File == ""
 }
 
+type SLOScope string
+
+const (
+	ScopeStep       SLOScope = "passo"
+	ScopeOverall    SLOScope = "global"
+	ScopeJourney    SLOScope = "jornada"
+	ScopeRegression SLOScope = "regressao"
+)
+
 type SLORule struct {
+	Scope    SLOScope
 	Step     string
-	Overall  bool
 	Metrica  string
 	Operator Operator
 	Limit    float64
@@ -106,3 +115,5 @@ type SLORule struct {
 	Text     string
 	Line     int
 }
+
+func (r SLORule) Overall() bool { return r.Scope == ScopeOverall }
