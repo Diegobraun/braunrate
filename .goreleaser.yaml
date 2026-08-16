@@ -1,0 +1,84 @@
+version: 2
+
+project_name: braunrate
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: braunrate
+    main: ./cmd/braunrate
+    binary: braunrate
+    env:
+      # Sem cgo o binario nao depende da libc da maquina que compilou, que e o
+      # que faz ele rodar na distribuicao Linux que a pessoa tiver.
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      # O caminho do simbolo esta amarrado por teste em internal/build: erro de
+      # digitacao aqui compila, publica, e so aparece como "dev" depois.
+      - -s -w
+      - -X github.com/Diegobraun/braunrate/internal/build.Version={{ .Version }}
+      - -X github.com/Diegobraun/braunrate/internal/build.Commit={{ .Commit }}
+      - -X github.com/Diegobraun/braunrate/internal/build.Date={{ .Date }}
+
+archives:
+  - id: braunrate
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - README.md
+      - LICENSE
+      - examples
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+snapshot:
+  # Fixo em 0.0.0 de proposito: o repositorio tem tag que nao e semver
+  # (fase-0-prototipos), e derivar a versao do snapshot da ultima tag faria a
+  # validacao local falhar por um motivo que nada tem a ver com a release.
+  version_template: "0.0.0-snapshot-{{ .ShortCommit }}"
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    # O changelog e para quem usa a ferramenta. Commit de tarefa, documentacao e
+    # teste nao muda o que o binario faz.
+    exclude:
+      - "^chore"
+      - "^docs"
+      - "^test"
+      - "^ci"
+  groups:
+    - title: Novidades
+      regexp: '^feat'
+      order: 0
+    - title: Correcoes
+      regexp: '^fix'
+      order: 1
+    - title: Desempenho
+      regexp: '^perf'
+      order: 2
+    - title: Outras mudancas
+      order: 99
+
+release:
+  draft: false
+  prerelease: auto
+  header: |
+    Baixe o arquivo do seu sistema, confira o checksum em `checksums.txt` e
+    descompacte. O binario nao instala nada e nao precisa de runtime.
+  footer: |
+    **Assinatura de codigo, notarizacao e gerenciadores de pacote estao fora
+    desta release** — o motivo esta no README, na secao de instalacao.

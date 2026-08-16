@@ -25,6 +25,22 @@ func TestAHandBuiltBinarySaysItIsDev(t *testing.T) {
 	}
 }
 
+// O que a publicacao escreve no -ldflags precisa ser o caminho destes
+// simbolos. O teste acima prova que a injecao funciona; este prova que e esta
+// a injecao que a release vai usar.
+func TestTheReleaseConfigurationInjectsTheseSymbols(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("..", "..", ".goreleaser.yaml"))
+	if err != nil {
+		t.Fatalf("nao consegui ler a configuracao de release: %v", err)
+	}
+	const symbols = "github.com/Diegobraun/braunrate/internal/build"
+	for _, name := range []string{"Version", "Commit", "Date"} {
+		if !strings.Contains(string(content), "-X "+symbols+"."+name+"=") {
+			t.Errorf("a release nao injeta %s.%s: o binario publicado sai com o valor padrao", symbols, name)
+		}
+	}
+}
+
 // O caminho do simbolo e o que a publicacao escreve no -ldflags. Um erro de
 // digitacao ali nao quebra a compilacao: ela passa, o binario sai com "dev", e
 // so se descobre depois da release publicada. Este teste compila com a injecao

@@ -19,3 +19,4 @@ __pycache__/
 /resultado.json
 /relatorio.html
 profile.yaml
+dist/
