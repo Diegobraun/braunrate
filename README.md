@@ -62,6 +62,7 @@ braunrate debug examples/http-basico.yaml      # uma iteracao, tudo visivel
 braunrate execute examples/http-basico.yaml    # executa e resume no terminal
 braunrate execute examples/http-basico.yaml -html=relatorio.html -result=saida.json
 braunrate compare antes.json depois.json       # o que mudou entre duas execucoes
+braunrate record -output cenario.yaml          # grava navegando por um proxy local
 ```
 
 Cenario minimo:
