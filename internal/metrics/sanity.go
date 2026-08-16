@@ -132,7 +132,7 @@ func everythingFailed(document Document, _ DocumentInput) []SanityFinding {
 // counts as applied — the loop did get there.
 func runShorterThanPlan(document Document, input DocumentInput) []SanityFinding {
 	if input.PlannedRequests <= 0 {
-		return nil
+		return runShorterThanWindow(document, input)
 	}
 	applied := document.Scheduling.Sent + document.Scheduling.DroppedByInflightLimit
 	if applied >= input.PlannedRequests {
@@ -145,6 +145,24 @@ func runShorterThanPlan(document Document, input DocumentInput) []SanityFinding 
 			readableDuration(actual), thousands(applied), thousands(input.PlannedRequests)),
 		Evidence: fmt.Sprintf("perfil declarado: %s requisicoes em %s; execucao: %s requisicoes em %s",
 			thousands(input.PlannedRequests), readableDuration(input.PlannedDuration), thousands(applied), readableDuration(actual)),
+	}}
+}
+
+// The closed loop has no request count to compare against: it runs until the
+// window closes, so a run that stopped early is one that was interrupted.
+func runShorterThanWindow(document Document, input DocumentInput) []SanityFinding {
+	if !document.Closed() || input.PlannedDuration <= 0 {
+		return nil
+	}
+	actual := time.Duration(document.Run.DurationMs) * time.Millisecond
+	if actual >= input.PlannedDuration*99/100 {
+		return nil
+	}
+	return []SanityFinding{{
+		Kind: "execucao_curta",
+		Message: fmt.Sprintf("a execucao parou em %s da janela de %s declarada; a carga declarada nao chegou a ser aplicada inteira, e o que ficou medido e so o pedaco que rodou",
+			readableDuration(actual), readableDuration(input.PlannedDuration)),
+		Evidence: fmt.Sprintf("%d usuarios em laco fechado, %s jornadas iniciadas", document.Run.Users, thousands(document.Journey.Started)),
 	}}
 }
 

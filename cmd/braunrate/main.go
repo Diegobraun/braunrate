@@ -120,7 +120,12 @@ func execute(args []string) int {
 	opts.DataRoot = filepath.Dir(scenarioPath)
 	opts.LateThreshold = *lateThreshold
 	if !*silencioso {
+		closed := c.Load.Closed()
 		opts.OnProgress = func(snapshot metrics.Snapshot, targetRate float64, remaining time.Duration) {
+			if closed {
+				fmt.Fprintf(os.Stderr, "\r%s", report.ClosedProgressLine(snapshot, c.Load.Users, remaining))
+				return
+			}
 			fmt.Fprintf(os.Stderr, "\r%s", report.ProgressLine(snapshot, targetRate, remaining))
 		}
 	}
@@ -133,8 +138,13 @@ func execute(args []string) int {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 2
 	}
-	fmt.Fprintf(os.Stderr, "executando %q contra %s: %s iteracoes em %s\n",
-		c.Name, c.Target, humanizar(m.Plan().TotalRequests()), m.Plan().Duration())
+	if c.Load.Closed() {
+		fmt.Fprintf(os.Stderr, "executando %q contra %s: %d usuarios em laco fechado durante %s\n",
+			c.Name, c.Target, c.Load.Users, m.Plan().Duration())
+	} else {
+		fmt.Fprintf(os.Stderr, "executando %q contra %s: %s iteracoes em %s\n",
+			c.Name, c.Target, humanizar(m.Plan().TotalRequests()), m.Plan().Duration())
+	}
 
 	document := m.Execute(ctx)
 	protocol.CloseAll()
@@ -535,8 +545,16 @@ func validate(args []string) int {
 		return 2
 	}
 	plan := engine.CompilePlan(c.Load)
-	fmt.Printf("Cenario valido: %q, %d passo(s), %d iteracoes em %s.\n",
-		c.Name, len(c.Steps), plan.TotalRequests(), plan.Duration())
+	if c.Load.Closed() {
+		fmt.Printf("Cenario valido: %q, %d passo(s), %d usuarios em laco fechado durante %s.\n",
+			c.Name, len(c.Steps), c.Load.Users, plan.Duration())
+	} else {
+		fmt.Printf("Cenario valido: %q, %d passo(s), %d iteracoes em %s.\n",
+			c.Name, len(c.Steps), plan.TotalRequests(), plan.Duration())
+	}
+	if warning, closed := scenario.ClosedModelWarning(c); closed {
+		fmt.Println(warning)
+	}
 	if len(c.SLO) == 0 {
 		fmt.Println("Sem slo declarado: a execucao nunca vai falhar por lentidao. Adicione um bloco 'slo' para virar gate de CI.")
 	}

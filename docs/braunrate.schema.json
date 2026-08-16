@@ -102,26 +102,89 @@
     },
     "carga": {
       "type": "object",
-      "description": "Como a carga cresce ao longo do tempo. O modelo de chegada e aberto: a taxa nao depende de o alvo responder.",
+      "description": "Como a carga e aplicada. O padrao e o modelo aberto: a taxa nao depende de o alvo responder.",
       "additionalProperties": false,
       "properties": {
         "modelo": {
           "enum": [
-            "aberto"
+            "aberto",
+            "fechado"
           ],
-          "description": "So existe 'aberto'. Laco fechado esconde travada do alvo e nao entra no produto."
+          "description": "'aberto' (padrao) declara taxa de chegada. 'fechado' declara usuarios em laco: a taxa vira consequencia do tempo de resposta e o relatorio avisa que travada do alvo nao aparece nos numeros."
         },
         "perfis": {
           "type": "array",
           "minItems": 1,
-          "description": "Trechos executados em sequencia.",
+          "description": "Trechos executados em sequencia. So no modelo aberto.",
           "items": {
             "$ref": "#/$defs/perfil"
           }
+        },
+        "usuarios": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Numero de lacos simultaneos. So no modelo fechado.",
+          "examples": [
+            200
+          ]
+        },
+        "duracao": {
+          "type": "string",
+          "description": "Por quanto tempo os usuarios ficam em laco. So no modelo fechado.",
+          "examples": [
+            "5m"
+          ]
+        },
+        "intervalo_entre_iteracoes": {
+          "type": "string",
+          "description": "Espera de cada usuario entre uma iteracao e a proxima. So no modelo fechado.",
+          "examples": [
+            "1s"
+          ]
         }
       },
-      "required": [
-        "perfis"
+      "oneOf": [
+        {
+          "required": [
+            "perfis"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "usuarios"
+                ]
+              },
+              {
+                "required": [
+                  "duracao"
+                ]
+              },
+              {
+                "required": [
+                  "intervalo_entre_iteracoes"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "modelo",
+            "usuarios",
+            "duracao"
+          ],
+          "properties": {
+            "modelo": {
+              "const": "fechado"
+            }
+          },
+          "not": {
+            "required": [
+              "perfis"
+            ]
+          }
+        }
       ]
     },
     "perfil": {

@@ -25,6 +25,9 @@ type Plan struct {
 // rate function rather than stepping a counter: a counter accumulates rounding
 // error and makes the effective rate drift over a long run.
 func CompilePlan(plan scenario.LoadPlan) Plan {
+	if plan.Closed() {
+		return Plan{duration: plan.For}
+	}
 	compiled := Plan{}
 	var start time.Duration
 	var accumulated float64

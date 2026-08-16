@@ -35,7 +35,7 @@ func CSV(out io.Writer, document metrics.Document) error {
 
 	if document.Journey.Started > 0 {
 		lost := document.Journey.Started - document.Journey.Completed
-		if err := writer.Write(line("jornada inteira", "corrigida", document.Journey.Started, lost, 0, document.Journey.Latency)); err != nil {
+		if err := writer.Write(line("jornada inteira", "corrigida", document.Journey.Started, lost, 0, document.Journey.Reported())); err != nil {
 			return err
 		}
 	}
@@ -44,7 +44,7 @@ func CSV(out io.Writer, document metrics.Document) error {
 			return err
 		}
 	}
-	return writer.Write(line("global", "corrigida", document.Overall.Count, document.Overall.Errors, 0, document.Overall.Latency))
+	return writer.Write(line("global", "corrigida", document.Overall.Count, document.Overall.Errors, 0, document.Overall.Reported()))
 }
 
 func number(value float64) string {

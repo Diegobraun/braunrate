@@ -44,11 +44,17 @@ type Run struct {
 	DurationMs   int64            `json:"duracao_ms"`
 	Model        string           `json:"modelo_de_chegada"`
 	AppliedPlan  []AppliedPhase   `json:"plano_aplicado"`
+	Users        int              `json:"usuarios,omitzero"`
+	ThinkTimeMs  int64            `json:"intervalo_entre_iteracoes_ms,omitzero"`
 	MaxInflight  int64            `json:"maximo_de_requisicoes_simultaneas"`
 	Seeds        map[string]int64 `json:"sementes_dos_dados"`
 	Availability Availability     `json:"valores_disponiveis_por_variavel"`
 	AuthObtains  int64            `json:"obtencoes_de_autenticacao"`
 }
+
+const ClosedModel = "fechado"
+
+func (d Document) Closed() bool { return d.Run.Model == ClosedModel }
 
 type AppliedPhase struct {
 	Kind       string  `json:"tipo"`
@@ -69,10 +75,20 @@ type Scheduling struct {
 }
 
 type Journey struct {
-	Started   int64        `json:"iniciadas"`
-	Completed int64        `json:"completas"`
-	Latency   Distribution `json:"latencia_corrigida"`
-	Sentence  string       `json:"frase"`
+	Started        int64        `json:"iniciadas"`
+	Completed      int64        `json:"completas"`
+	Latency        Distribution `json:"latencia_corrigida,omitzero"`
+	ServiceLatency Distribution `json:"latencia_de_servico,omitzero"`
+	Sentence       string       `json:"frase"`
+}
+
+// Present exactly when the JSON carries it: the corrected field is omitted when
+// it is the zero value, so the same test decides what is read back.
+func (j Journey) Reported() Distribution {
+	if j.Latency != (Distribution{}) {
+		return j.Latency
+	}
+	return j.ServiceLatency
 }
 
 type StepResult struct {
@@ -87,8 +103,15 @@ type StepResult struct {
 	ErrorsByClass  map[string]int64 `json:"erros_por_classe"`
 	StatusByCode   map[string]int64 `json:"status_por_codigo"`
 	Details        map[string]int64 `json:"detalhes_de_erro"`
-	Latency        Distribution     `json:"latencia_corrigida"`
-	ServiceLatency Distribution     `json:"latencia_de_servico"`
+	Latency        Distribution     `json:"latencia_corrigida,omitzero"`
+	ServiceLatency Distribution     `json:"latencia_de_servico,omitzero"`
+}
+
+func (s StepResult) Reported() Distribution {
+	if s.Latency != (Distribution{}) {
+		return s.Latency
+	}
+	return s.ServiceLatency
 }
 
 type OverallResult struct {
@@ -97,8 +120,15 @@ type OverallResult struct {
 	Errors         int64        `json:"erros"`
 	ErrorRate      float64      `json:"taxa_de_erro"`
 	EffectiveRate  float64      `json:"taxa_efetiva_por_segundo"`
-	Latency        Distribution `json:"latencia_corrigida"`
-	ServiceLatency Distribution `json:"latencia_de_servico"`
+	Latency        Distribution `json:"latencia_corrigida,omitzero"`
+	ServiceLatency Distribution `json:"latencia_de_servico,omitzero"`
+}
+
+func (o OverallResult) Reported() Distribution {
+	if o.Latency != (Distribution{}) {
+		return o.Latency
+	}
+	return o.ServiceLatency
 }
 
 type Severity string
@@ -147,6 +177,8 @@ type DocumentInput struct {
 	DeclaredSteps    []string
 	PlannedDuration  time.Duration
 	PlannedRequests  int64
+	Users            int
+	ThinkTime        time.Duration
 }
 
 func BuildDocument(c *Collector, input DocumentInput) Document {
@@ -170,6 +202,8 @@ func BuildDocument(c *Collector, input DocumentInput) Document {
 			DurationMs:   input.End.Sub(input.Start).Milliseconds(),
 			Model:        input.Model,
 			AppliedPlan:  input.Phases,
+			Users:        input.Users,
+			ThinkTimeMs:  input.ThinkTime.Milliseconds(),
 			MaxInflight:  input.MaxInflight,
 			Seeds:        input.Seeds,
 			Availability: input.Availability,
@@ -216,12 +250,36 @@ func BuildDocument(c *Collector, input DocumentInput) Document {
 		Completed: c.JourneysCompleted,
 		Latency:   c.Journeys(),
 	}
-	document.Journey.Sentence = phraseJourney(document.Journey)
+	if document.Closed() {
+		dropCorrectedLatency(&document)
+	}
+	document.Journey.Sentence = phraseJourney(document.Journey, document.Closed())
 
 	document.Variety = c.Varieties(input.Availability)
 	document.Warnings = append(evaluateWarnings(c, document), input.ScenarioWarnings...)
 	document.Sanity = CheckSanity(document, input)
 	return document
+}
+
+// The closed loop schedules nothing, so there is no instant to count from. The
+// field is absent rather than zero: a zero there reads as "no delay hidden",
+// which is the one thing a closed loop cannot claim.
+func dropCorrectedLatency(document *Document) {
+	document.Overall.Latency = Distribution{}
+	document.Journey.ServiceLatency = document.Journey.Latency
+	document.Journey.Latency = Distribution{}
+	for index := range document.Steps {
+		document.Steps[index].Latency = Distribution{}
+	}
+}
+
+func ClosedLoopWarning(document Document) (string, bool) {
+	if !document.Closed() {
+		return "", false
+	}
+	return fmt.Sprintf("Este teste usou %d usuarios em laco fechado. Se o alvo travar, os usuarios param de pedir "+
+		"e o atraso nao aparece nos numeros. O tempo de resposta abaixo pode estar melhor do que o usuario real sente.",
+		document.Run.Users), true
 }
 
 func convertStep(a *Aggregate) StepResult {
@@ -337,10 +395,14 @@ func detectTargetDegradation(document Document) (Warning, bool) {
 		}
 	}
 	if first > 0 && worst >= 3*first {
+		message := "a latencia do alvo cresceu ao longo da execucao enquanto o despacho continuou pontual; a degradacao e do alvo, nao do gerador"
+		if document.Closed() {
+			message = "a latencia do alvo cresceu ao longo da execucao; no laco fechado isso tambem derruba a carga, entao a queda de taxa e parte do mesmo evento, nao um segundo achado"
+		}
 		return Warning{
 			Kind:     "alvo_degradado",
 			Severity: SeverityMedium,
-			Message:  "a latencia do alvo cresceu ao longo da execucao enquanto o despacho continuou pontual; a degradacao e do alvo, nao do gerador",
+			Message:  message,
 			Evidence: fmt.Sprintf("p99 por segundo passou de %.1f ms para %.1f ms", first, worst),
 		}, true
 	}
@@ -368,14 +430,19 @@ func ReadableClass(class protocol.ErrorClass) string {
 	}
 }
 
-func phraseJourney(journey Journey) string {
+func phraseJourney(journey Journey, closed bool) string {
 	if journey.Started == 0 {
 		return "Nenhuma jornada foi executada."
 	}
-	if journey.Completed < journey.Started {
-		return fmt.Sprintf("%d de %d jornadas chegaram ao fim; metade delas levou ate %.0f ms e 95%% ate %.0f ms, contados do instante em que deveriam ter comecado.",
-			journey.Completed, journey.Started, journey.Latency.P50, journey.Latency.P95)
+	counted := "contados do instante em que deveriam ter comecado"
+	if closed {
+		counted = "contados de quando o usuario virtual comecou a jornada, que e so depois de ter terminado a anterior"
 	}
-	return fmt.Sprintf("Todas as %d jornadas chegaram ao fim; metade levou ate %.0f ms e 95%% ate %.0f ms, contados do instante em que deveriam ter comecado.",
-		journey.Started, journey.Latency.P50, journey.Latency.P95)
+	latency := journey.Reported()
+	if journey.Completed < journey.Started {
+		return fmt.Sprintf("%d de %d jornadas chegaram ao fim; metade delas levou ate %.0f ms e 95%% ate %.0f ms, %s.",
+			journey.Completed, journey.Started, latency.P50, latency.P95, counted)
+	}
+	return fmt.Sprintf("Todas as %d jornadas chegaram ao fim; metade levou ate %.0f ms e 95%% ate %.0f ms, %s.",
+		journey.Started, latency.P50, latency.P95, counted)
 }

@@ -60,9 +60,14 @@ const (
 )
 
 type LoadPlan struct {
-	Model  ArrivalModel
-	Phases []Phase
+	Model     ArrivalModel
+	Phases    []Phase
+	Users     int
+	For       time.Duration
+	ThinkTime time.Duration
 }
+
+func (l LoadPlan) Closed() bool { return l.Model == ClosedArrival }
 
 type PhaseKind string
 
@@ -93,6 +98,9 @@ func (f Phase) FinalRate() float64 {
 }
 
 func (c Spec) Duration() time.Duration {
+	if c.Load.Closed() {
+		return c.Load.For
+	}
 	var total time.Duration
 	for _, phase := range c.Load.Phases {
 		total += phase.For

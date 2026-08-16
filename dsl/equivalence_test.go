@@ -371,6 +371,29 @@ cenario:
 				Build()
 		},
 	},
+	{
+		name: "modelo fechado",
+		yaml: `
+nome: Laco fechado
+alvo: http://127.0.0.1:8080
+
+carga:
+  modelo: fechado
+  usuarios: 200
+  duracao: 5m
+  intervalo_entre_iteracoes: 1s
+
+cenario:
+  - http: GET /pedidos
+`,
+		dsl: func() (scenario.Spec, error) {
+			return dsl.New("Laco fechado").
+				Target("http://127.0.0.1:8080").
+				ClosedLoop(200, 5*time.Minute, time.Second).
+				Step(dsl.GET("/pedidos")).
+				Build()
+		},
+	},
 }
 
 func TestYAMLAndDSLProduceSameScenario(t *testing.T) {
@@ -448,6 +471,7 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 	assertions := map[scenario.AssertionKind]bool{}
 	phases := map[scenario.PhaseKind]bool{}
 	authObtains := map[scenario.AuthKind]bool{}
+	models := map[scenario.ArrivalModel]bool{}
 	consumePolicies := map[scenario.ConsumePolicy]bool{}
 	metrics := map[string]bool{}
 	scopes := map[scenario.SLOScope]bool{}
@@ -471,6 +495,7 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 				assertions[scenario.AssertionKind(scenario.CheckStatus)] = true
 			}
 		}
+		models[built.Load.Model] = true
 		for _, phase := range built.Load.Phases {
 			phases[phase.Kind] = true
 		}
@@ -503,6 +528,9 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 	missing(t, "tipo de fase", []scenario.PhaseKind{
 		scenario.PhaseRamp, scenario.PhasePlateau, scenario.PhaseSpike, scenario.PhaseConstant,
 	}, phases)
+	missing(t, "modelo de chegada", []scenario.ArrivalModel{
+		scenario.OpenArrival, scenario.ClosedArrival,
+	}, models)
 	missing(t, "tipo de autenticacao", []scenario.AuthKind{
 		scenario.AuthToken, scenario.AuthBasic, scenario.AuthHeader,
 	}, authObtains)

@@ -71,13 +71,10 @@ func createTopics(conn *kafka.Conn, topics ...string) error {
 
 const topicReadyWait = 10 * time.Second
 
-// CreateTopics returns before the partition is servable, and every read in that
-// window fails with Not Leader For Partition — the protocol classifies it as
-// retriable and expects the client to refresh metadata. Announced metadata is
-// not enough: the broker publishes the leader before answering as one, so what
-// retries here is the read itself. The window is bounded because a broker that
-// does not settle in ten seconds is broken, and hiding that would turn a broken
-// broker into a slow one.
+// CreateTopics returns before the partition is servable: the broker publishes
+// the leader in the metadata before answering as one, so what retries here is
+// the read itself. Bounded because a broker that does not settle in ten seconds
+// is broken, and hiding that would turn it into a slow one.
 func untilReady(what string, attempt func() error) error {
 	return untilReadyWithin(topicReadyWait, 200*time.Millisecond, what, attempt)
 }

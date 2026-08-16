@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -177,6 +178,14 @@ func Interpolate(text string, vars map[string]string) string {
 	})
 }
 
+const closedExample = "  carga:\n" +
+	"    modelo: fechado\n" +
+	"    usuarios: 200\n" +
+	"    duracao: 5m\n" +
+	"    intervalo_entre_iteracoes: 1s"
+
+var loadKeys = []string{"modelo", "perfis", "usuarios", "duracao", "intervalo_entre_iteracoes"}
+
 func readLoad(no *yaml.Node) (LoadPlan, error) {
 	plan := LoadPlan{Model: OpenArrival}
 	if no.Kind != yaml.MappingNode {
@@ -185,35 +194,100 @@ func readLoad(no *yaml.Node) (LoadPlan, error) {
 			"    perfis:\n"+
 			"      - patamar: { taxa: 300/s, durante: 1m }")
 	}
+
+	// Collected before being judged: the model may be declared after the key
+	// that only makes sense under it, and reading in order blames the wrong line.
+	nodes := map[string]*yaml.Node{}
 	for index := 0; index+1 < len(no.Content); index += 2 {
 		key := no.Content[index]
 		value := no.Content[index+1]
-		switch key.Value {
-		case "modelo":
-			switch value.Value {
-			case string(OpenArrival):
-				plan.Model = OpenArrival
-			case string(ClosedArrival):
-				return plan, nodeError(value, "modelo fechado ainda nao e suportado; o padrao e aberto")
-			default:
-				return plan, nodeError(value, "modelo de carga desconhecido: %q (o unico modelo e 'aberto', e ele e o padrao: pode omitir a linha)", value.Value)
-			}
-		case "perfis":
-			if value.Kind != yaml.SequenceNode {
-				return plan, nodeError(value, "perfis precisa ser uma lista, um trecho por linha:\n"+
-					"  perfis:\n"+
-					"    - rampa: { de: 50/s, ate: 300/s, durante: 30s }\n"+
-					"    - patamar: { taxa: 300/s, durante: 5m }")
-			}
-			for _, itemNode := range value.Content {
-				phase, err := readPhase(itemNode)
-				if err != nil {
-					return plan, err
-				}
-				plan.Phases = append(plan.Phases, phase)
-			}
+		if !slices.Contains(loadKeys, key.Value) {
+			return plan, nodeError(key, "chave desconhecida em carga: %q\n%s", key.Value, sugerir(key.Value, loadKeys))
+		}
+		nodes[key.Value] = value
+	}
+
+	if model, declared := nodes["modelo"]; declared {
+		switch model.Value {
+		case string(OpenArrival):
+			plan.Model = OpenArrival
+		case string(ClosedArrival):
+			plan.Model = ClosedArrival
 		default:
-			return plan, nodeError(key, "chave desconhecida em carga: %q\n%s", key.Value, sugerir(key.Value, []string{"modelo", "perfis"}))
+			return plan, nodeError(model, "modelo de carga desconhecido: %q (os modelos sao 'aberto', que e o padrao, e 'fechado')", model.Value)
+		}
+	}
+
+	if plan.Model == ClosedArrival {
+		return readClosedLoad(plan, nodes)
+	}
+	return readOpenLoad(plan, nodes)
+}
+
+func readOpenLoad(plan LoadPlan, nodes map[string]*yaml.Node) (LoadPlan, error) {
+	for _, key := range []string{"usuarios", "duracao", "intervalo_entre_iteracoes"} {
+		if node, declared := nodes[key]; declared {
+			return plan, nodeError(node, "%q so existe no modelo fechado; no modelo aberto a carga se declara por taxa de chegada:\n"+
+				"  carga:\n"+
+				"    perfis:\n"+
+				"      - patamar: { taxa: 300/s, durante: 5m }", key)
+		}
+	}
+
+	profiles, declared := nodes["perfis"]
+	if !declared {
+		return plan, nil
+	}
+	if profiles.Kind != yaml.SequenceNode {
+		return plan, nodeError(profiles, "perfis precisa ser uma lista, um trecho por linha:\n"+
+			"  perfis:\n"+
+			"    - rampa: { de: 50/s, ate: 300/s, durante: 30s }\n"+
+			"    - patamar: { taxa: 300/s, durante: 5m }")
+	}
+	for _, item := range profiles.Content {
+		phase, err := readPhase(item)
+		if err != nil {
+			return plan, err
+		}
+		plan.Phases = append(plan.Phases, phase)
+	}
+	return plan, nil
+}
+
+func readClosedLoad(plan LoadPlan, nodes map[string]*yaml.Node) (LoadPlan, error) {
+	if profiles, declared := nodes["perfis"]; declared {
+		return plan, nodeError(profiles, "modelo fechado nao usa 'perfis': no laco fechado a taxa e consequencia do tempo de resposta do alvo, nao uma declaracao sua. Declare quantos usuarios e por quanto tempo:\n"+closedExample)
+	}
+
+	users, declared := nodes["usuarios"]
+	if !declared {
+		return plan, nodeError(nodes["modelo"], "modelo fechado precisa de 'usuarios': e o numero de lacos simultaneos, cada um esperando a resposta antes da proxima iteracao\n"+closedExample)
+	}
+	count, err := strconv.Atoi(users.Value)
+	if err != nil || count <= 0 {
+		return plan, nodeError(users, "usuarios precisa ser um inteiro maior que zero, recebeu %q", users.Value)
+	}
+	plan.Users = count
+
+	span, declared := nodes["duracao"]
+	if !declared {
+		return plan, nodeError(nodes["modelo"], "modelo fechado precisa de 'duracao': sem taxa declarada, e ela que diz quando a execucao termina\n"+closedExample)
+	}
+	plan.For, err = readDuration(span)
+	if err != nil {
+		return plan, err
+	}
+	if plan.For <= 0 {
+		return plan, nodeError(span, "duracao precisa ser maior que zero, recebeu %q", span.Value)
+	}
+
+	if think, declared := nodes["intervalo_entre_iteracoes"]; declared {
+		plan.ThinkTime, err = readDuration(think)
+		if err != nil {
+			return plan, err
+		}
+		if plan.ThinkTime < 0 {
+			return plan, nodeError(think, "intervalo_entre_iteracoes nao pode ser negativo, recebeu %q", think.Value)
 		}
 	}
 	return plan, nil
@@ -262,9 +336,9 @@ func readPhase(no *yaml.Node) (Phase, error) {
 			}
 			phase.To = rate
 		case "durante":
-			duration, err := time.ParseDuration(value.Value)
+			duration, err := readDuration(value)
 			if err != nil {
-				return phase, nodeError(value, "duracao invalida: %q (use 30s, 5m, 1h30m)", value.Value)
+				return phase, err
 			}
 			phase.For = duration
 		default:
@@ -276,6 +350,14 @@ func readPhase(no *yaml.Node) (Phase, error) {
 		return phase, nodeError(body, "rampa precisa de 'de' e 'ate', por exemplo: - rampa: { de: 50/s, ate: 300/s, durante: 30s }")
 	}
 	return phase, nil
+}
+
+func readDuration(no *yaml.Node) (time.Duration, error) {
+	duration, err := time.ParseDuration(no.Value)
+	if err != nil {
+		return 0, nodeError(no, "duracao invalida: %q (use 30s, 5m, 1h30m)", no.Value)
+	}
+	return duration, nil
 }
 
 func readRate(no *yaml.Node) (float64, error) {

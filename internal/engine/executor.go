@@ -148,13 +148,49 @@ func (m *Executor) Execute(ctx context.Context) metrics.Document {
 	collector := metrics.NewCollector(start, m.opts.LateThreshold)
 	m.collector.Store(collector)
 
-	var inflight atomic.Int64
-	var group sync.WaitGroup
 	stopProgress := make(chan struct{})
-
 	if m.opts.OnProgress != nil {
 		go m.follow(collector, start, stopProgress)
 	}
+
+	if m.closed() {
+		m.driveClosed(ctx, collector, start)
+	} else {
+		m.driveOpen(ctx, collector, start)
+	}
+
+	close(stopProgress)
+	end := clock.Now()
+	collector.Close()
+
+	load := m.scenario.Load
+	return metrics.BuildDocument(collector, metrics.DocumentInput{
+		Version:          m.opts.Version,
+		Spec:             m.scenario.Name,
+		Target:           m.scenario.Target,
+		Model:            string(load.Model),
+		Start:            start,
+		End:              end,
+		Phases:           m.appliedPhases(),
+		Users:            load.Users,
+		ThinkTime:        load.ThinkTime,
+		MaxInflight:      m.opts.MaxInflight,
+		Seeds:            m.seeds(),
+		Availability:     m.availability(),
+		AuthObtains:      m.authObtains(),
+		ScenarioWarnings: m.scenarioWarnings(),
+		DeclaredSteps:    m.declaredSteps(),
+		PlannedDuration:  m.plan.Duration(),
+		PlannedRequests:  m.plan.TotalRequests(),
+	})
+}
+
+func (m *Executor) closed() bool { return m.scenario.Load.Closed() }
+
+func (m *Executor) driveOpen(ctx context.Context, collector *metrics.Collector, start time.Time) {
+	clock := m.opts.Clock
+	var inflight atomic.Int64
+	var group sync.WaitGroup
 
 	total := m.plan.TotalRequests()
 	for index := int64(0); index < total; index++ {
@@ -175,35 +211,38 @@ func (m *Executor) Execute(ctx context.Context) metrics.Document {
 		collector.RecordDispatch(scheduled, dispatch, m.plan.RateAt(offset), current)
 
 		group.Add(1)
-		go func(virtualUser int64, scheduled time.Time) {
+		go func(index int64, scheduled time.Time) {
 			defer group.Done()
 			defer inflight.Add(-1)
-			m.runIteration(ctx, virtualUser, scheduled, collector)
+			m.runIteration(ctx, index, index, scheduled, collector)
 		}(index, scheduled)
 	}
-
 	group.Wait()
-	close(stopProgress)
-	end := clock.Now()
-	collector.Close()
+}
 
-	return metrics.BuildDocument(collector, metrics.DocumentInput{
-		Version:          m.opts.Version,
-		Spec:             m.scenario.Name,
-		Target:           m.scenario.Target,
-		Model:            string(m.scenario.Load.Model),
-		Start:            start,
-		End:              end,
-		Phases:           m.appliedPhases(),
-		MaxInflight:      m.opts.MaxInflight,
-		Seeds:            m.seeds(),
-		Availability:     m.availability(),
-		AuthObtains:      m.authObtains(),
-		ScenarioWarnings: m.scenarioWarnings(),
-		DeclaredSteps:    m.declaredSteps(),
-		PlannedDuration:  m.plan.Duration(),
-		PlannedRequests:  m.plan.TotalRequests(),
-	})
+// Each user only asks again after the previous answer arrived. Nothing is
+// scheduled, so nothing can be late — the rate is whatever the target allows,
+// which is the property that makes this model hide a freeze.
+func (m *Executor) driveClosed(ctx context.Context, collector *metrics.Collector, start time.Time) {
+	clock := m.opts.Clock
+	load := m.scenario.Load
+	deadline := start.Add(load.For)
+
+	var iterations atomic.Int64
+	var group sync.WaitGroup
+	for user := 0; user < load.Users; user++ {
+		group.Add(1)
+		go func(user int64) {
+			defer group.Done()
+			for ctx.Err() == nil && clock.Now().Before(deadline) {
+				m.runIteration(ctx, user, iterations.Add(1)-1, clock.Now(), collector)
+				if load.ThinkTime > 0 {
+					clock.WaitUntil(clock.Now().Add(load.ThinkTime))
+				}
+			}
+		}(int64(user))
+	}
+	group.Wait()
 }
 
 func (m *Executor) declaredSteps() []string {
@@ -243,11 +282,11 @@ func (m *Executor) scenarioWarnings() []metrics.Warning {
 // value captured in one step into the next. If a step fails the iteration
 // stops, because the following steps would depend on a capture that never
 // happened.
-func (m *Executor) runIteration(ctx context.Context, virtualUser int64, scheduled time.Time, collector *metrics.Collector) {
-	values := runtime.New(virtualUser, virtualUser, m.scenario.Vars)
+func (m *Executor) runIteration(ctx context.Context, virtualUser, iteration int64, scheduled time.Time, collector *metrics.Collector) {
+	values := runtime.New(virtualUser, iteration, m.scenario.Vars)
 
 	for _, source := range m.sources {
-		record, err := source.Next(virtualUser)
+		record, err := source.Next(iteration)
 		if err != nil {
 			collector.Record(metrics.Sample{
 				Step: "dados: " + source.Name(), Key: source.Name(), Protocol: "dados",
@@ -284,7 +323,7 @@ func (m *Executor) runIteration(ctx context.Context, virtualUser int64, schedule
 	complete := true
 	for index, step := range m.scenario.Steps {
 		sample, _ := m.runStep(ctx, step, stepInstant, values, authHeader)
-		if index == 0 {
+		if index == 0 && !m.closed() {
 			sample.LatencyKind = metrics.CorrectedLatency
 		} else {
 			sample.LatencyKind = metrics.ServiceLatency

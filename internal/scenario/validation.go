@@ -42,7 +42,12 @@ func (c Spec) Validate() error {
 	if len(c.Steps) == 0 {
 		problems = append(problems, "o cenario precisa de pelo menos um passo")
 	}
-	if len(c.Load.Phases) == 0 {
+	switch {
+	case c.Load.Closed() && c.Load.Users <= 0:
+		problems = append(problems, "o modelo fechado precisa de pelo menos um usuario")
+	case c.Load.Closed() && c.Load.For <= 0:
+		problems = append(problems, "o modelo fechado precisa de duracao")
+	case !c.Load.Closed() && len(c.Load.Phases) == 0:
 		problems = append(problems, "o cenario precisa de pelo menos um perfil de carga")
 	}
 
@@ -67,6 +72,24 @@ func (c Spec) Validate() error {
 		return nil
 	}
 	return fmt.Errorf("cenario invalido:\n  - %s", strings.Join(problems, "\n  - "))
+}
+
+// The rate is shown at three response times because that is the whole point: in
+// the closed model it is the target that decides the load, so a single number
+// would be the very promise this model cannot keep.
+func ClosedModelWarning(c Spec) (string, bool) {
+	if !c.Load.Closed() {
+		return "", false
+	}
+	think := c.Load.ThinkTime.Seconds()
+	rate := func(response float64) float64 { return float64(c.Load.Users) / (think + response) }
+
+	line := fmt.Sprintf("Atencao: 'modelo: fechado' nao declara carga, declara %d lacos.\n", c.Load.Users)
+	line += "    Cada usuario so pede de novo depois da resposta anterior: se o alvo travar, eles param de pedir\n"
+	line += "    junto e o atraso nao aparece na medicao — e o oposto do modelo aberto, que insiste na taxa.\n"
+	line += fmt.Sprintf("    Taxa aproximada com esses %d usuarios: %.0f/s se o alvo responder em 100 ms, %.0f/s em 500 ms, %.0f/s em 2s.",
+		c.Load.Users, rate(0.1), rate(0.5), rate(2))
+	return line, true
 }
 
 // GateWarnings reports what a declared gate leaves out. A scenario with several

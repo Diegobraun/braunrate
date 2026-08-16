@@ -429,6 +429,46 @@ Repare no `pagar fatura`: **43 ms no 95%**, com o alvo congelado por um segundo 
 
 **Um token para a execucao inteira.** Hoje o motor faz login uma vez e reaproveita a credencial em todas as jornadas — isso nao existe em producao. Se o alvo tiver cache por identidade, rate limit por token ou sharding por usuario, o numero fica otimista (ou, no caso do rate limit, falha por 429 que nao aconteceria). O relatorio declara isso em toda execucao com autenticacao. `pool de tokens` e `token por usuario virtual` sao evolucao prevista, com a forma do YAML ja desenhada no [ADR 0005](docs/adr/0005-identidade-e-token.md).
 
+## Modelo fechado: quando serve e quando mente
+
+O padrao e o modelo aberto: a carga e uma taxa declarada e o gerador insiste nela mesmo quando o alvo demora. O modelo fechado e o outro jeito de descrever carga — N usuarios em laco, cada um so pedindo de novo depois da resposta anterior — e existe declarado:
+
+```yaml
+carga:
+  modelo: fechado
+  usuarios: 200
+  duracao: 5m
+  intervalo_entre_iteracoes: 1s
+```
+
+**Serve** quando o limite real e de sessao, nao de chegada: pool de conexao, licenca por assento, fila com numero fixo de trabalhadores, ou quando voce esta reproduzindo um cenario de JMeter escrito em threads e quer o mesmo formato antes de converter.
+
+**Mente** quando a pergunta e "o alvo aguenta X por segundo?". No laco fechado o alvo decide a carga: se ele travar, os usuarios param de pedir junto, e o atraso nunca entra na conta.
+
+### A mesma travada, medida dos dois jeitos
+
+Mesmo alvo, congelado por 3 s no meio de uma execucao de 12 s. A esquerda, 100/s em modelo aberto; a direita, 10 usuarios em laco fechado com 100 ms entre iteracoes (~95/s enquanto o alvo responde).
+
+```
+# braunrate execute aberto.yaml           # braunrate execute fechado.yaml
+1.200 requisicoes, 100 por segundo        850 requisicoes, 70 por segundo
+metade 6.1 ms | 95% 2.41 s | pior 3.01 s  metade 6.4 ms | 95% 7.0 ms | pior 3.00 s
+```
+
+O 95% caiu de **2,41 s para 7,0 ms** — mesma travada, mesmo alvo. O laco fechado nao errou conta nenhuma: ele mediu com precisao um evento que ele mesmo deixou de provocar, porque os 10 usuarios ficaram parados esperando em vez de continuar chegando.
+
+Repare tambem na taxa: **100/s de um lado, 70/s do outro**. A carga do modelo fechado caiu junto com o alvo. Num teste de capacidade, e a carga que deveria ter continuado.
+
+Por isso o relatorio do modelo fechado abre com o aviso, sempre, mesmo quando tudo passa:
+
+```
+ATENCAO: Este teste usou 10 usuarios em laco fechado. Se o alvo travar, os usuarios
+param de pedir e o atraso nao aparece nos numeros. O tempo de resposta abaixo pode
+estar melhor do que o usuario real sente.
+```
+
+E o documento JSON **nao tem** campo `latencia_corrigida`: sem instante agendado nao ha o que corrigir, e escrever zero ali seria afirmar que nao havia atraso escondido. O `braunrate validate` avisa antes de rodar, com a taxa aproximada que aquele cenario produziria; e `braunrate compare` recusa comparar uma execucao aberta com uma fechada. Detalhes no [ADR 0012](docs/adr/0012-modelo-fechado-como-opcao-declarada.md).
+
 ## GraphQL
 
 Cole a consulta; o nome da operacao vira a linha do relatorio:
@@ -637,6 +677,7 @@ A comparacao nunca chama de regressao o que pode ser ruido, lista tudo que mudou
 | Recurso | Estado |
 |---|---|
 | Motor de chegada aberta, latencia do instante agendado | pronto |
+| Modelo fechado declarado, com aviso permanente e sem latencia corrigida | pronto |
 | Perfis: rampa, patamar, pico, taxa constante | pronto |
 | HDR histogram, agregados mergeaveis, series alinhadas ao epoch | pronto |
 | Deteccao de back-pressure com causa provavel (gerador x alvo) | pronto |
@@ -675,7 +716,7 @@ Tres razoes, nesta ordem:
 
 ## Escopo
 
-**Dentro:** HTTP/HTTPS e REST; GraphQL de primeira classe; Kafka e RabbitMQ (produzir e consumir); passo `aguardar` com timeout; correlacao, variaveis e fluxo de autenticacao; CSV com politica de consumo e geracao sintetica com semente; perfis de carga (rampa, patamar, pico, taxa constante); SLO com codigo de saida; relatorio HTML autocontido, JSON, CSV e resumo de terminal; comparacao entre execucoes; importador de `.jmx` para o subconjunto comum.
+**Dentro:** HTTP/HTTPS e REST; GraphQL de primeira classe; Kafka e RabbitMQ (produzir e consumir); passo `aguardar` com timeout; correlacao, variaveis e fluxo de autenticacao; CSV com politica de consumo e geracao sintetica com semente; perfis de carga (rampa, patamar, pico, taxa constante) e modelo fechado declarado; SLO com codigo de saida; relatorio HTML autocontido, JSON, CSV e resumo de terminal; comparacao entre execucoes; importador de `.jmx` para o subconjunto comum.
 
 **Limitacao conhecida:** protocolo fora da lista acima exige recompilar o binario — a mesma friccao que o k6 tem. E consequencia da escolha de Go ([ADR 0004](docs/adr/0004-extensao-de-protocolo.md)), esta declarada aqui de proposito, e o processo de build reprodutivel para protocolo fora-de-arvore sera documentado. Avro e Schema Registry sao mais fracos em Go que na JVM e ficam para depois da v1.
 

@@ -157,6 +157,15 @@ func (c *Builder) Constant(rate Rate, during time.Duration) *Builder {
 	return c.phase(scenario.Phase{Kind: scenario.PhaseConstant, To: float64(rate), For: during})
 }
 
+// ClosedLoop is the declared exception, never the default: the rate stops being
+// something you ask for and becomes whatever the target allows.
+func (c *Builder) ClosedLoop(users int, during, betweenIterations time.Duration) *Builder {
+	c.scenario.Load = scenario.LoadPlan{
+		Model: scenario.ClosedArrival, Users: users, For: during, ThinkTime: betweenIterations,
+	}
+	return c
+}
+
 func (c *Builder) phase(phase scenario.Phase) *Builder {
 	c.scenario.Load.Phases = append(c.scenario.Load.Phases, phase)
 	return c

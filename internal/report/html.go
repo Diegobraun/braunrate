@@ -18,6 +18,7 @@ type htmlPage struct {
 	Journey           metrics.Journey
 	Steps             []htmlStep
 	HasServiceLatency bool
+	ClosedLoop        string
 	Warnings          []htmlWarning
 	Errors            []htmlError
 	Count             string
@@ -86,26 +87,30 @@ func buildPage(document metrics.Document) htmlPage {
 		GeneratedAt: document.Run.Start.Format("02/01/2006 15:04:05"),
 	}
 
+	overall := document.Overall.Reported()
+	journey := document.Journey.Reported()
+
+	page.ClosedLoop, _ = metrics.ClosedLoopWarning(document)
 	page.Verdict = buildVerdict(document)
 	page.Count = thousands(document.Overall.Count)
 	page.Rate = fmt.Sprintf("%.0f", document.Overall.EffectiveRate)
 	page.ErrorRate = percentage(document.Overall.ErrorRate * 100)
-	page.P95 = milliseconds(document.Overall.Latency.P95)
-	page.JourneyP50 = milliseconds(document.Journey.Latency.P50)
-	page.JourneyP95 = milliseconds(document.Journey.Latency.P95)
-	page.JourneyP99 = milliseconds(document.Journey.Latency.P99)
-	page.JourneyMax = milliseconds(document.Journey.Latency.Max)
+	page.P95 = milliseconds(overall.P95)
+	page.JourneyP50 = milliseconds(journey.P50)
+	page.JourneyP95 = milliseconds(journey.P95)
+	page.JourneyP99 = milliseconds(journey.P99)
+	page.JourneyMax = milliseconds(journey.Max)
 
 	for _, step := range document.Steps {
 		line := htmlStep{
 			Name:     step.Name,
 			Mark:     "1",
 			Count:    thousands(step.Count),
-			P50:      milliseconds(step.Latency.P50),
-			P95:      milliseconds(step.Latency.P95),
-			P99:      milliseconds(step.Latency.P99),
-			P999:     milliseconds(step.Latency.P999),
-			Max:      milliseconds(step.Latency.Max),
+			P50:      milliseconds(step.Reported().P50),
+			P95:      milliseconds(step.Reported().P95),
+			P99:      milliseconds(step.Reported().P99),
+			P999:     milliseconds(step.Reported().P999),
+			Max:      milliseconds(step.Reported().Max),
 			Errors:   step.Errors,
 			HasError: step.Errors > 0,
 		}
@@ -214,6 +219,13 @@ func axisLabel(value float64) string {
 func reliabilitySentences(document metrics.Document) []string {
 	var sentences []string
 	scheduling := document.Scheduling
+	if document.Closed() {
+		return []string{
+			fmt.Sprintf("Nao ha agendamento para comparar: a taxa efetiva de %.0f/s foi consequencia do tempo de resposta do alvo, nao uma carga declarada.",
+				document.Overall.EffectiveRate),
+			"Se o alvo ficar mais lento, os usuarios virtuais pedem menos e a carga cai junto — o atraso nao aparece nos numeros.",
+		}
+	}
 	if scheduling.LateDispatches == 0 && scheduling.DroppedByInflightLimit == 0 {
 		sentences = append(sentences, "O gerador disparou todas as requisicoes na hora certa, entao os numeros acima valem.")
 	}
@@ -442,6 +454,13 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
   {{if .Verdict.Subtitle}}<p class="subtitulo">{{.Verdict.Subtitle}}</p>{{end}}
 </header>
 
+{{if .ClosedLoop}}
+<div class="aviso media">
+  <div class="rotulo">laco fechado</div>
+  <div>{{.ClosedLoop}}</div>
+</div>
+{{end}}
+
 {{range .Warnings}}
 <div class="aviso {{.Class}}">
   <div class="rotulo">{{.Label}}</div>
@@ -483,9 +502,13 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
   </tr>
   {{end}}
 </table>
+{{if .ClosedLoop}}
+<p class="nota">(2) tempo de resposta puro. No laco fechado nao existe instante agendado: o usuario virtual so pede de novo depois da resposta anterior, entao nenhum atraso de fila aparece nestes numeros.</p>
+{{else}}
 <p class="nota">(1) tempo contado do instante em que a requisicao deveria ter partido — inclui qualquer atraso e por isso nao esconde travada do alvo.</p>
 {{if .HasServiceLatency}}
 <p class="nota">(2) tempo de resposta puro, contado de quando o passo anterior terminou. Esse passo depende de um valor capturado antes dele, entao nao tem instante agendado proprio. Para a leitura honesta da jornada, use o bloco "A jornada inteira".</p>
+{{end}}
 {{end}}
 
 {{if .HasChart}}

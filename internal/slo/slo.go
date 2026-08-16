@@ -61,10 +61,10 @@ func evaluateRule(rule scenario.SLORule, document metrics.Document, byStep map[s
 
 	switch rule.Scope {
 	case scenario.ScopeOverall:
-		distribution = document.Overall.Latency
+		distribution = document.Overall.Reported()
 		count, errors, successes = document.Overall.Count, document.Overall.Errors, document.Overall.Successes
 	case scenario.ScopeJourney:
-		distribution = document.Journey.Latency
+		distribution = document.Journey.Reported()
 		count = document.Journey.Completed
 	default:
 		step, exists := byStep[rule.Step]

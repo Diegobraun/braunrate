@@ -83,10 +83,10 @@ func Compare(before, after metrics.Document) Comparison {
 		c.Comparable = false
 	}
 
-	c.Journey = compareDistribution("jornada inteira (95%)", before.Journey.Latency.P95, after.Journey.Latency.P95)
-	c.Overall = compareDistribution("todas as requisicoes (95%)", before.Overall.Latency.P95, after.Overall.Latency.P95)
-	c.JourneyPercentiles = comparePercentiles("jornada inteira", before.Journey.Latency, after.Journey.Latency)
-	c.OverallPercentiles = comparePercentiles("todas as requisicoes", before.Overall.Latency, after.Overall.Latency)
+	c.Journey = compareDistribution("jornada inteira (95%)", before.Journey.Reported().P95, after.Journey.Reported().P95)
+	c.Overall = compareDistribution("todas as requisicoes (95%)", before.Overall.Reported().P95, after.Overall.Reported().P95)
+	c.JourneyPercentiles = comparePercentiles("jornada inteira", before.Journey.Reported(), after.Journey.Reported())
+	c.OverallPercentiles = comparePercentiles("todas as requisicoes", before.Overall.Reported(), after.Overall.Reported())
 	c.Steps = compareSteps(before, after)
 	c.Error = compareErrors(before, after)
 	c.Sentence = phrase(c, before, after)
@@ -127,7 +127,8 @@ func collectCaveats(before, after metrics.Document) []Caveat {
 		blocking("as execucoes usaram versoes diferentes do braunrate: %s e %s", before.Version, after.Version)
 	}
 	if before.Run.Model != after.Run.Model {
-		blocking("os modelos de chegada sao diferentes: %s e %s", before.Run.Model, after.Run.Model)
+		blocking("os modelos de chegada sao diferentes: %s e %s. Latencia de laco fechado nao se compara com latencia contada do instante agendado — a segunda inclui um atraso que a primeira nao chega a registrar",
+			before.Run.Model, after.Run.Model)
 	}
 	if !before.Valid() {
 		blocking("a execucao anterior tem resultado invalido e o numero dela nao vale como base")
@@ -259,8 +260,8 @@ func compareSteps(before, after metrics.Document) []StepDifference {
 			Step:     name,
 			New:      !existiaAntes,
 			Vanished: !existsNow,
-			P95:      compareDistribution(name+" (95%)", previous.Latency.P95, newOne.Latency.P95),
-			P99:      compareDistribution(name+" (99%)", previous.Latency.P99, newOne.Latency.P99),
+			P95:      compareDistribution(name+" (95%)", previous.Reported().P95, newOne.Reported().P95),
+			P99:      compareDistribution(name+" (99%)", previous.Reported().P99, newOne.Reported().P99),
 		}
 		diferencas = append(diferencas, difference)
 	}
