@@ -208,9 +208,15 @@ func writeHTML(path string, document metrics.Document) error {
 	if err != nil {
 		return fmt.Errorf("erro ao criar %s: %v", path, err)
 	}
-	defer file.Close()
 	if err := report.HTML(file, document); err != nil {
+		file.Close()
 		return fmt.Errorf("erro ao gerar o relatorio HTML: %v", err)
+	}
+	// Close reports the write the operating system had not flushed yet. Deferred
+	// and discarded, a full disk produced a truncated file and a message saying
+	// the report was ready.
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("erro ao fechar %s, o relatorio pode estar incompleto: %v", path, err)
 	}
 	return nil
 }
@@ -220,9 +226,12 @@ func writeCSVFile(path string, document metrics.Document) error {
 	if err != nil {
 		return fmt.Errorf("erro ao criar %s: %v", path, err)
 	}
-	defer file.Close()
 	if err := report.CSV(file, document); err != nil {
+		file.Close()
 		return fmt.Errorf("erro ao gerar o CSV: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("erro ao fechar %s, o CSV pode estar incompleto: %v", path, err)
 	}
 	return nil
 }
