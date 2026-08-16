@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/Diegobraun/braunrate/internal/metrics"
+	"github.com/Diegobraun/braunrate/internal/texto"
 )
 
 // Two runs do not produce a confidence interval. Change below this is treated
@@ -306,7 +307,10 @@ func phrase(compared Comparison, before, after metrics.Document) string {
 		sentence += " " + compared.Error.Sentence
 	}
 	if len(compared.Caveats) > 0 {
-		sentence += fmt.Sprintf(" Com %d ressalva(s) que podem explicar a diferenca sozinhas.", len(compared.Caveats))
+		sentence += fmt.Sprintf(" Com %s que %s explicar a diferenca sozinha%s.",
+			texto.Count(int64(len(compared.Caveats)), "ressalva", "ressalvas"),
+			texto.Pick(int64(len(compared.Caveats)), "pode", "podem"),
+			texto.Pick(int64(len(compared.Caveats)), "", "s"))
 	}
 	return sentence
 }

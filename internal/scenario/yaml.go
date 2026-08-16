@@ -1,7 +1,9 @@
 package scenario
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"regexp"
 	"slices"
@@ -45,7 +47,7 @@ var (
 func ParseFile(path string) (Spec, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return Spec{}, err
+		return Spec{}, readError(path, err)
 	}
 	c, err := Parse(content)
 	if err, ok := err.(ScenarioError); ok {
@@ -162,6 +164,20 @@ func readVars(node *yaml.Node) (map[string]string, error) {
 		vars[name] = ExpandFromEnv(node.Content[index+1].Value)
 	}
 	return vars, nil
+}
+
+// The raw error from the operating system is in English and says nothing about
+// what to do next, in a product where every other message does.
+func readError(path string, err error) error {
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return ScenarioError{File: path, Message: fmt.Sprintf("nao encontrei o arquivo %s.\n"+
+			"    para comecar um cenario do zero:  braunrate new %s\n"+
+			"    para ver os que existem por perto:  ls *.yaml", path, path)}
+	case errors.Is(err, fs.ErrPermission):
+		return ScenarioError{File: path, Message: fmt.Sprintf("nao tenho permissao para ler %s", path)}
+	}
+	return ScenarioError{File: path, Message: fmt.Sprintf("nao consegui ler %s: %v", path, err)}
 }
 
 var varPattern = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_.]*)(?::-([^}]*))?\}`)
@@ -510,7 +526,20 @@ func closest(received string, valid []string) (string, bool) {
 			best, shortestDistance = candidate, distance
 		}
 	}
-	return best, best != "" && shortestDistance <= 3
+	// A fixed distance of three turns "taxa" into "voce quis dizer rampa?",
+	// which is not a typo of anything. The tolerance grows with the word,
+	// because a long word survives more typing than a short one.
+	return best, best != "" && shortestDistance <= tolerance(received)
+}
+
+func tolerance(received string) int {
+	switch {
+	case len(received) <= 4:
+		return 1
+	case len(received) <= 8:
+		return 2
+	}
+	return 3
 }
 
 func editDistance(first, second string) int {

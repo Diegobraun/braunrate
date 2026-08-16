@@ -86,3 +86,27 @@ func TestReportShowsTheStepThatNeverRanAndNamesTheError(t *testing.T) {
 		t.Fatalf("a linha de erro nao diz em qual passo:\n%s", text)
 	}
 }
+
+// B15 of the audit: the header printed over an empty table says "there is
+// nothing here" in the least useful way there is.
+func TestEmptyStepTableSaysWhatHappenedInsteadOfPrintingAHeader(t *testing.T) {
+	document := sampleDocument()
+	document.Steps = nil
+	document.Run.DeclaredSteps = nil
+
+	var out strings.Builder
+	if err := report.Summary(&out, document, document.SLO); err != nil {
+		t.Fatalf("resumo nao escreveu: %v", err)
+	}
+	text := out.String()
+
+	if !strings.Contains(text, "Nenhum passo registrou amostra") {
+		t.Fatalf("a tabela vazia saiu sem explicacao:\n%s", text)
+	}
+	if strings.Contains(text, "requisicoes    metade") {
+		t.Fatalf("o cabecalho da tabela foi impresso sem linha nenhuma:\n%s", text)
+	}
+	if !strings.Contains(text, "braunrate debug") {
+		t.Fatalf("nada diz qual e o proximo passo:\n%s", text)
+	}
+}

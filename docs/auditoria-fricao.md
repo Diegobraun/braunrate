@@ -24,10 +24,10 @@ Classificacao: **bloqueia** (a pessoa nao termina sozinha), **atrasa** (termina,
 | 9 | ~~Linha de erro nao diz o status nem o passo~~ — **resolvido** | B | atrasa |
 | 10 | ~~Erro de sintaxe YAML sai cru, em ingles, sem arquivo nem coluna~~ — **resolvido** | C | atrasa |
 | 11 | ~~Timeout do `aguardar` diz "tempo esgotado" e imprime campo vazio~~ — **resolvido** | C | atrasa |
-| 12 | Arquivo inexistente responde em ingles e nao ensina o proximo passo | A | incomoda |
-| 13 | Sugestao de "voce quis dizer" dispara para palavra sem relacao | A | incomoda |
-| 14 | Concordancia: "as 1 regras de SLO foram atendidas" | B | incomoda |
-| 15 | Cabecalho "Por passo" impresso com tabela vazia | B | incomoda |
+| 12 | ~~Arquivo inexistente responde em ingles e nao ensina o proximo passo~~ — **resolvido** | A | incomoda |
+| 13 | ~~Sugestao de "voce quis dizer" dispara para palavra sem relacao~~ — **resolvido** | A | incomoda |
+| 14 | ~~Concordancia: "as 1 regras de SLO foram atendidas"~~ — **resolvido** | B | incomoda |
+| 15 | ~~Cabecalho "Por passo" impresso com tabela vazia~~ — **resolvido** | B | incomoda |
 | 16 | ~~Variavel que ninguem declarou vira texto vazio, e `validate` aprova~~ — **resolvido** | A | atrasa |
 
 Custo do percurso: **jornada A — 12 comandos, 6 edicoes**; **jornada B — 6 comandos, 3 edicoes** (partindo de um cenario que ja funcionava); **jornada C — 4 comandos, 3 edicoes**, e nao terminou.
@@ -51,9 +51,17 @@ erro no cenario: open cenario.yaml: no such file or directory
 
 Sem consultar o README, nao ha como saber que existe `nome`, `alvo`, `carga`, `cenario`. Este e o unico achado do percurso em que a pessoa **para**, e ele acontece no primeiro minuto.
 
-### A2 — Arquivo inexistente responde em ingles e nao ensina (incomoda)
+### A2 — Arquivo inexistente responde em ingles e nao ensina (incomoda) — RESOLVIDO
 
 A mensagem acima e o erro cru do Go, na unica parte do produto que nao fala portugues, e nao diz qual seria o proximo passo.
+
+**Resolvido:**
+
+```
+erro no cenario: cenario.yaml: nao encontrei o arquivo cenario.yaml.
+    para comecar um cenario do zero:  braunrate new cenario.yaml
+    para ver os que existem por perto:  ls *.yaml
+```
 
 ### A3 e A5 — Chave desconhecida lista as validas mas nao mostra a forma (atrasa) — RESOLVIDO
 
@@ -84,7 +92,7 @@ erro no cenario: cenario.yaml:4:3: chave desconhecida em carga: "taxa"
           - patamar: { taxa: 200/s, durante: 5m }
 ```
 
-### A4 — Sugestao dispara para palavra sem relacao (incomoda)
+### A4 — Sugestao dispara para palavra sem relacao (incomoda) — RESOLVIDO
 
 ```
 tipo de perfil desconhecido: "taxa"
@@ -92,6 +100,8 @@ tipo de perfil desconhecido: "taxa"
 ```
 
 `taxa` nao e erro de digitacao de `rampa`. A distancia de edicao aceita 3 sem olhar o tamanho da palavra.
+
+**Resolvido.** A tolerancia cresce com a palavra: 1 ate quatro letras, 2 ate oito, 3 acima disso. `taxa` deixou de sugerir `rampa`; `patamer` continua sugerindo `patamar`.
 
 ### A6 — Variavel de ambiente nao definida vira texto vazio (atrasa) — RESOLVIDO
 
@@ -246,9 +256,23 @@ Erros
 
 Nao ha erro de configuracao: o cenario esta certo e o alvo esta fora do ar. A pessoa vai procurar defeito onde nao tem. Alem de mandar para o lugar errado, a classificacao errada contamina a metrica — a ferramenta cujo argumento e classificar erro com honestidade classifica falha de rede como erro de cenario.
 
-### B15 — Cabecalho "Por passo" com tabela vazia (incomoda)
+### B15 — Cabecalho "Por passo" com tabela vazia (incomoda) — RESOLVIDO
 
 Nenhuma requisicao chegou a ser feita, e o cabecalho da tabela e impresso mesmo assim, sem linha nenhuma.
+
+**Resolvido.** Sem amostra nenhuma, o bloco diz o que aconteceu e qual e o proximo comando:
+
+```
+Por passo
+  Nenhum passo registrou amostra: a execucao nao chegou a medir nada.
+  Rode 'braunrate debug' para ver onde a iteracao para.
+```
+
+### B14 — Concordancia com numero (incomoda) — RESOLVIDO
+
+"as 1 regras de SLO foram atendidas", "1 passo(s)", "obtida 1 vez(es)", "1 ressalva(s)".
+
+**Resolvido.** As concordancias passaram a vir de `internal/texto`, escritas por extenso em vez de `(s)`: o relatorio e lido em voz alta em reuniao, e "as 1 regras" custa confianca em tudo o mais que esta na pagina.
 
 ---
 

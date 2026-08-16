@@ -9,6 +9,7 @@ import (
 
 	"github.com/Diegobraun/braunrate/internal/metrics"
 	"github.com/Diegobraun/braunrate/internal/slo"
+	"github.com/Diegobraun/braunrate/internal/texto"
 )
 
 func ProgressLine(snapshot metrics.Snapshot, targetRate float64, remaining time.Duration) string {
@@ -83,47 +84,7 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 		write("")
 	}
 
-	write("Por passo")
-	write("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7s", "passo", "", "requisicoes", "metade", "95%", "99%", "99,9%", "pior", "erros")
-	hasServiceStep := false
-	for _, step := range document.Steps {
-		mark := "(1)"
-		if step.LatencyKind == string(metrics.ServiceLatency) {
-			mark = "(2)"
-			hasServiceStep = true
-		}
-		write("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7d",
-			trim(step.Name, 26), mark, thousands(step.Count),
-			milliseconds(step.Reported().P50), milliseconds(step.Reported().P95),
-			milliseconds(step.Reported().P99), milliseconds(step.Reported().P999),
-			milliseconds(step.Reported().Max), step.Errors)
-	}
-	// A step that never ran used to vanish from here, and whoever read the
-	// report never found out it existed.
-	for _, name := range metrics.StepsThatNeverRan(document) {
-		write("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7s",
-			trim(name, 26), "", "0", "—", "—", "—", "—", "—", "—")
-	}
-	if len(metrics.StepsThatNeverRan(document)) > 0 {
-		write("")
-		write("  Passo com traco nunca chegou a executar: a iteracao parou antes dele. O motivo")
-		write("  esta em \"Erros\", no passo que falhou primeiro.")
-	}
-	write("")
-	if document.Closed() {
-		write("  (2) tempo de resposta puro. No laco fechado nao existe instante agendado: o")
-		write("      usuario virtual so pede de novo depois da resposta anterior, entao nenhum")
-		write("      atraso de fila aparece nestes numeros.")
-	} else {
-		write("  (1) tempo contado do instante em que a requisicao deveria ter partido — inclui")
-		write("      qualquer atraso e por isso nao esconde travada do alvo.")
-		if hasServiceStep {
-			write("  (2) tempo de resposta puro, contado de quando o passo anterior terminou. Como")
-			write("      esse passo depende do valor capturado antes dele, nao existe instante")
-			write("      agendado proprio. Para a leitura honesta da jornada, use \"A jornada inteira\".")
-		}
-	}
-	write("")
+	writeStepTable(lines, document)
 
 	if len(verdict.Evaluations) > 0 || len(verdict.Undeclared) > 0 {
 		write("SLO")
@@ -196,7 +157,8 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 		write("  Semente das fontes sinteticas: %s (a mesma semente gera os mesmos valores de novo)", seeds(document.Run.Seeds))
 	}
 	if document.Run.AuthObtains > 0 {
-		write("  Autenticacao obtida %d vez(es) e reaproveitada por todas as jornadas.", document.Run.AuthObtains)
+		write("  Autenticacao obtida %s e reaproveitada por todas as jornadas.",
+			texto.Times(document.Run.AuthObtains))
 		write("  Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.")
 	}
 	write("")
@@ -328,4 +290,61 @@ func trim(text string, size int) string {
 		return text
 	}
 	return strings.TrimSpace(text[:size-1]) + "…"
+}
+
+// The header over an empty table says "there is nothing here" in the least
+// useful way there is.
+func writeStepTable(output *lineWriter, document metrics.Document) {
+	write := output.writef
+	never := metrics.StepsThatNeverRan(document)
+
+	write("Por passo")
+	if len(document.Steps) == 0 && len(never) == 0 {
+		write("  Nenhum passo registrou amostra: a execucao nao chegou a medir nada.")
+		write("  Rode 'braunrate debug' para ver onde a iteracao para.")
+		write("")
+		return
+	}
+
+	write("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7s", "passo", "", "requisicoes", "metade", "95%", "99%", "99,9%", "pior", "erros")
+	hasServiceStep := false
+	for _, step := range document.Steps {
+		mark := "(1)"
+		if step.LatencyKind == string(metrics.ServiceLatency) {
+			mark = "(2)"
+			hasServiceStep = true
+		}
+		write("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7d",
+			trim(step.Name, 26), mark, thousands(step.Count),
+			milliseconds(step.Reported().P50), milliseconds(step.Reported().P95),
+			milliseconds(step.Reported().P99), milliseconds(step.Reported().P999),
+			milliseconds(step.Reported().Max), step.Errors)
+	}
+	// A step that never ran used to vanish from here, and whoever read the
+	// report never found out it existed.
+	for _, name := range never {
+		write("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7s",
+			trim(name, 26), "", "0", "\u2014", "\u2014", "\u2014", "\u2014", "\u2014", "\u2014")
+	}
+	if len(never) > 0 {
+		write("")
+		write("  Passo com traco nunca chegou a executar: a iteracao parou antes dele. O motivo")
+		write("  esta em \"Erros\", no passo que falhou primeiro.")
+	}
+	write("")
+
+	if document.Closed() {
+		write("  (2) tempo de resposta puro. No laco fechado nao existe instante agendado: o")
+		write("      usuario virtual so pede de novo depois da resposta anterior, entao nenhum")
+		write("      atraso de fila aparece nestes numeros.")
+	} else {
+		write("  (1) tempo contado do instante em que a requisicao deveria ter partido \u2014 inclui")
+		write("      qualquer atraso e por isso nao esconde travada do alvo.")
+		if hasServiceStep {
+			write("  (2) tempo de resposta puro, contado de quando o passo anterior terminou. Como")
+			write("      esse passo depende do valor capturado antes dele, nao existe instante")
+			write("      agendado proprio. Para a leitura honesta da jornada, use \"A jornada inteira\".")
+		}
+	}
+	write("")
 }

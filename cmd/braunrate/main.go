@@ -27,6 +27,7 @@ import (
 	"github.com/Diegobraun/braunrate/internal/scenario"
 	"github.com/Diegobraun/braunrate/internal/server"
 	"github.com/Diegobraun/braunrate/internal/testsupport"
+	"github.com/Diegobraun/braunrate/internal/texto"
 )
 
 const version = "0.4.0"
@@ -331,8 +332,8 @@ func debug(args []string) int {
 		}
 		return runner.ExitSLO
 	}
-	fmt.Printf("Iteracao completa: %d passo(s), tudo certo. Para rodar com carga:\n  braunrate execute %s\n",
-		len(iteration.Observations), scenarioPath)
+	fmt.Printf("Iteracao completa: %s, tudo certo. Para rodar com carga:\n  braunrate execute %s\n",
+		texto.Count(int64(len(iteration.Observations)), "passo", "passos"), scenarioPath)
 	return runner.ExitPassed
 }
 
@@ -513,7 +514,9 @@ Ctrl+C encerra e escreve o cenario.
 		fmt.Fprintf(os.Stderr, "nao consegui gravar %s: %v\n", *output, err)
 		return 1
 	}
-	fmt.Fprintf(os.Stderr, "%d requisicoes viraram %d passo(s) em %s\n", len(entries), len(script.Steps), *output)
+	fmt.Fprintf(os.Stderr, "%s viraram %s em %s\n",
+		texto.Count(int64(len(entries)), "requisicao", "requisicoes"),
+		texto.Count(int64(len(script.Steps)), "passo", "passos"), *output)
 
 	directory := filepath.Dir(*output)
 	for index, file := range files {

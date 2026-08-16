@@ -116,3 +116,38 @@ func TestUnknownKeyShowsTheShapeAndNotOnlyTheNames(t *testing.T) {
 		})
 	}
 }
+
+// A2 of the audit: the raw error from the operating system, in English, in a
+// product where every other message is in Portuguese and says what to do next.
+func TestMissingFileAnswersInPortugueseAndPointsAtTheNextStep(t *testing.T) {
+	_, err := scenario.ParseFile("cenario-que-nao-existe.yaml")
+	if err == nil {
+		t.Fatal("arquivo inexistente foi aceito")
+	}
+	message := err.Error()
+	if strings.Contains(message, "no such file") {
+		t.Fatalf("o erro do sistema operacional saiu cru: %v", err)
+	}
+	for _, fragment := range []string{"nao encontrei o arquivo", "braunrate new"} {
+		if !strings.Contains(message, fragment) {
+			t.Fatalf("a mensagem nao traz %q: %v", fragment, err)
+		}
+	}
+}
+
+// A4 of the audit: "taxa" is not a typo of "rampa", and the fixed distance of
+// three said it was. The tolerance grows with the word.
+func TestSuggestionOnlyFiresForAPlausibleTypo(t *testing.T) {
+	_, err := scenario.Parse([]byte("nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - taxa: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n"))
+	if err == nil {
+		t.Fatal("o perfil desconhecido foi aceito")
+	}
+	if strings.Contains(err.Error(), "voce quis dizer") {
+		t.Fatalf("sugeriu para palavra sem relacao: %v", err)
+	}
+
+	_, err = scenario.Parse([]byte("nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamer: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n"))
+	if err == nil || !strings.Contains(err.Error(), `voce quis dizer "patamar"?`) {
+		t.Fatalf("erro de digitacao de verdade deixou de ser sugerido: %v", err)
+	}
+}

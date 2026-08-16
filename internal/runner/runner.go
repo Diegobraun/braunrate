@@ -20,6 +20,7 @@ import (
 	"github.com/Diegobraun/braunrate/internal/report/comparison"
 	"github.com/Diegobraun/braunrate/internal/scenario"
 	"github.com/Diegobraun/braunrate/internal/slo"
+	"github.com/Diegobraun/braunrate/internal/texto"
 )
 
 // Exit codes are part of the contract with CI, so they are decided here and
@@ -263,11 +264,12 @@ func (iteration Iteration) Failed() bool {
 func Describe(spec scenario.Spec, plan engine.Plan) []string {
 	var lines []string
 	if spec.Load.Closed() {
-		lines = append(lines, fmt.Sprintf("Cenario valido: %q, %d passo(s), %d usuarios em laco fechado durante %s.",
-			spec.Name, len(spec.Steps), spec.Load.Users, plan.Duration()))
+		lines = append(lines, fmt.Sprintf("Cenario valido: %q, %s, %d usuarios em laco fechado durante %s.",
+			spec.Name, texto.Count(int64(len(spec.Steps)), "passo", "passos"), spec.Load.Users, plan.Duration()))
 	} else {
-		lines = append(lines, fmt.Sprintf("Cenario valido: %q, %d passo(s), %d iteracoes em %s.",
-			spec.Name, len(spec.Steps), plan.TotalRequests(), plan.Duration()))
+		lines = append(lines, fmt.Sprintf("Cenario valido: %q, %s, %s em %s.",
+			spec.Name, texto.Count(int64(len(spec.Steps)), "passo", "passos"),
+			texto.Count(plan.TotalRequests(), "iteracao", "iteracoes"), plan.Duration()))
 	}
 	if warning, closed := scenario.ClosedModelWarning(spec); closed {
 		lines = append(lines, warning)

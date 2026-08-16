@@ -15,6 +15,7 @@ import (
 
 	"github.com/Diegobraun/braunrate/internal/protocol"
 	"github.com/Diegobraun/braunrate/internal/protocol/transport"
+	"github.com/Diegobraun/braunrate/internal/texto"
 	"gopkg.in/yaml.v3"
 )
 
@@ -326,7 +327,7 @@ func classifyBody(content []byte) (protocol.ErrorClass, string) {
 		detail += " (em " + path + ")"
 	}
 	if len(body.Errors) > 1 {
-		detail = fmt.Sprintf("%s (+%d erro(s))", detail, len(body.Errors)-1)
+		detail = fmt.Sprintf("%s (+%s)", detail, texto.Count(int64(len(body.Errors)-1), "erro", "erros"))
 	}
 	if len(body.Data) > 0 && string(body.Data) != "null" {
 		detail = "resposta parcial — " + detail

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Diegobraun/braunrate/internal/metrics"
+	"github.com/Diegobraun/braunrate/internal/texto"
 )
 
 type htmlPage struct {
@@ -287,8 +288,8 @@ func environmentSentences(document metrics.Document) []string {
 		sentences = append(sentences, "Semente das fontes sinteticas: "+seeds(document.Run.Seeds)+" — a mesma semente gera os mesmos valores de novo.")
 	}
 	if document.Run.AuthObtains > 0 {
-		sentences = append(sentences, fmt.Sprintf("Autenticacao obtida %d vez(es) e reaproveitada por todas as jornadas. Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.",
-			document.Run.AuthObtains))
+		sentences = append(sentences, fmt.Sprintf("Autenticacao obtida %s e reaproveitada por todas as jornadas. Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.",
+			texto.Times(document.Run.AuthObtains)))
 	}
 	return sentences
 }
@@ -508,6 +509,9 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 {{end}}
 
 <h2>Por passo</h2>
+{{if not .Steps}}
+<p class="nota">Nenhum passo registrou amostra: a execucao nao chegou a medir nada. Rode <code>braunrate debug</code> para ver onde a iteracao para.</p>
+{{else}}
 <table>
   <tr><th>passo</th><th>requisicoes</th><th>metade</th><th>95%</th><th>99%</th><th>99,9%</th><th>pior</th><th>erros</th></tr>
   {{range .Steps}}
@@ -521,6 +525,7 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 </table>
 {{if .HasNeverRan}}
 <p class="nota">Passo com traco nunca chegou a executar: a iteracao parou antes dele. O motivo esta em "Erros", no passo que falhou primeiro.</p>
+{{end}}
 {{end}}
 {{if .ClosedLoop}}
 <p class="nota">(2) tempo de resposta puro. No laco fechado nao existe instante agendado: o usuario virtual so pede de novo depois da resposta anterior, entao nenhum atraso de fila aparece nestes numeros.</p>
