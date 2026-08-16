@@ -22,7 +22,7 @@ type Spec struct {
 	Vars               map[string]string
 	Auth               *Auth
 	Messaging          *messaging.Settings
-	// TLS of the HTTP target. Kafka and AMQP declare theirs inside 'mensageria';
+	// TLS of the HTTP target. Kafka and AMQP declare theirs inside 'messaging';
 	// HTTP had nowhere to say it, and homologation behind a private CA could not
 	// be tested at all.
 	TLS   *messaging.TLS
@@ -127,5 +127,5 @@ func (spec Spec) FindStep(name string) (Step, error) {
 			return step, nil
 		}
 	}
-	return Step{}, fmt.Errorf("passo não encontrado: %q", name)
+	return Step{}, fmt.Errorf("step not found: %q", name)
 }

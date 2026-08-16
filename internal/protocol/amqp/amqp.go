@@ -118,44 +118,44 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 		key := node.Content[index]
 		value := node.Content[index+1]
 		switch key.Value {
-		case "troca":
+		case "exchange":
 			config.Exchange = value.Value
-		case "rota":
+		case "routingKey":
 			config.Route = value.Value
-		case "fila":
+		case "queue":
 			config.Queue = value.Value
 			if config.Route == "" {
 				config.Route = value.Value
 			}
-		case "corpo":
+		case "body":
 			body, err := readBody(value)
 			if err != nil {
 				return nil, err
 			}
 			config.Body = body
-		case "identidade":
+		case "messageId":
 			config.Identity = value.Value
-		case "cabecalhos":
+		case "headers":
 			if value.Kind != yaml.MappingNode {
-				return nil, errors.New("cabecalhos precisa ser um mapa")
+				return nil, errors.New("headers has to be a map")
 			}
 			for i := 0; i+1 < len(value.Content); i += 2 {
 				config.Headers[value.Content[i].Value] = value.Content[i+1].Value
 			}
 		case "url":
 			config.URL = value.Value
-		case "persistente":
+		case "persistent":
 			config.Persistent = value.Value == "true"
-		case "confirmar":
+		case "confirm":
 			config.Confirm = value.Value == "true"
 		case "timeout":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout inválido: %q (use 5s, 30s)", value.Value)
+				return nil, fmt.Errorf("invalid timeout: %q (use 5s, 30s)", value.Value)
 			}
 			config.Timeout = duration
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo amqp: %q (use fila, troca, rota, corpo, identidade, cabecalhos, url, persistente, confirmar ou timeout)", key.Value)
+			return nil, fmt.Errorf("unknown key in the amqp step: %q (use queue, exchange, routingKey, body, messageId, headers, url, persistent, confirm or timeout)", key.Value)
 		}
 	}
 
@@ -187,11 +187,11 @@ func readBody(node *yaml.Node) ([]byte, error) {
 	}
 	var structure any
 	if err := node.Decode(&structure); err != nil {
-		return nil, fmt.Errorf("corpo inválido: %v", err)
+		return nil, fmt.Errorf("invalid body: %v", err)
 	}
 	body, err := json.Marshal(structure)
 	if err != nil {
-		return nil, fmt.Errorf("corpo não serializa para JSON: %v", err)
+		return nil, fmt.Errorf("the body does not serialize to JSON: %v", err)
 	}
 	return body, nil
 }
@@ -199,7 +199,7 @@ func readBody(node *yaml.Node) ([]byte, error) {
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não é de amqp"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "the configuration is not an amqp one"}
 	}
 
 	broker := request.Messaging.BrokerFor("amqp")
@@ -214,7 +214,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 	if address == "" || strings.HasPrefix(address, "http") {
 		return protocol.Response{
 			Class:  protocol.ErrConfig,
-			Detail: "sem endereço: declare 'url' no passo ou aponte o alvo do cenário para amqp://usuario:senha@host:5672/",
+			Detail: "no address: declare 'url' in the step or point the scenario target at amqp://user:password@host:5672/",
 		}
 	}
 
@@ -305,7 +305,7 @@ func (implementation *Protocol) conexaoDe(address string, config *Config, broker
 		if _, err := channel.QueueDeclare(config.Queue, true, false, false, false, nil); err != nil {
 			_ = channel.Close()
 			_ = link.Close()
-			return nil, fmt.Errorf("não consegui declarar a fila %q: %v", config.Queue, err)
+			return nil, fmt.Errorf("I could not declare the queue %q: %v", config.Queue, err)
 		}
 		_ = channel.Close()
 	}

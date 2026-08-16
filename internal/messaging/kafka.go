@@ -73,7 +73,7 @@ func (broker *Broker) mechanism() (sasl.Mechanism, error) {
 	case MSKIAM:
 		return mskMechanism{region: broker.Auth.Region}, nil
 	}
-	return nil, fmt.Errorf("tipo de autenticação desconhecido: %q", broker.Auth.Kind)
+	return nil, fmt.Errorf("unknown auth type: %q", broker.Auth.Kind)
 }
 
 // An empty password is not a password the broker will explain: the scenario
@@ -83,10 +83,10 @@ func (broker *Broker) credentialPresent() error {
 		return nil
 	}
 	if broker.Auth.PasswordVar != "" {
-		return fmt.Errorf("a variável de ambiente %s não está definida, então a senha do broker ficou vazia: rode com %s=... no ambiente",
+		return fmt.Errorf("the environment variable %s is not set, so the broker password came out empty: run with %s=... in the environment",
 			broker.Auth.PasswordVar, broker.Auth.PasswordVar)
 	}
-	return fmt.Errorf("autenticação %s sem senha declarada", broker.Auth.Kind)
+	return fmt.Errorf("%s auth with no declared password", broker.Auth.Kind)
 }
 
 // The signature is short-lived and the signer refreshes it from the AWS default
@@ -98,7 +98,7 @@ func (mechanism mskMechanism) Name() string { return "AWS_MSK_IAM" }
 func (mechanism mskMechanism) Start(runContext context.Context) (sasl.StateMachine, []byte, error) {
 	payload, _, err := signer.GenerateAuthToken(runContext, mechanism.region)
 	if err != nil {
-		return nil, nil, fmt.Errorf("não consegui assinar com IAM na região %s: %w", mechanism.region, err)
+		return nil, nil, fmt.Errorf("I could not sign with IAM in region %s: %w", mechanism.region, err)
 	}
 	return mskSession{}, []byte(payload), nil
 }
@@ -143,9 +143,9 @@ func ClassifyError(err error) (string, bool) {
 func Explain(kind string, broker *Broker) string {
 	switch kind {
 	case "autenticacao":
-		return fmt.Sprintf("o broker recusou a credencial (%s): confira o usuário e a variável de ambiente com a senha", broker.Describe())
+		return fmt.Sprintf("the broker refused the credential (%s): check the user and the environment variable holding the password", broker.Describe())
 	case "autorizacao":
-		return fmt.Sprintf("a credencial foi aceita e não tem permissão nesse tópico ou grupo (%s): é caso de ACL no broker, não de senha errada", broker.Describe())
+		return fmt.Sprintf("the credential was accepted and has no permission on that topic or group (%s): this is an ACL matter on the broker, not a wrong password", broker.Describe())
 	}
 	return ""
 }

@@ -25,8 +25,8 @@ func refuseLiteralVariable(name string, node *yaml.Node) error {
 		return nil
 	}
 	environment := strings.ToUpper(name)
-	return nodeError(node, "%s literal em 'variaveis': credencial nunca vai para o arquivo, porque o arquivo vai para o repositório.\n"+
-		"    troque por:  variaveis: { %s: \"${%s}\" }\n"+
-		"    e rode com:  %s=... braunrate execute cenario.yaml",
+	return nodeError(node, "literal %s in 'variables': a credential never goes into the file, because the file goes into the repository.\n"+
+		"    replace it with:  variables: { %s: \"${%s}\" }\n"+
+		"    and run with:  %s=... braunrate execute scenario.yaml",
 		name, name, environment, environment)
 }

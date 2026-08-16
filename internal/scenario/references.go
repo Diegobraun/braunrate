@@ -100,12 +100,12 @@ func (known variableScope) resolve(used reference, node *yaml.Node) error {
 	if source, field, dotted := strings.Cut(used.name, "."); dotted {
 		return known.resolveFromSource(source, field, used, node)
 	}
-	return referenceError(node, used, fmt.Sprintf("não sei de onde vem ${%s}.\n%s", used.name, known.wherePeopleDeclare(used.name)))
+	return referenceError(node, used, fmt.Sprintf("I do not know where ${%s} comes from.\n%s", used.name, known.wherePeopleDeclare(used.name)))
 }
 
 // Case is what tells the two apart, and it is the convention the tool already
 // follows everywhere it writes a scenario: ${API_KEY} comes from the
-// environment, ${faturaId} comes from the file. Checking the environment
+// environment, ${invoiceId} comes from the file. Checking the environment
 // instead would make 'validate' impossible on a machine without the secret,
 // which is exactly where someone checks a scenario before committing it.
 var environmentName = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
@@ -117,13 +117,13 @@ func fromEnvironment(name string) bool {
 func (known variableScope) resolveFromSource(source, field string, used reference, node *yaml.Node) error {
 	declared, exists := known.sources[source]
 	if !exists {
-		return referenceError(node, used, fmt.Sprintf("${%s} pede o campo %q da fonte de dados %q, e nenhuma fonte com esse nome foi declarada.\n%s",
+		return referenceError(node, used, fmt.Sprintf("${%s} asks for the field %q of the data source %q, and no source with that name was declared.\n%s",
 			used.name, field, source, known.availableSources(source)))
 	}
 	// A CSV brings its columns from the file, which is not open at this point;
 	// only a synthetic source declares its fields here.
 	if declared.Synthetic() && len(declared.Fields) > 0 && !hasField(declared.Fields, field) {
-		return referenceError(node, used, fmt.Sprintf("a fonte %q não gera o campo %q.\n%s",
+		return referenceError(node, used, fmt.Sprintf("the source %q does not generate the field %q.\n%s",
 			source, field, suggest(field, sortedFields(declared.Fields))))
 	}
 	return nil
@@ -143,12 +143,12 @@ func (known variableScope) wherePeopleDeclare(name string) string {
 }
 
 func declarationForms(name string) string {
-	return fmt.Sprintf("    declare de onde ela vem:\n"+
-		"      variaveis: { %s: valor }                 # fixa no cenário\n"+
-		"      variaveis: { %s: \"${%s:-reserva}\" }   # do ambiente, com reserva\n"+
-		"      captura: { %s: $.campo }                 # de uma resposta anterior\n"+
-		"      dados: { pedidos: { arquivo: dados.csv } }  # e então ${pedidos.%s}\n"+
-		"    nome em CAIXA ALTA vem do ambiente sem precisar declarar: ${%s}",
+	return fmt.Sprintf("    declare where it comes from:\n"+
+		"      variables: { %s: value }                # fixed in the scenario\n"+
+		"      variables: { %s: \"${%s:-fallback}\" }  # from the environment, with a fallback\n"+
+		"      capture: { %s: $.field }                # from an earlier response\n"+
+		"      data: { orders: { file: orders.csv } }  # and then ${orders.%s}\n"+
+		"    an UPPERCASE name comes from the environment with nothing to declare: ${%s}",
 		name, name, strings.ToUpper(name), name, name, strings.ToUpper(name))
 }
 
@@ -162,7 +162,7 @@ func (known variableScope) declaredNames() []string {
 			names = append(names, name+"."+field)
 		}
 		if len(source.Fields) == 0 {
-			names = append(names, name+".<coluna do csv>")
+			names = append(names, name+".<csv column>")
 		}
 	}
 	sort.Strings(names)
@@ -175,7 +175,7 @@ func (known variableScope) availableSources(received string) string {
 		names = append(names, name)
 	}
 	if len(names) == 0 {
-		return "    nenhuma fonte de dados foi declarada; o bloco 'dados' é onde elas entram"
+		return "    no data source was declared; the 'data' block is where they go"
 	}
 	sort.Strings(names)
 	return suggest(received, names)

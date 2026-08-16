@@ -117,7 +117,7 @@ func checkMix(spec *Spec) []string {
 	var problems []string
 	if len(silent) > 0 {
 		problems = append(problems, fmt.Sprintf(
-			"o cenário declara peso em %d passo(s) e não declara em %s: peso é a proporção entre alternativas, e alternativa sem proporção não tem como ser escolhida.\n"+
+			"the scenario declares weight on %d step(s) and not on %s: weight is the proportion between alternatives, and an alternative with no proportion has no way of being picked.\n"+
 				"    declare o peso de todos os passos, ou de nenhum",
 			declared, strings.Join(silent, ", ")))
 	}
@@ -149,9 +149,9 @@ func chainedCaptures(spec Spec) string {
 					continue
 				}
 				return fmt.Sprintf(
-					"o passo %q tem peso e usa ${%s}, que o passo %q captura: peso escolhe qual alternativa executar, não qual passo dentro de uma jornada,\n"+
-						"    então a iteração que executar %q pode não ter rodado %q, e a referência resolveria para vazio.\n"+
-						"    uma cadeia de capturas é uma jornada só: tire o peso dela, ou separe as alternativas em cenários diferentes",
+					"the step %q has a weight and uses ${%s}, which the step %q captures: weight picks which alternative to run, not which step inside a journey,\n"+
+						"    so the iteration that runs %q may not have run %q, and the reference would resolve to nothing.\n"+
+						"    a chain of captures is one single journey: drop the weight from it, or split the alternatives into separate scenarios",
 					spec.Steps[index].Name, used.name, spec.Steps[origin].Name,
 					spec.Steps[index].Name, spec.Steps[origin].Name)
 			}

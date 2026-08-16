@@ -37,7 +37,7 @@ func checkBrokers(spec *Spec) []string {
 		}
 		said[technology] = true
 		problems = append(problems, fmt.Sprintf(
-			"o passo %q fala com %s e não existe endereço de broker em lugar nenhum: nem no passo, nem em 'mensageria', e o alvo do cenário é %q\n"+
+			"the step %q talks to %s and there is no broker address anywhere: not in the step, not in 'messaging', and the scenario target is %q\n"+
 				"    declare:  mensageria:\n"+
 				"                %s:\n"+
 				"                  brokers: [%s.homolog:9092]",
@@ -72,7 +72,7 @@ func checkSLOSteps(spec *Spec) []string {
 		if rule.Scope != ScopeStep || declared[rule.Step] {
 			continue
 		}
-		problems = append(problems, fmt.Sprintf("o slo %q não casa com nenhum passo do cenário\n%s",
+		problems = append(problems, fmt.Sprintf("the slo %q matches no step of the scenario\n%s",
 			rule.Step, suggest(rule.Step, names)))
 	}
 	return problems

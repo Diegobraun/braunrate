@@ -363,5 +363,5 @@ func (step *WaitStep) build() (string, protocol.Config, error) {
 	if err := wait.Validate(step.config); err != nil {
 		return "", nil, err
 	}
-	return "aguardar", step.config, nil
+	return "await", step.config, nil
 }

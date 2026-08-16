@@ -78,9 +78,9 @@ func (config *Config) Describe() []string {
 		lines = append(lines, fmt.Sprintf("%s: %s", name, transport.MaskSecret(name, config.Headers[name])))
 	}
 	if config.Vars != "" && config.Vars != "{}" {
-		lines = append(lines, "variáveis: "+config.Vars)
+		lines = append(lines, "variables: "+config.Vars)
 	}
-	lines = append(lines, "consulta: "+summarizeQuery(config.Query))
+	lines = append(lines, "query: "+summarizeQuery(config.Query))
 	return lines
 }
 
@@ -118,7 +118,7 @@ var operationPattern = regexp.MustCompile(`(?s)\b(query|mutation|subscription)\s
 
 func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
 	if node == nil {
-		return nil, errors.New("passo graphql sem configuração")
+		return nil, errors.New("graphql step with no configuration")
 	}
 	config := Default()
 
@@ -136,21 +136,21 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 		key := node.Content[index]
 		value := node.Content[index+1]
 		switch key.Value {
-		case "consulta", "query":
+		case "query":
 			config.Query = value.Value
-		case "operacao":
+		case "operation":
 			config.Operation = value.Value
-		case "variaveis":
+		case "variables":
 			vars, err := readVars(value)
 			if err != nil {
 				return nil, err
 			}
 			config.Vars = vars
-		case "caminho", "url":
+		case "path", "url":
 			config.Path = value.Value
-		case "cabecalhos":
+		case "headers":
 			if value.Kind != yaml.MappingNode {
-				return nil, errors.New("cabecalhos precisa ser um mapa")
+				return nil, errors.New("headers has to be a map")
 			}
 			for i := 0; i+1 < len(value.Content); i += 2 {
 				config.Headers[value.Content[i].Value] = value.Content[i+1].Value
@@ -158,11 +158,11 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 		case "timeout":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout inválido: %q (use 30s, 2m)", value.Value)
+				return nil, fmt.Errorf("invalid timeout: %q (use 30s, 2m)", value.Value)
 			}
 			config.Timeout = duration
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo graphql: %q (use consulta, operacao, variaveis, caminho, cabecalhos ou timeout)", key.Value)
+			return nil, fmt.Errorf("unknown key in the graphql step: %q (use query, operation, variables, path, headers or timeout)", key.Value)
 		}
 	}
 	return Finish(config)
@@ -209,11 +209,11 @@ func readVars(node *yaml.Node) (string, error) {
 	}
 	var structure any
 	if err := node.Decode(&structure); err != nil {
-		return "", fmt.Errorf("variáveis inválidas: %v", err)
+		return "", fmt.Errorf("invalid variables: %v", err)
 	}
 	content, err := json.Marshal(structure)
 	if err != nil {
-		return "", fmt.Errorf("variáveis não serializam para JSON: %v", err)
+		return "", fmt.Errorf("the variables do not serialize to JSON: %v", err)
 	}
 	return string(content), nil
 }
@@ -241,7 +241,7 @@ type graphQLError struct {
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não é de graphql"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "the configuration is not a graphql one"}
 	}
 
 	address, err := transport.BuildURL(request.URLBase, config.Path)
@@ -254,7 +254,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		if !json.Valid([]byte(vars)) {
 			return protocol.Response{
 				Class:  protocol.ErrConfig,
-				Detail: "as variáveis não formaram JSON válido depois da interpolação: " + summarize(vars),
+				Detail: "the variables did not form valid JSON after interpolation: " + summarize(vars),
 			}
 		}
 		body.Vars = json.RawMessage(vars)
@@ -317,7 +317,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 func classifyBody(content []byte) (protocol.ErrorClass, string) {
 	var body responseBody
 	if err := json.Unmarshal(content, &body); err != nil {
-		return protocol.ErrGraphQL, "a resposta não e JSON de GraphQL: " + summarize(string(content))
+		return protocol.ErrGraphQL, "the response is not GraphQL JSON: " + summarize(string(content))
 	}
 	if len(body.Errors) == 0 {
 		if len(body.Data) == 0 || string(body.Data) == "null" {

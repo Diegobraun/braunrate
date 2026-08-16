@@ -16,11 +16,11 @@ type Kind string
 
 const (
 	NoAuth   Kind = ""
-	Plain    Kind = "sasl_plain"
-	SCRAM256 Kind = "scram_sha256"
-	SCRAM512 Kind = "scram_sha512"
-	MSKIAM   Kind = "msk_iam"
-	External Kind = "certificado"
+	Plain    Kind = "saslPlain"
+	SCRAM256 Kind = "scramSha256"
+	SCRAM512 Kind = "scramSha512"
+	MSKIAM   Kind = "mskIam"
+	External Kind = "certificate"
 )
 
 // KnownKinds is the closed list: an unknown name would be declared, printed and
@@ -52,7 +52,7 @@ type Broker struct {
 	Line      int
 }
 
-// Settings is the `mensageria` block. A nil pointer means the scenario talks to
+// Settings is the `messaging` block. A nil pointer means the scenario talks to
 // a broker with no credentials, which stays the default.
 type Settings struct {
 	Kafka *Broker
@@ -81,29 +81,29 @@ func (broker *Broker) Secured() bool {
 // a broker any other way.
 func (broker *Broker) Describe() string {
 	if broker == nil || !broker.Secured() {
-		return "sem autenticação"
+		return "no authentication"
 	}
 	var parts []string
 	switch broker.Auth.Kind {
 	case NoAuth:
 	case MSKIAM:
-		parts = append(parts, fmt.Sprintf("msk_iam (região %s, credencial da cadeia padrão da AWS)", broker.Auth.Region))
+		parts = append(parts, fmt.Sprintf("mskIam (region %s, credential from the standard AWS chain)", broker.Auth.Region))
 	case External:
-		parts = append(parts, "certificado de cliente")
+		parts = append(parts, "client certificate")
 	default:
 		user := broker.Auth.User
 		if user == "" {
-			user = "sem usuário"
+			user = "no user"
 		}
-		parts = append(parts, fmt.Sprintf("%s, usuário %s", broker.Auth.Kind, user))
+		parts = append(parts, fmt.Sprintf("%s, user %s", broker.Auth.Kind, user))
 	}
 	if broker.TLS.Enabled {
 		tlsPart := "TLS"
 		if broker.TLS.CA != "" {
-			tlsPart += " com CA própria"
+			tlsPart += " with a private CA"
 		}
 		if broker.TLS.Certificate != "" {
-			tlsPart += " e certificado de cliente"
+			tlsPart += " and a client certificate"
 		}
 		parts = append(parts, tlsPart)
 	}
@@ -128,22 +128,22 @@ func (settings TLS) Config() (*tls.Config, error) {
 	if settings.CA != "" {
 		pem, err := os.ReadFile(settings.CA)
 		if err != nil {
-			return nil, fmt.Errorf("não consegui ler a CA em %s: %w", settings.CA, err)
+			return nil, fmt.Errorf("I could not read the CA at %s: %w", settings.CA, err)
 		}
 		pool := x509.NewCertPool()
 		if !pool.AppendCertsFromPEM(pem) {
-			return nil, fmt.Errorf("o arquivo %s não tem certificado PEM válido", settings.CA)
+			return nil, fmt.Errorf("the file %s has no valid PEM certificate", settings.CA)
 		}
 		config.RootCAs = pool
 	}
 
 	if settings.Certificate != "" || settings.Key != "" {
 		if settings.Certificate == "" || settings.Key == "" {
-			return nil, fmt.Errorf("certificado de cliente precisa dos dois arquivos: 'certificado' e 'chave'")
+			return nil, fmt.Errorf("a client certificate needs both files: 'certificate' and 'key'")
 		}
 		pair, err := tls.LoadX509KeyPair(settings.Certificate, settings.Key)
 		if err != nil {
-			return nil, fmt.Errorf("não consegui carregar o par certificado/chave: %w", err)
+			return nil, fmt.Errorf("I could not load the certificate/key pair: %w", err)
 		}
 		config.Certificates = []tls.Certificate{pair}
 	}

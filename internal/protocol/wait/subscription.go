@@ -128,7 +128,7 @@ func openSubscription(config *Config, addresses []string, broker *messaging.Brok
 	case "amqp":
 		return openAMQP(config, addresses, broker)
 	default:
-		return nil, fmt.Errorf("fonte desconhecida em aguardar: %q", config.Source)
+		return nil, fmt.Errorf("unknown source in await: %q", config.Source)
 	}
 }
 
@@ -146,16 +146,16 @@ func openKafka(config *Config, brokers []string, broker *messaging.Broker) (*sub
 		if kind, credential := messaging.ClassifyError(err); credential {
 			return nil, fmt.Errorf("%s", messaging.Explain(kind, broker))
 		}
-		return nil, fmt.Errorf("não consegui falar com o broker %s (%s): %v", brokers[0], broker.Describe(), err)
+		return nil, fmt.Errorf("I could not talk to the broker %s (%s): %v", brokers[0], broker.Describe(), err)
 	}
 	defer func() { _ = conn.Close() }()
 
 	partitions, err := conn.ReadPartitions(config.Topic)
 	if err != nil {
-		return nil, fmt.Errorf("não consegui ler as partições de %q: %v", config.Topic, err)
+		return nil, fmt.Errorf("I could not read the partitions of %q: %v", config.Topic, err)
 	}
 	if len(partitions) == 0 {
-		return nil, fmt.Errorf("o tópico %q não existe no broker", config.Topic)
+		return nil, fmt.Errorf("the topic %q does not exist on the broker", config.Topic)
 	}
 
 	runContext, cancel := context.WithCancel(context.Background())
@@ -188,7 +188,7 @@ func openKafka(config *Config, brokers []string, broker *messaging.Broker) (*sub
 			for _, open := range readers {
 				_ = open.Close()
 			}
-			return nil, fmt.Errorf("não consegui posicionar a leitura da partição %d: %v", partition.ID, err)
+			return nil, fmt.Errorf("I could not position the read on partition %d: %v", partition.ID, err)
 		}
 		readers = append(readers, reader)
 
@@ -208,9 +208,9 @@ func openKafka(config *Config, brokers []string, broker *messaging.Broker) (*sub
 					attributes: map[string]string{consumedPartition(config.Topic): strconv.Itoa(number)},
 					collapses: map[string]protocol.Collapse{
 						consumedPartition(config.Topic): {
-							Subject: "uma partição só de " + config.Topic,
-							Meaning: "o consumidor leu de uma partição e o resto do tópico não foi exercitado, então o atraso medido não e o do tópico",
-							Remedy:  "Faça a chave da mensagem variar por iteração para espalhar a produção",
+							Subject: "a single partition of " + config.Topic,
+							Meaning: "the consumer read from one partition and the rest of the topic was never exercised, so the measured lag is not the topic's",
+							Remedy:  "Make the message key vary per iteration to spread the production",
 						},
 					},
 				})
@@ -267,13 +267,13 @@ func Settling(err error) bool {
 func readLastOffset(address, topic string, partition int, dialer *kafka.Dialer) (int64, error) {
 	leader, err := dialLeaderWith(dialer, address, topic, partition)
 	if err != nil {
-		return 0, fmt.Errorf("não consegui falar com o líder da partição %d de %q: %v", partition, topic, err)
+		return 0, fmt.Errorf("I could not talk to the leader of partition %d of %q: %v", partition, topic, err)
 	}
 	defer func() { _ = leader.Close() }()
 
 	offset, err := leader.ReadLastOffset()
 	if err != nil {
-		return 0, fmt.Errorf("não consegui ler o offset da partição %d: %v", partition, err)
+		return 0, fmt.Errorf("I could not read the offset of partition %d: %v", partition, err)
 	}
 	return offset, nil
 }
@@ -291,23 +291,23 @@ func openAMQP(config *Config, addresses []string, broker *messaging.Broker) (*su
 		if kind, credential := messaging.ClassifyError(err); credential {
 			return nil, fmt.Errorf("%s", messaging.Explain(kind, broker))
 		}
-		return nil, fmt.Errorf("não consegui conectar em %s: %v", messaging.SafeAddress(addresses[0]), err)
+		return nil, fmt.Errorf("I could not connect to %s: %v", messaging.SafeAddress(addresses[0]), err)
 	}
 	canal, err := conn.Channel()
 	if err != nil {
 		_ = conn.Close()
-		return nil, fmt.Errorf("não consegui abrir o canal AMQP: %v", err)
+		return nil, fmt.Errorf("I could not open the AMQP channel: %v", err)
 	}
 	if _, err := canal.QueueDeclare(config.Topic, true, false, false, false, nil); err != nil {
 		_ = canal.Close()
 		_ = conn.Close()
-		return nil, fmt.Errorf("não consegui declarar a fila %q: %v", config.Topic, err)
+		return nil, fmt.Errorf("I could not declare the queue %q: %v", config.Topic, err)
 	}
 	deliveries, err := canal.Consume(config.Topic, "", true, false, false, false, nil)
 	if err != nil {
 		_ = canal.Close()
 		_ = conn.Close()
-		return nil, fmt.Errorf("não consegui consumir a fila %q: %v", config.Topic, err)
+		return nil, fmt.Errorf("I could not consume the queue %q: %v", config.Topic, err)
 	}
 
 	subscription := newSubscription(config.Field)

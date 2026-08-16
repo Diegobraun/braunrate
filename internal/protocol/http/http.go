@@ -110,7 +110,7 @@ func (implementation *Protocol) Close() error {
 
 func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
 	if node == nil {
-		return nil, errors.New("passo http sem configuração")
+		return nil, errors.New("http step with no configuration")
 	}
 	config := Default()
 
@@ -123,31 +123,31 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 			config.Method = strings.ToUpper(parts[0])
 			config.Path = parts[1]
 		default:
-			return nil, fmt.Errorf("forma curta do passo http deve ser \"METODO /caminho\", recebido %q", node.Value)
+			return nil, fmt.Errorf("the short form of an http step has to be \"METHOD /path\", got %q", node.Value)
 		}
 		return config, nil
 	}
 
 	if node.Kind != yaml.MappingNode {
-		return nil, errors.New("passo http precisa ser um texto ou um mapa")
+		return nil, errors.New("an http step has to be a string or a map")
 	}
 
 	for index := 0; index+1 < len(node.Content); index += 2 {
 		key := node.Content[index]
 		value := node.Content[index+1]
 		switch key.Value {
-		case "metodo":
+		case "method":
 			config.Method = strings.ToUpper(value.Value)
-		case "caminho", "url":
+		case "path", "url":
 			config.Path = value.Value
-		case "cabecalhos":
+		case "headers":
 			if value.Kind != yaml.MappingNode {
-				return nil, errors.New("cabecalhos precisa ser um mapa")
+				return nil, errors.New("headers has to be a map")
 			}
 			for i := 0; i+1 < len(value.Content); i += 2 {
 				config.Headers[value.Content[i].Value] = value.Content[i+1].Value
 			}
-		case "corpo":
+		case "body":
 			body, kind, err := readBody(value)
 			if err != nil {
 				return nil, err
@@ -157,14 +157,14 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 		case "timeout":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout inválido: %q", value.Value)
+				return nil, fmt.Errorf("invalid timeout: %q", value.Value)
 			}
 			config.Timeout = duration
-		case "seguir_redirect":
+		case "followRedirects":
 			follow := value.Value == "true"
 			config.FollowRedirects = &follow
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo http: %q", key.Value)
+			return nil, fmt.Errorf("unknown key in the http step: %q (use method, path, headers, body, timeout or followRedirects)", key.Value)
 		}
 	}
 
@@ -183,7 +183,7 @@ func Default() *Config {
 
 func Validate(config *Config) error {
 	if config.Path == "" {
-		return errors.New("passo http sem caminho")
+		return errors.New("http step with no path")
 	}
 	return nil
 }
@@ -194,11 +194,11 @@ func readBody(node *yaml.Node) ([]byte, string, error) {
 	}
 	var structure any
 	if err := node.Decode(&structure); err != nil {
-		return nil, "", fmt.Errorf("corpo inválido: %v", err)
+		return nil, "", fmt.Errorf("invalid body: %v", err)
 	}
 	body, err := json.Marshal(structure)
 	if err != nil {
-		return nil, "", fmt.Errorf("corpo não serializa para JSON: %v", err)
+		return nil, "", fmt.Errorf("the body does not serialize to JSON: %v", err)
 	}
 	return body, "application/json", nil
 }
@@ -206,7 +206,7 @@ func readBody(node *yaml.Node) ([]byte, string, error) {
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não é de http"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "the configuration is not an http one"}
 	}
 
 	address, err := transport.BuildURL(request.URLBase, config.Path)

@@ -34,13 +34,13 @@ type Config struct {
 	Interval time.Duration
 }
 
-func (config *Config) Protocol() string { return "aguardar" }
+func (config *Config) Protocol() string { return "await" }
 
 func (config *Config) AggregationKey() string {
 	if config.Source == "http" {
-		return "aguardar " + config.Path
+		return "await " + config.Path
 	}
-	return "aguardar " + config.Topic
+	return "await " + config.Topic
 }
 
 func (config *Config) Resolve(resolve func(string) string) protocol.Config {
@@ -61,26 +61,26 @@ func (config *Config) Describe() []string {
 			interval = defaultInterval
 		}
 		return []string{
-			fmt.Sprintf("aguardar em GET %s até %s", config.Path, config.To.describe()),
+			fmt.Sprintf("await on GET %s until %s", config.Path, config.To.describe()),
 			fmt.Sprintf("sondando a cada %s, desiste depois de %s", interval, config.Timeout),
-			"a latência medida tem a granularidade da sondagem",
+			"the measured latency has the granularity of the polling",
 		}
 	}
-	where := "chave da mensagem"
+	where := "message key"
 	if config.Field != "" {
 		where = config.Field
 	}
 	lines := []string{
-		fmt.Sprintf("aguardar em %s %s por %s = %q", config.Source, config.Topic, where, config.Expected),
+		fmt.Sprintf("await on %s %s for %s = %q", config.Source, config.Topic, where, config.Expected),
 		"desiste depois de " + config.Timeout.String(),
 	}
 	// Printing "enderecos:" with nothing after it reads like a defect. When the
 	// step declares none, the address is the target of the scenario, and saying
 	// so is what the reader needs.
 	if len(config.Addresses) > 0 {
-		lines = append(lines, "endereços: "+strings.Join(config.Addresses, ", "))
+		lines = append(lines, "addresses: "+strings.Join(config.Addresses, ", "))
 	} else {
-		lines = append(lines, "endereços: os do alvo do cenário")
+		lines = append(lines, "addresses: the ones from the scenario target")
 	}
 	return lines
 }
@@ -108,7 +108,7 @@ func New(protocol.Options) *Protocol {
 	return &Protocol{subscriptions: map[string]*subscription{}}
 }
 
-func (implementation *Protocol) Name() string { return "aguardar" }
+func (implementation *Protocol) Name() string { return "await" }
 
 func (implementation *Protocol) Close() error {
 	implementation.mu.Lock()
@@ -122,10 +122,10 @@ func (implementation *Protocol) Close() error {
 
 func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
 	if node == nil || node.Kind != yaml.MappingNode {
-		return nil, errors.New(`passo aguardar precisa ser um mapa, por exemplo:
-  - aguardar:
-      kafka: { topico: pedidos-processados }
-      chave: "${pedidoId}"
+		return nil, errors.New(`an await step has to be a map, for example:
+  - await:
+      kafka: { topic: orders-processed }
+      key: "${orderId}"
       timeout: 30s`)
 	}
 
@@ -144,41 +144,41 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 			if err := readHTTPSource(config, value); err != nil {
 				return nil, err
 			}
-		case "ate":
+		case "until":
 			if value.Kind != yaml.MappingNode {
-				return nil, errors.New(`até precisa ser um mapa, por exemplo:
-      ate: { $.status: PROCESSADO }
-      ate: { status: 200 }`)
+				return nil, errors.New(`until has to be a map, for example:
+      until: { $.status: PROCESSED }
+      until: { status: 200 }`)
 			}
 			raw := map[string]string{}
 			for i := 0; i+1 < len(value.Content); i += 2 {
 				raw[value.Content[i].Value] = value.Content[i+1].Value
 			}
-			condition, err := readCondition("ate", raw)
+			condition, err := readCondition("until", raw)
 			if err != nil {
 				return nil, err
 			}
 			config.To = condition
-		case "intervalo":
+		case "interval":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("intervalo inválido: %q (use 200ms, 1s)", value.Value)
+				return nil, fmt.Errorf("invalid interval: %q (use 200ms, 1s)", value.Value)
 			}
 			config.Interval = duration
-		case "chave":
+		case "key":
 			config.Expected = value.Value
-		case "campo":
+		case "field":
 			config.Field = value.Value
-		case "igual_a":
+		case "equals":
 			config.Expected = value.Value
 		case "timeout":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout inválido: %q (use 30s, 2m)", value.Value)
+				return nil, fmt.Errorf("invalid timeout: %q (use 30s, 2m)", value.Value)
 			}
 			config.Timeout = duration
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo aguardar: %q (use kafka, amqp, http, chave, campo, igual_a, ate, intervalo ou timeout)", key.Value)
+			return nil, fmt.Errorf("unknown key in the await step: %q (use kafka, amqp, http, key, field, equals, until, interval or timeout)", key.Value)
 		}
 	}
 
@@ -199,17 +199,17 @@ func Validate(config *Config) error {
 		return validateHTTP(config)
 	}
 	if config.Source == "" {
-		return errors.New(`o passo aguardar precisa dizer onde esperar, por exemplo:
-  - aguardar:
-      kafka: { topico: pedidos-processados }
-      chave: "${pedidoId}"`)
+		return errors.New(`an await step has to say where to wait, for example:
+  - await:
+      kafka: { topic: orders-processed }
+      key: "${orderId}"`)
 	}
 	if config.Expected == "" {
-		return errors.New(`o passo aguardar precisa do valor que identifica a mensagem desta iteração.
-Sem isso, qualquer mensagem serviria e a medição mediria o consumidor mais rápido, não a cadeia:
-  - aguardar:
-      kafka: { topico: pedidos-processados }
-      chave: "${pedidoId}"`)
+		return errors.New(`an await step needs the value that identifies this iteration's message.
+Without it any message would do, and the measurement would time the fastest consumer instead of the chain:
+  - await:
+      kafka: { topic: orders-processed }
+      key: "${orderId}"`)
 	}
 	return nil
 }
@@ -218,17 +218,17 @@ Sem isso, qualquer mensagem serviria e a medição mediria o consumidor mais rá
 // effect: the step would end before the system did what it had to do.
 func validateHTTP(config *Config) error {
 	if config.Path == "" {
-		return errors.New(`o passo aguardar por http precisa do caminho, por exemplo:
-  - aguardar:
-      http: { caminho: "/pedidos/${pedidos.id}" }
-      ate: { $.status: PROCESSADO }`)
+		return errors.New(`an await step over http needs the path, for example:
+  - await:
+      http: { path: "/orders/${orders.id}" }
+      until: { $.status: PROCESSED }`)
 	}
 	if config.To.empty() {
-		return errors.New(`o passo aguardar por http precisa de 'ate': sem condição, a primeira resposta encerraria a espera
-e a medição seria do tempo de responder, não do tempo até o efeito acontecer:
-  - aguardar:
-      http: { caminho: "/pedidos/${pedidos.id}" }
-      ate: { $.status: PROCESSADO }`)
+		return errors.New(`an await step over http needs 'until': with no condition the first response would end the wait,
+and the measurement would be of the time to answer, not of the time until the effect happened:
+  - await:
+      http: { path: "/orders/${orders.id}" }
+      until: { $.status: PROCESSED }`)
 	}
 	return nil
 }
@@ -239,16 +239,16 @@ func readHTTPSource(config *Config, node *yaml.Node) error {
 		return nil
 	}
 	if node.Kind != yaml.MappingNode {
-		return errors.New("aguardar.http precisa ser o caminho ou um mapa com 'caminho'")
+		return errors.New("await.http has to be the path or a map with 'path'")
 	}
 	for index := 0; index+1 < len(node.Content); index += 2 {
 		key := node.Content[index]
 		value := node.Content[index+1]
 		switch key.Value {
-		case "caminho", "url":
+		case "path", "url":
 			config.Path = value.Value
 		default:
-			return fmt.Errorf("chave desconhecida em aguardar.http: %q (use caminho)", key.Value)
+			return fmt.Errorf("unknown key in await.http: %q (use path)", key.Value)
 		}
 	}
 	return nil
@@ -260,15 +260,15 @@ func readSource(config *Config, node *yaml.Node) error {
 		return nil
 	}
 	if node.Kind != yaml.MappingNode {
-		return fmt.Errorf("a fonte %q precisa ser o nome do tópico ou um mapa", config.Source)
+		return fmt.Errorf("the source %q has to be the topic name or a map", config.Source)
 	}
 	for index := 0; index+1 < len(node.Content); index += 2 {
 		key := node.Content[index]
 		value := node.Content[index+1]
 		switch key.Value {
-		case "topico", "fila":
+		case "topic", "queue":
 			config.Topic = value.Value
-		case "brokers", "url", "enderecos":
+		case "brokers", "url", "addresses":
 			if value.Kind == yaml.ScalarNode {
 				config.Addresses = strings.Split(value.Value, ",")
 				continue
@@ -277,11 +277,11 @@ func readSource(config *Config, node *yaml.Node) error {
 				config.Addresses = append(config.Addresses, item.Value)
 			}
 		default:
-			return fmt.Errorf("chave desconhecida em aguardar.%s: %q (use topico ou brokers)", config.Source, key.Value)
+			return fmt.Errorf("unknown key in await.%s: %q (use topic or brokers)", config.Source, key.Value)
 		}
 	}
 	if config.Topic == "" {
-		return fmt.Errorf("aguardar.%s sem tópico", config.Source)
+		return fmt.Errorf("await.%s with no topic", config.Source)
 	}
 	return nil
 }
@@ -300,7 +300,7 @@ func (implementation *Protocol) Prepare(_ context.Context, request protocol.Requ
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não é de aguardar"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "the configuration is not an await one"}
 	}
 
 	if config.Source == "http" {
@@ -319,13 +319,13 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 
 	message, arrived := subscription.await(runContext, config.Expected, timeout)
 	if !arrived {
-		// "tempo esgotado" is what happened, not what to do about it. Nothing
+		// "timed out" is what happened, not what to do about it. Nothing
 		// arriving has two usual causes, and both are checked somewhere else.
 		return protocol.Response{
 			Class: protocol.ErrTimeout,
-			Detail: fmt.Sprintf("a mensagem com %s=%q não chegou em %s no tópico %s.\n"+
-				"confira se há consumidor rodando e se ele escreve nesse tópico;\n"+
-				"e se os dois lados usam o mesmo valor de correlação — aqui o esperado e %q",
+			Detail: fmt.Sprintf("the message with %s=%q did not arrive within %s on topic %s.\n"+
+				"check that a consumer is running and that it writes to that topic;\n"+
+				"and that both sides use the same correlation value — here the expected one is %q",
 				lookupField(config), config.Expected, timeout, config.Topic, config.Expected),
 		}
 	}
@@ -343,7 +343,7 @@ func lookupField(config *Config) string {
 	if config.Field != "" {
 		return config.Field
 	}
-	return "chave"
+	return "key"
 }
 
 func (implementation *Protocol) subscribe(config *Config, target string, broker *messaging.Broker) (*subscription, error) {
@@ -355,7 +355,7 @@ func (implementation *Protocol) subscribe(config *Config, target string, broker 
 		addresses = targetAddresses(target)
 	}
 	if len(addresses) == 0 {
-		return nil, fmt.Errorf("aguardar em %s sem endereço: declare 'brokers' (kafka) ou 'url' (amqp) no passo, ou aponte o alvo do cenário para o broker", config.Source)
+		return nil, fmt.Errorf("await on %s with no address: declare 'brokers' (kafka) or 'url' (amqp) in the step, or point the scenario target at the broker", config.Source)
 	}
 
 	key := config.Source + "|" + strings.Join(addresses, ",") + "|" + config.Topic + "|" + broker.Describe()

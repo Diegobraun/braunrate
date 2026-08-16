@@ -62,20 +62,20 @@ func (config *Config) Resolve(resolve func(string) string) protocol.Config {
 }
 
 func (config *Config) Describe() []string {
-	lines := []string{fmt.Sprintf("produzir em %s (chave %q)", config.Topic, config.Key)}
+	lines := []string{fmt.Sprintf("produce to %s (key %q)", config.Topic, config.Key)}
 	names := make([]string, 0, len(config.Headers))
 	for name := range config.Headers {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		lines = append(lines, fmt.Sprintf("cabecalho %s: %s", name, config.Headers[name]))
+		lines = append(lines, fmt.Sprintf("header %s: %s", name, config.Headers[name]))
 	}
 	if len(config.Brokers) > 0 {
 		lines = append(lines, "brokers: "+strings.Join(config.Brokers, ", "))
 	}
 	if config.Partition != nil {
-		lines = append(lines, "partição declarada: "+strconv.Itoa(*config.Partition))
+		lines = append(lines, "declared partition: "+strconv.Itoa(*config.Partition))
 	}
 	if config.Group != "" {
 		lines = append(lines, "observando o atraso do grupo "+config.Group)
@@ -206,19 +206,19 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 		key := node.Content[index]
 		value := node.Content[index+1]
 		switch key.Value {
-		case "topico":
+		case "topic":
 			config.Topic = value.Value
-		case "chave":
+		case "key":
 			config.Key = value.Value
-		case "valor":
+		case "value":
 			body, err := readValue(value)
 			if err != nil {
 				return nil, err
 			}
 			config.Value = body
-		case "cabecalhos":
+		case "headers":
 			if value.Kind != yaml.MappingNode {
-				return nil, errors.New("cabecalhos precisa ser um mapa")
+				return nil, errors.New("headers has to be a map")
 			}
 			for i := 0; i+1 < len(value.Content); i += 2 {
 				config.Headers[value.Content[i].Value] = value.Content[i+1].Value
@@ -233,27 +233,27 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 			}
 		case "acks":
 			switch value.Value {
-			case "todos", "lider", "nenhum":
+			case "all", "leader", "none":
 				config.Acks = value.Value
 			default:
-				return nil, fmt.Errorf("acks desconhecido: %q (use todos, lider ou nenhum)", value.Value)
+				return nil, fmt.Errorf("unknown acks: %q (use all, leader or none)", value.Value)
 			}
 		case "timeout":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout inválido: %q (use 5s, 30s)", value.Value)
+				return nil, fmt.Errorf("invalid timeout: %q (use 5s, 30s)", value.Value)
 			}
 			config.Timeout = duration
-		case "particao":
+		case "partition":
 			number, err := strconv.Atoi(value.Value)
 			if err != nil || number < 0 {
-				return nil, fmt.Errorf("partição inválida: %q (use um número, como 0 ou 3)", value.Value)
+				return nil, fmt.Errorf("invalid partition: %q (use a number, like 0 or 3)", value.Value)
 			}
 			config.Partition = &number
-		case "grupo":
+		case "group":
 			config.Group = value.Value
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo kafka: %q (use topico, chave, valor, cabecalhos, brokers, acks, timeout, particao ou grupo)", key.Value)
+			return nil, fmt.Errorf("unknown key in the kafka step: %q (use topic, key, value, headers, brokers, acks, timeout, partition or group)", key.Value)
 		}
 	}
 
@@ -287,11 +287,11 @@ func readValue(node *yaml.Node) ([]byte, error) {
 	}
 	var structure any
 	if err := node.Decode(&structure); err != nil {
-		return nil, fmt.Errorf("valor inválido: %v", err)
+		return nil, fmt.Errorf("invalid value: %v", err)
 	}
 	body, err := json.Marshal(structure)
 	if err != nil {
-		return nil, fmt.Errorf("valor não serializa para JSON: %v", err)
+		return nil, fmt.Errorf("the value does not serialize to JSON: %v", err)
 	}
 	return body, nil
 }
@@ -299,7 +299,7 @@ func readValue(node *yaml.Node) ([]byte, error) {
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não é de kafka"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "the configuration is not a kafka one"}
 	}
 
 	broker := request.Messaging.BrokerFor("kafka")
@@ -314,7 +314,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 	if len(brokers) == 0 {
 		return protocol.Response{
 			Class:  protocol.ErrConfig,
-			Detail: "sem broker: declare 'brokers' no passo ou aponte o alvo do cenário para kafka://host:9092",
+			Detail: "no broker: declare 'brokers' in the step or point the scenario target at kafka://host:9092",
 		}
 	}
 
@@ -364,16 +364,16 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 func collapseOf(config *Config) protocol.Collapse {
 	if config.Partition != nil {
 		return protocol.Collapse{
-			Subject:  "a partição declarada de " + config.Topic,
-			Meaning:  "o resto do cluster ficou parado e este número não representa produção — e o de uma partição, não o do tópico",
+			Subject:  "the declared partition of " + config.Topic,
+			Meaning:  "the rest of the cluster stayed idle and this number does not represent production — it is one partition's, not the topic's",
 			Remedy:   "Tire 'particao' do passo para distribuir",
 			Declared: true,
 		}
 	}
 	return protocol.Collapse{
-		Subject: "uma partição só de " + config.Topic,
-		Meaning: "o resto do cluster ficou parado e o número não representa produção",
-		Remedy:  "Faça a chave da mensagem variar por iteração",
+		Subject: "a single partition of " + config.Topic,
+		Meaning: "the rest of the cluster stayed idle and the number does not represent production",
+		Remedy:  "Make the message key vary per iteration",
 	}
 }
 
@@ -395,7 +395,7 @@ func partitionKey(config *Config) string {
 	if config.Partition == nil {
 		return "chave"
 	}
-	return "partição " + strconv.Itoa(*config.Partition)
+	return "partition " + strconv.Itoa(*config.Partition)
 }
 
 func (implementation *Protocol) writerOf(brokers []string, config *Config, broker *messaging.Broker) (*kafka.Writer, error) {
@@ -520,7 +520,7 @@ func (implementation *Protocol) Prepare(runContext context.Context, request prot
 		if kind, credential := messaging.ClassifyError(err); credential {
 			return fmt.Errorf("%s", messaging.Explain(kind, broker))
 		}
-		return fmt.Errorf("não consegui abrir conexão com %s (%s): %w", brokers[0], broker.Describe(), err)
+		return fmt.Errorf("I could not open a connection to %s (%s): %w", brokers[0], broker.Describe(), err)
 	}
 	return conn.Close()
 }

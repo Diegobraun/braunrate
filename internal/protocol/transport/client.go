@@ -45,7 +45,7 @@ func NewClient(options protocol.Options) *http.Client {
 	maximum := options.MaxRedirects
 	client.CheckRedirect = func(_ *http.Request, anteriores []*http.Request) error {
 		if len(anteriores) >= maximum {
-			return fmt.Errorf("mais de %d redirects", maximum)
+			return fmt.Errorf("more than %d redirects", maximum)
 		}
 		return nil
 	}
@@ -57,15 +57,15 @@ func BuildURL(base, path string) (string, error) {
 		return path, nil
 	}
 	if base == "" {
-		return "", fmt.Errorf("passo com caminho relativo %q e cenário sem alvo", path)
+		return "", fmt.Errorf("step with the relative path %q and a scenario with no target", path)
 	}
 	enderecoBase, err := url.Parse(base)
 	if err != nil {
-		return "", fmt.Errorf("alvo inválido: %q", base)
+		return "", fmt.Errorf("invalid target: %q", base)
 	}
 	relative, err := url.Parse(path)
 	if err != nil {
-		return "", fmt.Errorf("caminho inválido: %q", path)
+		return "", fmt.Errorf("invalid path: %q", path)
 	}
 	return enderecoBase.ResolveReference(relative).String(), nil
 }
@@ -148,11 +148,11 @@ func maskCookiePairs(value string) string {
 func summarizeTLS(text string) string {
 	switch {
 	case strings.Contains(text, "certificate signed by unknown authority"):
-		return "certificado assinado por CA que esta máquina não conhece — declare tls: { ca: /caminho/ca.pem }"
+		return "certificate signed by a CA this machine does not know — declare tls: { ca: /path/to/ca.pem }"
 	case strings.Contains(text, "cannot validate certificate for"):
-		return "o certificado do alvo não vale para o endereço chamado — use o nome que está no certificado"
+		return "the target certificate is not valid for the address called — use the name that is in the certificate"
 	case strings.Contains(text, "certificate has expired"):
-		return "certificado do alvo expirado ou ainda não válido"
+		return "the target certificate is expired or not valid yet"
 	case strings.Contains(text, "tls: bad certificate"), strings.Contains(text, "certificate required"):
 		return "o alvo exigiu certificado de cliente — declare tls: { certificado: /caminho/cliente.pem, chave: /caminho/cliente.key }"
 	}

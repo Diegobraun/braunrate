@@ -14,7 +14,7 @@ import (
 // one line and is done.
 func readCaptures(node *yaml.Node) ([]Capture, error) {
 	if node.Kind != yaml.MappingNode {
-		return nil, nodeError(node, "captura precisa ser um mapa, por exemplo: captura: { faturaId: $.fatura.id }")
+		return nil, nodeError(node, "capture has to be a map, for example: capture: { invoiceId: $.invoice.id }")
 	}
 	captures := make([]Capture, 0, len(node.Content)/2)
 	for index := 0; index+1 < len(node.Content); index += 2 {
@@ -49,14 +49,14 @@ func ParseCapture(name, text string) (Capture, error) {
 	switch {
 	case expression == "status":
 		capture.Origin = CaptureStatus
-	case expression == "corpo":
+	case expression == "body":
 		capture.Origin = CaptureBody
 	case strings.HasPrefix(expression, "$"):
 		capture.Origin = CaptureJSON
-	case strings.HasPrefix(expression, "cabecalho:"):
+	case strings.HasPrefix(expression, "header:"):
 		capture.Origin = CaptureHeader
-		capture.Expression = strings.TrimSpace(strings.TrimPrefix(expression, "cabecalho:"))
-	// Um cookie e um cabecalho com estrutura: "cabecalho:Set-Cookie" devolveria
+		capture.Expression = strings.TrimSpace(strings.TrimPrefix(expression, "header:"))
+	// Um cookie e um cabecalho com estrutura: "header:Set-Cookie" devolveria
 	// "sessao=abc; Path=/; HttpOnly", e mandar isso de volta em Cookie: manda
 	// tres cookies, dois deles inventados.
 	case strings.HasPrefix(expression, "cookie:"):
@@ -66,12 +66,12 @@ func ParseCapture(name, text string) (Capture, error) {
 		capture.Origin = CaptureRegex
 		capture.Expression = expression[1 : len(expression)-1]
 	default:
-		return capture, fmt.Errorf("não entendi de onde capturar %q.\n"+
-			"    use uma destas formas:\n"+
-			"      %s: $.caminho.no.json      captura de um campo do corpo JSON\n"+
-			"      %s: cabecalho:X-Request-Id captura de um cabecalho da resposta\n"+
-			"      %s: cookie:sessão         captura o valor de um cookie do Set-Cookie\n"+
-			"      %s: /token=([a-z0-9]+)/    captura pelo primeiro grupo da expressao regular",
+		return capture, fmt.Errorf("I did not understand where to capture %q from.\n"+
+			"    use one of these forms:\n"+
+			"      %s: $.path.in.the.json     from a field of the JSON body\n"+
+			"      %s: header:X-Request-Id    from a response header\n"+
+			"      %s: cookie:session         the value of a cookie from Set-Cookie\n"+
+			"      %s: /token=([a-z0-9]+)/    by the first group of the regular expression",
 			name, name, name, name, name)
 	}
 	return capture, nil
@@ -92,31 +92,31 @@ func readFullCapture(name string, node *yaml.Node) (Capture, error) {
 		key := node.Content[index]
 		value := node.Content[index+1]
 		switch key.Value {
-		case "de":
+		case "from":
 			parsed, err := parseCaptureExpression(name, value)
 			if err != nil {
 				return capture, err
 			}
 			capture.Origin = parsed.Origin
 			capture.Expression = parsed.Expression
-		case "padrao":
+		case "default":
 			capture.Default = value.Value
 			capture.Required = false
-		case "obrigatoria":
+		case "required":
 			capture.Required = value.Value != "false"
 		default:
-			return capture, nodeError(key, "chave desconhecida na captura %q: %q (use de, padrao ou obrigatoria)", name, key.Value)
+			return capture, nodeError(key, "unknown key in the capture %q: %q (use from, default or required)", name, key.Value)
 		}
 	}
 	if capture.Origin == "" {
-		return capture, nodeError(node, "a captura %q precisa de 'de', por exemplo: de: $.fatura.id", name)
+		return capture, nodeError(node, "the capture %q needs 'from', for example: from: $.invoice.id", name)
 	}
 	return capture, nil
 }
 
 func readAssertions(node *yaml.Node) ([]Check, []Assertion, error) {
 	if node.Kind != yaml.MappingNode {
-		return nil, nil, nodeError(node, "verificar precisa ser um mapa, por exemplo: verificar: { status: 200 }")
+		return nil, nil, nodeError(node, "expect has to be a map, for example: expect: { status: 200 }")
 	}
 	var checks []Check
 	var assertions []Assertion
@@ -128,16 +128,16 @@ func readAssertions(node *yaml.Node) ([]Check, []Assertion, error) {
 		case "status":
 			status, err := strconv.Atoi(strings.TrimSpace(value.Value))
 			if err != nil {
-				return nil, nil, nodeError(value, "status inválido: %q (use um número, por exemplo 200)", value.Value)
+				return nil, nil, nodeError(value, "invalid status: %q (use a number, for example 200)", value.Value)
 			}
 			checks = append(checks, Check{Kind: CheckStatus, Status: status})
-		case "corpo_contem":
+		case "bodyContains":
 			assertions = append(assertions, Assertion{Kind: AssertBodyContains, Value: value.Value, Line: value.Line})
-		case "corpo_casa":
+		case "bodyMatches":
 			assertions = append(assertions, Assertion{Kind: AssertRegex, Value: value.Value, Line: value.Line})
 		case "json":
 			if value.Kind != yaml.MappingNode {
-				return nil, nil, nodeError(value, "json precisa ser um mapa, por exemplo: json: { $.status: PAGA }")
+				return nil, nil, nodeError(value, "json has to be a map, for example: json: { $.status: PAID }")
 			}
 			for i := 0; i+1 < len(value.Content); i += 2 {
 				assertion, err := parseComparison(value.Content[i].Value, value.Content[i+1])
@@ -147,9 +147,9 @@ func readAssertions(node *yaml.Node) ([]Check, []Assertion, error) {
 				assertion.Kind = AssertJSON
 				assertions = append(assertions, assertion)
 			}
-		case "cabecalho":
+		case "header":
 			if value.Kind != yaml.MappingNode {
-				return nil, nil, nodeError(value, "cabecalho precisa ser um mapa, por exemplo: cabecalho: { Content-Type: application/json }")
+				return nil, nil, nodeError(value, "header has to be a map, for example: header: { Content-Type: application/json }")
 			}
 			for i := 0; i+1 < len(value.Content); i += 2 {
 				assertions = append(assertions, Assertion{
@@ -158,8 +158,8 @@ func readAssertions(node *yaml.Node) ([]Check, []Assertion, error) {
 				})
 			}
 		default:
-			return nil, nil, nodeError(key, "verificação desconhecida: %q\n"+
-				"    disponíveis: status, corpo_contem, corpo_casa, json, cabecalho", key.Value)
+			return nil, nil, nodeError(key, "unknown check: %q\n"+
+				"    available: status, bodyContains, bodyMatches, json, header", key.Value)
 		}
 	}
 	return checks, assertions, nil
@@ -184,27 +184,27 @@ func ParseComparison(target, raw string) Assertion {
 		}
 	}
 	switch text {
-	case "existe":
+	case "exists":
 		assertion.Operator = OpExists
 		assertion.Value = ""
-	case "contem":
+	case "contains":
 		assertion.Operator = OpContains
 	}
-	if strings.HasPrefix(text, "contem ") {
+	if strings.HasPrefix(text, "contains ") {
 		assertion.Operator = OpContains
-		assertion.Value = strings.TrimSpace(strings.TrimPrefix(text, "contem "))
+		assertion.Value = strings.TrimSpace(strings.TrimPrefix(text, "contains "))
 	}
 	return assertion
 }
 
 func readAuth(node *yaml.Node) (*Auth, error) {
 	if node.Kind != yaml.MappingNode {
-		return nil, nodeError(node, "autenticação precisa ser um mapa, por exemplo:\n"+
-			"  autenticacao:\n"+
-			"    tipo: token\n"+
-			"    obter:\n"+
-			"      http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: \"${SENHA}\" } }\n"+
-			"      captura: { token: $.access_token }")
+		return nil, nodeError(node, "auth has to be a map, for example:\n"+
+			"  auth:\n"+
+			"    type: token\n"+
+			"    obtain:\n"+
+			"      http: { method: POST, path: /auth/token, body: { user: ana, password: \"${PASSWORD}\" } }\n"+
+			"      capture: { token: $.access_token }")
 	}
 	auth := &Auth{Kind: AuthToken, Line: node.Line}
 
@@ -212,58 +212,58 @@ func readAuth(node *yaml.Node) (*Auth, error) {
 		key := node.Content[index]
 		value := node.Content[index+1]
 		switch key.Value {
-		case "tipo":
+		case "type":
 			switch value.Value {
 			case "token":
 				auth.Kind = AuthToken
-			case "basica":
+			case "basic":
 				auth.Kind = AuthBasic
-			case "cabecalho":
+			case "header":
 				auth.Kind = AuthHeader
 			default:
-				return nil, nodeError(value, "tipo de autenticação desconhecido: %q (use token, basica ou cabecalho)", value.Value)
+				return nil, nodeError(value, "unknown auth type: %q (use token, basic or header)", value.Value)
 			}
-		case "obter":
+		case "obtain":
 			step, err := readStep(value)
 			if err != nil {
 				return nil, err
 			}
-			step.Name = "obter autenticação"
+			step.Name = "obtain auth"
 			auth.Obtain = &step
-		case "renovar_apos":
+		case "refreshAfter":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, nodeError(value, "renovar_apos inválido: %q (use por exemplo 25m)", value.Value)
+				return nil, nodeError(value, "invalid refreshAfter: %q (use for example 25m)", value.Value)
 			}
 			auth.RefreshAfter = duration
-		case "cabecalho":
+		case "header":
 			auth.Header = value.Value
-		case "usuario":
+		case "user":
 			auth.User = value.Value
-		case "senha":
+		case "password":
 			auth.Password = value.Value
 		default:
-			return nil, nodeError(key, "chave desconhecida em autenticação: %q\n%s", key.Value,
-				suggestWithExample(key.Value, []string{"tipo", "obter", "renovar_apos", "cabecalho", "usuario", "senha"},
-					"    'obter' carrega uma requisição inteira mais a captura do token:\n"+
-						"      autenticacao:\n"+
-						"        tipo: token\n"+
-						"        obter:\n"+
-						"          http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: \"${SENHA}\" } }\n"+
-						"          captura: { token: \"$.access_token\" }\n"+
-						"        renovar_apos: 25m"))
+			return nil, nodeError(key, "unknown key in auth: %q\n%s", key.Value,
+				suggestWithExample(key.Value, []string{"type", "obtain", "refreshAfter", "header", "user", "password"},
+					"    'obtain' carries a whole request plus the capture of the token:\n"+
+						"      auth:\n"+
+						"        type: token\n"+
+						"        obtain:\n"+
+						"          http: { method: POST, path: /auth/token, body: { user: ana, password: \"${PASSWORD}\" } }\n"+
+						"          capture: { token: \"$.access_token\" }\n"+
+						"        refreshAfter: 25m"))
 		}
 	}
 
 	if auth.Kind == AuthToken && auth.Obtain == nil {
-		return nil, nodeError(node, "autenticação por token precisa do bloco 'obter' com a requisição que devolve o token:\n"+
-			"    obter:\n"+
-			"      http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: \"${SENHA}\" } }\n"+
-			"      captura: { token: $.access_token }")
+		return nil, nodeError(node, "token auth needs the 'obtain' block with the request that returns the token:\n"+
+			"    obtain:\n"+
+			"      http: { method: POST, path: /auth/token, body: { user: ana, password: \"${PASSWORD}\" } }\n"+
+			"      capture: { token: $.access_token }")
 	}
 	if auth.Kind == AuthBasic && (auth.User == "" || auth.Password == "") {
-		return nil, nodeError(node, "autenticação básica precisa de usuário e senha, por exemplo:\n"+
-			"  autenticacao: { tipo: basica, usuario: ana, senha: \"${SENHA}\" }")
+		return nil, nodeError(node, "basic auth needs a user and a password, for example:\n"+
+			"  auth: { type: basic, user: ana, password: \"${PASSWORD}\" }")
 	}
 	if auth.Header == "" && auth.Kind != AuthBasic {
 		auth.Header = "Authorization: Bearer ${token}"
@@ -273,8 +273,8 @@ func readAuth(node *yaml.Node) (*Auth, error) {
 
 func readData(node *yaml.Node) ([]DataSource, error) {
 	if node.Kind != yaml.MappingNode {
-		return nil, nodeError(node, "dados precisa ser um mapa de fontes, por exemplo:\n"+
-			"    dados:\n      assinantes:\n        arquivo: dados/assinantes.csv")
+		return nil, nodeError(node, "data has to be a map of sources, for example:\n"+
+			"    data:\n      subscribers:\n        file: data/subscribers.csv")
 	}
 	sources := make([]DataSource, 0, len(node.Content)/2)
 
@@ -282,8 +282,8 @@ func readData(node *yaml.Node) ([]DataSource, error) {
 		name := node.Content[index]
 		body := node.Content[index+1]
 		if body.Kind != yaml.MappingNode {
-			return nil, nodeError(body, "a fonte de dados %q precisa de um mapa com 'arquivo' ou 'gerar', por exemplo:\n"+
-				"  %s: { arquivo: dados/assinantes.csv, consumo: circular }", name.Value, name.Value)
+			return nil, nodeError(body, "the data source %q needs a map with 'file' or 'generate', for example:\n"+
+				"  %s: { file: data/subscribers.csv, consume: circular }", name.Value, name.Value)
 		}
 		source := DataSource{Name: name.Value, Consume: ConsumeCircular, Line: body.Line}
 
@@ -291,31 +291,31 @@ func readData(node *yaml.Node) ([]DataSource, error) {
 			key := body.Content[i]
 			value := body.Content[i+1]
 			switch key.Value {
-			case "arquivo":
+			case "file":
 				source.File = value.Value
-			case "consumo":
+			case "consume":
 				switch value.Value {
-				case "sequencial":
+				case "sequential":
 					source.Consume = ConsumeSequential
-				case "aleatorio":
+				case "random":
 					source.Consume = ConsumeRandom
 				case "circular":
 					source.Consume = ConsumeCircular
-				case "unico_por_usuario":
+				case "uniquePerUser":
 					source.Consume = ConsumeUniquePerUser
 				default:
-					return nil, nodeError(value, "consumo desconhecido: %q\n"+
-						"    disponíveis: circular (padrao), sequencial, aleatorio, unico_por_usuario", value.Value)
+					return nil, nodeError(value, "unknown consume mode: %q\n"+
+						"    available: circular (default), sequential, random, uniquePerUser", value.Value)
 				}
-			case "semente":
+			case "seed":
 				seed, origin, err := ReadSeed(value.Value)
 				if err != nil {
 					return nil, nodeError(value, "%v", err)
 				}
 				source.Seed, source.SeedFrom = seed, origin
-			case "gerar":
+			case "generate":
 				if value.Kind != yaml.MappingNode {
-					return nil, nodeError(value, "gerar precisa ser um mapa, por exemplo: gerar: { id: uuid, valor: numero(10,500) }")
+					return nil, nodeError(value, "generate has to be a map, for example: generate: { id: uuid, amount: number(10,500) }")
 				}
 				source.Fields = map[string]Generator{}
 				for j := 0; j+1 < len(value.Content); j += 2 {
@@ -326,12 +326,12 @@ func readData(node *yaml.Node) ([]DataSource, error) {
 					source.Fields[value.Content[j].Value] = generator
 				}
 			default:
-				return nil, nodeError(key, "chave desconhecida na fonte de dados %q: %q\n"+
-					"    disponíveis: arquivo, gerar, consumo, semente", name.Value, key.Value)
+				return nil, nodeError(key, "unknown key in the data source %q: %q\n"+
+					"    available: file, generate, consume, seed", name.Value, key.Value)
 			}
 		}
 		if source.File == "" && len(source.Fields) == 0 {
-			return nil, nodeError(body, "a fonte de dados %q precisa de 'arquivo' (CSV) ou 'gerar' (dado sintetico)", name.Value)
+			return nil, nodeError(body, "the data source %q needs 'file' (CSV) or 'generate' (synthetic data)", name.Value)
 		}
 		sources = append(sources, source)
 	}
@@ -346,52 +346,52 @@ func readGenerator(field string, node *yaml.Node) (Generator, error) {
 	for index := 0; index+1 < len(node.Content); index += 2 {
 		key, value := node.Content[index], node.Content[index+1]
 		switch key.Value {
-		case "tipo":
+		case "type":
 			generator.Recipe = value.Value
-		case "formato":
+		case "format":
 			generator.Format = value.Value
-		case "novo_a_cada":
+		case "newEvery":
 			switch value.Value {
-			case "uso":
+			case "use":
 				generator.PerUse = true
-			case "iteracao":
+			case "iteration":
 				generator.PerUse = false
 			default:
-				return generator, nodeError(value, "novo_a_cada aceita 'iteracao' (padrão) ou 'uso': %q\n"+
-					"    iteração mantém o mesmo valor nos dois passos da mesma jornada, que é o caso da chave de idempotência", value.Value)
+				return generator, nodeError(value, "newEvery takes 'iteration' (the default) or 'use': %q\n"+
+					"    iteration keeps the same value across both steps of the same journey, which is what an idempotency key needs", value.Value)
 			}
 		default:
-			return generator, nodeError(key, "chave desconhecida no campo %q: %q\n"+
-				"    disponíveis: tipo, formato, novo_a_cada\n"+
-				"    exemplo: %s: { tipo: padrao, formato: \"PED-######\" }", field, key.Value, field)
+			return generator, nodeError(key, "unknown key in the field %q: %q\n"+
+				"    available: type, format, newEvery\n"+
+				"    example: %s: { type: pattern, format: \"ORD-######\" }", field, key.Value, field)
 		}
 	}
 	if generator.Recipe == "" {
-		return generator, nodeError(node, "o campo %q precisa de 'tipo', por exemplo: %s: { tipo: padrao, formato: \"PED-######\" }", field, field)
+		return generator, nodeError(node, "the field %q needs 'type', for example: %s: { type: pattern, format: \"ORD-######\" }", field, field)
 	}
-	if generator.Recipe == "padrao" && generator.Format == "" {
-		return generator, nodeError(node, "o campo %q é do tipo padrão e precisa de 'formato', por exemplo: { tipo: padrao, formato: \"PED-######\" }\n"+
-			"    # vira dígito e @ vira letra; o resto sai literal", field)
+	if generator.Recipe == "pattern" && generator.Format == "" {
+		return generator, nodeError(node, "the field %q is of type pattern and needs 'format', for example: { type: pattern, format: \"ORD-######\" }\n"+
+			"    # becomes a digit and @ becomes a letter; everything else comes out literal", field)
 	}
 	return generator, nil
 }
 
 func readSLO(node *yaml.Node) ([]SLORule, error) {
 	if node.Kind != yaml.SequenceNode {
-		return nil, nodeError(node, "slo precisa ser uma lista, por exemplo:\n"+
-			"    slo:\n      - consultar pedido: { p95: < 150ms }\n      - global: { erros: < 0.1 }")
+		return nil, nodeError(node, "slo has to be a list, for example:\n"+
+			"    slo:\n      - look up order: { p95: < 150ms }\n      - global: { errors: < 0.1 }")
 	}
 	var rules []SLORule
 
 	for _, item := range node.Content {
 		if item.Kind != yaml.MappingNode || len(item.Content) < 2 {
-			return nil, nodeError(item, "cada regra de slo é um mapa com o nome do passo (ou 'global') e os limites, por exemplo:\n"+
-				"  - consultar pedido: { p95: < 150ms }")
+			return nil, nodeError(item, "every slo rule is a map with the step name (or 'global') and the limits, for example:\n"+
+				"  - look up order: { p95: < 150ms }")
 		}
 		target := item.Content[0]
 		limits := item.Content[1]
 		if limits.Kind != yaml.MappingNode {
-			return nil, nodeError(limits, "os limites de %q precisam ser um mapa, por exemplo: { p95: < 150ms, erros: 0 %% }", target.Value)
+			return nil, nodeError(limits, "the limits of %q have to be a map, for example: { p95: < 150ms, errors: 0 %% }", target.Value)
 		}
 
 		for i := 0; i+1 < len(limits.Content); i += 2 {
@@ -442,8 +442,8 @@ func ParseSLORule(target, metric, rawLimit string) (SLORule, error) {
 
 	limit, err := parseLimit(text, rule.Unit)
 	if err != nil {
-		return rule, fmt.Errorf("limite inválido em %q: %v\n"+
-			"    exemplos: p95: < 150ms | erros: < 0.1 | sucesso: >= 99.9 | taxa_efetiva: >= 200/s | jornada_p95: <= 10%% pior", rule.Metrica, err)
+		return rule, fmt.Errorf("invalid limit in %q: %v\n"+
+			"    examples: p95: < 150ms | errors: < 0.1 | success: >= 99.9 | throughput: >= 200/s | journeyP95: <= 10%% worse", rule.Metrica, err)
 	}
 	rule.Limit = limit
 	return rule, nil
@@ -453,9 +453,9 @@ func scopeOf(target string) SLOScope {
 	switch target {
 	case "global":
 		return ScopeOverall
-	case "jornada":
+	case "journey":
 		return ScopeJourney
-	case "regressao":
+	case "regression":
 		return ScopeRegression
 	default:
 		return ScopeStep
@@ -467,49 +467,51 @@ func scopeOf(target string) SLOScope {
 func describeMetric(rule *SLORule) error {
 	if rule.Scope == ScopeRegression {
 		if !isRegressionMetric(rule.Metrica) {
-			return fmt.Errorf("métrica de regressão desconhecida: %q\n"+
-				"    disponíveis: jornada_p50, jornada_p95, jornada_p99, global_p95, global_p99\n"+
-				"    exemplo: - regressao: { jornada_p95: <= 10%% pior }", rule.Metrica)
+			return fmt.Errorf("unknown regression metric: %q\n"+
+				"    available: journeyP50, journeyP95, journeyP99, globalP95, globalP99\n"+
+				"    example: - regression: { journeyP95: <= 10%% worse }", rule.Metrica)
 		}
-		rule.Unit = "% pior"
+		rule.Unit = "% worse"
 		return nil
 	}
 
 	switch rule.Metrica {
 	case "p50", "p75", "p90", "p95", "p99", "p99.9", "max":
 		rule.Unit = "ms"
-	case "erros":
+	case "errors":
 		rule.Unit = "%"
-	case "sucesso":
+	case "success":
 		rule.Unit = "%"
 		rule.Operator = OpGreaterOrEqual
-	case "vazao", "taxa_efetiva":
+	case "throughput":
 		if rule.Scope != ScopeOverall {
-			return fmt.Errorf("%q só existe em global, porque é a taxa da execução inteira\n"+
-				"    escreva:  - global: { %s: >= 200/s }", rule.Metrica, rule.Metrica)
+			return fmt.Errorf("%q only exists in global, because it is the rate of the whole run\n"+
+				"    write:  - global: { %s: >= 200/s }", rule.Metrica, rule.Metrica)
 		}
 		rule.Unit = "/s"
 		rule.Operator = OpGreaterOrEqual
 	default:
-		return fmt.Errorf("métrica de slo desconhecida: %q\n"+
-			"    disponíveis: p50, p75, p90, p95, p99, p99.9, max, erros, sucesso, taxa_efetiva", rule.Metrica)
+		return fmt.Errorf("unknown slo metric: %q\n"+
+			"    available: p50, p75, p90, p95, p99, p99.9, max, errors, success, throughput", rule.Metrica)
 	}
 
-	if rule.Scope == ScopeJourney && (rule.Metrica == "erros" || rule.Metrica == "sucesso") {
-		return fmt.Errorf("%q não existe em jornada: jornada que não chega ao fim já inválida a execução\n"+
-			"    para taxa de erro escreva:  - global: { %s: ... }", rule.Metrica, rule.Metrica)
+	if rule.Scope == ScopeJourney && (rule.Metrica == "errors" || rule.Metrica == "success") {
+		return fmt.Errorf("%q does not exist in journey: a journey that does not reach the end already invalidates the run\n"+
+			"    for the error rate write:  - global: { %s: ... }", rule.Metrica, rule.Metrica)
 	}
 	return nil
 }
 
 func isRegressionMetric(metric string) bool {
-	prefix, percentile, found := strings.Cut(metric, "_")
-	if !found || (prefix != "jornada" && prefix != "global") {
-		return false
-	}
-	switch percentile {
-	case "p50", "p75", "p90", "p95", "p99", "p99.9", "max":
-		return true
+	for _, prefix := range []string{"journey", "global"} {
+		percentile, found := strings.CutPrefix(metric, prefix)
+		if !found {
+			continue
+		}
+		switch percentile {
+		case "P50", "P75", "P90", "P95", "P99", "P99.9", "Max":
+			return true
+		}
 	}
 	return false
 }
@@ -529,8 +531,8 @@ func parseLimit(text, unit string) (float64, error) {
 		return float64(duration.Microseconds()) / 1000, nil
 	case "%":
 		return strconv.ParseFloat(strings.TrimSuffix(text, "%"), 64)
-	case "% pior":
-		text = strings.TrimSpace(strings.TrimSuffix(text, "pior"))
+	case "% worse":
+		text = strings.TrimSpace(strings.TrimSuffix(text, "worse"))
 		return strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(text, "%")), 64)
 	default:
 		return strconv.ParseFloat(strings.TrimSuffix(text, "/s"), 64)

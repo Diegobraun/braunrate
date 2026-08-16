@@ -28,9 +28,9 @@ func ReadSeed(declared string) (int64, string, error) {
 	seed, err := strconv.ParseInt(strings.TrimSpace(resolved), 10, 64)
 	if err != nil {
 		if origin != "" {
-			return 0, "", fmt.Errorf("semente inválida: $%s vale %q e a semente precisa ser um número inteiro", origin, resolved)
+			return 0, "", fmt.Errorf("invalid seed: $%s is %q and the seed has to be a whole number", origin, resolved)
 		}
-		return 0, "", fmt.Errorf("semente inválida: %q (use um número inteiro, ou ${SEMENTE:-42} para aceitar o ambiente)", declared)
+		return 0, "", fmt.Errorf("invalid seed: %q (use a whole number, or ${SEED:-42} to take it from the environment)", declared)
 	}
 	return seed, origin, nil
 }

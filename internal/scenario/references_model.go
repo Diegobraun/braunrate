@@ -12,7 +12,7 @@ import (
 // written in Go. The rule and the message are the same ones the YAML path uses;
 // what the YAML path adds is the line and the column (ADR 0002).
 //
-// Without this a Go scenario accepted a ${nome} that resolves from nowhere,
+// Without this a Go scenario accepted a ${name} that resolves from nowhere,
 // while the same scenario in YAML was refused — one rule with two answers
 // depending on which public wrote it.
 func CheckReferences(spec *Spec) error {
@@ -20,7 +20,7 @@ func CheckReferences(spec *Spec) error {
 	missing := map[string]bool{}
 
 	for name, value := range spec.Vars {
-		if err := checkText(known, value, fmt.Sprintf("variável %q", name), missing); err != nil {
+		if err := checkText(known, value, fmt.Sprintf("variable %q", name), missing); err != nil {
 			return err
 		}
 	}
