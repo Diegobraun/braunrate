@@ -140,10 +140,14 @@ func (executor *Executor) DataRoot() string { return filepath.Clean(executor.opt
 
 func (executor *Executor) Execute(runContext context.Context) metrics.Document {
 	clock := executor.options.Clock
-	start := clock.Now()
+	// Preparation is setup, not load: opening a subscription or paying a TLS and
+	// SASL handshake takes time, and starting the clock before it would push the
+	// first scheduled instants into the past — the run then invalidates itself
+	// for saturation that the generator never caused.
 	if err := executor.prepareProtocols(runContext); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 	}
+	start := clock.Now()
 
 	collector := metrics.NewCollector(start, executor.options.LateThreshold)
 	executor.collector.Store(collector)
