@@ -275,7 +275,7 @@ func VarietyWarnings(varieties []Variety) []Warning {
 		// for a bug they did not write. The concentration is still worth saying,
 		// because the number that comes out is not production shape.
 		if strings.HasPrefix(variety.Name, "kafka.particao.declarada.") {
-			message = fmt.Sprintf("toda a carga caiu na particao declarada de %s; o resto do cluster ficou parado e o numero e o de uma particao, nao o do topico. Tire 'particao' do passo para distribuir",
+			message = fmt.Sprintf("toda a carga caiu na particao declarada de %s: o resto do cluster ficou parado e este numero nao representa producao — e o de uma particao, nao o do topico. Tire 'particao' do passo para distribuir",
 				strings.TrimPrefix(variety.Name, "kafka.particao.declarada."))
 			severity = SeverityMedium
 		}

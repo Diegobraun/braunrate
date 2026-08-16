@@ -100,3 +100,4 @@ O que **nao** muda: o teste de equivalencia da Fase 6 continua obrigatorio. Ele 
 - Todo recurso novo custa mais: precisa de no no modelo, gramatica YAML, metodo na DSL e teste de equivalencia.
 - O importador de `.jmx` nao precisa de caminho proprio — ele produz o modelo e imprime YAML.
 - A serializacao do modelo vira formato publico e precisa de versionamento desde a v1.
+- **A promessa dos dois publicos vale hoje so dentro deste modulo.** A DSL monta o cenario, mas o motor esta em `internal/`, entao um projeto de fora nao consegue executar o que ela monta. Achado na revisao do fim da Fase 8; a saida esta decidida no [ADR 0015](0015-superficie-publica-da-dsl.md) e o alcance real esta escrito no README.

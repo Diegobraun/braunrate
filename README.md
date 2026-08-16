@@ -47,7 +47,7 @@ Esta e a primeira das tres execucoes reais que sustentam a tese. Cada uma expoe 
 
 ## Estado
 
-**Fase 8 concluida** — motor de chegada aberta, HTTP, GraphQL, Kafka, RabbitMQ e passo `aguardar`, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `debug`, `import curl`, `import jmx` e `record`), relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes), variedade observada, **cenario em Go equivalente ao YAML travado por teste**, modelo fechado declarado, **autenticacao de broker com a credencial fora do arquivo** e **modo servidor local sem logica propria**.
+**Fase 8 concluida** — motor de chegada aberta, HTTP, GraphQL, Kafka, RabbitMQ e passo `aguardar`, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `debug`, `import curl`, `import jmx` e `record`), relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes), variedade observada, **cenario em Go equivalente ao YAML travado por teste** (executavel so de dentro do modulo), modelo fechado declarado, **autenticacao de broker com a credencial fora do arquivo** e **modo servidor local sem logica propria**.
 
 Decisao da Fase 0: **Go**, sustentada por dois criterios apenas — RSS sob carga (30 MB contra 597 MB do Java com G1, a 10.000/s) e binario unico estatico, que para o publico de QA significa instalar baixando um arquivo. Startup, precisao de agendamento e modo de falha apareceram na primeira analise com peso que nao aguentam, e estao marcados como nao-criterio no ADR. Numeros, metodologia e limites em [medicoes-fase0.md](docs/medicoes-fase0.md); a decisao com os pesos de cada criterio em [ADR 0001](docs/adr/0001-linguagem-e-runtime.md).
 
@@ -285,28 +285,40 @@ Iteracao completa: 2 passo(s), tudo certo. Para rodar com carga:
 Quando o cenario passa do que o YAML expressa — laco sobre uma lista, decisao no meio da jornada, dado vindo de um sistema seu — o mesmo cenario se escreve em Go, com o mesmo motor e as mesmas metricas:
 
 ```go
-cenario, err := dsl.New("Jornada autenticada").
-	Target("https://api.exemplo.com").
-	Auth(dsl.WithToken(
-		dsl.POST("/auth/token").Body(map[string]any{"usuario": "ana", "senha": "${SENHA}"}),
-		dsl.Capture("token", "$.access_token"),
-	).RefreshAfter(25 * time.Minute)).
-	DataFromFile("assinantes", "dados/assinantes.csv").
-	Ramp(dsl.PerSecond(10), dsl.PerSecond(100), 30*time.Second).
-	Plateau(dsl.PerSecond(100), time.Minute).
-	Step(dsl.GET("/pedidos/${assinantes.id}"),
-		dsl.Name("consultar pedido"),
-		dsl.CheckStatus(200),
-		dsl.Capture("faturaId", "$.ultimaFatura.id")).
-	SLO("consultar pedido", "p95", "< 150ms").
-	OverallSLO("erros", "< 0.1").
-	Build()
-
-executor, err := engine.New(cenario, engine.DefaultOptions())
-documento := executor.Execute(context.Background())
+// Scenario is the same journey of examples/jornada-autenticada.yaml, written in
+// Go: same engine, same metrics, same result document.
+func Scenario(alvo string) (scenario.Spec, error) {
+	return dsl.New("Jornada de cobranca").
+		Target(alvo).
+		Auth(dsl.WithToken(
+			dsl.POST("/auth/token").Body(map[string]any{"usuario": "ana", "senha": "${SENHA:-segredo}"}),
+			dsl.Capture("token", "$.access_token"),
+		).RefreshAfter(25*time.Minute)).
+		DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(scenario.ConsumeCircular)).
+		Ramp(dsl.PerSecond(50), dsl.PerSecond(300), 5*time.Second).
+		Plateau(dsl.PerSecond(300), 5*time.Second).
+		Step(dsl.GET("/pedidos/${assinantes.id}"),
+			dsl.Name("consultar pedido"),
+			dsl.CheckStatus(200),
+			dsl.CheckJSON("$.ultimaFatura.status", "ABERTA"),
+			dsl.Capture("faturaId", "$.ultimaFatura.id")).
+		Step(dsl.POST("/faturas/${faturaId}/pagar").
+			Body(map[string]any{"valor": 199.90}),
+			dsl.Name("pagar fatura"),
+			dsl.CheckStatus(200),
+			dsl.CheckJSON("$.status", "PAGA")).
+		SLO("consultar pedido", "p95", "< 150ms").
+		SLO("pagar fatura", "p95", "< 200ms").
+		JourneySLO("p95", "< 2s").
+		JourneySLO("p99", "< 5s").
+		OverallSLO("erros", "< 0.1").
+		Build()
+}
 ```
 
-**Limitacao conhecida:** `dsl` e publico, mas o motor ainda vive em `internal/`. Na pratica isso quer dizer que **o cenario em Go roda de dentro deste modulo** — um `go test` ou um `main` no proprio repositorio. Rodar de um modulo de fora vai exigir expor motor e documento de resultado como API publica, e isso e decisao de v1, quando a interface vira contrato versionado ([ADR 0004](docs/adr/0004-extensao-de-protocolo.md)). Ate la a DSL vale para quem versiona o teste junto com o servico e constroi o binario a partir daqui.
+Esse trecho nao e ilustracao: ele vive em [`examples/cenario-em-go/cenario.go`](examples/cenario-em-go/cenario.go), o CI compila, roda contra o alvo embutido e confere o proprio SLO, e um teste reprova o build se o README derivar do arquivo.
+
+**Limitacao conhecida, e ela e grande:** `dsl` e publico, mas o motor vive em `internal/`, entao **de um modulo de fora nao ha como executar o cenario em Go**. Hoje a DSL serve para quem trabalha dentro deste repositorio. Como fechar isso — expor um pacote fino de execucao, tirar de `internal/` o que a DSL precisa, ou assumir que o publico dev usa YAML — e o que o [ADR 0015](docs/adr/0015-superficie-publica-da-dsl.md) tem que decidir, e ate la o README nao promete o contrario.
 
 **Migrar de YAML para Go nao e reescrever.** A DSL nao interpreta nada por conta propria: `"$.ultimaFatura.id"`, `"> 10"` e `"< 150ms"` sao lidos pelas mesmas funcoes que leem o YAML, e cada protocolo aplica seus padroes num lugar so. Um teste compara a estrutura inteira dos dois caminhos, caso a caso, e falha se um protocolo registrado, uma chave de topo, uma forma de cenario ou uma opcao de protocolo ficar sem caso de equivalencia:
 
@@ -953,7 +965,7 @@ Um exemplo de `curl` por rota, com a resposta real, esta em [docs/api-servidor.m
 | AWS MSK com IAM pela cadeia padrao da AWS, sem chave no cenario | pronto, sem CI |
 | Segredo literal no cenario reprova a validacao, e a saida nunca mostra credencial | pronto |
 | Variedade observada, com resultado invalido quando a carga concentra | pronto |
-| Cenario em Go, com equivalencia YAML x DSL travada por teste | pronto |
+| Cenario em Go, com equivalencia YAML x DSL travada por teste | parcial: so roda de dentro deste modulo ([ADR 0015](docs/adr/0015-superficie-publica-da-dsl.md)) |
 | `import jmx`: requisicao, cabecalho, CSV e correlacao do plano do JMeter | parcial, declarado |
 
 ## Por que existe
@@ -961,7 +973,7 @@ Um exemplo de `curl` por rota, com a resposta real, esta em [docs/api-servidor.m
 Tres razoes, nesta ordem:
 
 1. **Medicao honesta por padrao.** Modelo de chegada aberto; latencia contada a partir do instante em que a requisicao *deveria* ter partido; HDR histogram; aviso explicito quando o gerador nao sustentou a taxa alvo. A omissao coordenada e a falha que faz teste passar com p99 de 47 ms enquanto producao sofre 1,8 s.
-2. **Dois publicos, um motor.** YAML declarativo para o caso comum, DSL para o complexo — mesmo motor, mesmas metricas, sem reescrita ao migrar.
+2. **Dois publicos, um motor.** YAML declarativo para o caso comum, DSL para o complexo — mesmo motor, mesmas metricas, sem reescrita ao migrar. **Hoje isso vale so dentro deste repositorio**: o motor esta em `internal/`, entao a DSL ainda nao e um caminho para quem consome o braunrate como biblioteca ([ADR 0015](docs/adr/0015-superficie-publica-da-dsl.md)).
 3. **Cenario de negocio, nao so requisicao.** GraphQL medido por operacao; Kafka e RabbitMQ com modelo de metrica proprio; passo `aguardar` para medir a cadeia assincrona ponta a ponta.
 
 ## Escopo
@@ -996,6 +1008,7 @@ Tres razoes, nesta ordem:
 - [ADR 0012 — modelo fechado como opcao declarada](docs/adr/0012-modelo-fechado-como-opcao-declarada.md)
 - [ADR 0013 — gravador de trafego](docs/adr/0013-gravador-de-trafego.md)
 - [ADR 0014 — autenticacao de mensageria](docs/adr/0014-autenticacao-de-mensageria.md)
+- [ADR 0015 — superficie publica da DSL](docs/adr/0015-superficie-publica-da-dsl.md)
 - [API do modo servidor](docs/api-servidor.md) — um exemplo de curl por rota
 - [Schema do cenario](docs/braunrate.schema.json) — autocompletar e validacao no editor
 - [Exemplo de relatorio HTML](docs/exemplo-relatorio.html) — saida real de uma execucao que falhou o SLO

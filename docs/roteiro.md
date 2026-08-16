@@ -71,6 +71,8 @@ Entregue: DSL em Go que monta o mesmo `scenario.Spec` que o YAML monta e vai par
 
 Entregue tambem: `import jmx`, traducao **parcial e declarada** do plano do JMeter — requisicao HTTP, cabecalho (com credencial virando variavel de ambiente), CSVDataSet e correlacao viram cenario ou aviso; thread nunca vira taxa; o que nao foi traduzido sai listado elemento a elemento.
 
+**Revisado no fim da Fase 8**: a equivalencia esta travada e o cenario em Go roda — mas so de dentro deste modulo, porque o motor esta em `internal/`. O segundo publico, como anunciado, nao existe para quem consome o braunrate de fora. Decisao em [ADR 0015](adr/0015-superficie-publica-da-dsl.md).
+
 Medido nesta fase: o teto do gerador produzindo em Kafka (15.000 msg/s confirmadas com 6 particoes, 5.000/s com uma, em loopback nesta maquina), e a deteccao de saturacao com passo de mensageria, agora coberta por teste contra broker de verdade.
 
 ## Fase 7 — Chegar onde o teste de verdade acontece

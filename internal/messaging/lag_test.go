@@ -166,6 +166,12 @@ cenario:
 		if strings.Contains(warning.Message, "chave") {
 			t.Fatalf("o aviso mandou variar a chave, que nao e o que resolve: %s", warning.Message)
 		}
+		// Whoever declared a fixed partition out of convenience has to read that
+		// the number stopped being about the topic. Softening it for the case
+		// that was deliberate hides it from the case that was not.
+		if !strings.Contains(warning.Message, "nao representa producao") {
+			t.Fatalf("o aviso nao disse com todas as letras que o numero nao representa producao: %s", warning.Message)
+		}
 	}
 	if !warned {
 		t.Fatalf("carga numa particao so nao foi avisada: %+v", document.Warnings)
