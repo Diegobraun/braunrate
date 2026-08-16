@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Diegobraun/braunrate/internal/metrics"
+	"github.com/Diegobraun/braunrate/internal/report/comparison"
 	"github.com/Diegobraun/braunrate/internal/scenario"
 	"github.com/Diegobraun/braunrate/internal/slo"
 )
@@ -203,5 +204,31 @@ func TestJourneyRuleIsNotApprovedWhenMostJourneysAbort(t *testing.T) {
 	verdict := slo.Evaluate(rules, document, nil)
 	if verdict.Passed {
 		t.Fatal("o gate aprovou a jornada com 490 de 500 jornadas interrompidas")
+	}
+}
+
+// The report travels alone: pasted into a ticket, "pior que a base" does not
+// say which base, and nobody can check it.
+func TestRegressionSentenceNamesTheBaseline(t *testing.T) {
+	document := metrics.Document{
+		Journey: metrics.Journey{Started: 100, Completed: 100,
+			Latency: metrics.Distribution{P95: 31}},
+	}
+	before := metrics.Document{
+		Journey: metrics.Journey{Started: 100, Completed: 100,
+			Latency: metrics.Distribution{P95: 2}},
+	}
+	rules := []scenario.SLORule{{
+		Scope: scenario.ScopeRegression, Metrica: "jornada_p95",
+		Operator: scenario.OpLess, Limit: 20, Unit: "%", Text: "jornada_p95: < 20",
+	}}
+
+	base := &slo.Baseline{Comparison: comparison.Compare(before, document), Path: "antes-do-cache.json"}
+	verdict := slo.Evaluate(rules, document, base)
+	if verdict.Passed {
+		t.Fatal("regressao de 15 vezes passou no gate")
+	}
+	if !strings.Contains(verdict.Evaluations[0].Sentence, "antes-do-cache.json") {
+		t.Errorf("a frase nao diz contra qual base comparou: %q", verdict.Evaluations[0].Sentence)
 	}
 }

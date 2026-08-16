@@ -465,7 +465,7 @@ Com o alvo 12 vezes mais lento, o criterio por passo continuou aprovando e a reg
 
 ```
   ok    Passou: "consultar pedido" teve latencia p95 de 61 ms, dentro do limite de 150 ms.
-  FALHA Falhou: a jornada inteira (p95) ficou 931.0% pior que a base, acima do limite de 10% pior (de 12 ms para 122 ms).
+  FALHA Falhou: a jornada inteira (p95) ficou 931.0% pior que execucao-anterior.json, acima do limite de 10% pior (de 12 ms para 122 ms).
 ```
 
 Quando a comparacao tem ressalva que explica a diferenca sozinha — outra maquina, outro cenario, outra versao, outro modelo de chegada — **a regra nao reprova**, e diz por que:

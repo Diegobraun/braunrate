@@ -155,7 +155,7 @@ func evaluateRegression(rule scenario.SLORule, evaluation Evaluation, baseline *
 			readableName(rule.Metrica), comparison.AcceptedNoise*100)
 		return evaluation
 	}
-	evaluation.Sentence = phraseRegression(evaluation, rule, difference)
+	evaluation.Sentence = phraseRegression(evaluation, rule, difference, baseline.Path)
 	return evaluation
 }
 
@@ -292,13 +292,23 @@ func phraseEvaluation(evaluation Evaluation, rule scenario.SLORule) string {
 		comparison, format(evaluation.Limit, evaluation.Unit))
 }
 
-func phraseRegression(evaluation Evaluation, rule scenario.SLORule, difference comparison.Difference) string {
+// The base is named because the report travels alone: pasted into a ticket,
+// "pior que a base" does not say which base, and nobody can check it.
+func phraseRegression(evaluation Evaluation, rule scenario.SLORule, difference comparison.Difference, base string) string {
+	verb, side := "Falhou", "acima"
 	if evaluation.Passed {
-		return fmt.Sprintf("Passou: %s ficou %s que a base, dentro do limite de %s (de %.0f ms para %.0f ms).",
-			readableName(rule.Metrica), changeText(evaluation.Obtained), format(rule.Limit, rule.Unit), difference.Before, difference.After)
+		verb, side = "Passou", "dentro"
 	}
-	return fmt.Sprintf("Falhou: %s ficou %s que a base, acima do limite de %s (de %.0f ms para %.0f ms).",
-		readableName(rule.Metrica), changeText(evaluation.Obtained), format(rule.Limit, rule.Unit), difference.Before, difference.After)
+	return fmt.Sprintf("%s: %s ficou %s que %s, %s do limite de %s (de %.0f ms para %.0f ms).",
+		verb, readableName(rule.Metrica), changeText(evaluation.Obtained), baseName(base), side,
+		format(rule.Limit, rule.Unit), difference.Before, difference.After)
+}
+
+func baseName(path string) string {
+	if strings.TrimSpace(path) == "" {
+		return "a base"
+	}
+	return path
 }
 
 // A gate made only of step rules approves a scenario whose journey nobody
