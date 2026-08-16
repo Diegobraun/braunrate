@@ -160,7 +160,9 @@ Dependencia permitida em uma direcao so: `report` depende de `metrics` e `scenar
 
 `metrics` **importa `protocol`**, e isso e deliberado: o vocabulario compartilhado — classe de erro, atributo de resposta, atraso de consumidor — vive no pacote de protocolo e nao pertence a nenhum protocolo em particular. O que continua sendo erro de arquitetura e `metrics` conhecer **um** protocolo: um `import` de `protocol/kafka` ali seria o comeco de metrica especifica, e um teste reprova o build se aparecer.
 
-**Divida conhecida**, achada relendo esta pagina contra o codigo na Fase 8: `metrics/variety.go` escreve a frase de particao do Kafka, entao ha conhecimento de um protocolo dentro de `metrics` na forma de texto. O conselho da frase e especifico demais para ser generico ("faca a chave variar por iteracao") e o ADR 0003 §3 proibe o protocolo de escrever no relatorio, entao as duas saidas obvias estao fechadas; fica registrado como divida ate aparecer a terceira.
+**Divida quitada em 2026-08-16.** `metrics/variety.go` escrevia a frase de particao do Kafka reconhecendo o prefixo do nome da dimensao, entao havia conhecimento de um protocolo dentro de `metrics` na forma de texto. As duas saidas obvias estavam fechadas: generalizar a frase perde o conselho util ("faca a chave variar por iteracao"), e deixar o protocolo escrever no relatorio contraria o ADR 0003 §3.
+
+A terceira saida: o protocolo declara `protocol.Collapse` junto com a dimensao — o que ela e, o que significa cair num valor so, e o que fazer. A medicao compoe a frase e decide **se** avisa e com que gravidade; ela nao reconhece nome de dimensao nenhum. O dominio atravessa a fronteira como dado, do mesmo jeito que a chave de agregacao e a classificacao de erro ja atravessavam. `TestMetricsDoesNotNameAnyProtocolInItsText` le o texto dos arquivos do pacote e reprova o codigo anterior.
 
 ## Preparacao para execucao distribuida
 

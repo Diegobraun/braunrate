@@ -461,7 +461,7 @@ func (executor *Executor) runStep(runContext context.Context, step scenario.Step
 	observation.Duration = sample.FinishedAt.Sub(sample.SentAt)
 
 	if collector := executor.collector.Load(); collector != nil && len(response.Attributes) > 0 {
-		collector.RecordUses(response.Attributes)
+		collector.RecordDimensions(response.Attributes, response.Collapses)
 	}
 
 	if response.Key != "" {

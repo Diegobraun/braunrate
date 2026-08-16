@@ -335,6 +335,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		Bytes:      int64(len(message.body)),
 		Class:      protocol.Success,
 		Attributes: message.attributes,
+		Collapses:  message.collapses,
 	}
 }
 

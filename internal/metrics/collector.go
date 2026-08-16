@@ -200,6 +200,18 @@ func (collector *Collector) RecordJourney(scheduled, end time.Time, complete boo
 // RecordUses counts an iteration's substitutions off the histogram hot path:
 // one write per iteration, not one per request.
 func (collector *Collector) RecordUses(uses map[string]string) {
+	collector.recordUses(uses, nil)
+}
+
+// RecordDimensions grava o mesmo que RecordUses e guarda, junto, o que o dono
+// da dimensao diz sobre ela ter colapsado. Sem isso, quem escreve o aviso
+// precisa reconhecer o nome da dimensao — e ai a medicao passa a conhecer um
+// protocolo em particular.
+func (collector *Collector) RecordDimensions(uses map[string]string, collapses map[string]protocol.Collapse) {
+	collector.recordUses(uses, collapses)
+}
+
+func (collector *Collector) recordUses(uses map[string]string, collapses map[string]protocol.Collapse) {
 	if len(uses) == 0 {
 		return
 	}
@@ -212,6 +224,9 @@ func (collector *Collector) RecordUses(uses map[string]string) {
 			collector.variety[name] = counter
 		}
 		counter.record(value)
+		if note, declared := collapses[name]; declared && counter.collapse == nil {
+			counter.collapse = &note
+		}
 	}
 }
 

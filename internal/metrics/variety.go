@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Diegobraun/braunrate/internal/protocol"
 	"github.com/Diegobraun/braunrate/internal/texto"
 )
 
@@ -28,6 +29,9 @@ type Variety struct {
 	// tells nobody which two, and the difference between them is the whole point.
 	Shapes   []string `json:"formas_observadas,omitempty"`
 	Sentence string   `json:"frase"`
+	// O que o protocolo dono desta dimensao diz sobre ela ter colapsado. A
+	// medicao decide se avisa e com que gravidade; o dominio vem de quem sabe.
+	Collapse *protocol.Collapse `json:"colapso,omitempty"`
 }
 
 // Range describes where the values landed. Numbers get the interval they
@@ -46,9 +50,10 @@ const (
 )
 
 type varietyCounter struct {
-	seen   map[string]struct{}
-	uses   int64
-	capped bool
+	seen     map[string]struct{}
+	uses     int64
+	capped   bool
+	collapse *protocol.Collapse
 
 	numeric  bool
 	first    bool
@@ -159,6 +164,7 @@ func buildVarieties(counters map[string]*varietyCounter, available Availability)
 		if counter.capped {
 			variety.Distinct = distinctValuesCap
 		}
+		variety.Collapse = counter.collapse
 		if howMany, knows := available[name]; knows {
 			variety.Available = howMany
 		}
@@ -266,18 +272,15 @@ func VarietyWarnings(varieties []Variety) []Warning {
 		message := fmt.Sprintf("a execucao inteira rodou com um unico valor de %s, embora a fonte tenha mais; o alvo pode ter respondido de cache, e o resultado nao representa a carga declarada",
 			variety.Name)
 		severity := SeverityHigh
-		if strings.HasPrefix(variety.Name, "kafka.particao.") {
-			message = fmt.Sprintf("toda a carga caiu numa particao so de %s; o resto do cluster ficou parado e o numero nao representa producao. Faca a chave da mensagem variar por iteracao",
-				strings.TrimPrefix(strings.TrimPrefix(variety.Name, "kafka.particao.consumida."), "kafka.particao."))
-		}
-		// A partition the scenario asked for is not the same defect: nobody
-		// forgot to vary the key, and telling them to vary it sends them looking
-		// for a bug they did not write. The concentration is still worth saying,
-		// because the number that comes out is not production shape.
-		if strings.HasPrefix(variety.Name, "kafka.particao.declarada.") {
-			message = fmt.Sprintf("toda a carga caiu na particao declarada de %s: o resto do cluster ficou parado e este numero nao representa producao — e o de uma particao, nao o do topico. Tire 'particao' do passo para distribuir",
-				strings.TrimPrefix(variety.Name, "kafka.particao.declarada."))
-			severity = SeverityMedium
+		// Uma concentracao que o cenario pediu nao e o mesmo defeito: ninguem
+		// esqueceu de variar, e mandar variar manda procurar um defeito que a
+		// pessoa nao escreveu. Continua valendo dizer, porque o numero que sai
+		// nao tem a forma de producao.
+		if note := variety.Collapse; note != nil {
+			message = fmt.Sprintf("toda a carga caiu em %s: %s. %s", note.Subject, note.Meaning, note.Remedy)
+			if note.Declared {
+				severity = SeverityMedium
+			}
 		}
 
 		evidence := fmt.Sprintf("%s tinha %d valores disponiveis e a execucao usou 1, em %s usos",

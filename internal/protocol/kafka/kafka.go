@@ -351,11 +351,30 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		Class: protocol.Success,
 	}
 	if partition >= 0 {
-		response.Attributes = map[string]string{
-			implementation.varietyName(config.Topic): strconv.Itoa(partition),
-		}
+		name := implementation.varietyName(config.Topic)
+		response.Attributes = map[string]string{name: strconv.Itoa(partition)}
+		response.Collapses = map[string]protocol.Collapse{name: collapseOf(config)}
 	}
 	return response
+}
+
+// O que significa a execucao inteira cair numa particao so, dito por quem sabe.
+// A medicao decide se avisa e com que gravidade; ela nao tem como saber o que e
+// uma particao nem o que faz a carga se espalhar entre elas.
+func collapseOf(config *Config) protocol.Collapse {
+	if config.Partition != nil {
+		return protocol.Collapse{
+			Subject:  "a particao declarada de " + config.Topic,
+			Meaning:  "o resto do cluster ficou parado e este numero nao representa producao — e o de uma particao, nao o do topico",
+			Remedy:   "Tire 'particao' do passo para distribuir",
+			Declared: true,
+		}
+	}
+	return protocol.Collapse{
+		Subject: "uma particao so de " + config.Topic,
+		Meaning: "o resto do cluster ficou parado e o numero nao representa producao",
+		Remedy:  "Faca a chave da mensagem variar por iteracao",
+	}
 }
 
 // A declared partition needs a balancer that answers it: kafka-go decides the

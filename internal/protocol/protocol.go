@@ -81,6 +81,29 @@ type Response struct {
 	// variety: Kafka partition, AMQP queue. Empty for protocols with nothing
 	// to declare, and then it costs nothing.
 	Attributes map[string]string
+	// What each of those facts means when the whole run lands on a single
+	// value, by attribute name. Optional.
+	Collapses map[string]Collapse
+}
+
+// Collapse e o que o protocolo sabe sobre a propria dimensao e a medicao nao
+// tem como saber: o que a dimensao e, o que significa a execucao inteira cair
+// num valor so, e o que fazer a respeito.
+//
+// A divisao: o protocolo traz o dominio, a medicao decide se avisa e com que
+// gravidade. Sem isso, quem decide precisa reconhecer o nome da dimensao — e ai
+// a medicao passa a conhecer um protocolo em particular, que e o que o ADR 0003
+// §3 proibe.
+type Collapse struct {
+	// "particao de pedidos-eventos"
+	Subject string
+	// "o resto do cluster ficou parado e o numero nao representa producao"
+	Meaning string
+	// "Faca a chave da mensagem variar por iteracao"
+	Remedy string
+	// O cenario pediu esta concentracao. Ninguem esqueceu de variar a chave, e
+	// mandar variar manda procurar um defeito que a pessoa nao escreveu.
+	Declared bool
 }
 
 // WithBody is implemented by protocols whose request carries a body, so the

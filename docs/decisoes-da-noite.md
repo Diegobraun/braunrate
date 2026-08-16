@@ -18,7 +18,7 @@ Toca o usuario: sim, e a mudanca mais visivel desta revisao. `Build()` da DSL pa
 
 Alternativa considerada: cumprir a regra como estava escrita, movendo `ErrorClass` e `ConsumerLag` para `metrics` e invertendo o import.
 
-Por que esta: `docs/arquitetura.md` dizia que um import de `protocol` dentro de `metrics` e erro de arquitetura, e esse import existe desde muito antes desta noite, por causa de `ErrorClass`. Inverter mexeria em todos os protocolos de uma vez, de madrugada, para separar um vocabulario que nao pertence a protocolo nenhum. O que a regra protege de verdade e `metrics` conhecer **um** protocolo — e isso agora e teste, nao frase. Fica registrada a divida que sobra: `metrics/variety.go` escreve a frase de particao do Kafka, e as duas saidas obvias estao fechadas (generalizar perde o conselho util; deixar o protocolo escrever contraria o ADR 0003 §3).
+Por que esta: `docs/arquitetura.md` dizia que um import de `protocol` dentro de `metrics` e erro de arquitetura, e esse import existe desde muito antes desta noite, por causa de `ErrorClass`. Inverter mexeria em todos os protocolos de uma vez, de madrugada, para separar um vocabulario que nao pertence a protocolo nenhum. O que a regra protege de verdade e `metrics` conhecer **um** protocolo — e isso agora e teste, nao frase. Fica registrada a divida que sobra: `metrics/variety.go` escreve a frase de particao do Kafka, e as duas saidas obvias estao fechadas (generalizar perde o conselho util; deixar o protocolo escrever contraria o ADR 0003 §3). **Quitada em 2026-08-16** pela terceira saida, registrada em `docs/arquitetura.md`.
 
 Reversibilidade: barato como texto e teste; a inversao de dependencia continua possivel depois, e mais cara.
 

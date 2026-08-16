@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Diegobraun/braunrate/internal/messaging"
+	"github.com/Diegobraun/braunrate/internal/protocol"
 	"github.com/segmentio/kafka-go"
 	"github.com/tidwall/gjson"
 )
@@ -21,6 +22,7 @@ const heldMessagesCap = 50000
 type message struct {
 	body       []byte
 	attributes map[string]string
+	collapses  map[string]protocol.Collapse
 	chegadaEm  time.Time
 }
 
@@ -201,10 +203,15 @@ func openKafka(config *Config, brokers []string, broker *messaging.Broker) (*sub
 					continue
 				}
 				subscription.deliver(subscription.correlationOf(record.Key, record.Value), message{
-					body:      record.Value,
-					chegadaEm: time.Now(),
-					attributes: map[string]string{
-						"kafka.particao.consumida." + config.Topic: strconv.Itoa(number),
+					body:       record.Value,
+					chegadaEm:  time.Now(),
+					attributes: map[string]string{consumedPartition(config.Topic): strconv.Itoa(number)},
+					collapses: map[string]protocol.Collapse{
+						consumedPartition(config.Topic): {
+							Subject: "uma particao so de " + config.Topic,
+							Meaning: "o consumidor leu de uma particao e o resto do topico nao foi exercitado, entao o atraso medido nao e o do topico",
+							Remedy:  "Faca a chave da mensagem variar por iteracao para espalhar a producao",
+						},
 					},
 				})
 			}
@@ -331,3 +338,5 @@ func normalizeAMQP(address string) string {
 	}
 	return "amqp://" + address
 }
+
+func consumedPartition(topic string) string { return "kafka.particao.consumida." + topic }
