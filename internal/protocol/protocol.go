@@ -125,6 +125,20 @@ type ConsumerLag struct {
 	Problem     string        `json:"problema,omitempty"`
 }
 
+// WithBrokers is implemented by step configurations that need a broker address
+// to run at all. The scenario asks before the load starts: a step with no
+// address in the step, none in the messaging block and a target of another
+// technology can never execute, and that is three static facts, not a runtime
+// surprise.
+type WithBrokers interface {
+	Config
+	// BrokerTechnology is the key the messaging block is looked up by.
+	BrokerTechnology() string
+	// DeclaredBrokers is what the step itself carries, empty when it expects
+	// the address to come from the scenario.
+	DeclaredBrokers() []string
+}
+
 // WithConsumerLag is implemented by protocols that watched a consumer group
 // while the load ran.
 type WithConsumerLag interface {

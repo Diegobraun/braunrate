@@ -390,3 +390,12 @@ func summarize(text string) string {
 }
 
 func (config *Config) RequestBody() []byte { return config.Body }
+
+func (config *Config) BrokerTechnology() string { return "amqp" }
+
+func (config *Config) DeclaredBrokers() []string {
+	if config.URL == "" {
+		return nil
+	}
+	return []string{config.URL}
+}

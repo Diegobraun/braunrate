@@ -595,3 +595,7 @@ func (implementation *Protocol) watchLag(config *Config, brokers []string, broke
 
 // The value of the message is its body: what a consumer has to know how to read.
 func (config *Config) RequestBody() []byte { return config.Value }
+
+func (config *Config) BrokerTechnology() string { return "kafka" }
+
+func (config *Config) DeclaredBrokers() []string { return config.Brokers }

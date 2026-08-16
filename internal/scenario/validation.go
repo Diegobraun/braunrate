@@ -60,6 +60,8 @@ func (c Spec) Validate() error {
 		}
 	}
 
+	problems = append(problems, checkBrokers(&c)...)
+
 	for _, phase := range c.Load.Phases {
 		if phase.For <= 0 {
 			problems = append(problems, fmt.Sprintf("linha %d: perfil %s sem duracao", phase.Line, phase.Kind))

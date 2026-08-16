@@ -136,3 +136,82 @@ func TestMSKIsDescribedByRegionAndChainNeverByCredential(t *testing.T) {
 		t.Fatal("msk_iam sem TLS: a AWS so aceita a porta 9098 com TLS")
 	}
 }
+
+// A kafka step with no address in the step, none in the messaging block and an
+// HTTP target can never run: `debug` said so at the first iteration and
+// `validate` — the cheap gate CI runs — signed it off as valid.
+func TestKafkaStepWithoutAnyBrokerIsRefusedByValidation(t *testing.T) {
+	spec, err := scenario.Parse([]byte(`
+nome: x
+alvo: http://127.0.0.1:8090
+
+carga:
+  perfis:
+    - patamar: { taxa: 1/s, durante: 1s }
+
+cenario:
+  - nome: publicar evento
+    kafka: { topico: pedidos, valor: "{}" }
+`))
+	if err != nil {
+		t.Fatalf("o cenario nao deveria falhar na leitura: %v", err)
+	}
+	problem := spec.Validate()
+	if problem == nil {
+		t.Fatal("validacao aprovou um passo kafka sem endereco de broker em lugar nenhum")
+	}
+	for _, expected := range []string{"publicar evento", "mensageria", "brokers"} {
+		if !strings.Contains(problem.Error(), expected) {
+			t.Errorf("a mensagem nao ensina o caminho: falta %q em\n%s", expected, problem)
+		}
+	}
+}
+
+// The target is the address whenever it is not an HTTP one, with or without
+// scheme. Refusing here what the run accepts would be worse than not refusing.
+func TestBrokerTargetIsEnoughForAKafkaStep(t *testing.T) {
+	for _, target := range []string{"kafka://127.0.0.1:9092", "127.0.0.1:9092"} {
+		spec, err := scenario.Parse([]byte(`
+nome: x
+alvo: ` + target + `
+
+carga:
+  perfis:
+    - patamar: { taxa: 1/s, durante: 1s }
+
+cenario:
+  - kafka: { topico: pedidos, valor: "{}" }
+`))
+		if err != nil {
+			t.Fatalf("alvo %q: %v", target, err)
+		}
+		if problem := spec.Validate(); problem != nil {
+			t.Errorf("alvo %q e endereco de broker e foi recusado: %v", target, problem)
+		}
+	}
+}
+
+// Waiting over HTTP polls the target and needs no broker at all.
+func TestWaitingOverHTTPNeedsNoBroker(t *testing.T) {
+	spec, err := scenario.Parse([]byte(`
+nome: x
+alvo: http://127.0.0.1:8090
+
+carga:
+  perfis:
+    - patamar: { taxa: 1/s, durante: 1s }
+
+cenario:
+  - http: POST /pedidos
+    captura: { pedidoId: $.pedido.id }
+  - aguardar:
+      http: { caminho: "/pedidos/${pedidoId}" }
+      ate: { $.status: PROCESSADO }
+`))
+	if err != nil {
+		t.Fatalf("o cenario nao deveria falhar na leitura: %v", err)
+	}
+	if problem := spec.Validate(); problem != nil {
+		t.Errorf("aguardar por http foi cobrado por um broker que nao usa: %v", problem)
+	}
+}

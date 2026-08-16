@@ -365,3 +365,14 @@ func targetAddresses(target string) []string {
 	}
 	return strings.Split(strings.TrimSuffix(target, "/"), ",")
 }
+
+// Waiting over HTTP needs no broker; waiting on a topic does, and it is the
+// same address the producing step would use.
+func (config *Config) BrokerTechnology() string {
+	if config.Source == "http" {
+		return ""
+	}
+	return config.Source
+}
+
+func (config *Config) DeclaredBrokers() []string { return config.Addresses }
