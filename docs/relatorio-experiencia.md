@@ -618,6 +618,14 @@ limites do SLO, e resultado inválido no veredito da execução. Desligam juntas
 caixa "explicações" do topo — por sessão, como o `-quiet`, sem guardar
 preferência que o arquivo não guarda. Decisão 13.
 
+**Fechado — o site não tinha busca.** As seis perguntas do roteiro foram
+respondidas em no máximo dois cliques, mas todas eram perguntas cuja página dava
+para adivinhar pelo nome; quem chega com a mensagem de erro na mão procura pelo
+texto do erro. O site passou a ter busca com índice gerado na build e servido
+junto — `/` ou `Ctrl+K`, resultado com o trecho onde a palavra apareceu, nada
+buscado da rede. Buscar `401` traz "Todas as requisições voltam 401 ou 403" em
+primeiro lugar. Decisão 16.
+
 **1. Ler o relatório inteiro ainda pede vocabulário.** Jornada, sanidade,
 variedade observada e taxa efetiva são explicados no lugar em que aparecem, mas
 são muitos blocos numa tela só, e a ordem de leitura está no guia — não na
@@ -628,12 +636,7 @@ sobe HTTP e sobe o processador assíncrono, mas só se você já tiver um Kafka
 apontado. Para os dois protocolos de mensageria não existe caminho de dez
 minutos.
 
-**3. O site não tem busca.** Seis perguntas foram respondidas em no máximo dois
-cliques, mas todas eram perguntas cuja página dava para adivinhar pelo nome.
-Quem chega com a mensagem de erro na mão procura pelo texto do erro, e hoje
-depende do `Ctrl+F` da página certa.
-
-**4. Windows não foi verificado.** As três fases foram percorridas em macOS. O
+**3. Windows não foi verificado.** As três fases foram percorridas em macOS. O
 binário é publicado para Windows, o `-open` tem o ramo do `rundll32`, e nada
 disso foi aberto numa máquina Windows por uma pessoa que nunca usou a
 ferramenta. Enquanto não for, a promessa dos dez minutos vale para macOS e

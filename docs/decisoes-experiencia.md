@@ -214,3 +214,55 @@ toca o usuário.
   guardado: preferência guardada seria estado da interface que o arquivo não
   guarda, recusado na [ADR 0018](adr/0018-interface-como-editor-do-arquivo.md).
 
+## 14. A dobra da página inicial é declarada no markdown, não montada no gerador
+
+- **Decisão**: a primeira tela da página inicial — lema, resumo, comando,
+  ficha e a prova dos dois números — sai de um bloco ```` ```dobra ```` no
+  próprio `docs/guias/00-comecar-inicio.md`. O parágrafo de abertura antigo, que
+  abria com "modelo de chegada aberto, HDR histogram e detecção de
+  back-pressure", saiu: o jargão continua em Conceitos, onde quem procura o
+  termo vai.
+- **Alternativa**: montar a dobra no gerador, com o texto dentro do Go.
+- **Por que esta**: o texto que a pessoa lê primeiro tem que viver onde o resto
+  do texto vive, chegar por pull request e aparecer no "editar esta página". Um
+  texto de abertura dentro do gerador é o texto que ninguém acha para corrigir.
+- **Reversibilidade**: alta.
+- **Toca o usuário**: sim, e é a primeira coisa que ele vê.
+- **Efeito colateral**: os números da dobra também estão na tabela detalhada da
+  mesma página. Um teste exige que os três apareçam nos dois lugares, para não
+  existir número que envelhece sozinho.
+
+## 15. Uma cor de marca, com orçamento de três usos por tela
+
+- **Decisão**: violeta como cor de marca, usada em três lugares — item ativo da
+  navegação, link e o número da prova. Todo o resto em escala de cinza, com
+  hierarquia por tamanho e peso. Tema claro e escuro, respeitando a preferência
+  do sistema, com alternador manual que fica guardado no navegador.
+- **Alternativa**: o azul de link padrão, que é o tema de gerador de
+  documentação.
+- **Por que esta**: verde e vermelho já significam passou e falhou no relatório,
+  e reusá-los no site faria o leitor procurar significado onde não há. O
+  violeta é a cor que sobra sem colidir com o vocabulário do produto.
+- **Reversibilidade**: alta: é uma variável de CSS.
+- **Toca o usuário**: sim, em toda página.
+- **Efeito colateral**: o destaque de sintaxe passou a sair em classe, com duas
+  paletas geradas na build, e cada cor abaixo de 4,5:1 é clareada até passar no
+  AA — a paleta do chroma entregava comentário em 3,8:1. O contraste é conferido
+  por teste, não estimado.
+
+## 16. A busca é gerada na build e viaja com o site
+
+- **Decisão**: índice JSON gerado das mesmas páginas, servido junto (23 KB
+  comprimidos), busca no cliente, atalho `/` ou `Ctrl+K`, resultado com o trecho
+  onde a palavra apareceu.
+- **Alternativa**: um serviço de busca hospedado, que é o caminho de uma linha.
+- **Por que esta**: a mesma regra do relatório e da interface — nada é buscado
+  da rede. Serviço de busca entrega ao terceiro a lista de quem leu a
+  documentação, e não abre em rede fechada.
+- **Reversibilidade**: alta.
+- **Toca o usuário**: sim; era o item que faltava para quem chega com a mensagem
+  de erro na mão.
+- **Efeito colateral**: o índice cresce com a documentação. Hoje são 110 seções
+  em 75 KB de texto; se passar de alguns megabytes, o corte por seção vira corte
+  por parágrafo.
+
