@@ -31,6 +31,72 @@ Duas coisas para saber antes de acreditar no número:
 
 Arquivo completo: [`examples/jornada-autenticada.yaml`](https://github.com/Diegobraun/braunrate/blob/main/examples/jornada-autenticada.yaml).
 
+### Cabeçalho, query string e caminho
+
+`obter` é uma requisição inteira: método, caminho com query string, cabeçalhos e
+corpo. E tudo o que a captura produz vira variável nos passos seguintes, então o
+token entra onde você escrever `${token}` — cabeçalho, query ou caminho.
+
+```yaml trecho
+autenticacao:
+  tipo: token
+  cabecalho: "Authorization: Bearer ${token}"
+  obter:
+    http:
+      metodo: POST
+      caminho: /auth/token?origem=braunrate&tenant=${TENANT}
+      cabecalhos: { X-Cliente: teste-de-carga }
+      corpo: { usuario: ana, senha: "${SENHA}" }
+    captura: { token: $.access_token }
+
+cenario:
+  - http:
+      metodo: POST
+      caminho: /faturas/f-${pedidos.id}/pagar?tk=${token}&tenant=${TENANT}
+      cabecalhos: { X-Correlacao: "${pedidos.id}" }
+    nome: pagar fatura
+```
+
+O `braunrate debug` mostra o que saiu, com o segredo cortado:
+
+```
+passo 1 — pagar fatura   [ok em 5.9ms]
+  requisição: POST /faturas/f-3958/pagar?tk=token-de-teste&tenant=acme
+              Authorization: Bearer token-… (14 caracteres)
+              X-Correlacao: 3958
+  resposta:   status 200, 63 bytes
+```
+
+> **Nota** A injeção automática é sempre um cabeçalho, e `cabecalho:` aceita
+> qualquer `Nome: valor` — o padrão é `Authorization: Bearer ${token}`. Token na
+> query ou no caminho é você quem escreve, com `${token}` no passo.
+
+Duas coisas que economizam uma volta:
+
+- **Dentro de `obter` só cabem ambiente e valor fixo.** O login acontece uma vez,
+  antes das jornadas, então `${pedidos.id}` ali não existe — e a validação recusa
+  em vez de mandar a requisição com o campo vazio.
+- **`${TENANT}` em caixa alta vem do ambiente sem declarar nada.** Nome em
+  minúscula precisa de `variaveis`, `dados` ou `captura`.
+
+### Uma chave de API, sem login
+
+Quando não há requisição de login — a credencial já está no ambiente — o bloco
+tem uma linha:
+
+```yaml trecho
+autenticacao: { tipo: cabecalho, cabecalho: "X-API-Key: ${API_KEY}" }
+```
+
+O cabeçalho vai em todos os passos, e a saída mostra que ele foi enviado sem
+mostrar o valor:
+
+```
+passo 1 — consultar pedido   [ok em 7.4ms]
+  requisição: GET /pedidos/1?origem=braunrate
+              X-API-Key: ***
+```
+
 ## Cada jornada precisa de dados próprios
 
 Duas fontes: um CSV que você já tem, ou valores gerados.
