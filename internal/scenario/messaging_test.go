@@ -43,7 +43,7 @@ func TestLiteralSecretIsRefusedAndTheMessageTeachesTheWayOut(t *testing.T) {
 			if err == nil {
 				t.Fatal("o cenário com segredo no arquivo foi aceito")
 			}
-			for _, fragment := range []string{"${BROKER_SENHA}", "vai para o repositorio", "BROKER_SENHA=..."} {
+			for _, fragment := range []string{"${BROKER_SENHA}", "vai para o repositório", "BROKER_SENHA=..."} {
 				if !strings.Contains(err.Error(), fragment) {
 					t.Fatalf("a mensagem não ensina %q: %v", fragment, err)
 				}

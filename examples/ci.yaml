@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
-nome: Fumaca de CI
+nome: Fumaça de CI
 alvo: http://127.0.0.1:8080
 
 autenticacao:
@@ -14,8 +14,8 @@ carga:
     - patamar: { taxa: 200/s, durante: 3s }
 
 cenario:
-  # Caminho fixo de proposito: fumaca so pergunta se o servico responde. A
-  # ferramenta avisa que o numero fica otimista, e aqui isso esta certo — para
+  # Caminho fixo de propósito: a fumaça só pergunta se o serviço responde. A
+  # ferramenta avisa que o número fica otimista, e aqui isso está certo: para
   # medir tempo de resposta de verdade, o caminho precisa variar.
   - http: GET /pedidos/1
     nome: consultar pedido

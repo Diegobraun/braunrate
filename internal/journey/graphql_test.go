@@ -17,7 +17,7 @@ import (
 )
 
 const graphqlScenario = `
-nome: Cobranca via GraphQL
+nome: Cobrança via GraphQL
 alvo: %s
 
 autenticacao:

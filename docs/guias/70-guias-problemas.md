@@ -8,11 +8,11 @@ cada um e o que fazer. Todas as mensagens citadas são saída real da ferramenta
 | [`connection refused`](#o-alvo-nao-respondeu) | o alvo não está no ar, ou o endereço está errado |
 | [`status 401` ou `403` em tudo](#todas-as-requisicoes-voltam-401-ou-403) | o cenário não declara autenticação |
 | [`Resultado inválido`, código 3](#resultado-invalido-e-codigo-de-saida-3) | a execução não mediu o que se propôs a medir |
-| [`nao sei de onde vem ${...}`](#referencia-a-variavel-sem-origem) | referência sem origem declarada |
-| [`a variavel de ambiente X nao esta definida`](#variavel-de-ambiente-nao-definida) | falta a variável, ou falta um valor de reserva |
-| [`senha literal no cenario`](#segredo-escrito-no-arquivo) | credencial escrita no arquivo |
-| [`chave desconhecida no topo do cenario`](#chave-desconhecida) | erro de digitação, ou chave que não existe |
-| [`certificado assinado por CA que esta maquina nao conhece`](#certificado-de-ca-interna) | falta declarar a CA interna |
+| [`não sei de onde vem ${...}`](#referencia-a-variavel-sem-origem) | referência sem origem declarada |
+| [`a variável de ambiente X não está definida`](#variavel-de-ambiente-nao-definida) | falta a variável, ou falta um valor de reserva |
+| [`senha literal no cenário`](#segredo-escrito-no-arquivo) | credencial escrita no arquivo |
+| [`chave desconhecida no topo do cenário`](#chave-desconhecida) | erro de digitação, ou chave que não existe |
+| [`certificado assinado por CA que esta máquina não conhece`](#certificado-de-ca-interna) | falta declarar a CA interna |
 | [tempos do passo 2 baixos demais](#os-tempos-do-segundo-passo-parecem-baixos-demais) | do segundo passo em diante o tempo é de serviço |
 | [aviso de que nada varia](#o-relatorio-avisa-que-nenhum-valor-varia) | o cenário manda sempre a mesma requisição |
 | [o sistema bloqueia o binário](#o-macos-ou-o-windows-bloqueiam-o-binario) | não há assinatura de código |
@@ -22,11 +22,12 @@ cada um e o que fazer. Todas as mensagens citadas são saída real da ferramenta
 ## O alvo não respondeu
 
 ```
-passo 1 — get pedidos 1   [FALHOU em 500µs]
+passo 1 — get pedidos 1   [FALHOU em 2.9ms]
+  requisição: GET /pedidos/1
   problema:   falha de rede
               connection refused
 
-Ninguem atendeu em http://127.0.0.1:8080. Confira se o servico esta no ar e se o endereco esta certo.
+Ninguém atendeu em http://127.0.0.1:8080. Confira se o serviço está no ar e se o endereço está certo.
 ```
 
 **Causa.** Nada está escutando no endereço declarado em `alvo`.
@@ -44,10 +45,12 @@ braunrate target -latency=5ms
 ## Todas as requisições voltam 401 ou 403
 
 ```
-  resposta:   status 401, 36 bytes
-  corpo:      {"erro":"token ausente ou invalido"}
+  resposta:   status 401, 37 bytes
+  corpo:      {"erro":"token ausente ou inválido"}
+  problema:   status HTTP inesperado
+              status 401
 
-O alvo recusou por credencial, e o cenario nao declara autenticacao nenhuma.
+O alvo recusou por credencial, e o cenário não declara autenticação nenhuma.
 ```
 
 **Causa.** O alvo exige credencial e o cenário não tem bloco `autenticacao`.
@@ -86,9 +89,12 @@ propôs a medir. Nenhuma regra de critério de aceite chega a ser avaliada.
 ## Referência a variável sem origem
 
 ```
-erro no cenario: cenario.yaml:14:26: nao sei de onde vem ${faturald}.
-    voce quis dizer "faturaId"?
-    disponiveis: faturaId, tenant
+erro no cenário: cenario.yaml:11:24: não sei de onde vem ${faturald}.
+    disponíveis: faturas.faturaId, tenant
+    declare de onde ela vem:
+      variaveis: { faturald: valor }                 # fixa no cenario
+      variaveis: { faturald: "${FATURALD:-reserva}" }   # do ambiente, com reserva
+      captura: { faturald: $.campo }                 # de uma resposta anterior
 ```
 
 **Causa.** A referência não vem de `variaveis`, de `dados`, de uma `captura`
@@ -101,9 +107,9 @@ branco, o alvo respondia 401 ou 404, e nada na saída ligava uma coisa à outra.
 ## Variável de ambiente não definida
 
 ```
-erro no cenario: cenario.yaml:5:24: taxa invalida: "${TAXA}/s" (use por exemplo 50/s)
-    a variavel de ambiente TAXA nao esta definida, entao este campo ficou com a referencia crua.
-    rode com TAXA=... , ou declare um padrao no arquivo: ${TAXA:-valor}
+erro no cenário: cenario.yaml:5:24: taxa inválida: "${TAXA}/s" (use por exemplo 50/s)
+    a variável de ambiente TAXA não está definida, então este campo ficou com a referência crua.
+    rode com TAXA=... , ou declare um padrão no arquivo: ${TAXA:-valor}
 ```
 
 **Causa.** O campo referencia uma variável que não existe no ambiente e não tem
@@ -118,9 +124,10 @@ TAXA=100 braunrate execute cenario.yaml
 ## Segredo escrito no arquivo
 
 ```
-erro no cenario: homolog.yaml:7:77: senha literal no cenario: credencial nunca vai para o arquivo, porque o arquivo vai para o repositorio.
+erro no cenário: homolog.yaml:6:62: senha literal no cenário: credencial nunca vai para o arquivo, porque o arquivo vai para o repositório.
     troque por:  senha: ${BROKER_SENHA}
     e rode com:  BROKER_SENHA=... braunrate execute cenario.yaml
+    valor de reserva (${VAR:-algo}) também não serve: a reserva seria o segredo escrito no arquivo
 ```
 
 **Causa.** Um campo de credencial tem valor literal.
@@ -135,9 +142,9 @@ escrito no arquivo.
 ## Chave desconhecida
 
 ```
-erro no cenario: cenario.yaml:3:1: chave desconhecida no topo do cenario: "carg"
-    voce quis dizer "carga"?
-    disponiveis: nome, alvo, requer, variaveis, autenticacao, tls, mensageria, dados, carga, cenario, slo
+erro no cenário: cenario.yaml:3:1: chave desconhecida no topo do cenário: "carg"
+    você quis dizer "carga"?
+    disponíveis: nome, alvo, requer, variaveis, autenticacao, tls, mensageria, dados, carga, cenario, slo
 ```
 
 **Causa.** A chave não existe, ou tem erro de digitação.
@@ -154,7 +161,7 @@ linha no topo do arquivo:
 
 ```
 consultar    falha de rede    30    certificado assinado por CA que esta maquin…
-  certificado assinado por CA que esta maquina nao conhece — declare tls: { ca: /caminho/ca.pem }
+  certificado assinado por CA que esta máquina não conhece — declare tls: { ca: /caminho/ca.pem }
 ```
 
 **Causa.** O alvo serve HTTPS com uma autoridade que a máquina não conhece.
@@ -179,8 +186,8 @@ jornada deveria ter começado. A explicação completa está em
 ## O relatório avisa que nenhum valor varia
 
 ```
-Atencao: o passo "consultar pedido" nao tem nenhum valor que varia — toda requisicao vai ser identica.
-    se o alvo guardar resposta por essa chave, o numero sai otimista.
+Atenção: o passo "consultar pedido" não tem nenhum valor que varia — toda requisição vai ser idêntica.
+    se o alvo guardar resposta por essa chave, o número sai otimista.
 ```
 
 **Causa.** O passo não tem nenhuma referência `${}`, então todas as requisições

@@ -1,4 +1,4 @@
-# ADR 0005 — Identidade: um token para a execucao inteira, por enquanto
+# ADR 0005 — Identidade: um token para a execução inteira, por enquanto
 
 - **Status**: aceito
 - **Data**: 2026-08-15

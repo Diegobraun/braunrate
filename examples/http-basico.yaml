@@ -6,7 +6,7 @@ variaveis:
   tenant: ${TENANT:-acme}
 
 # O alvo embutido exige token, como uma API de verdade. Sem este bloco a
-# execucao inteira toma 401 e sai invalida.
+# execução inteira toma 401 e sai inválida.
 autenticacao:
   tipo: token
   obter:

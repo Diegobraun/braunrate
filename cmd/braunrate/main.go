@@ -94,7 +94,7 @@ Nunca usou? Veja funcionando em 30 segundos:
 
     braunrate demo
 
-Já tem uma API para testar? O caminho e:
+Já tem uma API para testar? O caminho é:
 
     1. braunrate import curl 'curl https://sua-api/pedidos -H "Authorization: ..."'
        (ou: braunrate new cenario.yaml, para começar do zero)
@@ -698,7 +698,7 @@ Ctrl+C encerra e escreve o cenário.
 	}
 	if len(entries) == 0 {
 		fmt.Fprintln(os.Stderr, "nenhuma requisição gravada; não vou escrever um cenário vazio")
-		fmt.Fprintln(os.Stderr, "se o trafego era HTTPS, aponte o cliente para o endereço HTTP do serviço, ou use -host para liberar o dominio certo")
+		fmt.Fprintln(os.Stderr, "se o tráfego era HTTPS, aponte o cliente para o endereço HTTP do serviço, ou use -host para liberar o domínio certo")
 		return 1
 	}
 

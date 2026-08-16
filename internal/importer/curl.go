@@ -136,7 +136,7 @@ func interpretar(fields []string) (Request, error) {
 			}
 			key, content, has := strings.Cut(value, ":")
 			if !has {
-				return request, fmt.Errorf("o cabecalho %q não tem dois-pontos; a forma é -H \"Nome: valor\"", value)
+				return request, fmt.Errorf("o cabeçalho %q não tem dois-pontos; a forma é -H \"Nome: valor\"", value)
 			}
 			request.Headers[strings.TrimSpace(key)] = strings.TrimSpace(content)
 		case field == "-d" || field == "--data" || field == "--data-raw" || field == "--data-binary" || field == "--data-ascii":

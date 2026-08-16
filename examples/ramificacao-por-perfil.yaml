@@ -1,13 +1,13 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
 #
-# Nao existe passo condicional, e nao e falta: o caminho de cada perfil e a
-# proporcao entre eles sao conhecimento de negocio, e nenhuma observacao de
-# trafego revela isso. Quem grava uma passagem grava um perfil.
+# Não existe passo condicional, e não é falta: o caminho de cada perfil e a
+# proporção entre eles são conhecimento de negócio, e nenhuma observação de
+# tráfego revela isso. Quem grava uma passagem grava um perfil.
 #
-# A ramificacao honesta e por dado: a coluna decide a rota, e o CSV declara a
-# proporcao. Aqui sao dois terços pessoa fisica para um terço pessoa juridica,
+# A ramificação honesta é por dado: a coluna decide a rota, e o CSV declara a
+# proporção. Aqui são dois terços pessoa física para um terço pessoa jurídica,
 # porque foi assim que as linhas foram escritas.
-nome: Ramificacao por perfil de cliente
+nome: Ramificação por perfil de cliente
 alvo: ${ALVO:-http://127.0.0.1:8080}
 
 dados:
@@ -27,7 +27,7 @@ cenario:
     verificar:
       status: 200
       # Prova que a rota veio do dado: o alvo embutido devolve o caminho que
-      # recebeu. Sem isso, uma coluna vazia interpolaria e a execucao passaria
+      # recebeu. Sem isso, uma coluna vazia interpolaria e a execução passaria
       # medindo outra rota.
       json: { $.caminho: "/${clientes.rota}/${clientes.id}/limite" }
 
@@ -35,8 +35,8 @@ slo:
   - consultar limite: { p95: < 200ms }
   - global: { erros: < 1 }
 
-# O que esta linha unica esconde: se pessoa juridica for mais cara que pessoa
-# fisica, o p95 do passo e o p95 da populacao cara usando o nome do passo
-# inteiro, e quem le procura cauda onde ha duas populacoes. O bloco de variedade
-# observada do relatorio mostra que ${clientes.rota} teve dois valores; ligar as
-# duas coisas ainda nao existe, e esta na lista para a sessao com o QA.
+# O que esta linha única esconde: se pessoa jurídica for mais cara que pessoa
+# física, o p95 do passo é o p95 da população cara usando o nome do passo
+# inteiro, e quem lê procura cauda onde há duas populações. O bloco de variedade
+# observada do relatório mostra que ${clientes.rota} teve dois valores; ligar as
+# duas coisas ainda não existe, e está na lista para a sessão com o QA.

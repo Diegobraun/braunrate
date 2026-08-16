@@ -312,7 +312,7 @@ func Describe(spec scenario.Spec, plan engine.Plan) []string {
 	} else {
 		lines = append(lines, fmt.Sprintf("Cenário válido: %q, %s, %s em %s.",
 			spec.Name, texto.Count(int64(len(spec.Steps)), "passo", "passos"),
-			texto.Count(plan.TotalRequests(), "iteracao", "iteracoes"), plan.Duration()))
+			texto.Count(plan.TotalRequests(), "iteração", "iterações"), plan.Duration()))
 	}
 	if warning, closed := scenario.ClosedModelWarning(spec); closed {
 		lines = append(lines, warning)

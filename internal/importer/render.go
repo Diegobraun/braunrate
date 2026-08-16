@@ -180,7 +180,7 @@ func RenderYAML(script Script) Import {
 			if _, announced := vars[local]; !announced {
 				vars[local] = variable
 				importResult.Warnings = append(importResult.Warnings,
-					fmt.Sprintf("o cabecalho %s virou ${%s}: rode com %s=... no ambiente, para não versionar credencial", name, local, variable))
+					fmt.Sprintf("o cabeçalho %s virou ${%s}: rode com %s=... no ambiente, para não versionar credencial", name, local, variable))
 			}
 		}
 		steps[index].Headers = withoutSecret

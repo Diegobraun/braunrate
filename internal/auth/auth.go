@@ -60,7 +60,7 @@ func (manager *Manager) Header(runContext context.Context, values *runtime.Value
 
 	name, model, found := strings.Cut(manager.config.Header, ":")
 	if !found {
-		return "", "", fmt.Errorf("o cabecalho de autenticação precisa ser \"Nome: valor\", recebido %q", manager.config.Header)
+		return "", "", fmt.Errorf("o cabeçalho de autenticação precisa ser \"Nome: valor\", recebido %q", manager.config.Header)
 	}
 	return strings.TrimSpace(name), strings.TrimSpace(values.Resolve(model)), nil
 }

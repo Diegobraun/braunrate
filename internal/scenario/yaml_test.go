@@ -14,7 +14,7 @@ import (
 )
 
 const minimalScenario = `
-nome: Jornada de cobranca
+nome: Jornada de cobrança
 alvo: http://127.0.0.1:8080
 
 carga:
@@ -34,7 +34,7 @@ func TestParseMinimalScenario(t *testing.T) {
 	if err != nil {
 		t.Fatalf("erro inesperado: %v", err)
 	}
-	if c.Name != "Jornada de cobranca" {
+	if c.Name != "Jornada de cobrança" {
 		t.Errorf("nome = %q", c.Name)
 	}
 	if c.Load.Model != scenario.OpenArrival {

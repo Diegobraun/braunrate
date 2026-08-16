@@ -25,7 +25,7 @@ func refuseLiteralVariable(name string, node *yaml.Node) error {
 		return nil
 	}
 	environment := strings.ToUpper(name)
-	return nodeError(node, "%s literal em 'variaveis': credencial nunca vai para o arquivo, porque o arquivo vai para o repositorio.\n"+
+	return nodeError(node, "%s literal em 'variaveis': credencial nunca vai para o arquivo, porque o arquivo vai para o repositório.\n"+
 		"    troque por:  variáveis: { %s: \"${%s}\" }\n"+
 		"    e rode com:  %s=... braunrate execute cenario.yaml",
 		name, name, environment, environment)

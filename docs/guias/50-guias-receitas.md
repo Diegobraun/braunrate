@@ -245,12 +245,12 @@ braunrate compare antes.json depois.json -html comparacao.html
 Ficou mais lento: jornada inteira (95%): 71 vezes mais lento — de 10 ms para 675 ms. Com 1 ressalva que pode explicar a diferença sozinha.
 
 Por passo
-  passo                        95% antes  95% depois         variacao
+  passo                        95% antes  95% depois         variação
   consultar pedido                8.4 ms      598 ms         71x pior
   pagar fatura                  0.601 ms       43 ms         71x pior
 
 O que pode explicar a diferença sem ser o serviço
-  - as execucoes usaram versoes diferentes do braunrate: 0.2.0 e 0.3.0 (isso sozinho explica a diferenca)
+  - as execuções usaram versões diferentes do braunrate: 0.2.0 e 0.3.0 (isso sozinho explica a diferença)
 ```
 
 Variação abaixo de 5% é tratada como ruído: duas execuções não dão intervalo de
@@ -265,7 +265,7 @@ O mesmo cenário se escreve em Go, e roda no mesmo motor:
 // Scenario is the same journey of examples/jornada-autenticada.yaml, written in
 // Go: same engine, same metrics, same result document.
 func Scenario(alvo string) (braunrate.Scenario, error) {
-	return dsl.New("Jornada de cobranca").
+	return dsl.New("Jornada de cobrança").
 		Target(alvo).
 		Auth(dsl.WithToken(
 			dsl.POST("/auth/token").Body(map[string]any{"usuario": "ana", "senha": "${SENHA:-segredo}"}),

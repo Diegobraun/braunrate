@@ -1,4 +1,4 @@
-# ADR 0002 — Modelo de cenario: YAML e DSL desembocando na mesma representacao
+# ADR 0002 — Modelo de cenário: YAML e DSL desembocando na mesma representação
 
 - **Status**: aceito
 - **Data**: 2026-08-15

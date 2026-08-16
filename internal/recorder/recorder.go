@@ -262,7 +262,7 @@ func (recorder *Recorder) drop(reason string) {
 func (recorder *Recorder) classify(request *http.Request) (string, bool) {
 	host := hostOnly(request.URL.Host)
 	if !recorder.allowed[host] {
-		return fmt.Sprintf("dominio de fora (%s)", host), true
+		return fmt.Sprintf("domínio de fora (%s)", host), true
 	}
 	if request.Method == http.MethodOptions {
 		return "preflight de CORS", true

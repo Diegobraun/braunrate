@@ -64,7 +64,7 @@ curl -s -X POST http://127.0.0.1:8080/scenarios/ci.yaml/validate
 {
   "valid": true,
   "lines": [
-    "Cenario valido: \"Fumaca de CI\", 1 passo(s), 975 iteracoes em 6s."
+    "Cenario valido: \"Fumaça de CI\", 1 passo(s), 975 iteracoes em 6s."
   ]
 }
 ```
@@ -135,7 +135,7 @@ curl -sN http://127.0.0.1:8080/runs/r001/stream
 ```
 
 ```
-executando "Fumaca de CI" contra http://127.0.0.1:8080: 975 iteracoes em 6s
+executando "Fumaça de CI" contra http://127.0.0.1:8080: 975 iteracoes em 6s
 carga 150/s | enviadas 201 | concluidas 200 | erros 0 | metade em 6.7 ms | 99% em 7.7 ms | faltam 4s
 carga 200/s | enviadas 376 | concluidas 375 | erros 0 | metade em 6.4 ms | 99% em 8.4 ms | faltam 3s
 carga 200/s | enviadas 576 | concluidas 575 | erros 0 | metade em 5.8 ms | 99% em 7.6 ms | faltam 2s
@@ -158,7 +158,7 @@ curl -s http://127.0.0.1:8080/runs
     {
       "id": "r001",
       "scenario": "ci.yaml",
-      "name": "Fumaca de CI",
+      "name": "Fumaça de CI",
       "status": "done",
       "exit_code": 0,
       "verdict": "passou",
@@ -199,8 +199,8 @@ curl -s http://127.0.0.1:8080/runs/r001/comparison/r002
 
 ```json
 {
-  "antes": { "cenario": "Fumaca de CI", "alvo": "http://127.0.0.1:8080", "inicio": "16/08/2026 06:20" },
-  "depois": { "cenario": "Fumaca de CI", "alvo": "http://127.0.0.1:8080", "inicio": "16/08/2026 06:21" },
+  "antes": { "cenario": "Fumaça de CI", "alvo": "http://127.0.0.1:8080", "inicio": "16/08/2026 06:20" },
+  "depois": { "cenario": "Fumaça de CI", "alvo": "http://127.0.0.1:8080", "inicio": "16/08/2026 06:21" },
   "frase": "Sem mudanca que valha leitura: jornada inteira (95%): 7 ms contra 7 ms — diferenca dentro do ruido de duas execucoes. Com 1 ressalva sobre o que mudou fora do servico.",
   "comparavel": true,
   "ressalvas": [

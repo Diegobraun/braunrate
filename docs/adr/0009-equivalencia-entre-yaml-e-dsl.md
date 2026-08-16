@@ -1,4 +1,4 @@
-# ADR 0009 — A DSL nao reimplementa o YAML: os dois entram pelo mesmo lugar
+# ADR 0009 — A DSL não reimplementa o YAML: os dois entram pelo mesmo lugar
 
 - **Status**: aceito
 - **Data**: 2026-08-16

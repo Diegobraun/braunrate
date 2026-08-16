@@ -1,4 +1,4 @@
-# ADR 0003 — Modelo de execucao e metrica
+# ADR 0003 — Modelo de execução e métrica
 
 - **Status**: aceito
 - **Data**: 2026-08-15

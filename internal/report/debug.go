@@ -24,7 +24,7 @@ func Debug(out io.Writer, number int, observation engine.Observation, showBody b
 	write("")
 	write("passo %d — %s   [%s em %s]", number, observation.Step, mark, observation.Duration.Round(100_000))
 	lines := describeConfig(observation.Config)
-	write("  requisicao: %s", lines[0])
+	write("  requisição: %s", lines[0])
 	for _, line := range lines[1:] {
 		write("              %s", shorten(line))
 	}

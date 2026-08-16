@@ -1,4 +1,4 @@
-# ADR 0010 — Codigo em ingles, produto em portugues
+# ADR 0010 — Código em inglês, produto em português
 
 - **Status**: aceito (revisa a decisao de idioma vigente desde a Fase 0)
 - **Data**: 2026-08-16

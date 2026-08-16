@@ -17,7 +17,7 @@
     ]
   },
   "execucao": {
-    "cenario": "Jornada de cobranca",
+    "cenario": "Jornada de cobrança",
     "alvo": "http://127.0.0.1:8080",
     "inicio": "2026-08-16T15:18:10.857733+01:00",
     "fim": "2026-08-16T15:18:20.935051+01:00",

@@ -1,4 +1,4 @@
-# ADR 0011 — Verificacao de sanidade antes de qualquer veredito
+# ADR 0011 — Verificação de sanidade antes de qualquer veredito
 
 - **Status**: aceito
 - **Data**: 2026-08-16

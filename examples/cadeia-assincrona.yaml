@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
-nome: Cadeia assincrona de cobranca
+nome: Cadeia assíncrona de cobrança
 alvo: ${BROKERS:-127.0.0.1:9092}
 
-# Sem broker este cenario nao roda. Declarado aqui para quem for executar e para
-# o laco de exemplos do CI, que pula com aviso em vez de quebrar em silencio.
+# Sem broker este cenário não roda. Declarado aqui para quem for executar e para
+# o laço de exemplos do CI, que pula com aviso em vez de quebrar em silêncio.
 requer: [kafka]
 
 dados:
@@ -14,7 +14,7 @@ dados:
 
 carga:
   perfis:
-    # O processador do alvo embutido leva 20ms por mensagem, entao aguenta 50/s.
+    # O processador do alvo embutido leva 20ms por mensagem, então aguenta 50/s.
     # Pedir mais que isso enfileira, e a jornada cresce sem o alvo estar lento.
     - rampa: { de: 10/s, ate: 40/s, durante: 5s }
     - patamar: { taxa: 40/s, durante: 5s }

@@ -1,4 +1,4 @@
-# ADR 0008 — Mensageria: a entrega confirmada e a unidade, e a cadeia se fecha com `aguardar`
+# ADR 0008 — Mensageria: a entrega confirmada é a unidade, e a cadeia se fecha com `aguardar`
 
 - **Status**: aceito
 - **Data**: 2026-08-16

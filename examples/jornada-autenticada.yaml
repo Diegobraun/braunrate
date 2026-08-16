@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
-nome: Jornada de cobranca
+nome: Jornada de cobrança
 alvo: http://127.0.0.1:8080
 
 variaveis:

@@ -18,7 +18,7 @@ func sampleDocument() metrics.Document {
 		Version:       "0.3.0",
 		Environment:   metrics.Environment{Host: "maquina-de-teste", OS: "darwin", Arch: "arm64", Cores: 10},
 		Run: metrics.Run{
-			Spec: "Jornada de cobranca", Target: "http://127.0.0.1:8080",
+			Spec: "Jornada de cobrança", Target: "http://127.0.0.1:8080",
 			Start: start, End: start.Add(10 * time.Second), DurationMs: 10000,
 			Model: "aberto", MaxInflight: 20000, AuthObtains: 1,
 			AppliedPlan: []metrics.AppliedPhase{{Kind: "patamar", To: 300, DurationMs: 10000}},
@@ -182,7 +182,7 @@ func TestCSVSeparatesCorrectedFromServiceLatency(t *testing.T) {
 	if !strings.Contains(lines[0], "tipo_de_latencia") {
 		t.Error("o CSV precisa dizer de que tipo e cada latência")
 	}
-	if !strings.HasPrefix(lines[1], "Jornada de cobranca,http://127.0.0.1:8080") || !strings.Contains(lines[1], "jornada inteira") {
+	if !strings.HasPrefix(lines[1], "Jornada de cobrança,http://127.0.0.1:8080") || !strings.Contains(lines[1], "jornada inteira") {
 		t.Errorf("a primeira linha de dados precisa ser a jornada: %s", lines[1])
 	}
 	if !strings.Contains(lines[3], ",servico,") {

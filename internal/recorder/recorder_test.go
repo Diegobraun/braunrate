@@ -85,7 +85,7 @@ func TestEveryKindOfNoiseIsDroppedWithAReasonOnScreen(t *testing.T) {
 		address string
 		reason  string
 	}{
-		{"GET", "http://cdn.outro.com/app.js", "dominio de fora (cdn.outro.com)"},
+		{"GET", "http://cdn.outro.com/app.js", "domínio de fora (cdn.outro.com)"},
 		{"GET", "http://api.local/static/app.js", "recurso estático"},
 		{"GET", "http://api.local/favicon.ico", "recurso estático"},
 		{"GET", "http://api.local/collect?v=1", "telemetria"},

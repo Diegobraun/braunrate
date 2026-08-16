@@ -50,7 +50,7 @@ congelado por 3 s no meio de 12 s — à esquerda 100/s em modelo aberto, à dir
 10 usuários em laço fechado:
 
 ```
-1.200 requisicoes, 100 por segundo        850 requisicoes, 70 por segundo
+1.200 requisições, 100 por segundo        850 requisições, 70 por segundo
 metade 6.1 ms | 95% 2.41 s | pior 3.01 s  metade 6.4 ms | 95% 7.0 ms | pior 3.00 s
 ```
 
@@ -81,12 +81,12 @@ do problema:
 
 ```
 Por passo
-  passo                          requisicoes    metade       95%       99%     99,9%      pior   erros
+  passo                          requisições    metade       95%       99%     99,9%      pior   erros
   consultar pedido           (1)      2.375     40 ms    598 ms    954 ms    1.03 s    1.04 s       0
   pagar fatura               (2)      2.375     40 ms     43 ms     43 ms    1.04 s    1.04 s       0
 
-  (1) tempo contado do instante em que a requisicao deveria ter partido — inclui
-      qualquer atraso e por isso nao esconde travada do alvo.
+  (1) tempo contado do instante em que a requisição deveria ter partido — inclui
+      qualquer atraso e por isso não esconde travada do alvo.
   (2) tempo de resposta puro, contado de quando o passo anterior terminou.
 ```
 
@@ -115,10 +115,10 @@ partes aprova cada pedaço sem dizer nada sobre a espera inteira:
 
 ```
 SLO
-  ok    Passou: "consultar pedido" respondeu 95% em ate 6 ms, dentro do limite de 150 ms.
-  ok    Passou: a jornada inteira respondeu 95% em ate 12 ms, dentro do limite de 2000 ms.
-  ok    Passou: o cenario inteiro teve taxa de sucesso de 100.00%, no minimo de 99.90%.
-  --    regressao: sem criterio declarado — o gate aprova sem comparar com a execucao anterior
+  ok    Passou: "consultar pedido" respondeu 95% em até 6 ms, dentro do limite de 150 ms.
+  ok    Passou: a jornada inteira respondeu 95% em até 12 ms, dentro do limite de 2000 ms.
+  ok    Passou: o cenário inteiro teve taxa de sucesso de 100.00%, no mínimo de 99.90%.
+  --    regressao: sem critério declarado — o gate aprova sem comparar com a execução anterior
 ```
 
 Nada disso é obrigatório: cenário sem bloco `slo` continua executando e
@@ -131,7 +131,7 @@ relatório publica **o que aconteceu**, não o que foi declarado:
 
 ```
 Ambiente
-  100 valores distintos de pedidos.id em 100 usos, todos comecando com "CLI-A-"
+  100 valores distintos de pedidos.id em 100 usos, todos começando com "CLI-A-"
   61 valores distintos de pedidos.valor em 100 usos, entre 10 e 89
 ```
 
@@ -142,9 +142,9 @@ alvo. Por isso a linha traz também a faixa e o prefixo comum.
 Se a fonte tem vários valores e a execução usou um só, o resultado é **inválido**:
 
 ```
-RESULTADO INVALIDO: toda a carga caiu numa particao so de pedidos-cadeia; o resto do cluster
-ficou parado e o numero nao representa producao. Faca a chave da mensagem variar por iteracao
-            kafka.particao.pedidos-cadeia tinha 4 valores disponiveis e a execucao usou 1, em 60 usos
+RESULTADO INVÁLIDO: toda a carga caiu numa partição só de pedidos-cadeia; o resto do cluster
+ficou parado e o número não representa produção. Faça a chave da mensagem variar por iteração
+            kafka.particao.pedidos-cadeia tinha 4 valores disponíveis e a execução usou 1, em 60 usos
 ```
 
 Essa regra nasceu de um defeito nosso: a autenticação congelava os dados da
@@ -159,15 +159,15 @@ o que se propôs a medir. Quando a resposta é não, o critério nem chega a ser
 avaliado e o comando sai com **código 3**:
 
 ```
-Resultado invalido: a execucao nao mediu o que se propos a medir. Isto nao e veredito sobre o
-alvo — e a medicao que nao vale, e por isso nenhuma regra de SLO foi avaliada.
+Resultado inválido: a execução não mediu o que se propôs a medir. Isto não é veredito sobre o
+alvo — é a medição que não vale, e por isso nenhuma regra de SLO foi avaliada.
 
-  - nenhuma jornada chegou ao fim, entao o cenario nao exercitou a sequencia que declarou.
-    Rode 'braunrate debug' para ver onde a iteracao para
+  - nenhuma jornada chegou ao fim, então o cenário não exercitou a sequência que declarou.
+    Rode 'braunrate debug' para ver onde a iteração para
     60 jornadas iniciadas, 0 completas
-  - o passo "consultar pedido" falhou em 100% das requisicoes; nenhuma resposta bem-sucedida
-    entrou na medicao dele
-    60 requisicoes, 60 erros (status: 60)
+  - o passo "consultar pedido" falhou em 100% das requisições; nenhuma resposta bem-sucedida
+    entrou na medição dele
+    60 requisições, 60 erros (status: 60)
 ```
 
 Os seis casos que invalidam:

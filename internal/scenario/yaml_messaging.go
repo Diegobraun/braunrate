@@ -186,7 +186,7 @@ func refuseLiteralSecret(field string, node *yaml.Node) error {
 	if environmentReference.MatchString(strings.TrimSpace(node.Value)) {
 		return nil
 	}
-	return nodeError(node, "%s literal no cenário: credencial nunca vai para o arquivo, porque o arquivo vai para o repositorio.\n"+
+	return nodeError(node, "%s literal no cenário: credencial nunca vai para o arquivo, porque o arquivo vai para o repositório.\n"+
 		"    troque por:  %s: ${BROKER_SENHA}\n"+
 		"    e rode com:  BROKER_SENHA=... braunrate execute cenario.yaml\n"+
 		"    valor de reserva (${VAR:-algo}) também não serve: a reserva seria o segredo escrito no arquivo", field, field)

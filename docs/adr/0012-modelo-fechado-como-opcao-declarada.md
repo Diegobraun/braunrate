@@ -1,4 +1,4 @@
-# ADR 0012 — Modelo fechado como opcao declarada, nunca como padrao
+# ADR 0012 — Modelo fechado como opção declarada, nunca como padrão
 
 ## Contexto
 

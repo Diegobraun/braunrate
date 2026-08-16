@@ -28,8 +28,8 @@ func DecisionsPage(repositoryRoot string) (Page, error) {
 	markdown.WriteString(`# Decisões
 
 Cada uma registra o que foi decidido, o que foi recusado e o critério que
-reabre a discussao. Os arquivos completos estão em ` + "`docs/adr`" + ` no
-repositorio.
+reabre a discussão. Os arquivos completos estão em ` + "`docs/adr`" + ` no
+repositório.
 
 | # | decisão |
 |---|---|

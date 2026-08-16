@@ -1,4 +1,4 @@
-# ADR 0014 — Autenticacao de mensageria: credencial fora do arquivo
+# ADR 0014 — Autenticação de mensageria: credencial fora do arquivo
 
 ## Contexto
 

@@ -182,7 +182,7 @@ cenario:
 	if err == nil {
 		t.Fatal("o valor de reserva com segredo literal passou: a recusa leu o texto já expandido")
 	}
-	if !strings.Contains(err.Error(), "vai para o repositorio") {
+	if !strings.Contains(err.Error(), "vai para o repositório") {
 		t.Fatalf("a recusa mudou de motivo: %v", err)
 	}
 

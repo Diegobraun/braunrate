@@ -33,7 +33,7 @@ diferente de um teste de carga produzir um número que não descreve o sistema.
 
 | Prova | Número | O que fica escondido |
 |---|---|---|
-| Alvo congelado por 1 s | 976,4 ms contra 3,3 ms | **Omissão coordenada**: laço fechado para de enviar quando o alvo trava, e a espera some da conta |
+| Alvo congelado por 1 s | 983,0 ms contra 3,7 ms | **Omissão coordenada**: laço fechado para de enviar quando o alvo trava, e a espera some da conta |
 | [GraphQL com erro em 200](protocolos.html#graphql) | 406 erros em 2.844 respostas, todas com status 200 | **Erro classificado por status**: quem lê o código HTTP reporta 0% de erro e critério de aceite verde |
 | [Cadeia assíncrona](protocolos.html#kafka-e-rabbitmq) | 1,2 ms para produzir contra 3,96 s de jornada | **Medir só a produção**: o broker aceita rápido, e o efeito que o usuário espera chega segundos depois |
 
@@ -44,10 +44,10 @@ alvo, dois modelos de medição:
 
 | Modelo | 99% das respostas em até | Amostras |
 |---|---|---|
-| **braunrate (chegada aberta, tempo contado do instante agendado)** | **976,4 ms** | 600 |
-| Laço fechado (um usuário virtual em sequência, como JMeter e Locust medem) | 3,3 ms | 793 |
+| **braunrate (chegada aberta, tempo contado do instante agendado)** | **983,0 ms** | 600 |
+| Laço fechado (um usuário virtual em sequência, como JMeter e Locust medem) | 3,7 ms | 722 |
 
-São 973,1 ms escondidos pelo laço fechado. Ele não erra por defeito: quando o
+São 979,4 ms escondidos pelo laço fechado. Ele não erra por defeito: quando o
 alvo trava, ele simplesmente para de enviar, e as requisições que deveriam ter
 partido nunca entram na conta. Essa é a omissão coordenada.
 
@@ -58,9 +58,9 @@ deixar de ser honesta, o build quebra:
 $ go test ./internal/selfcheck/... -v
 === RUN   TestClosedLoopWouldHideThePauseOpenModelShows
     mesma pausa de 1s no mesmo alvo:
-      modelo aberto (braunrate): p99 976.4 ms sobre 600 amostras
-      laco fechado:              p99 3.3 ms sobre 793 amostras
-      omissao coordenada: 973.1 ms escondidos pelo laco fechado
+      modelo aberto (braunrate): p99 983.0 ms sobre 600 amostras
+      laço fechado:              p99 3.7 ms sobre 722 amostras
+      omissão coordenada: 979.4 ms escondidos pelo laço fechado
 --- PASS: TestClosedLoopWouldHideThePauseOpenModelShows (6.01s)
 ```
 

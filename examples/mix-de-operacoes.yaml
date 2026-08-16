@@ -1,12 +1,12 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
 #
-# Repetir a mesma chamada mede cache, nao sistema. Aqui cada iteracao executa uma
-# das tres alternativas, na proporcao declarada: a taxa continua sendo a do bloco
+# Repetir a mesma chamada mede cache, não sistema. Aqui cada iteração executa uma
+# das três alternativas, na proporção declarada: a taxa continua sendo a do bloco
 # 'carga', e o peso decide como ela se reparte.
 #
-# A escolha e por posicao no ciclo, nao sorteio: duas execucoes do mesmo arquivo
-# aplicam o mesmo mix, entao a diferenca entre elas e do alvo (ADR 0016).
-nome: Mix de operacoes
+# A escolha é por posição no ciclo, não sorteio: duas execuções do mesmo arquivo
+# aplicam o mesmo mix, então a diferença entre elas é do alvo (ADR 0016).
+nome: Mix de operações
 alvo: ${ALVO:-http://127.0.0.1:8080}
 
 autenticacao:
@@ -46,6 +46,6 @@ slo:
   - criar pedido: { p95: < 300ms }
   - global: { erros: < 1 }
 
-# Nao existe passo com captura aqui, e nao e por acaso: peso escolhe qual
-# alternativa executar, nao qual passo dentro de uma jornada. Um cenario com
-# cadeia de capturas e uma jornada so, e a validacao recusa peso nele.
+# Não existe passo com captura aqui, e não é por acaso: peso escolhe qual
+# alternativa executar, não qual passo dentro de uma jornada. Um cenário com
+# cadeia de capturas é uma jornada só, e a validação recusa peso nele.

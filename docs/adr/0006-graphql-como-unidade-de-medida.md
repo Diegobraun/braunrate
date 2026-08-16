@@ -1,4 +1,4 @@
-# ADR 0006 — GraphQL: a operacao e a unidade de medida, e erro em 200 e erro
+# ADR 0006 — GraphQL: a operação é a unidade de medida, e erro em 200 é erro
 
 - **Status**: aceito
 - **Data**: 2026-08-15

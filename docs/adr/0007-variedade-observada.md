@@ -1,4 +1,4 @@
-# ADR 0007 — O relatorio declara a variedade observada, nao a declarada
+# ADR 0007 — O relatório declara a variedade observada, não a declarada
 
 - **Status**: aceito
 - **Data**: 2026-08-16

@@ -18,7 +18,7 @@ import (
 // Scenario is the same journey of examples/jornada-autenticada.yaml, written in
 // Go: same engine, same metrics, same result document.
 func Scenario(alvo string) (braunrate.Scenario, error) {
-	return dsl.New("Jornada de cobranca").
+	return dsl.New("Jornada de cobrança").
 		Target(alvo).
 		Auth(dsl.WithToken(
 			dsl.POST("/auth/token").Body(map[string]any{"usuario": "ana", "senha": "${SENHA:-segredo}"}),

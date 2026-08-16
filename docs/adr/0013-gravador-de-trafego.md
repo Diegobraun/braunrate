@@ -1,4 +1,4 @@
-# ADR 0013 — Gravador de trafego: o que ele infere e como declara isso
+# ADR 0013 — Gravador de tráfego: o que ele infere e como declara isso
 
 ## Contexto
 

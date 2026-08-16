@@ -5,11 +5,11 @@ Toda opção aceita `-h`, e opção escrita errada recebe a certa de volta:
 
 ```
 $ braunrate target -addr :8080
-"-addr" nao existe. Voce quis dizer "-address"?
+"-addr" não existe. Você quis dizer "-address"?
 
     braunrate target -address :8080
 
-Todas as opcoes: braunrate target -h
+Todas as opções: braunrate target -h
 ```
 
 | Comando | Para quê |
@@ -80,9 +80,9 @@ coisa:
 > junto com o plano.
 
 ```
-atencao: o grupo "Usuarios" declara 50 threads, rampa de 30s, 300s de duracao: numero de
-thread nao vira taxa de chegada, porque thread so envia depois da resposta anterior. O bloco
-'carga' ficou com um chute; troque pela taxa que voce quer sustentar (requisicoes por segundo)
+atenção: o grupo "Usuarios" declara 50 threads, rampa de 30s, 300s de duração: número de
+thread não vira taxa de chegada, porque thread só envia depois da resposta anterior. O bloco
+'carga' ficou com um chute; troque pela taxa que você quer sustentar (requisições por segundo)
 ```
 
 ## `record`
@@ -97,15 +97,15 @@ e na segunda execução o cenário quebra. Este faz quatro coisas a mais, e decl
 cada uma:
 
 ```
-descartei 1 dominio de fora (example.com)
-descartei 1 recurso estatico
-3 requisicoes viraram 2 passo(s) em cenario.yaml
+descartei 1 domínio de fora (example.com)
+descartei 1 recurso estático
+3 requisições viraram 2 passos em cenario.yaml
 2 valor(es) observado(s) de pedidos_id em cenario-pedidos-id.csv
-atencao: o campo "senha" do corpo virou ${senha}: rode com SENHA=... no ambiente, para nao versionar credencial
-atencao: a sequencia gravada e uma passagem so: o mix de producao tem outras proporcoes entre as rotas
-atencao: os numeros de carga e de slo sao um chute de partida, nao uma medicao: ajuste antes de usar como gate
+atenção: o campo "senha" do corpo virou ${senha}: rode com SENHA=... no ambiente, para não versionar credencial
+atenção: a sequência gravada é uma passagem só: o mix de produção tem outras proporções entre as rotas
+atenção: os números de carga e de slo são um chute de partida, não uma medição: ajuste antes de usar como gate
 
-Proximo passo, antes de qualquer carga:
+Próximo passo, antes de qualquer carga:
   braunrate debug cenario.yaml
 ```
 
@@ -126,11 +126,11 @@ Lê e confere sem executar nada. Diz quantas iterações o cenário produziria, 
 o que você não declarou, e aponta o próximo passo:
 
 ```
-Cenario valido: "Jornada com criterios novos", 2 passo(s), 500 iteracoes em 5s.
-Atencao: o gate mede 2 passos isolados e deixa de fora a jornada inteira, que e o tempo que o usuario espera.
-    declare tambem:  - jornada: { p95: < 2s, p99: < 5s }
+Cenário válido: "Jornada com criterios novos", 2 passos, 500 iterações em 5s.
+Atenção: o gate mede 2 passos isolados e deixa de fora a jornada inteira, que é o tempo que o usuário espera.
+    declare também:  - jornada: { p95: < 2s, p99: < 5s }
 
-Antes de rodar a carga, veja se o cenario faz o que voce espera:
+Antes de rodar a carga, veja se o cenário faz o que você espera:
   braunrate debug cenario.yaml
 ```
 
@@ -146,26 +146,28 @@ minutos de carga e não depois:
 
 ```
 $ braunrate debug examples/jornada-autenticada.yaml
-depurando "Jornada de cobranca" contra http://127.0.0.1:8080: 1 usuario, 1 iteracao, sem carga
+depurando "Jornada de cobrança" contra http://127.0.0.1:8080: 1 usuário, 1 iteração, sem carga
 
-passo 1 — consultar pedido   [ok em 3.4ms]
-  requisicao: GET /pedidos/1001
+passo 1 — consultar pedido   [ok em 4.1ms]
+  requisição: GET /pedidos/1001
               Authorization: Bearer token-… (14 caracteres)
   resposta:   status 200, 95 bytes
   corpo:      {"id":"1001","status":"ABERTO","ultimaFatura":{"id":"f-1001","valor":199.90,"status":"ABERTA"}}
   capturou:
     faturaId = f-1001
 
-passo 2 — pagar fatura   [ok em 3.7ms]
-  requisicao: POST /faturas/f-1001/pagar
+passo 2 — pagar fatura   [ok em 4ms]
+  requisição: POST /faturas/f-1001/pagar
               Authorization: Bearer token-… (14 caracteres)
+              Content-Type: application/json
               corpo: {"valor":199.9}
   resposta:   status 200, 63 bytes
+  corpo:      {"id":"f-1001","status":"PAGA","pagoEm":"2026-08-15T00:00:00Z"}
 
-variaveis no fim da iteracao
+variáveis no fim da iteração
   assinantes.id = 1001
 
-Iteracao completa: 2 passos, tudo certo. Para rodar com carga:
+Iteração completa: 2 passos, tudo certo. Para rodar com carga:
   braunrate execute examples/jornada-autenticada.yaml
 ```
 
@@ -215,11 +217,11 @@ braunrate serve -addr 127.0.0.1:8080 -dir ./cenarios
 ```
 
 ```
-braunrate serve em http://127.0.0.1:8080, servindo cenarios de ./cenarios
-Sem autenticacao e sem TLS: qualquer um que alcance esta porta pode disparar carga contra os alvos dos cenarios.
-Foi feito para rodar em 127.0.0.1. Expor em outra interface e outra decisao, e ela ainda nao foi tomada.
+braunrate serve em http://127.0.0.1:8080, servindo cenários de ./cenarios
+Sem autenticação e sem TLS: qualquer um que alcance esta porta pode disparar carga contra os alvos dos cenários.
+Foi feito para rodar em 127.0.0.1. Expor em outra interface é outra decisão, e ela ainda não foi tomada.
 
-Para ver o que ele esta servindo:
+Para ver o que ele está servindo:
   curl http://127.0.0.1:8080/scenarios
 ```
 

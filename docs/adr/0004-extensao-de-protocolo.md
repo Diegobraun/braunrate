@@ -1,4 +1,4 @@
-# ADR 0004 — Extensao de protocolo: paridade com o k6, declarada
+# ADR 0004 — Extensão de protocolo: paridade com o k6, declarada
 
 - **Status**: aceito
 - **Data**: 2026-08-15

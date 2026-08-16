@@ -18,7 +18,7 @@ import (
 )
 
 const scenarioModel = `
-nome: Jornada de cobranca
+nome: Jornada de cobrança
 alvo: %s
 
 variaveis:

@@ -100,7 +100,7 @@ extratores JSON e regex, e assercao de resposta. Sampler de JDBC, JMS ou script 
 	if script.Target == "" {
 		script.Target = "http://127.0.0.1:8080"
 		script.Warnings = append(script.Warnings,
-			"o .jmx não declara dominio nas requisições (provavelmente usa variável de plano): troque o alvo antes de rodar")
+			"o .jmx não declara domínio nas requisições (provavelmente usa variável de plano): troque o alvo antes de rodar")
 	}
 	if len(targets) > 1 {
 		script.Warnings = append(script.Warnings,

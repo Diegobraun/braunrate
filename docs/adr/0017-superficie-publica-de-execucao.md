@@ -1,4 +1,4 @@
-# ADR 0017 — Superficie publica de execucao, e o fim do `braunrate build`
+# ADR 0017 — Superfície pública de execução, e o fim do `braunrate build`
 
 - **Status**: aceito
 - **Data**: 2026-08-16

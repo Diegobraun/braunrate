@@ -58,7 +58,7 @@ diz o que declarar em vez de repassar o texto do x509:
 
 ```
   consultar                  falha de rede                              30   certificado assinado por CA que esta maquin…
-    certificado assinado por CA que esta maquina nao conhece — declare tls: { ca: /caminho/ca.pem }
+    certificado assinado por CA que esta máquina não conhece — declare tls: { ca: /caminho/ca.pem }
 ```
 
 > **Nota** O caminho do arquivo aceita `${VARIAVEL}`. Nenhuma chave privada é
@@ -100,10 +100,10 @@ no corpo. Execução real contra o alvo embutido, onde um quarto dos assinantes 
 existe:
 
 ```
-Falhou: o cenario inteiro teve taxa de erro de 14.28%, acima do limite de 0.10%.
+Falhou: o cenário inteiro teve taxa de erro de 14.28%, acima do limite de 0.10%.
 
 Por passo
-  passo                          requisicoes    metade       95%       99%     99,9%      pior   erros
+  passo                          requisições    metade       95%       99%     99,9%      pior   erros
   graphql ConsultarPedido    (1)      1.625    4.7 ms    5.1 ms    5.4 ms    5.8 ms     14 ms     406
   graphql PagarFatura        (2)      1.219    4.7 ms    5.0 ms    5.2 ms    5.8 ms    6.0 ms       0
 
@@ -154,11 +154,11 @@ por mensagem, ou seja 66/s de capacidade, contra uma carga de 100/s:
 
 ```
 A jornada inteira
-  Todas as 800 jornadas chegaram ao fim; metade levou ate 1490 ms e 95% ate 3957 ms,
-  contados do instante em que deveriam ter comecado.
+  Todas as 800 jornadas chegaram ao fim; metade levou até 1490 ms e 95% até 3957 ms,
+  contados do instante em que deveriam ter começado.
 
 Por passo
-  passo                          requisicoes    metade       95%       99%     99,9%      pior   erros
+  passo                          requisições    metade       95%       99%     99,9%      pior   erros
   aguardar pedidos-lento-pr… (2)        800    1.49 s    3.95 s    4.17 s    4.23 s    4.24 s       0
   kafka produzir pedidos-le… (1)        800    1.2 ms    2.2 ms    3.9 ms    179 ms    228 ms       0
 ```
@@ -182,8 +182,8 @@ cenario:
 
 ```
 Atraso do consumidor
-  grupo demo-lag-grupo em demo-lag: no pior momento 885 mensagens atras; no fim, 885 mensagens
-  O consumidor terminou a execucao para tras. O atraso diz a distancia, nao a causa: consumidor lento, parado ou em rebalanceamento produzem o mesmo numero.
+  grupo demo-lag-grupo em demo-lag: no pior momento 885 mensagens atrás; no fim, 885 mensagens
+  O consumidor terminou a execução para trás. O atraso diz a distância, não a causa: consumidor lento, parado ou em rebalanceamento produzem o mesmo número.
 ```
 
 Os dois números são lidos do broker (marca d'água alta menos offset confirmado do
@@ -233,8 +233,8 @@ KAFKA_USUARIO=ana KAFKA_SENHA=... braunrate validate homolog.yaml
 ```
 
 ```
-Cenario valido: "Pedidos em homologacao", 1 passo(s), 6000 iteracoes em 2m0s.
-Mensageria: kafka em kafka.homolog:9093: scram_sha512, usuario ana + TLS com CA propria
+Cenário válido: "Pedidos em homologacao", 1 passo(s), 6000 iterações em 2m0s.
+Mensageria: kafka em kafka.homolog:9093: scram_sha512, usuário ana + TLS com CA própria
 ```
 
 Tipos aceitos: `sasl_plain`, `scram_sha256`, `scram_sha512`, `msk_iam` e
@@ -256,10 +256,10 @@ role da máquina. TLS é ligado sozinho, porque a porta 9098 não aceita outra c
 Senha escrita no arquivo reprova a validação, e a mensagem ensina a saída:
 
 ```
-erro no cenario: homolog.yaml:7:77: senha literal no cenario: credencial nunca vai para o arquivo, porque o arquivo vai para o repositorio.
+erro no cenário: homolog.yaml:7:77: senha literal no cenário: credencial nunca vai para o arquivo, porque o arquivo vai para o repositorio.
     troque por:  senha: ${BROKER_SENHA}
     e rode com:  BROKER_SENHA=... braunrate execute cenario.yaml
-    valor de reserva (${VAR:-algo}) tambem nao serve: a reserva seria o segredo escrito no arquivo
+    valor de reserva (${VAR:-algo}) também não serve: a reserva seria o segredo escrito no arquivo
 ```
 
 Terminal, HTML, JSON e depuração mostram tipo de autenticação e usuário, nunca o

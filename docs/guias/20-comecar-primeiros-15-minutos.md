@@ -15,19 +15,19 @@ serviço de mentira em `127.0.0.1:8080`, roda um cenário contra ele e explica c
 número:
 
 ```
-[2/3] Rodando: 100 requisicoes por segundo, durante 5s.
+[2/3] Rodando: 100 requisições por segundo, durante 5s.
 
-      Essa e a taxa: o braunrate dispara nesse ritmo esteja o servico rapido ou
-      lento — como usuarios de verdade fazem. Ferramentas que esperam a
-      resposta anterior antes de mandar a proxima aliviam o sistema justamente
-      quando ele esta sofrendo.
+      Essa é a taxa: o braunrate dispara nesse ritmo esteja o serviço rápido ou
+      lento — como usuários de verdade fazem. Ferramentas que esperam a
+      resposta anterior antes de mandar a próxima aliviam o sistema justamente
+      quando ele está sofrendo.
 
-[3/3] Pronto. O que os numeros dizem:
+[3/3] Pronto. O que os números dizem:
 
-  500 requisicoes em 5s, 100 por segundo, 0.00% de erro
-  Metade das respostas em ate 6.0 ms; 95% em ate 6.6 ms; a pior levou 15 ms
+  500 requisições em 5s, 100 por segundo, 0.00% de erro
+  Metade das respostas em até 6.5 ms; 95% em até 7.1 ms; a pior levou 16 ms
 
-  ok    Passou: o cenario inteiro teve taxa de erro de 0.00%, dentro do limite de 0.10%.
+  ok    Passou: o cenário inteiro teve taxa de erro de 0.00%, dentro do limite de 0.10%.
 ```
 
 Ao terminar, dois arquivos ficam no diretório: `demo.yaml`, o cenário comentado
@@ -92,7 +92,7 @@ passo 1 — consultar pedido   [ok em 3.4ms]
   capturou:
     faturaId = f-1001
 
-Iteracao completa: 2 passos, tudo certo. Para rodar com carga:
+Iteração completa: 2 passos, tudo certo. Para rodar com carga:
   braunrate execute cenario.yaml
 ```
 

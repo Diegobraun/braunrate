@@ -1,4 +1,4 @@
-# ADR 0015 — Superficie publica da DSL: o que um projeto de fora consegue fazer
+# ADR 0015 — Superfície pública da DSL: o que um projeto de fora consegue fazer
 
 - **Status**: parcialmente substituido pelo [ADR 0017](0017-superficie-publica-de-execucao.md) em 2026-08-16 — o diagnostico e a escolha da porta (opcao A) continuam valendo; o item 3 da decisao, que adiava qualquer superficie publica para a v1, foi revogado
 - **Data**: 2026-08-16

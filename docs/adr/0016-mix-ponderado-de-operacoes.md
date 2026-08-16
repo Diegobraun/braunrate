@@ -1,4 +1,4 @@
-# ADR 0016 — Mix ponderado de operacoes
+# ADR 0016 — Mix ponderado de operações
 
 Data: 2026-08-16
 Status: aceito
