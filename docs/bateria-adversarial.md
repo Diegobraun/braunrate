@@ -1071,3 +1071,168 @@ tempo (`p99 por segundo passou de 4.2 ms para 104.5 ms`). Essa degradacao e
 provavelmente contaminacao minha, nao do alvo embutido. A medicao de RSS nao depende
 disso — o controle a 20/s rodou com a maquina ociosa e confirmou a mesma curva por
 minuto.
+
+---
+
+## Bloco 4 — Combinacoes que ninguem testou
+
+### 4.1 — Modelo fechado com criterio de jornada
+**Exemplar.** O aviso vem antes de qualquer numero, e a frase da jornada muda de
+sentido junto com o modelo:
+
+```
+ATENCAO: Este teste usou 20 usuarios em laco fechado. Se o alvo travar, os usuarios
+param de pedir e o atraso nao aparece nos numeros. O tempo de resposta abaixo pode
+estar melhor do que o usuario real sente.
+
+  Todas as 1980 jornadas chegaram ao fim; metade levou ate 1 ms e 95% ate 4 ms,
+  contados de quando o usuario virtual comecou a jornada, que e so depois de ter
+  terminado a anterior.
+
+  (2) tempo de resposta puro. No laco fechado nao existe instante agendado: o
+      usuario virtual so pede de novo depois da resposta anterior, entao nenhum
+      atraso de fila aparece nestes numeros.
+```
+
+Tres lugares dizendo a mesma verdade em vez de um numero que finge ser comparavel
+com o do modelo aberto.
+
+### 4.3 — CSV sequencial que acaba no meio
+**Correto.** exit 3, e o consumo de dados aparece como passo proprio nos erros:
+
+```
+  - o passo "dados: clientes" falhou em 100% das requisicoes
+    90 requisicoes, 90 erros (configuracao: 90)
+
+  dados: clientes      erro de configuracao do cenario      90   os dados de "clientes" acabaram na linha 10…
+```
+
+A saida — `use consumo circular para repetir do inicio` — foi cortada pela coluna de
+exemplo (achado 2.6.b, terceira ocorrencia).
+
+### 4.5 — Captura de cabecalho e captura por regex alimentando chave de Kafka
+**Funciona inteiro.** Duas capturas de tipos diferentes no mesmo passo, as duas
+usadas no passo seguinte, em outro protocolo:
+
+```
+  capturou:
+    idPorRegex = ped-be3b74c6
+    tipoConteudo = application/json
+
+passo 2 — publicar com chave capturada   [ok em 15.9ms]
+  requisicao: produzir em eventos-particionado (chave "ped-be3b74c6")
+```
+
+```
+  100 valores distintos de idPorRegex em 100 usos, todos comecando com "ped-"
+  3 valores distintos de kafka.particao.eventos-particionado em 100 usos, entre 0 e 2
+  1 unico valor de tipoConteudo em 100 usos
+```
+
+**Atrito real no caminho**: a regex `/"id": "(ped-[a-f0-9]+)"/` contem `": "`, que o
+YAML le como separador. A mensagem acerta o diagnostico e erra o exemplo:
+
+```
+erro no cenario: c05.yaml:15:1: ha dois-pontos dentro de um valor que nao esta entre aspas.
+    ponha o valor entre aspas, por exemplo:  cabecalho: "X-API-Key: ${API_KEY}"
+```
+
+Aspas duplas nao resolvem: o valor **tem** aspas duplas dentro. So aspas simples
+funcionam, e o exemplo nao mostra isso. O caso mais provavel de cair nesse erro e
+justamente a captura por regex.
+
+### 4.7 — Criterio de regressao com base
+**Funciona, e o gate reprova de verdade.** Base e depois com o alvo dez vezes mais
+lento:
+
+```
+Falhou: a jornada inteira (p95) ficou 1347.9% pior que a base, acima do limite de
+20% pior (de 2 ms para 31 ms).
+exit=1
+```
+
+Numeros antes e depois na propria frase. Ver 4.7.a para o que essa comparacao **nao**
+checa.
+
+### 4.8 — Modo servidor
+**As rotas fazem o que a documentacao diz.** `GET /scenarios`, `POST .../validate`,
+`POST .../debug`, `POST .../runs`, `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/report`
+conferidos a mao contra `docs/api-servidor.md`. O aviso de subida nao pede desculpas:
+
+```
+Sem autenticacao e sem TLS: qualquer um que alcance esta porta pode disparar carga contra os alvos dos cenarios.
+Foi feito para rodar em 127.0.0.1. Expor em outra interface e outra decisao, e ela ainda nao foi tomada.
+```
+
+E a recusa de execucao simultanea e a melhor mensagem da ferramenta:
+
+```
+HTTP 409
+ja existe uma execucao em andamento. Duas execucoes na mesma maquina disputam a CPU
+que precisa despachar no instante agendado, e nenhuma das duas mede o que se propos a
+medir. Espere a atual terminar, ou suba o servidor com -concurrent se a contaminacao
+for aceitavel neste caso.
+```
+
+Diz o que aconteceu, **por que isso importa para a medicao**, e como sair. Ver 4.8.a
+para a contradicao que ela expoe.
+
+### 4.9 — Fonte CSV e fonte sintetica no mesmo passo
+**Funciona, e a variedade separa as duas:**
+
+```
+  10 valores distintos de clientes.id em 100 usos, entre 1 e 10
+  2 valores distintos de clientes.tipo em 100 usos
+  100 valores distintos de novos.chave em 100 usos
+  100 valores distintos de novos.valor em 100 usos, entre 13.66 e 498.94
+  Semente das fontes sinteticas: novos=1 (a mesma semente gera os mesmos valores de novo)
+```
+
+---
+
+#### Achado 4.7.a — a comparacao afirmava que nada explicava a diferenca
+**Gravidade**: media-alta — culpa o servico por mudanca que foi no teste. Corrigido.
+
+Troquei o **conteudo inteiro do CSV** entre duas execucoes do mesmo cenario. O p95
+mudou 15 vezes:
+
+```
+Ficou mais lento: jornada inteira (95%): 15 vezes mais lento — de 2 ms para 31 ms.
+
+O que pode explicar a diferenca sem ser o servico
+  Nada: mesmo cenario, mesmo alvo, mesma maquina, mesmo plano de carga e mesma versao.
+```
+
+"Nada" e afirmacao absoluta sobre cinco campos conferidos. O conteudo dos arquivos de
+dados nao e um deles — e num CI, arquivo de dados mudando entre execucoes e causa
+comum de regressao falsa.
+
+**Corrigido agora**:
+
+```
+  Nada do que da para comparar: cenario, alvo, maquina, plano de carga e versao sao os
+  mesmos. O conteudo dos arquivos de dados nao entra nesta lista — se ele mudou entre
+  as duas, a diferenca pode ser dele.
+```
+
+Teste `TestNoCaveatSaysWhatItCompared`, provado contra o codigo anterior. Mesma
+familia do 2.8.a e do achado de comparacao da noite anterior: afirmar o que nao se
+apurou.
+
+---
+
+#### Achado 4.8.a — o servidor recusa como invalido o unico contorno que a ferramenta oferece para o mix
+**Gravidade**: media — nao e defeito de codigo, e uma contradicao que o produto ainda nao resolveu
+
+O modo servidor recusa duas execucoes simultaneas com o argumento certo: elas
+disputam a CPU que precisa despachar no instante agendado, e **nenhuma das duas mede
+o que se propos a medir**.
+
+Na jornada 1.4, sem mix ponderado, o unico jeito de exercitar 60/30/10 foi rodar
+**tres processos simultaneos** pela linha de comando. A CLI nao avisa nada. Os tres
+relatorios sairam com "O gerador disparou todas as requisicoes na hora certa" — o que
+e verdade para cada processo isolado, e nao responde a pergunta que o servidor faz.
+
+Ou o argumento do servidor vale e o contorno do 1.4 produz numero contaminado, ou o
+argumento e conservador demais. Os dois nao podem estar certos. Isso reforca 1.4.a: o
+mix ponderado nao e conforto, e a unica forma de medir um mix sem contaminar.
