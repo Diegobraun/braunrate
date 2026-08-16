@@ -29,6 +29,13 @@ type Config struct {
 	Brokers []string
 	Acks    string
 	Timeout time.Duration
+	// Declared partition, when the scenario wants to aim at one instead of
+	// letting the key decide. Nil means the key decides, which is the default
+	// and what represents production.
+	Partition *int
+	// Consumer group to watch while the load runs. The lag of that group is
+	// what says whether the service kept up; the time to produce does not.
+	Group string
 }
 
 func (config *Config) Protocol() string { return "kafka" }
@@ -43,6 +50,7 @@ func (config *Config) Resolve(resolve func(string) string) protocol.Config {
 	clone := *config
 	clone.Topic = resolve(config.Topic)
 	clone.Key = resolve(config.Key)
+	clone.Group = resolve(config.Group)
 	if len(config.Value) > 0 {
 		clone.Value = []byte(resolve(string(config.Value)))
 	}
@@ -66,6 +74,12 @@ func (config *Config) Describe() []string {
 	if len(config.Brokers) > 0 {
 		lines = append(lines, "brokers: "+strings.Join(config.Brokers, ", "))
 	}
+	if config.Partition != nil {
+		lines = append(lines, "particao declarada: "+strconv.Itoa(*config.Partition))
+	}
+	if config.Group != "" {
+		lines = append(lines, "observando o atraso do grupo "+config.Group)
+	}
 	lines = append(lines, "acks: "+config.Acks)
 	if len(config.Value) > 0 {
 		lines = append(lines, "valor: "+string(config.Value))
@@ -74,21 +88,63 @@ func (config *Config) Describe() []string {
 }
 
 type Protocol struct {
-	options    protocol.Options
-	mu         sync.Mutex
-	writers    map[string]*kafka.Writer
-	partitions map[string]int64
+	options      protocol.Options
+	mu           sync.Mutex
+	writers      map[string]*kafka.Writer
+	partitions   map[string]int64
+	declared     map[string]bool
+	watchers     map[string]*lagWatcher
+	stopWatch    context.CancelFunc
+	watchContext context.Context
 }
 
 func New(options protocol.Options) *Protocol {
-	return &Protocol{options: options, writers: map[string]*kafka.Writer{}, partitions: map[string]int64{}}
+	return &Protocol{
+		options: options, writers: map[string]*kafka.Writer{},
+		partitions: map[string]int64{}, declared: map[string]bool{},
+		watchers: map[string]*lagWatcher{},
+	}
 }
 
 func (implementation *Protocol) Name() string { return "kafka" }
 
+// ConsumerLag reports what each watched group was left behind by. The number
+// that matters is the one after the load stops, so the watch is closed here and
+// waited on: reading it while the sampler still runs would report a lag from the
+// middle of the run as if it were the final one.
+func (implementation *Protocol) ConsumerLag() []protocol.ConsumerLag {
+	implementation.mu.Lock()
+	if implementation.stopWatch != nil {
+		implementation.stopWatch()
+		implementation.stopWatch = nil
+	}
+	watchers := make([]*lagWatcher, 0, len(implementation.watchers))
+	for _, watcher := range implementation.watchers {
+		watchers = append(watchers, watcher)
+	}
+	implementation.mu.Unlock()
+
+	for _, watcher := range watchers {
+		<-watcher.done
+	}
+
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	var lags []protocol.ConsumerLag
+	for _, watcher := range implementation.watchers {
+		lags = append(lags, watcher.result())
+	}
+	sort.Slice(lags, func(first, second int) bool { return lags[first].Group < lags[second].Group })
+	return lags
+}
+
 func (implementation *Protocol) Close() error {
 	implementation.mu.Lock()
 	defer implementation.mu.Unlock()
+	if implementation.stopWatch != nil {
+		implementation.stopWatch()
+		implementation.stopWatch = nil
+	}
 	var last error
 	for key, writer := range implementation.writers {
 		if err := writer.Close(); err != nil {
@@ -106,9 +162,34 @@ func (implementation *Protocol) Available() map[string]int64 {
 	defer implementation.mu.Unlock()
 	available := make(map[string]int64, len(implementation.partitions))
 	for topic, howMany := range implementation.partitions {
-		available["kafka.particao."+topic] = howMany
+		available[implementation.name(topic)] = howMany
 	}
 	return available
+}
+
+// A topic written to on a declared partition is counted under another name, so
+// the report can say the concentration was asked for instead of accusing the
+// scenario of a key that does not vary.
+func (implementation *Protocol) declare(topic string) {
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	if implementation.declared == nil {
+		implementation.declared = map[string]bool{}
+	}
+	implementation.declared[topic] = true
+}
+
+func (implementation *Protocol) varietyName(topic string) string {
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	return implementation.name(topic)
+}
+
+func (implementation *Protocol) name(topic string) string {
+	if implementation.declared[topic] {
+		return "kafka.particao.declarada." + topic
+	}
+	return "kafka.particao." + topic
 }
 
 func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
@@ -163,8 +244,16 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 				return nil, fmt.Errorf("timeout invalido: %q (use 5s, 30s)", value.Value)
 			}
 			config.Timeout = duration
+		case "particao":
+			number, err := strconv.Atoi(value.Value)
+			if err != nil || number < 0 {
+				return nil, fmt.Errorf("particao invalida: %q (use um numero, como 0 ou 3)", value.Value)
+			}
+			config.Partition = &number
+		case "grupo":
+			config.Group = value.Value
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo kafka: %q (use topico, chave, valor, cabecalhos, brokers, acks ou timeout)", key.Value)
+			return nil, fmt.Errorf("chave desconhecida no passo kafka: %q (use topico, chave, valor, cabecalhos, brokers, acks, timeout, particao ou grupo)", key.Value)
 		}
 	}
 
@@ -253,20 +342,45 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 	}
 
 	partition := implementation.partitionOf(brokers, config.Topic, message.Key)
+	if config.Partition != nil {
+		partition = *config.Partition
+		implementation.declare(config.Topic)
+	}
 	response := protocol.Response{
 		Bytes: int64(len(config.Value) + len(message.Key)),
 		Class: protocol.Success,
 	}
 	if partition >= 0 {
 		response.Attributes = map[string]string{
-			"kafka.particao." + config.Topic: strconv.Itoa(partition),
+			implementation.varietyName(config.Topic): strconv.Itoa(partition),
 		}
 	}
 	return response
 }
 
+// A declared partition needs a balancer that answers it: kafka-go decides the
+// partition through the balancer, and Message.Partition is ignored on the way
+// out.
+type fixedPartition struct{ number int }
+
+func (fixed fixedPartition) Balance(_ kafka.Message, _ ...int) int { return fixed.number }
+
+func balancerFor(config *Config) kafka.Balancer {
+	if config.Partition != nil {
+		return fixedPartition{number: *config.Partition}
+	}
+	return &kafka.Hash{}
+}
+
+func partitionKey(config *Config) string {
+	if config.Partition == nil {
+		return "chave"
+	}
+	return "particao " + strconv.Itoa(*config.Partition)
+}
+
 func (implementation *Protocol) writerOf(brokers []string, config *Config, broker *messaging.Broker) (*kafka.Writer, error) {
-	key := strings.Join(brokers, ",") + "|" + config.Topic + "|" + config.Acks + "|" + broker.Describe()
+	key := strings.Join(brokers, ",") + "|" + config.Topic + "|" + config.Acks + "|" + broker.Describe() + "|" + partitionKey(config)
 
 	implementation.mu.Lock()
 	defer implementation.mu.Unlock()
@@ -285,7 +399,7 @@ func (implementation *Protocol) writerOf(brokers []string, config *Config, broke
 	writer := &kafka.Writer{
 		Addr:                   kafka.TCP(brokers...),
 		Topic:                  config.Topic,
-		Balancer:               &kafka.Hash{},
+		Balancer:               balancerFor(config),
 		BatchSize:              1,
 		BatchTimeout:           time.Millisecond,
 		RequiredAcks:           acksOf(config.Acks),
@@ -360,17 +474,23 @@ func (implementation *Protocol) Prepare(runContext context.Context, request prot
 		return nil
 	}
 	broker := request.Messaging.BrokerFor("kafka")
-	if !broker.Secured() {
-		return nil
-	}
 	brokers := config.Brokers
-	if len(brokers) == 0 {
+	if len(brokers) == 0 && broker != nil {
 		brokers = broker.Addresses
 	}
 	if len(brokers) == 0 {
 		brokers = targetBrokers(request.URLBase)
 	}
 	if len(brokers) == 0 {
+		return nil
+	}
+	// Watching starts before the load so the first reading is the lag the group
+	// had at rest: without it, the growth measured would start from an unknown
+	// point.
+	if err := implementation.watchLag(config, brokers, broker); err != nil {
+		return err
+	}
+	if !broker.Secured() {
 		return nil
 	}
 	if _, err := implementation.writerOf(brokers, config, broker); err != nil {
@@ -445,4 +565,30 @@ func summarize(text string) string {
 		return text[:140] + "…"
 	}
 	return text
+}
+
+func (implementation *Protocol) watchLag(config *Config, brokers []string, broker *messaging.Broker) error {
+	if config.Group == "" {
+		return nil
+	}
+	key := config.Group + "|" + config.Topic
+
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	if _, watching := implementation.watchers[key]; watching {
+		return nil
+	}
+	watcher, err := newLagWatcher(config.Group, config.Topic, brokers, broker)
+	if err != nil {
+		return err
+	}
+	implementation.watchers[key] = watcher
+
+	if implementation.stopWatch == nil {
+		watchContext, stop := context.WithCancel(context.Background())
+		implementation.stopWatch = stop
+		implementation.watchContext = watchContext
+	}
+	go watcher.watch(implementation.watchContext)
+	return nil
 }

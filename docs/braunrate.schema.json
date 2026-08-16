@@ -804,6 +804,21 @@
           "default": "todos",
           "description": "Quantas replicas confirmam antes de a mensagem contar como entregue."
         },
+        "particao": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Manda toda a mensagem deste passo para uma particao so, ignorando a chave. Concentra a carga de proposito, e o relatorio avisa que o numero e o de uma particao.",
+          "examples": [
+            0
+          ]
+        },
+        "grupo": {
+          "type": "string",
+          "description": "Grupo de consumidores a observar durante a execucao. O relatorio mostra quantas mensagens ele ficou para tras, lido do broker.",
+          "examples": [
+            "cobranca"
+          ]
+        },
         "timeout": {
           "$ref": "#/$defs/duracao"
         }

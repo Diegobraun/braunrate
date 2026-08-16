@@ -4,6 +4,36 @@ Registro das decisoes tomadas durante o trabalho autonomo da noite de 2026-08-16
 Ordenado por risco: primeiro o que muda o que o usuario ve, o que contraria ADR
 existente e o que e caro de reverter; depois o resto.
 
+## Item 6 — particao declarada deixa de invalidar a execucao e passa a avisar
+
+Alternativa considerada: manter a gravidade alta, que e o que a concentracao numa particao produz hoje quando a chave nao varia.
+
+Por que esta: com `particao: N` a concentracao foi pedida, e a mensagem antiga mandava variar a chave — conselho que nao resolve nada quando a chave esta sendo ignorada de proposito. A variedade passa a ser contada com outro nome, `kafka.particao.declarada.<topico>`, e o aviso diz que o numero e o de uma particao e nao o do topico.
+
+Reversibilidade: medio — sao duas linhas em `VarietyWarnings` e o nome do atributo em `kafka.go`, mas resultado ja gravado em JSON carrega o nome antigo e nao ganha o novo aviso ao ser reprocessado com `braunrate report`.
+
+Toca o usuario: sim. Execucao com `particao` declarada sai com codigo 0 onde a regra anterior daria alta gravidade, e o nome que aparece em "variedade observada" e no JSON muda de `kafka.particao.<topico>` para `kafka.particao.declarada.<topico>`. Chave que nao varia continua invalidando como antes.
+
+## Item 6 — `grupo` observa o consumidor, e nunca consome
+
+Alternativa considerada: subir um consumidor proprio no grupo declarado para medir o atraso lendo as mensagens.
+
+Por que esta: entrar no grupo tiraria particao do servico que esta sendo medido, e o numero mediria a ferramenta. O atraso e lido do broker (marca d'agua alta menos offset confirmado), sem participar do grupo, entao a medicao nao muda o que mede. Particao em que o grupo nunca confirmou fica de fora: zero ali afirmaria que esta em dia.
+
+Reversibilidade: barato — `grupo` e opcional e a secao some do relatorio quando ninguem declara.
+
+Toca o usuario: sim, so somando. Duas chaves novas no passo `kafka` (`particao` e `grupo`), autorizadas pelo item 6 da lista, e uma secao "Atraso do consumidor" no terminal e no HTML quando `grupo` existe.
+
+## Item 6 — o relogio do atraso e fechado na hora de reportar, nao no fim do processo
+
+Alternativa considerada: deixar a ultima leitura para o `Close()` do protocolo, que e onde o cancelamento ja acontecia.
+
+Por que esta: o motor monta o documento antes de fechar os protocolos, entao o "atraso no fim" publicado seria uma leitura do meio da execucao. `ConsumerLag()` fecha a observacao e espera a ultima amostra — o numero que interessa e o de depois que a carga parou.
+
+Reversibilidade: barato — e uma funcao no protocolo Kafka, sem formato envolvido.
+
+Toca o usuario: sim, no valor: "no fim" passa a ser o atraso depois do fim da carga, e nao o da penultima amostra.
+
 ## A8 — caixa alta identifica variavel de ambiente, em vez de conferir o ambiente
 
 Alternativa considerada: conferir `os.LookupEnv` em cada referencia, e recusar a que nao estivesse definida.

@@ -51,6 +51,10 @@ type Run struct {
 	Availability Availability     `json:"valores_disponiveis_por_variavel"`
 	AuthObtains  int64            `json:"obtencoes_de_autenticacao"`
 	Brokers      []string         `json:"mensageria,omitempty"`
+	// How far behind each watched consumer group was left. The time to produce
+	// says the broker accepted the message; this says whether the service kept
+	// up, and they are different questions.
+	ConsumerLag []protocol.ConsumerLag `json:"atraso_do_consumidor,omitempty"`
 	// Declared so the report can show a step that never ran. Without it, a step
 	// that depended on a capture that failed simply vanished from the table and
 	// the reader never learned it existed.
@@ -181,6 +185,7 @@ type DocumentInput struct {
 	ScenarioWarnings []Warning
 	Brokers          []string
 	DeclaredSteps    []string
+	ConsumerLag      []protocol.ConsumerLag
 	PlannedDuration  time.Duration
 	PlannedRequests  int64
 	Users            int
@@ -216,6 +221,7 @@ func BuildDocument(collector *Collector, input DocumentInput) Document {
 			AuthObtains:   input.AuthObtains,
 			Brokers:       input.Brokers,
 			DeclaredSteps: input.DeclaredSteps,
+			ConsumerLag:   input.ConsumerLag,
 		},
 		Scheduling: Scheduling{
 			Sent:                   collector.Sent,

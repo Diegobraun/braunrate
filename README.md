@@ -627,6 +627,31 @@ Por passo
 
 O exemplo que acompanha o repositorio, [`examples/cadeia-assincrona.yaml`](examples/cadeia-assincrona.yaml), roda a 40/s — dentro da capacidade do processador embutido — porque exemplo publicado tem que passar quando alguem copia. A sobrecarga acima e cenario proprio, feito para mostrar o ponto cego.
 
+### Quanto o consumidor ficou para tras
+
+Quando o consumidor e um servico de verdade — nao o alvo embutido — a cadeia ponta a ponta nem sempre esta disponivel. O que da para ler direto do broker e o **atraso do grupo**: quantas mensagens foram escritas e ainda nao foram lidas. Declare `grupo` no passo:
+
+```yaml
+cenario:
+  - kafka:
+      topico: pedidos
+      grupo: cobranca              # so observa; nao consome nada
+      chave: "${pedidos.id}"
+      valor: { pedido: "${pedidos.id}" }
+```
+
+Execucao real a 200/s contra um grupo que leva 40 ms por mensagem:
+
+```
+Atraso do consumidor
+  grupo demo-lag-grupo em demo-lag: no pior momento 885 mensagens atras; no fim, 885 mensagens
+  O consumidor terminou a execucao para tras: a fila cresceu mais rapido do que ele consumiu.
+```
+
+Produzir levou 1,4 ms na metade das mensagens. **O broker aceitou tudo depressa e o servico ficou 885 mensagens atras.** Os dois numeros sao lidos do broker (marca d'agua alta menos offset confirmado do grupo), nunca contados deste lado: mensagem que este gerador nao enviou tambem pesa no servico. Se nao der para ler o offset, o relatorio diz que nao conseguiu medir — zero ali afirmaria que o consumidor estava em dia.
+
+Para mandar toda a carga de um passo para uma particao so — teste de particao quente, replica especifica — existe `particao: N`. Ela ignora a chave, e o relatorio marca a execucao como concentrada de proposito: o numero e o de uma particao, nao o do topico.
+
 Detalhes das decisoes: [ADR 0008](docs/adr/0008-mensageria-e-cadeia-assincrona.md). Publicacao com confirmacao e o padrao (`acks: todos` no Kafka, publisher confirms no AMQP), sem lote — agrupar mensagens mediria o lote, nao a mensagem.
 
 ### Apontando para um broker real

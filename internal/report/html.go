@@ -23,6 +23,7 @@ type htmlPage struct {
 	ClosedLoop        string
 	Warnings          []htmlWarning
 	Errors            []htmlError
+	ConsumerLag       []htmlLag
 	Count             string
 	Rate              string
 	ErrorRate         string
@@ -67,6 +68,14 @@ type htmlError struct {
 	Class   string
 	Count   string
 	Example string
+}
+
+type htmlLag struct {
+	Group    string
+	Topic    string
+	Headline string
+	Note     string
+	Readings string
 }
 
 type htmlWarning struct {
@@ -159,6 +168,14 @@ func buildPage(document metrics.Document) htmlPage {
 	for _, line := range errorLines(document) {
 		page.Errors = append(page.Errors, htmlError{
 			Step: line.step, Class: line.class, Count: thousands(line.count), Example: line.example,
+		})
+	}
+	for _, lag := range document.Run.ConsumerLag {
+		headline, note := lagSentences(lag)
+		page.ConsumerLag = append(page.ConsumerLag, htmlLag{
+			Group: lag.Group, Topic: lag.Topic,
+			Headline: headline, Note: note,
+			Readings: texto.Count(int64(lag.Readings), "leitura", "leituras"),
 		})
 	}
 	page.Reliability = reliabilitySentences(document)
@@ -555,6 +572,17 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
   {{range .Verdict.Undeclared}}
   <li><span class="sem">nao declarado</span><span>{{.}}</span></li>
   {{end}}
+</ul>
+{{end}}
+
+{{if .ConsumerLag}}
+<h2>Atraso do consumidor</h2>
+<table>
+  <tr><th>grupo</th><th>topico</th><th>atraso</th><th>amostras</th></tr>
+  {{range .ConsumerLag}}<tr><td>{{.Group}}</td><td>{{.Topic}}</td><td>{{.Headline}}</td><td>{{.Readings}}</td></tr>{{end}}
+</table>
+<ul class="frases">
+  {{range .ConsumerLag}}{{if .Note}}<li>{{.Note}}</li>{{end}}{{end}}
 </ul>
 {{end}}
 

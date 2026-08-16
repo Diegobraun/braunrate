@@ -114,6 +114,8 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 		write("")
 	}
 
+	writeConsumerLag(lines, document)
+
 	write("Confiabilidade da medicao")
 	for _, warning := range document.Warnings {
 		if warning.Severity == metrics.SeverityHigh {
@@ -344,6 +346,24 @@ func writeStepTable(output *lineWriter, document metrics.Document) {
 			write("  (2) tempo de resposta puro, contado de quando o passo anterior terminou. Como")
 			write("      esse passo depende do valor capturado antes dele, nao existe instante")
 			write("      agendado proprio. Para a leitura honesta da jornada, use \"A jornada inteira\".")
+		}
+	}
+	write("")
+}
+
+// Producing fast says the broker accepted the message. Whether the service kept
+// up is a different number, and it is the one that decides if the chain held.
+func writeConsumerLag(output *lineWriter, document metrics.Document) {
+	if len(document.Run.ConsumerLag) == 0 {
+		return
+	}
+	write := output.writef
+	write("Atraso do consumidor")
+	for _, lag := range document.Run.ConsumerLag {
+		headline, note := lagSentences(lag)
+		write("  grupo %s em %s: %s", lag.Group, lag.Topic, headline)
+		if note != "" {
+			write("  %s", note)
 		}
 	}
 	write("")

@@ -103,6 +103,25 @@ type Preparable interface {
 	Prepare(runContext context.Context, request Request) error
 }
 
+// ConsumerLag is what a protocol may report about a consumer group it was asked
+// to watch. The engine records it, like every other number: a protocol declares
+// what it measured and never writes to the report itself (ADR 0003 §3).
+type ConsumerLag struct {
+	Group       string        `json:"grupo"`
+	Topic       string        `json:"topico"`
+	Max         int64         `json:"atraso_maximo"`
+	Final       int64         `json:"atraso_no_fim"`
+	ByPartition map[int]int64 `json:"atraso_maximo_por_particao"`
+	Readings    int           `json:"leituras"`
+	Problem     string        `json:"problema,omitempty"`
+}
+
+// WithConsumerLag is implemented by protocols that watched a consumer group
+// while the load ran.
+type WithConsumerLag interface {
+	ConsumerLag() []ConsumerLag
+}
+
 type Protocol interface {
 	Name() string
 	Decode(node *yaml.Node) (Config, error)

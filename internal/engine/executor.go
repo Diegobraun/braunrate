@@ -190,6 +190,7 @@ func (executor *Executor) Execute(runContext context.Context) metrics.Document {
 		ScenarioWarnings: executor.scenarioWarnings(),
 		Brokers:          scenario.DescribeMessaging(executor.scenario.Messaging),
 		DeclaredSteps:    executor.declaredSteps(),
+		ConsumerLag:      consumerLag(),
 		PlannedDuration:  executor.plan.Duration(),
 		PlannedRequests:  executor.plan.TotalRequests(),
 	})
@@ -582,4 +583,19 @@ func (executor *Executor) authObtains() int64 {
 		return 0
 	}
 	return executor.authenticator.Obtains
+}
+
+// The engine records; the protocol only declares what it measured (ADR 0003 §3).
+func consumerLag() []protocol.ConsumerLag {
+	var lags []protocol.ConsumerLag
+	for _, name := range protocol.Registered() {
+		implementation, found := protocol.Lookup(name)
+		if !found {
+			continue
+		}
+		if reporter, reports := implementation.(protocol.WithConsumerLag); reports {
+			lags = append(lags, reporter.ConsumerLag()...)
+		}
+	}
+	return lags
 }
