@@ -42,7 +42,7 @@ func runOpenModel(t *testing.T, address string) metrics.Document {
 		Target: address,
 		Load: scenario.LoadPlan{
 			Model:  scenario.OpenArrival,
-			Phases: []scenario.Phase{{Kind: scenario.PhaseConstant, To: runRate, For: runDuration}},
+			Phases: []scenario.Phase{{Kind: scenario.PhaseSteady, To: runRate, For: runDuration}},
 		},
 		Steps: []scenario.Step{{
 			Name:     "consultar pedido",

@@ -36,8 +36,8 @@ type Step struct {
 	Name     string
 	Protocol string
 	Config   protocol.Config
-	// Peso da alternativa no mix. Zero quando o cenario nao declara mix, e ai
-	// todo passo roda em toda iteracao. Ver ADR 0016.
+	// Weight of the alternative in the mix. Zero when the scenario declares no
+	// mix, and then every step runs on every iteration. See ADR 0016.
 	Weight     int
 	Checks     []Check
 	Captures   []Capture
@@ -68,8 +68,8 @@ const (
 type ArrivalModel string
 
 const (
-	OpenArrival   ArrivalModel = "aberto"
-	ClosedArrival ArrivalModel = "fechado"
+	OpenArrival   ArrivalModel = "open"
+	ClosedArrival ArrivalModel = "closed"
 )
 
 type LoadPlan struct {
@@ -85,10 +85,9 @@ func (plan LoadPlan) Closed() bool { return plan.Model == ClosedArrival }
 type PhaseKind string
 
 const (
-	PhaseRamp     PhaseKind = "rampa"
-	PhasePlateau  PhaseKind = "patamar"
-	PhaseSpike    PhaseKind = "pico"
-	PhaseConstant PhaseKind = "constante"
+	PhaseRamp   PhaseKind = "ramp"
+	PhaseSteady PhaseKind = "steady"
+	PhaseSpike  PhaseKind = "spike"
 )
 
 type Phase struct {

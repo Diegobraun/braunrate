@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Diegobraun/braunrate/internal/metrics"
-	"github.com/Diegobraun/braunrate/internal/texto"
+	"github.com/Diegobraun/braunrate/internal/text"
 )
 
 // Two runs do not produce a confidence interval. Change below this is treated
@@ -68,9 +68,9 @@ type CountDifference struct {
 }
 
 const (
-	DirectionWorse  = "piorou"
-	DirectionBetter = "melhorou"
-	DirectionSame   = "sem diferença que valha leitura"
+	DirectionWorse  = "worse"
+	DirectionBetter = "better"
+	DirectionSame   = "no difference worth reading"
 )
 
 func Compare(before, after metrics.Document) Comparison {
@@ -86,9 +86,9 @@ func Compare(before, after metrics.Document) Comparison {
 	}
 
 	compared.Journey = compareDistribution("jornada inteira (95%)", before.Journey.Reported().P95, after.Journey.Reported().P95)
-	compared.Overall = compareDistribution("todas as requisições (95%)", before.Overall.Reported().P95, after.Overall.Reported().P95)
+	compared.Overall = compareDistribution("all requests (95%)", before.Overall.Reported().P95, after.Overall.Reported().P95)
 	compared.JourneyPercentiles = comparePercentiles("jornada inteira", before.Journey.Reported(), after.Journey.Reported())
-	compared.OverallPercentiles = comparePercentiles("todas as requisições", before.Overall.Reported(), after.Overall.Reported())
+	compared.OverallPercentiles = comparePercentiles("all requests", before.Overall.Reported(), after.Overall.Reported())
 	compared.Steps = compareSteps(before, after)
 	compared.Error = compareErrors(before, after)
 	compared.Sentence = phrase(compared, before, after)
@@ -113,33 +113,33 @@ func collectCaveats(before, after metrics.Document) []Caveat {
 	}
 
 	if before.Run.Spec != after.Run.Spec {
-		blocking("os cenários são diferentes: %q e %q", before.Run.Spec, after.Run.Spec)
+		blocking("the scenarios are different: %q and %q", before.Run.Spec, after.Run.Spec)
 	}
 	if before.Run.Target != after.Run.Target {
-		blocking("os alvos são diferentes: %s e %s", before.Run.Target, after.Run.Target)
+		blocking("the targets are different: %s and %s", before.Run.Target, after.Run.Target)
 	}
 	if before.Environment.Host != after.Environment.Host || before.Environment.Cores != after.Environment.Cores {
-		blocking("as máquinas geradoras são diferentes: %s com %d núcleos e %s com %d núcleos",
+		blocking("the generating machines are different: %s with %d cores and %s with %d cores",
 			before.Environment.Host, before.Environment.Cores, after.Environment.Host, after.Environment.Cores)
 	}
 	if planSummary(before) != planSummary(after) {
-		blocking("os planos de carga são diferentes: %s e %s", planSummary(before), planSummary(after))
+		blocking("the load plans are different: %s and %s", planSummary(before), planSummary(after))
 	}
 	if before.Version != after.Version {
-		blocking("as execuções usaram versões diferentes do braunrate: %s e %s", before.Version, after.Version)
+		blocking("the runs used different versions of braunrate: %s and %s", before.Version, after.Version)
 	}
 	if before.Run.Model != after.Run.Model {
-		blocking("os modelos de chegada são diferentes: %s e %s. Latência de laço fechado não se compara com latência contada do instante agendado — a segunda inclui um atraso que a primeira não chega a registrar",
+		blocking("the arrival models are different: %s and %s. Closed-loop latency does not compare with latency counted from the scheduled instant — the second includes a delay the first never gets to record",
 			before.Run.Model, after.Run.Model)
 	}
 	if !before.Valid() {
-		blocking("a execução anterior tem resultado inválido e o número dela não vale como base")
+		blocking("the previous run has an invalid result and its number does not work as a baseline")
 	}
 	if !after.Valid() {
-		blocking("a execução nova tem resultado inválido e o número dela não vale como comparação")
+		blocking("the new run has an invalid result and its number does not work as a comparison")
 	}
 	if before.Run.AuthObtains > 0 || after.Run.AuthObtains > 0 {
-		caveats = append(caveats, Caveat{Text: "as duas execuções usaram um token para tudo; cache ou sharding por identidade afeta as duas do mesmo jeito, mas não some da comparação"})
+		caveats = append(caveats, Caveat{Text: "both runs used one token for everything; caching or sharding by identity affects them the same way, but it does not disappear from the comparison"})
 	}
 	return caveats
 }
@@ -153,7 +153,7 @@ func planSummary(document metrics.Document) string {
 		if index > 0 {
 			summary += " + "
 		}
-		summary += fmt.Sprintf("%s até %.0f/s por %ds", phase.Kind, phase.To, phase.DurationMs/1000)
+		summary += fmt.Sprintf("%s up to %.0f/s for %ds", phase.Kind, phase.To, phase.DurationMs/1000)
 	}
 	return summary
 }
@@ -194,17 +194,17 @@ func compareDistribution(name string, before, after float64) Difference {
 
 func phraseDifference(difference Difference) string {
 	if difference.Before == 0 && difference.After == 0 {
-		return fmt.Sprintf("%s: sem amostra nas duas execuções.", difference.Metric)
+		return fmt.Sprintf("%s: no sample in either run.", difference.Metric)
 	}
 	if difference.Direction == DirectionSame {
-		return fmt.Sprintf("%s: %.0f ms contra %.0f ms — diferença dentro do ruído de duas execuções.",
+		return fmt.Sprintf("%s: %.0f ms against %.0f ms — a difference within the noise of two runs.",
 			difference.Metric, difference.Before, difference.After)
 	}
-	verb := "mais lento"
+	verb := "slower"
 	if difference.Direction == DirectionBetter {
-		verb = "mais rápido"
+		verb = "faster"
 	}
-	return fmt.Sprintf("%s: %s %s — de %.0f ms para %.0f ms.",
+	return fmt.Sprintf("%s: %s %s — from %.0f ms to %.0f ms.",
 		difference.Metric, Magnitude(difference), verb, difference.Before, difference.After)
 }
 
@@ -212,7 +212,7 @@ func phraseDifference(difference Difference) string {
 // reader to divide in their head to get to "70 times".
 func Magnitude(difference Difference) string {
 	if difference.Direction == DirectionSame {
-		return "sem diferença"
+		return "no difference"
 	}
 	if difference.Before <= 0 || difference.After <= 0 {
 		return fmt.Sprintf("%.0f%%", math.Abs(difference.Change)*100)
@@ -221,14 +221,14 @@ func Magnitude(difference Difference) string {
 	if lesser > greater {
 		greater, lesser = lesser, greater
 	}
-	vezes := greater / lesser
-	if vezes < 2 {
+	times := greater / lesser
+	if times < 2 {
 		return fmt.Sprintf("%.0f%%", math.Abs(difference.Change)*100)
 	}
-	if vezes < 10 {
-		return fmt.Sprintf("%.1f vezes", vezes)
+	if times < 10 {
+		return fmt.Sprintf("%.1f times", times)
 	}
-	return fmt.Sprintf("%.0f vezes", vezes)
+	return fmt.Sprintf("%.0f times", times)
 }
 
 func compareSteps(before, after metrics.Document) []StepDifference {
@@ -274,13 +274,13 @@ func compareErrors(before, after metrics.Document) CountDifference {
 	difference := CountDifference{Before: before.Overall.ErrorRate * 100, After: after.Overall.ErrorRate * 100}
 	switch {
 	case difference.Before == 0 && difference.After == 0:
-		difference.Sentence = "Nenhuma das duas execuções teve erro."
+		difference.Sentence = "Neither run had errors."
 	case difference.After > difference.Before:
-		difference.Sentence = fmt.Sprintf("A taxa de erro subiu de %.2f%% para %.2f%%.", difference.Before, difference.After)
+		difference.Sentence = fmt.Sprintf("The error rate went up from %.2f%% to %.2f%%.", difference.Before, difference.After)
 	case difference.After < difference.Before:
-		difference.Sentence = fmt.Sprintf("A taxa de erro caiu de %.2f%% para %.2f%%.", difference.Before, difference.After)
+		difference.Sentence = fmt.Sprintf("The error rate went down from %.2f%% to %.2f%%.", difference.Before, difference.After)
 	default:
-		difference.Sentence = fmt.Sprintf("A taxa de erro ficou em %.2f%% nas duas.", difference.Before)
+		difference.Sentence = fmt.Sprintf("The error rate stayed at %.2f%% in both.", difference.Before)
 	}
 	return difference
 }
@@ -295,12 +295,12 @@ func phrase(compared Comparison, before, after metrics.Document) string {
 		main = compared.Overall
 	}
 
-	prefix := "Sem mudança que valha leitura"
+	prefix := "No change worth reading"
 	if main.Direction == DirectionWorse {
-		prefix = "Ficou mais lento"
+		prefix = "It got slower"
 	}
 	if main.Direction == DirectionBetter {
-		prefix = "Ficou mais rápido"
+		prefix = "It got faster"
 	}
 
 	sentence := fmt.Sprintf("%s: %s", prefix, main.Sentence)
@@ -318,13 +318,12 @@ func phrase(compared Comparison, before, after metrics.Document) string {
 	}
 	switch {
 	case blocking > 0:
-		sentence += fmt.Sprintf(" Com %s que %s explicar a diferença sozinha%s.",
-			texto.Count(blocking, "ressalva", "ressalvas"),
-			texto.Pick(blocking, "pode", "podem"),
-			texto.Pick(blocking, "", "s"))
+		sentence += fmt.Sprintf(" With %s that could explain the difference on %s own.",
+			text.Count(blocking, "caveat", "caveats"),
+			text.Pick(blocking, "its", "their"))
 	case len(compared.Caveats) > 0:
-		sentence += fmt.Sprintf(" Com %s sobre o que mudou fora do serviço.",
-			texto.Count(int64(len(compared.Caveats)), "ressalva", "ressalvas"))
+		sentence += fmt.Sprintf(" With %s about what changed outside the service.",
+			text.Count(int64(len(compared.Caveats)), "caveat", "caveats"))
 	}
 	return sentence
 }
@@ -335,12 +334,12 @@ func phrase(compared Comparison, before, after metrics.Document) string {
 func invalidPhrase(before, after metrics.Document) string {
 	var reasons []string
 	if !before.Valid() {
-		reasons = append(reasons, "a anterior "+firstFinding(before))
+		reasons = append(reasons, "the previous one "+firstFinding(before))
 	}
 	if !after.Valid() {
-		reasons = append(reasons, "a nova "+firstFinding(after))
+		reasons = append(reasons, "the new one "+firstFinding(after))
 	}
-	return "Não da para comparar, porque uma das execuções não vale como medição: " + strings.Join(reasons, "; ") + "."
+	return "There is nothing to compare, because one of the runs does not hold as a measurement: " + strings.Join(reasons, "; ") + "."
 }
 
 func firstFinding(document metrics.Document) string {
@@ -352,5 +351,5 @@ func firstFinding(document metrics.Document) string {
 			return warning.Message
 		}
 	}
-	return "tem resultado inválido"
+	return "has an invalid result"
 }

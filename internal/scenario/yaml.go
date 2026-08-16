@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/Diegobraun/braunrate/internal/protocol"
-	"github.com/Diegobraun/braunrate/internal/texto"
+	"github.com/Diegobraun/braunrate/internal/text"
 	"gopkg.in/yaml.v3"
 )
 
@@ -367,7 +367,7 @@ func readPhase(node *yaml.Node) (Phase, error) {
 	case "ramp":
 		phase.Kind = PhaseRamp
 	case "steady":
-		phase.Kind = PhasePlateau
+		phase.Kind = PhaseSteady
 	case "spike":
 		phase.Kind = PhaseSpike
 	default:
@@ -550,7 +550,7 @@ func suggestWithExample(received string, valid []string, example string) string 
 
 func suggest(received string, valid []string) string {
 	lines := ""
-	if best, found := texto.Closest(received, valid); found {
+	if best, found := text.Closest(received, valid); found {
 		lines += fmt.Sprintf("    did you mean %q?\n", best)
 	}
 	return lines + "    available: " + strings.Join(valid, ", ")

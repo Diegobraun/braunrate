@@ -664,7 +664,7 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 		scenario.AssertHeader, scenario.AssertionKind(scenario.CheckStatus),
 	}, assertions)
 	missing(t, "tipo de fase", []scenario.PhaseKind{
-		scenario.PhaseRamp, scenario.PhasePlateau, scenario.PhaseSpike, scenario.PhaseConstant,
+		scenario.PhaseRamp, scenario.PhaseSteady, scenario.PhaseSpike, scenario.PhaseSteady,
 	}, phases)
 	missing(t, "modelo de chegada", []scenario.ArrivalModel{
 		scenario.OpenArrival, scenario.ClosedArrival,

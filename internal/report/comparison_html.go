@@ -64,19 +64,19 @@ func buildComparisonPage(c comparison.Comparison, version string) comparisonPage
 		After:      c.After,
 		Errors:     c.Error.Sentence,
 		Version:    version,
-		Noise: fmt.Sprintf("Duas execuções não dão intervalo de confiança: variação abaixo de %.0f%% é tratada como ruído.",
+		Noise: fmt.Sprintf("Two runs give no confidence interval: a change below %.0f%% is treated as noise.",
 			comparison.AcceptedNoise*100),
 	}
 
-	page.Class = "neutro"
+	page.Class = "neutral"
 	switch {
 	case !c.Comparable:
-		page.Class = "invalido"
-		page.Subtitle = "Nenhum número abaixo foi comparado: uma das duas execuções não vale como medição."
+		page.Class = "invalid"
+		page.Subtitle = "None of the numbers below were compared: one of the two runs does not hold as a measurement."
 	case c.Journey.Direction == comparison.DirectionWorse || c.Overall.Direction == comparison.DirectionWorse:
-		page.Class = "falhou"
+		page.Class = "failed"
 	case c.Journey.Direction == comparison.DirectionBetter || c.Overall.Direction == comparison.DirectionBetter:
-		page.Class = "passou"
+		page.Class = "passed"
 	}
 
 	page.Journey = c.Journey.Sentence
@@ -93,9 +93,9 @@ func buildComparisonPage(c comparison.Comparison, version string) comparisonPage
 		}
 		switch {
 		case step.New:
-			line.Note = "passo novo"
+			line.Note = "new step"
 		case step.Vanished:
-			line.Note = "não existe mais"
+			line.Note = "gone"
 		}
 		page.Steps = append(page.Steps, line)
 	}
@@ -138,78 +138,78 @@ func percentileLines(percentiles map[string]comparison.Difference) []comparisonL
 func classOf(direction string) string {
 	switch direction {
 	case comparison.DirectionWorse:
-		return "pior"
+		return "worse"
 	case comparison.DirectionBetter:
-		return "melhor"
+		return "better"
 	}
-	return "igual"
+	return "same"
 }
 
 var comparisonTemplate = template.Must(template.Must(template.Must(
 	template.New("comparison").Parse(pageStyle)).
 	Parse(comparisonStyle)).
 	Parse(`<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}}: antes e depois — braunrate</title>
+<title>{{.Title}}: before and after — braunrate</title>
 {{template "style"}}
 {{template "comparison-style"}}
 </head>
 <body>
 <main>
 <header>
-  <div class="cenário">{{.Title}} — antes e depois</div>
+  <div class="scenario">{{.Title}} — before and after</div>
   <h1 class="{{.Class}}">{{.Sentence}}</h1>
-  {{if .Subtitle}}<p class="subtitulo">{{.Subtitle}}</p>{{end}}
+  {{if .Subtitle}}<p class="subtitle">{{.Subtitle}}</p>{{end}}
 </header>
 
-<h2>Comparando</h2>
+<h2>Comparing</h2>
 <table>
-  <tr><th>execução</th><th>cenário</th><th>alvo</th><th>quando</th><th>versão</th></tr>
-  <tr><td>antes</td><td>{{.Before.Spec}}</td><td>{{.Before.Target}}</td><td>{{.Before.Start}}</td><td>{{.Before.Version}}</td></tr>
-  <tr><td>depois</td><td>{{.After.Spec}}</td><td>{{.After.Target}}</td><td>{{.After.Start}}</td><td>{{.After.Version}}</td></tr>
+  <tr><th>run</th><th>scenario</th><th>target</th><th>when</th><th>version</th></tr>
+  <tr><td>before</td><td>{{.Before.Spec}}</td><td>{{.Before.Target}}</td><td>{{.Before.Start}}</td><td>{{.Before.Version}}</td></tr>
+  <tr><td>after</td><td>{{.After.Spec}}</td><td>{{.After.Target}}</td><td>{{.After.Start}}</td><td>{{.After.Version}}</td></tr>
 </table>
 
 {{if .Comparable}}
-<div class="leitura">{{.Journey}}</div>
+<div class="reading">{{.Journey}}</div>
 
-<h2>A jornada inteira</h2>
+<h2>The whole journey</h2>
 <table>
-  <tr><th>percentil</th><th>antes</th><th>depois</th><th>variação</th></tr>
+  <tr><th>percentile</th><th>before</th><th>after</th><th>change</th></tr>
   {{range .JourneyRows}}<tr><td>{{.Metric}}</td><td>{{.Before}}</td><td>{{.After}}</td><td class="{{.Class}}">{{.Change}}</td></tr>{{end}}
 </table>
 
-<h2>Todas as requisições</h2>
+<h2>All requests</h2>
 <table>
-  <tr><th>percentil</th><th>antes</th><th>depois</th><th>variação</th></tr>
+  <tr><th>percentile</th><th>before</th><th>after</th><th>change</th></tr>
   {{range .OverallRows}}<tr><td>{{.Metric}}</td><td>{{.Before}}</td><td>{{.After}}</td><td class="{{.Class}}">{{.Change}}</td></tr>{{end}}
 </table>
 
-<h2>Por passo</h2>
+<h2>Per step</h2>
 <table>
-  <tr><th>passo</th><th>95% antes</th><th>95% depois</th><th>variação</th></tr>
+  <tr><th>step</th><th>95% before</th><th>95% after</th><th>change</th></tr>
   {{range .Steps}}<tr>
-    <td>{{.Step}}{{if .Note}} <span class="marca">({{.Note}})</span>{{end}}</td>
+    <td>{{.Step}}{{if .Note}} <span class="mark">({{.Note}})</span>{{end}}</td>
     <td>{{.Before}}</td><td>{{.After}}</td><td class="{{.Class}}">{{.Change}}</td>
   </tr>{{end}}
 </table>
 
-<h2>Erros</h2>
-<ul class="frases"><li>{{.Errors}}</li></ul>
+<h2>Errors</h2>
+<ul class="sentences"><li>{{.Errors}}</li></ul>
 {{end}}
 
-<h2>O que pode explicar a diferença sem ser o serviço</h2>
-<ul class="frases">
-  {{if not .Caveats}}<li>Nada do que da para comparar: cenário, alvo, máquina, plano de carga e versão são os mesmos. O conteúdo dos arquivos de dados não entra nesta lista — se ele mudou entre as duas, a diferença pode ser dele.</li>{{end}}
-  {{range .Caveats}}<li>{{.Text}}{{if .Blocking}} <strong>(isso sozinho explica a diferença)</strong>{{end}}</li>{{end}}
+<h2>What could explain the difference other than the service</h2>
+<ul class="sentences">
+  {{if not .Caveats}}<li>Nothing that can be compared differs: scenario, target, machine, load plan and version are the same. The contents of the data files are not on this list — if they changed between the two, the difference may be theirs.</li>{{end}}
+  {{range .Caveats}}<li>{{.Text}}{{if .Blocking}} <strong>(this alone explains the difference)</strong>{{end}}</li>{{end}}
   <li>{{.Noise}}</li>
 </ul>
 
 <footer>
-  braunrate {{.Version}} — comparação de duas execuções já gravadas.
-  Este arquivo abre sem rede: não busca script, fonte nem imagem externa.
+  braunrate {{.Version}} — comparison of two runs already recorded.
+  This file opens with no network: it fetches no script, font or external image.
 </footer>
 </main>
 </body>
@@ -218,8 +218,8 @@ var comparisonTemplate = template.Must(template.Must(template.Must(
 
 const comparisonStyle = `{{define "comparison-style"}}
 <style>
-td.pior { color: var(--falhou); font-weight: 600; }
-td.melhor { color: var(--passou); font-weight: 600; }
-td.igual { color: var(--suave); }
+td.worse { color: var(--failed); font-weight: 600; }
+td.better { color: var(--passed); font-weight: 600; }
+td.same { color: var(--soft); }
 </style>
 {{end}}`

@@ -26,7 +26,7 @@ func TestMetricsDoesNotKnowAnyProtocolInParticular(t *testing.T) {
 
 // O import nao era o unico jeito de conhecer um protocolo: `variety.go` escrevia
 // a frase de particao do Kafka reconhecendo o prefixo do nome da dimensao, e o
-// nome do protocolo estava ali em texto. Ficou registrado como divida em
+// nome do protocolo estava ali em text. Ficou registrado como divida em
 // docs/arquitetura.md porque as duas saidas obvias estavam fechadas — generalizar
 // perde o conselho util, e deixar o protocolo escrever o relatorio contraria o
 // ADR 0003 §3. A terceira saida e esta: o protocolo declara o que a dimensao

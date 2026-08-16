@@ -8,16 +8,16 @@ import (
 	"github.com/Diegobraun/braunrate/internal/metrics"
 )
 
-// CSV exists for spreadsheets and for stitching runs together; the
-// tipo_de_latencia column goes with it because a p95 column without it mixes
-// corrected latency and service time in the same average.
+// CSV exists for spreadsheets and for stitching runs together; the latencyKind
+// column goes with it because a p95 column without it mixes corrected latency
+// and service time in the same average.
 func CSV(out io.Writer, document metrics.Document) error {
 	writer := csv.NewWriter(out)
 	defer writer.Flush()
 
 	header := []string{
-		"cenario", "alvo", "inicio", "passo", "tipo_de_latencia", "contagem", "erros",
-		"p50_ms", "p95_ms", "p99_ms", "p99_9_ms", "max_ms", "bytes",
+		"scenario", "target", "start", "step", "latencyKind", "count", "errors",
+		"p50Ms", "p95Ms", "p99Ms", "p999Ms", "maxMs", "bytes",
 	}
 	if err := writer.Write(header); err != nil {
 		return err
@@ -35,7 +35,7 @@ func CSV(out io.Writer, document metrics.Document) error {
 
 	if document.Journey.Started > 0 {
 		lost := document.Journey.Started - document.Journey.Completed
-		if err := writer.Write(line("jornada inteira", "corrigida", document.Journey.Started, lost, 0, document.Journey.Reported())); err != nil {
+		if err := writer.Write(line("whole journey", "corrected", document.Journey.Started, lost, 0, document.Journey.Reported())); err != nil {
 			return err
 		}
 	}
@@ -44,7 +44,7 @@ func CSV(out io.Writer, document metrics.Document) error {
 			return err
 		}
 	}
-	return writer.Write(line("global", "corrigida", document.Overall.Count, document.Overall.Errors, 0, document.Overall.Reported()))
+	return writer.Write(line("global", "corrected", document.Overall.Count, document.Overall.Errors, 0, document.Overall.Reported()))
 }
 
 func number(value float64) string {

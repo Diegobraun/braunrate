@@ -14,24 +14,24 @@ import (
 type ErrorClass string
 
 const (
-	Success        ErrorClass = "sucesso"
-	ErrNetwork     ErrorClass = "rede"
+	Success        ErrorClass = "success"
+	ErrNetwork     ErrorClass = "network"
 	ErrTimeout     ErrorClass = "timeout"
 	ErrStatus      ErrorClass = "status"
-	ErrAssertion   ErrorClass = "assercao"
-	ErrCorrelation ErrorClass = "correlacao"
-	ErrConfig      ErrorClass = "configuracao"
-	ErrSaturation  ErrorClass = "saturacao"
+	ErrAssertion   ErrorClass = "assertion"
+	ErrCorrelation ErrorClass = "correlation"
+	ErrConfig      ErrorClass = "config"
+	ErrSaturation  ErrorClass = "saturation"
 	ErrGraphQL     ErrorClass = "graphql"
-	ErrMessaging   ErrorClass = "mensageria"
+	ErrMessaging   ErrorClass = "messaging"
 
-	// Auth failure gets its own class because falling into "configuracao" sent
-	// people looking for a defect in the scenario when the target was down.
-	ErrAuth ErrorClass = "autenticacao"
+	// Auth failure gets its own class because falling into "config" sent people
+	// looking for a defect in the scenario when the target was down.
+	ErrAuth ErrorClass = "auth"
 
 	// A credential that was accepted and has no permission is not a wrong
 	// password: one is fixed in the environment, the other in the broker ACL.
-	ErrAuthorization ErrorClass = "autorizacao"
+	ErrAuthorization ErrorClass = "authorization"
 )
 
 // ErrorClasses exists so the report can be checked against the whole list: a

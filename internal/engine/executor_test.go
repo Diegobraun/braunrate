@@ -61,7 +61,7 @@ func fakeScenario(name string, rate float64, duration time.Duration) scenario.Sp
 		Target: "http://alvo.invalido",
 		Load: scenario.LoadPlan{
 			Model:  scenario.OpenArrival,
-			Phases: []scenario.Phase{{Kind: scenario.PhaseConstant, To: rate, For: duration}},
+			Phases: []scenario.Phase{{Kind: scenario.PhaseSteady, To: rate, For: duration}},
 		},
 		Steps: []scenario.Step{{
 			Name:     "passo falso",

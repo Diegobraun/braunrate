@@ -19,35 +19,35 @@ func Debug(out io.Writer, number int, observation engine.Observation, showBody b
 
 	mark := "ok"
 	if observation.Class != protocol.Success {
-		mark = "FALHOU"
+		mark = "FAILED"
 	}
 	write("")
-	write("passo %d — %s   [%s em %s]", number, observation.Step, mark, observation.Duration.Round(100_000))
+	write("step %d — %s   [%s in %s]", number, observation.Step, mark, observation.Duration.Round(100_000))
 	lines := describeConfig(observation.Config)
-	write("  requisição: %s", lines[0])
+	write("  request: %s", lines[0])
 	for _, line := range lines[1:] {
 		write("              %s", shorten(line))
 	}
 
 	if observation.Response.Status > 0 {
-		write("  resposta:   status %d, %d bytes", observation.Response.Status, observation.Response.Bytes)
+		write("  response:   status %d, %d bytes", observation.Response.Status, observation.Response.Bytes)
 	}
 	if showBody && len(observation.Response.Body) > 0 {
-		write("  corpo:      %s", shorten(string(observation.Response.Body)))
+		write("  body:       %s", shorten(string(observation.Response.Body)))
 	}
 
 	if len(observation.Captured) > 0 {
-		write("  capturou:")
+		write("  captured:")
 		for _, name := range sortNames(observation.Captured) {
 			write("    %s = %s", name, shorten(observation.Captured[name]))
 		}
 	}
 
 	for _, failure := range observation.Failures {
-		write("  problema:   %s", failure)
+		write("  problem:    %s", failure)
 	}
 	if observation.Class != protocol.Success && len(observation.Failures) == 0 {
-		write("  problema:   %s", className(string(observation.Class)))
+		write("  problem:    %s", className(string(observation.Class)))
 		// The detail may explain in more than one line what to do next, and
 		// squeezing it into one would bury the part that is not the diagnosis.
 		for _, line := range strings.Split(observation.Response.Detail, "\n") {
@@ -62,7 +62,7 @@ func Debug(out io.Writer, number int, observation engine.Observation, showBody b
 func IterationVars(out io.Writer, vars map[string]string) error {
 	output := &lineWriter{out: out}
 	output.writef("")
-	output.writef("variáveis no fim da iteração")
+	output.writef("variables at the end of the iteration")
 	for _, name := range sortNames(vars) {
 		output.writef("  %s = %s", name, shorten(vars[name]))
 	}
@@ -71,7 +71,7 @@ func IterationVars(out io.Writer, vars map[string]string) error {
 
 func describeConfig(config protocol.Config) []string {
 	if config == nil {
-		return []string{"(não montada)"}
+		return []string{"(not built)"}
 	}
 	if describable, knows := config.(protocol.Describable); knows {
 		return describable.Describe()

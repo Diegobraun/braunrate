@@ -14,7 +14,7 @@ func planOf(phases ...scenario.Phase) engine.Plan {
 }
 
 func TestConstantRateSchedulesAtFixedInterval(t *testing.T) {
-	plan := planOf(scenario.Phase{Kind: scenario.PhaseConstant, To: 100, For: 2 * time.Second})
+	plan := planOf(scenario.Phase{Kind: scenario.PhaseSteady, To: 100, For: 2 * time.Second})
 
 	if total := plan.TotalRequests(); total != 200 {
 		t.Fatalf("total = %d, esperado 200", total)
@@ -47,7 +47,7 @@ func TestRampSchedulesByRateIntegral(t *testing.T) {
 func TestSequentialPhasesSumDurationAndCount(t *testing.T) {
 	plan := planOf(
 		scenario.Phase{Kind: scenario.PhaseRamp, From: 0, To: 100, For: 2 * time.Second},
-		scenario.Phase{Kind: scenario.PhasePlateau, To: 100, For: 3 * time.Second},
+		scenario.Phase{Kind: scenario.PhaseSteady, To: 100, For: 3 * time.Second},
 		scenario.Phase{Kind: scenario.PhaseSpike, To: 500, For: 1 * time.Second},
 	)
 
@@ -65,7 +65,7 @@ func TestSequentialPhasesSumDurationAndCount(t *testing.T) {
 func TestInstantsAreMonotonic(t *testing.T) {
 	plan := planOf(
 		scenario.Phase{Kind: scenario.PhaseRamp, From: 10, To: 200, For: 3 * time.Second},
-		scenario.Phase{Kind: scenario.PhasePlateau, To: 200, For: 2 * time.Second},
+		scenario.Phase{Kind: scenario.PhaseSteady, To: 200, For: 2 * time.Second},
 	)
 
 	previous := time.Duration(-1)

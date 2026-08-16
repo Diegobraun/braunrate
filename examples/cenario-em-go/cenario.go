@@ -26,7 +26,7 @@ func Scenario(alvo string) (braunrate.Scenario, error) {
 		).RefreshAfter(25*time.Minute)).
 		DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(dsl.Circular)).
 		Ramp(dsl.PerSecond(50), dsl.PerSecond(300), 5*time.Second).
-		Plateau(dsl.PerSecond(300), 5*time.Second).
+		Steady(dsl.PerSecond(300), 5*time.Second).
 		Step(dsl.GET("/pedidos/${assinantes.id}"),
 			dsl.Name("consultar pedido"),
 			dsl.CheckStatus(200),

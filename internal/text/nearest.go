@@ -1,4 +1,4 @@
-package texto
+package text
 
 import "strings"
 

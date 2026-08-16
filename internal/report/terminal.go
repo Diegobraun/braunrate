@@ -9,7 +9,7 @@ import (
 
 	"github.com/Diegobraun/braunrate/internal/metrics"
 	"github.com/Diegobraun/braunrate/internal/slo"
-	"github.com/Diegobraun/braunrate/internal/texto"
+	"github.com/Diegobraun/braunrate/internal/text"
 )
 
 func ProgressLine(snapshot metrics.Snapshot, targetRate float64, remaining time.Duration) string {
@@ -17,10 +17,10 @@ func ProgressLine(snapshot metrics.Snapshot, targetRate float64, remaining time.
 	if snapshot.Sent > 0 {
 		proportion := float64(snapshot.LateDispatches) / float64(snapshot.Sent)
 		if proportion >= 0.01 {
-			alert = fmt.Sprintf("  ATENÇÃO: o gerador não está conseguindo manter a carga (%.1f%% em atraso)", proportion*100)
+			alert = fmt.Sprintf("  WARNING: the generator is not keeping up with the load (%.1f%% behind schedule)", proportion*100)
 		}
 	}
-	return fmt.Sprintf("carga %.0f/s | enviadas %d | concluídas %d | erros %d | metade em %.1f ms | 99%% em %.1f ms | faltam %s%s",
+	return fmt.Sprintf("load %.0f/s | sent %d | completed %d | errors %d | half within %.1f ms | 99%% within %.1f ms | %s left%s",
 		targetRate, snapshot.Sent, snapshot.Completed, snapshot.Errors,
 		snapshot.LatencyP50Ms, snapshot.LatencyP99Ms, remaining.Round(time.Second), alert)
 }
@@ -28,7 +28,7 @@ func ProgressLine(snapshot metrics.Snapshot, targetRate float64, remaining time.
 // No target rate to show: in the closed loop the rate is a result, so what goes
 // on screen is what the users are getting, never what they were asked for.
 func ClosedProgressLine(snapshot metrics.Snapshot, users int, remaining time.Duration) string {
-	return fmt.Sprintf("%d usuários em laço | concluídas %d | erros %d | metade em %.1f ms | 99%% em %.1f ms | faltam %s",
+	return fmt.Sprintf("%d users in a loop | completed %d | errors %d | half within %.1f ms | 99%% within %.1f ms | %s left",
 		users, snapshot.Completed, snapshot.Errors,
 		snapshot.LatencyP50Ms, snapshot.LatencyP99Ms, remaining.Round(time.Second))
 }
@@ -40,11 +40,11 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 	write := lines.writef
 
 	write("")
-	write("%s — contra %s", document.Run.Spec, document.Run.Target)
+	write("%s — against %s", document.Run.Spec, document.Run.Target)
 	write("")
 
 	if warning, closed := metrics.ClosedLoopWarning(document); closed {
-		write("ATENÇÃO: %s", warning)
+		write("WARNING: %s", warning)
 		write("")
 	}
 
@@ -67,26 +67,26 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 	overallLatency := overall.Reported()
 	journey := document.Journey.Reported()
 	duration := (time.Duration(document.Run.DurationMs) * time.Millisecond).Round(100 * time.Millisecond)
-	write("O que aconteceu")
-	write("  %s requisições em %s, %.0f por segundo, %s de erro",
+	write("What happened")
+	write("  %s requests in %s, %.0f per second, %s of them errors",
 		thousands(overall.Count), duration, overall.EffectiveRate, percentage(overall.ErrorRate*100))
-	write("  Metade das respostas em até %s; 95%% em até %s; 99%% em até %s; a pior levou %s",
+	write("  Half the responses within %s; 95%% within %s; 99%% within %s; the worst took %s",
 		milliseconds(overallLatency.P50), milliseconds(overallLatency.P95),
 		milliseconds(overallLatency.P99), milliseconds(overallLatency.Max))
 	write("")
 
 	if document.Journey.Started > 0 {
-		write("A jornada inteira")
+		write("The whole journey")
 		write("  %s", document.Journey.Sentence)
-		write("  metade %s | 95%% %s | 99%% %s | pior %s",
+		write("  half %s | 95%% %s | 99%% %s | worst %s",
 			milliseconds(journey.P50), milliseconds(journey.P95),
 			milliseconds(journey.P99), milliseconds(journey.Max))
-		// Com mix, cada iteracao e uma alternativa: o percentil de jornada passa a
-		// juntar populacoes de custo diferente, e quem le procura cauda onde ha
-		// mistura. A ferramenta sabe disso e diz, em vez de deixar descobrir.
+		// With a mix, each iteration is one alternative: the journey percentile
+		// starts pooling populations of different cost, and the reader looks for a
+		// tail where there is a blend. The tool knows it and says so.
 		if alternatives := mixedAlternatives(document); alternatives > 1 {
-			write("  Cada jornada aqui é uma das %d alternativas do mix, então estes percentis juntam", alternatives)
-			write("  populacoes de custo diferente. Para ler cada uma, use a tabela por passo.")
+			write("  Each journey here is one of the %d alternatives of the mix, so these percentiles pool", alternatives)
+			write("  populations of different cost. To read them apart, use the per-step table.")
 		}
 		write("")
 	}
@@ -101,7 +101,7 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 			case evaluation.Untrustworthy:
 				mark = "?    "
 			case !evaluation.Passed:
-				mark = "FALHA"
+				mark = "FAIL"
 			}
 			write("  %-5s %s", mark, evaluation.Sentence)
 		}
@@ -113,8 +113,8 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 
 	errors := errorLines(document)
 	if len(errors) > 0 {
-		write("Erros")
-		write("  %-26s %-34s %10s   %s", "passo", "o que aconteceu", "quantidade", "exemplo")
+		write("Errors")
+		write("  %-26s %-34s %10s   %s", "step", "what happened", "count", "example")
 		for _, line := range errors {
 			write("  %-26s %-34s %10s   %s", trim(line.step, 26), trim(line.class, 34), thousands(line.count), trim(line.example, exampleWidth))
 		}
@@ -131,44 +131,44 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 
 	writeConsumerLag(lines, document)
 
-	write("Confiabilidade da medição")
+	write("How trustworthy the measurement is")
 	for _, warning := range document.Warnings {
 		if warning.Severity == metrics.SeverityHigh {
 			// Already reported at the top, as a sanity finding.
 			if document.Sanity.Checked {
 				continue
 			}
-			write("  RESULTADO INVÁLIDO: %s", warning.Message)
+			write("  INVALID RESULT: %s", warning.Message)
 		} else {
-			write("  Atenção: %s", warning.Message)
+			write("  Warning: %s", warning.Message)
 		}
 		write("            %s", warning.Evidence)
 	}
 	if document.Closed() {
-		write("  Não há agendamento para comparar: a taxa efetiva de %.0f/s foi consequência do tempo", document.Overall.EffectiveRate)
-		write("  de resposta do alvo, não uma carga declarada. Se o alvo ficar mais lento, a carga cai junto.")
+		write("  There is no schedule to compare against: the effective rate of %.0f/s was a consequence of the", document.Overall.EffectiveRate)
+		write("  target response time, not a declared load. If the target slows down, the load drops with it.")
 	} else {
 		if document.Scheduling.LateDispatches == 0 && document.Scheduling.DroppedByInflightLimit == 0 {
-			write("  O gerador disparou todas as requisições na hora certa, então os números acima valem.")
+			write("  Every request went out on schedule, so the numbers above reflect the target, not the generator.")
 		}
-		write("  Atraso típico para disparar: %s; pior caso: %s (o tempo de resposta já desconta isso)",
+		write("  Typical delay to fire: %s; worst case: %s (the response time already discounts it)",
 			milliseconds(document.Scheduling.Skew.P50), milliseconds(document.Scheduling.Skew.Max))
 		hidden := document.Overall.Latency.P99 - document.Overall.ServiceLatency.P99
 		if hidden >= 1 {
-			write("  Uma ferramenta de laço fechado teria reportado %s a menos no 99%%.", milliseconds(hidden))
+			write("  A closed-loop tool would have reported %s less at the 99%%.", milliseconds(hidden))
 		}
 	}
 	write("")
 
-	write("Ambiente")
-	write("  %s %s/%s, %d núcleos | braunrate %s | %s",
+	write("Environment")
+	write("  %s %s/%s, %d cores | braunrate %s | %s",
 		document.Environment.Host, document.Environment.OS, document.Environment.Arch,
 		document.Environment.Cores, document.Version, document.Run.Start.Format("2006-01-02 15:04:05"))
 	if len(document.Environment.Protocols) > 0 {
-		write("  Protocolos compilados: %s", strings.Join(document.Environment.Protocols, ", "))
+		write("  Compiled protocols: %s", strings.Join(document.Environment.Protocols, ", "))
 	}
 	for _, broker := range document.Run.Brokers {
-		write("  Mensageria: %s", broker)
+		write("  Messaging: %s", broker)
 	}
 	for _, variety := range document.Variety {
 		if !variety.Notable() {
@@ -177,19 +177,19 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 		write("  %s", variety.Sentence)
 	}
 	if len(document.Run.Seeds) > 0 {
-		write("  Sementes dos dados: %s (a mesma semente gera os mesmos valores de novo)",
+		write("  Data seeds: %s (the same seed generates the same values again)",
 			seeds(document.Run.Seeds, document.Run.SeedsFrom))
-		// Semente que veio do ambiente e um numero que ninguem sabe como
-		// reproduzir depois — a menos que o relatorio diga a linha de comando que
-		// traz de volta este mesmo caso.
+		// A seed that came from the environment is a number nobody knows how to
+		// reproduce later — unless the report prints the command line that brings
+		// this same case back.
 		if repeat := repeatWithSeeds(document.Run); repeat != "" {
-			write("  Para repetir exatamente estes dados, rode de novo com %s", repeat)
+			write("  To repeat exactly this data, run again with %s", repeat)
 		}
 	}
 	if document.Run.AuthObtains > 0 {
-		write("  Autenticação obtida %s e reaproveitada por todas as jornadas.",
-			texto.Times(document.Run.AuthObtains))
-		write("  Se o alvo tiver cache, rate limit ou sharding por token, este número fica otimista.")
+		write("  Auth obtained %s and reused by every journey.",
+			text.Times(document.Run.AuthObtains))
+		write("  If the target has caching, rate limiting or sharding by token, this number comes out optimistic.")
 	}
 	write("")
 	return lines.err
@@ -239,17 +239,17 @@ type errorLine struct {
 }
 
 var classNames = map[string]string{
-	"rede":         "falha de rede",
-	"timeout":      "tempo esgotado",
-	"status":       "status HTTP inesperado",
-	"assercao":     "conteúdo fora do esperado",
-	"correlacao":   "não consegui capturar um valor",
-	"configuracao": "erro de configuração do cenário",
-	"autenticacao": "não consegui autenticar",
-	"autorizacao":  "credencial aceita, sem permissão nesse recurso",
-	"mensageria":   "o broker recusou a mensagem",
-	"saturacao":    "o gerador não sustentou a taxa",
-	"graphql":      "erro no corpo da resposta GraphQL (com status 200)",
+	"network":       "network failure",
+	"timeout":       "timed out",
+	"status":        "unexpected HTTP status",
+	"assertion":     "content outside what was expected",
+	"correlation":   "I could not capture a value",
+	"config":        "configuration error in the scenario",
+	"auth":          "I could not authenticate",
+	"authorization": "credential accepted, no permission on that resource",
+	"messaging":     "the broker refused the message",
+	"saturation":    "the generator did not sustain the rate",
+	"graphql":       "error in the GraphQL response body (with status 200)",
 }
 
 // A class with no entry here used to print an empty line, which says less than
@@ -352,15 +352,15 @@ func writeStepTable(output *lineWriter, document metrics.Document) {
 	write := output.writef
 	never := metrics.StepsThatNeverRan(document)
 
-	write("Por passo")
+	write("Per step")
 	if len(document.Steps) == 0 && len(never) == 0 {
-		write("  Nenhum passo registrou amostra: a execução não chegou a medir nada.")
-		write("  Rode 'braunrate debug' para ver onde a iteração para.")
+		write("  No step recorded a sample: the run never got to measure anything.")
+		write("  Run 'braunrate debug' to see where the iteration stops.")
 		write("")
 		return
 	}
 
-	write("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7s", "passo", "", "requisições", "metade", "95%", "99%", "99,9%", "pior", "erros")
+	write("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7s", "step", "", "requests", "half", "95%", "99%", "99.9%", "worst", "errors")
 	hasServiceStep := false
 	for _, step := range document.Steps {
 		mark := "(1)"
@@ -382,33 +382,32 @@ func writeStepTable(output *lineWriter, document metrics.Document) {
 	}
 	if len(never) > 0 {
 		write("")
-		write("  Passo com traço nunca chegou a executar: a iteração parou antes dele. O motivo")
-		write("  está em \"Erros\", no passo que falhou primeiro.")
+		write("  A step with a dash never got to run: the iteration stopped before it. The reason")
+		write("  is under \"Errors\", on the step that failed first.")
 	}
 	write("")
 
 	if document.Closed() {
-		write("  (2) tempo de resposta puro. No laço fechado não existe instante agendado: o")
-		write("      usuário virtual só pede de novo depois da resposta anterior, então nenhum")
-		write("      atraso de fila aparece nestes números.")
+		write("  (2) plain response time. In a closed loop there is no scheduled instant: the")
+		write("      virtual user only asks again after the previous response, so no queueing")
+		write("      delay shows up in these numbers.")
 	} else {
-		write("  (1) tempo contado do instante em que a requisição deveria ter partido \u2014 inclui")
-		write("      qualquer atraso e por isso não esconde travada do alvo.")
+		write("  (1) time counted from the instant the request should have gone out \u2014 it includes")
+		write("      any delay, and for that reason it does not hide a freeze in the target.")
 		if hasServiceStep {
-			write("  (2) tempo de resposta puro, contado de quando o passo anterior terminou. Como")
-			write("      esse passo depende do valor capturado antes dele, não existe instante")
-			write("      agendado próprio. Para a leitura honesta da jornada, use \"A jornada inteira\".")
+			write("  (2) plain response time, counted from when the previous step finished. Because")
+			write("      that step depends on a value captured before it, it has no scheduled")
+			write("      instant of its own. For the honest reading of the journey, use \"The whole journey\".")
 		}
 	}
 	write("")
 	writeMix(output, document)
 }
 
-// Peso de 60% que virou 45% na execucao e informacao, nao detalhe: a proporcao
-// e o que faz a carga ser um mix e nao tres cenarios, e uma proporcao que nao
-// se cumpriu muda o que o numero significa. So aparece quando o cenario declara
-// mix — sem mix, todo passo roda em toda iteracao e a proporcao seria 100% em
-// todas as linhas.
+// A declared 60% that came out 45% is information, not detail: the proportion
+// is what makes the load a mix instead of three scenarios, and a proportion
+// that was not met changes what the number means. It only shows up when the
+// scenario declares a mix.
 func mixedAlternatives(document metrics.Document) int {
 	declared := 0
 	for _, step := range document.Steps {
@@ -432,13 +431,13 @@ func writeMix(output *lineWriter, document metrics.Document) {
 		return
 	}
 	write := output.writef
-	write("Mix declarado e observado")
+	write("Mix declared and observed")
 	for _, step := range document.Steps {
 		if step.DeclaredShare <= 0 {
 			continue
 		}
 		observed := float64(step.Count) / float64(total)
-		write("  %-26s %6.1f%% declarado   %6.1f%% observado (%s de %s)",
+		write("  %-26s %6.1f%% declared   %6.1f%% observed (%s of %s)",
 			trim(step.Name, 26), step.DeclaredShare*100, observed*100,
 			thousands(step.Count), thousands(total))
 	}
@@ -452,10 +451,10 @@ func writeConsumerLag(output *lineWriter, document metrics.Document) {
 		return
 	}
 	write := output.writef
-	write("Atraso do consumidor")
+	write("Consumer lag")
 	for _, lag := range document.Run.ConsumerLag {
 		headline, note := lagSentences(lag)
-		write("  grupo %s em %s: %s", lag.Group, lag.Topic, headline)
+		write("  group %s on %s: %s", lag.Group, lag.Topic, headline)
 		if note != "" {
 			write("  %s", note)
 		}

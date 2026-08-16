@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Diegobraun/braunrate/internal/protocol"
-	"github.com/Diegobraun/braunrate/internal/texto"
+	"github.com/Diegobraun/braunrate/internal/text"
 )
 
 // Cap on distinct values kept per variable. What matters is telling "a single
@@ -205,7 +205,7 @@ func phraseShape(variety Variety) string {
 		count = distinctValuesCap
 	}
 	sentence := fmt.Sprintf("%s de corpo em %q, em %s envios",
-		texto.Count(count, "forma", "formas"), step, thousands(variety.Uses))
+		text.Count(count, "forma", "formas"), step, thousands(variety.Uses))
 	if count == 1 && len(variety.Shapes) == 1 {
 		return sentence + ": " + variety.Shapes[0]
 	}

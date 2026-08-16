@@ -175,17 +175,14 @@ func (builder *Builder) Ramp(from, to Rate, during time.Duration) *Builder {
 	return builder.phase(scenario.Phase{Kind: scenario.PhaseRamp, From: float64(from), To: float64(to), For: during})
 }
 
-func (builder *Builder) Plateau(rate Rate, during time.Duration) *Builder {
-	return builder.phase(scenario.Phase{Kind: scenario.PhasePlateau, To: float64(rate), For: during})
+func (builder *Builder) Steady(rate Rate, during time.Duration) *Builder {
+	return builder.phase(scenario.Phase{Kind: scenario.PhaseSteady, To: float64(rate), For: during})
 }
 
 func (builder *Builder) Spike(rate Rate, during time.Duration) *Builder {
 	return builder.phase(scenario.Phase{Kind: scenario.PhaseSpike, To: float64(rate), For: during})
 }
 
-func (builder *Builder) Constant(rate Rate, during time.Duration) *Builder {
-	return builder.phase(scenario.Phase{Kind: scenario.PhaseConstant, To: float64(rate), For: during})
-}
 
 // ClosedLoop is the declared exception, never the default: the rate stops being
 // something you ask for and becomes whatever the target allows.

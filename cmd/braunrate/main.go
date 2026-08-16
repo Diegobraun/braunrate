@@ -33,7 +33,7 @@ import (
 	"github.com/Diegobraun/braunrate/internal/scenario"
 	"github.com/Diegobraun/braunrate/internal/server"
 	"github.com/Diegobraun/braunrate/internal/testsupport"
-	"github.com/Diegobraun/braunrate/internal/texto"
+	"github.com/Diegobraun/braunrate/internal/text"
 	"github.com/Diegobraun/braunrate/internal/ui"
 )
 
@@ -76,7 +76,7 @@ func main() {
 		os.Exit(0)
 	default:
 		fmt.Fprintf(os.Stderr, "%q não é um comando do braunrate.\n", os.Args[1])
-		if best, found := texto.Closest(os.Args[1], commands); found {
+		if best, found := text.Closest(os.Args[1], commands); found {
 			fmt.Fprintf(os.Stderr, "Você quis dizer %q?\n", best)
 		}
 		fmt.Fprintln(os.Stderr, "\nTodos os comandos:  braunrate ajuda")
@@ -333,7 +333,7 @@ func unknownFlagMessage(set *flag.FlagSet, args []string, err error) string {
 	set.VisitAll(func(f *flag.Flag) { known = append(known, f.Name) })
 
 	message := fmt.Sprintf("%q não existe.", "-"+received)
-	if best, found := texto.Closest(received, known); found {
+	if best, found := text.Closest(received, known); found {
 		message += fmt.Sprintf(" Você quis dizer %q?\n\n    braunrate %s %s\n",
 			"-"+best, set.Name(), strings.Join(corrected(args, received, best), " "))
 	} else {
@@ -515,7 +515,7 @@ as jornadas:
 		return runner.ExitSLO
 	}
 	fmt.Printf("Iteração completa: %s, tudo certo. Para rodar com carga:\n  braunrate execute %s\n",
-		texto.Count(int64(len(iteration.Observations)), "passo", "passos"), scenarioPath)
+		text.Count(int64(len(iteration.Observations)), "passo", "passos"), scenarioPath)
 	return runner.ExitPassed
 }
 
@@ -721,8 +721,8 @@ Ctrl+C encerra e escreve o cenário.
 		return 1
 	}
 	fmt.Fprintf(os.Stderr, "%s viraram %s em %s\n",
-		texto.Count(int64(len(entries)), "requisição", "requisições"),
-		texto.Count(int64(len(script.Steps)), "passo", "passos"), *output)
+		text.Count(int64(len(entries)), "requisição", "requisições"),
+		text.Count(int64(len(script.Steps)), "passo", "passos"), *output)
 
 	directory := filepath.Dir(*output)
 	for index, file := range files {

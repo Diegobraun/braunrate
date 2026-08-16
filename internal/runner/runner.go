@@ -22,7 +22,7 @@ import (
 	"github.com/Diegobraun/braunrate/internal/report/comparison"
 	"github.com/Diegobraun/braunrate/internal/scenario"
 	"github.com/Diegobraun/braunrate/internal/slo"
-	"github.com/Diegobraun/braunrate/internal/texto"
+	"github.com/Diegobraun/braunrate/internal/text"
 )
 
 // Exit codes are part of the contract with CI, so they are decided here and
@@ -316,11 +316,11 @@ func Describe(spec scenario.Spec, plan engine.Plan) []string {
 	var lines []string
 	if spec.Load.Closed() {
 		lines = append(lines, fmt.Sprintf("Cenário válido: %q, %s, %d usuários em laço fechado durante %s.",
-			spec.Name, texto.Count(int64(len(spec.Steps)), "passo", "passos"), spec.Load.Users, plan.Duration()))
+			spec.Name, text.Count(int64(len(spec.Steps)), "passo", "passos"), spec.Load.Users, plan.Duration()))
 	} else {
 		lines = append(lines, fmt.Sprintf("Cenário válido: %q, %s, %s em %s.",
-			spec.Name, texto.Count(int64(len(spec.Steps)), "passo", "passos"),
-			texto.Count(plan.TotalRequests(), "iteração", "iterações"), plan.Duration()))
+			spec.Name, text.Count(int64(len(spec.Steps)), "passo", "passos"),
+			text.Count(plan.TotalRequests(), "iteração", "iterações"), plan.Duration()))
 	}
 	if warning, closed := scenario.ClosedModelWarning(spec); closed {
 		lines = append(lines, warning)
