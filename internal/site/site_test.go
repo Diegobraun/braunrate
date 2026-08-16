@@ -327,9 +327,9 @@ func TestTheFoldSaysWhatWhyAndTheFirstCommand(t *testing.T) {
 			t.Errorf("a dobra usa %q sem tradução: quem chega não conhece o termo", jargao)
 		}
 	}
-	corpo := inicio[strings.Index(inicio, `<h2 id="comecar"`):]
+	body := inicio[strings.Index(inicio, `<h2 id="comecar"`):]
 	for _, numero := range []string{"983,0 ms", "3,7 ms", "979,4 ms"} {
-		if !strings.Contains(corpo, numero) {
+		if !strings.Contains(body, numero) {
 			t.Errorf("a dobra mostra %s e a página não mostra esse número em lugar nenhum", numero)
 		}
 	}

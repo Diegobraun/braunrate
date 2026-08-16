@@ -14,7 +14,7 @@ func brokerScenario(t *testing.T, broker *dsl.BrokerAuth) error {
 	_, err := dsl.New("Cobranca").
 		Target("kafka.homolog:9093").
 		KafkaBroker(broker).
-		Plateau(dsl.PerSecond(10), 5*time.Second).
+		Steady(dsl.PerSecond(10), 5*time.Second).
 		Step(dsl.Kafka("pedidos").Value("{}"), dsl.Name("publicar pedido")).
 		Build()
 	return err
@@ -40,7 +40,7 @@ func TestEnvironmentReferenceIsAcceptedInTheDSL(t *testing.T) {
 	spec, err := dsl.New("Cobranca").
 		Target("kafka.homolog:9093").
 		KafkaBroker(dsl.BrokerAt("kafka.homolog:9093").SCRAM512("ana", "${KAFKA_SENHA}").CA("/etc/ssl/ca.pem")).
-		Plateau(dsl.PerSecond(10), 5*time.Second).
+		Steady(dsl.PerSecond(10), 5*time.Second).
 		Step(dsl.Kafka("pedidos").Value("{}"), dsl.Name("publicar pedido")).
 		Build()
 	if err != nil {
@@ -64,7 +64,7 @@ func TestMSKIAMTakesRegionAndNoCredentialInTheDSL(t *testing.T) {
 	spec, err := dsl.New("Cobranca").
 		Target("b-1.msk.exemplo:9098").
 		KafkaBroker(dsl.BrokerAt("b-1.msk.exemplo:9098").MSKIAM("us-east-1")).
-		Plateau(dsl.PerSecond(10), 5*time.Second).
+		Steady(dsl.PerSecond(10), 5*time.Second).
 		Step(dsl.Kafka("pedidos").Value("{}"), dsl.Name("publicar pedido")).
 		Build()
 	if err != nil {

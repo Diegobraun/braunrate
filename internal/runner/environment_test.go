@@ -21,19 +21,19 @@ func scenarioFile(t *testing.T, content string) string {
 }
 
 const needsEnvironment = `
-nome: x
-alvo: http://127.0.0.1:8080
+name: x
+target: http://127.0.0.1:8080
 
-autenticacao:
-  tipo: basica
-  usuario: ana
-  senha: "${SENHA_DA_API_QUE_NINGUEM_DEFINIU}"
+auth:
+  type: basic
+  user: ana
+  password: "${SENHA_DA_API_QUE_NINGUEM_DEFINIU}"
 
-carga:
-  perfis:
-    - patamar: { taxa: 1/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
 
-cenario:
+scenario:
   - http: GET /pedidos/1
 `
 

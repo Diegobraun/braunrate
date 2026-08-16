@@ -14,19 +14,19 @@ import (
 )
 
 const minimalScenario = `
-nome: Jornada de cobrança
-alvo: http://127.0.0.1:8080
+name: Jornada de cobrança
+target: http://127.0.0.1:8080
 
-carga:
-  modelo: aberto
-  perfis:
-    - rampa: { de: 1/s, ate: 50/s, durante: 1m }
-    - patamar: { taxa: 50/s, durante: 5m }
+load:
+  model: open
+  profiles:
+    - ramp: { from: 1/s, to: 50/s, duration: 1m }
+    - steady: { rate: 50/s, duration: 5m }
 
-cenario:
+scenario:
   - http: GET /assinaturas/1
-    nome: consultar assinatura
-    verificar: { status: 200 }
+    name: consultar assinatura
+    expect: { status: 200 }
 `
 
 func TestParseMinimalScenario(t *testing.T) {
@@ -66,18 +66,18 @@ func TestParseMinimalScenario(t *testing.T) {
 
 func TestLongFormOfHTTPStep(t *testing.T) {
 	input := `
-nome: com corpo
-alvo: http://127.0.0.1:8080
-carga:
-  perfis:
-    - constante: { taxa: 10/s, durante: 1s }
-cenario:
-  - nome: criar fatura
+name: com corpo
+target: http://127.0.0.1:8080
+load:
+  profiles:
+    - steady: { rate: 10/s, duration: 1s }
+scenario:
+  - name: criar fatura
     http:
-      metodo: POST
-      caminho: /faturas
-      cabecalhos: { X-Tenant: acme }
-      corpo: { valor: 199.90 }
+      method: POST
+      path: /faturas
+      headers: { X-Tenant: acme }
+      body: { value: 199.90 }
 `
 	c, err := scenario.Parse([]byte(input))
 	if err != nil {
@@ -97,26 +97,26 @@ func TestErrorPointsToLine(t *testing.T) {
 	}{
 		{
 			name:     "protocolo desconhecido",
-			input:    "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - constante: { taxa: 1/s, durante: 1s }\ncenario:\n  - grpc: /servico\n",
-			fragment: "não reconheço",
+			input:    "name: x\ntarget: http://a\nload:\n  profiles:\n    - steady: { rate: 1/s, duration: 1s }\nscenario:\n  - grpc: /servico\n",
+			fragment: "I do not recognize",
 			line:     7,
 		},
 		{
-			name:     "taxa inválida",
-			input:    "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - constante: { taxa: rapido, durante: 1s }\ncenario:\n  - http: GET /\n",
-			fragment: "taxa inválida",
+			name:     "invalid rate",
+			input:    "name: x\ntarget: http://a\nload:\n  profiles:\n    - steady: { rate: rapido, duration: 1s }\nscenario:\n  - http: GET /\n",
+			fragment: "invalid rate",
 			line:     5,
 		},
 		{
 			name:     "chave desconhecida no topo",
-			input:    "nome: x\nalvo: http://a\nturbo: sim\n",
-			fragment: "chave desconhecida",
+			input:    "name: x\ntarget: http://a\nturbo: sim\n",
+			fragment: "unknown key",
 			line:     3,
 		},
 		{
 			name:     "perfil desconhecido",
-			input:    "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - montanha: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n",
-			fragment: "tipo de perfil desconhecido",
+			input:    "name: x\ntarget: http://a\nload:\n  profiles:\n    - montanha: { rate: 1/s, duration: 1s }\nscenario:\n  - http: GET /\n",
+			fragment: "unknown profile kind",
 			line:     5,
 		},
 	}
@@ -143,16 +143,16 @@ func TestErrorPointsToLine(t *testing.T) {
 
 func TestAggregationKeyCarriesNoInterpolatedValue(t *testing.T) {
 	input := `
-nome: agregacao
-alvo: http://127.0.0.1:8080
-variaveis:
+name: agregacao
+target: http://127.0.0.1:8080
+variables:
   pedidoId: "1"
-carga:
-  perfis:
-    - constante: { taxa: 1/s, durante: 1s }
-cenario:
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
+scenario:
   - http: GET /pedidos/${pedidoId}
-    captura: { proximo: $.proximo.id }
+    capture: { proximo: $.proximo.id }
 `
 	c, err := scenario.Parse([]byte(input))
 	if err != nil {
@@ -169,15 +169,15 @@ cenario:
 func TestVariableUsesEnvironmentAndDefault(t *testing.T) {
 	t.Setenv("TENANT_DE_TESTE", "acme")
 	input := `
-nome: variaveis
-alvo: http://127.0.0.1:8080
-variaveis:
+name: variaveis
+target: http://127.0.0.1:8080
+variables:
   tenant: ${TENANT_DE_TESTE:-padrao}
   regiao: ${REGIAO_INEXISTENTE_NO_AMBIENTE:-sul}
-carga:
-  perfis:
-    - constante: { taxa: 1/s, durante: 1s }
-cenario:
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
+scenario:
   - http: GET /clientes/${tenant}/${regiao}
 `
 	c, err := scenario.Parse([]byte(input))
@@ -198,7 +198,7 @@ func TestValidationReportsProblems(t *testing.T) {
 	if err == nil {
 		t.Fatal("esperava erro de validação")
 	}
-	for _, fragment := range []string{"nome", "alvo", "passo", "perfil"} {
+	for _, fragment := range []string{"name", "target", "step", "profile"} {
 		if !strings.Contains(err.Error(), fragment) {
 			t.Errorf("validação não mencionou %q: %v", fragment, err)
 		}
@@ -207,22 +207,22 @@ func TestValidationReportsProblems(t *testing.T) {
 
 func TestDuplicateStepNameIsInvalid(t *testing.T) {
 	input := `
-nome: repetido
-alvo: http://127.0.0.1:8080
-carga:
-  perfis:
-    - constante: { taxa: 1/s, durante: 1s }
-cenario:
+name: repetido
+target: http://127.0.0.1:8080
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
+scenario:
   - http: GET /a
-    nome: consulta
+    name: consulta
   - http: GET /b
-    nome: consulta
+    name: consulta
 `
 	c, err := scenario.Parse([]byte(input))
 	if err != nil {
 		t.Fatalf("erro inesperado: %v", err)
 	}
-	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "nome repetido") {
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "repeated name") {
 		t.Fatalf("esperava erro de nome repetido, recebeu %v", err)
 	}
 }
@@ -231,11 +231,11 @@ cenario:
 // got sixty times the load, no warning, and a report about a load nobody asked
 // for.
 func TestRateWithoutUnitIsRefusedInsteadOfAssumedPerSecond(t *testing.T) {
-	_, err := scenario.Parse([]byte("nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamar: { taxa: 100, durante: 5s }\ncenario:\n  - http: GET /\n"))
+	_, err := scenario.Parse([]byte("name: x\ntarget: http://a\nload:\n  profiles:\n    - steady: { rate: 100, duration: 5s }\nscenario:\n  - http: GET /\n"))
 	if err == nil {
 		t.Fatal("taxa sem unidade foi aceita: 100 virou 100/s sem ninguém ser avisado")
 	}
-	for _, expected := range []string{"sem unidade", "100/s", "100/m", "100/h"} {
+	for _, expected := range []string{"without a unit", "100/s", "100/m", "100/h"} {
 		if !strings.Contains(err.Error(), expected) {
 			t.Errorf("a mensagem não ensina as unidades: falta %q em\n%s", expected, err)
 		}
@@ -243,8 +243,8 @@ func TestRateWithoutUnitIsRefusedInsteadOfAssumedPerSecond(t *testing.T) {
 }
 
 func TestRateThatIsNotANumberKeepsItsOwnMessage(t *testing.T) {
-	_, err := scenario.Parse([]byte("nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamar: { taxa: rapido, durante: 5s }\ncenario:\n  - http: GET /\n"))
-	if err == nil || !strings.Contains(err.Error(), "taxa inválida") {
+	_, err := scenario.Parse([]byte("name: x\ntarget: http://a\nload:\n  profiles:\n    - steady: { rate: rapido, duration: 5s }\nscenario:\n  - http: GET /\n"))
+	if err == nil || !strings.Contains(err.Error(), "invalid rate") {
 		t.Fatalf("taxa que não e número passou a sugerir unidades sem sentido: %v", err)
 	}
 }

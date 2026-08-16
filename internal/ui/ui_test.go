@@ -74,7 +74,7 @@ func TestThePageFetchesNothingFromTheNetwork(t *testing.T) {
 	}
 }
 
-// A interface e um editor do arquivo: se ela montar uma arvore de campos com
+// A interface e um editor do file: se ela montar uma arvore de campos com
 // estado proprio, o YAML deixa de ser a verdade.
 func TestTheEditorIsATextAreaOverTheFile(t *testing.T) {
 	address := serve(t)

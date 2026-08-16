@@ -32,7 +32,7 @@ func TestRawTargetAnswersHTTPAndKeepsTheConnection(t *testing.T) {
 		body, err := io.ReadAll(response.Body)
 		_ = response.Body.Close()
 		if err != nil {
-			t.Fatalf("não consegui ler o corpo: %v", err)
+			t.Fatalf("não consegui ler o body: %v", err)
 		}
 		if response.StatusCode != http.StatusOK {
 			t.Fatalf("chamada %d veio com status %d", attempt, response.StatusCode)

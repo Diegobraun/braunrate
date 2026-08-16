@@ -57,7 +57,7 @@ func TestJourneyCriterionCatchesWhatStepRulesApprove(t *testing.T) {
 		t.Fatal("jornada de 1800 ms passou por um limite de 1 s")
 	}
 	if !strings.Contains(withJourney.Sentence, "a jornada inteira") {
-		t.Errorf("a frase não diz que quem falhou foi a jornada: %q", withJourney.Sentence)
+		t.Errorf("a frase não diz que quem falhou foi a journey: %q", withJourney.Sentence)
 	}
 }
 
@@ -68,10 +68,10 @@ func TestUndeclaredCriteriaAreReportedAsInformation(t *testing.T) {
 
 	together := strings.Join(verdict.Undeclared, " | ")
 	for _, expected := range []string{
-		"jornada: sem critério declarado",
+		"journey: sem critério declarado",
 		"global: sem critério declarado",
 		"passos sem critério declarado (1 de 2): pagar fatura",
-		"regressao: sem critério declarado",
+		"regression: sem critério declarado",
 	} {
 		if !strings.Contains(together, expected) {
 			t.Errorf("faltou declarar a ausência de %q: %v", expected, verdict.Undeclared)
@@ -292,6 +292,6 @@ func TestMetricThatMeasuresSomethingElseIsRefused(t *testing.T) {
 		t.Error("taxa de erro da jornada não existe e precisa ser recusada")
 	}
 	if _, err := scenario.ParseSLORule("regressao", "p95", "<= 10% pior"); err == nil {
-		t.Error("métrica de regressão precisa dizer de qual grupo: jornada_p95 ou global_p95")
+		t.Error("métrica de regressão precisa dizer de qual group: jornada_p95 ou global_p95")
 	}
 }

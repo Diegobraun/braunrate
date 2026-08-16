@@ -50,7 +50,7 @@ func TestListLengthIsNotShapeButBeingEmptyIs(t *testing.T) {
 	none := metrics.BodyShape([]byte(`{"itens":[]}`))
 
 	if one != three {
-		t.Fatalf("lista de 1 e de 3 são o mesmo caminho:\n  %s\n  %s", one, three)
+		t.Fatalf("lista de 1 e de 3 são o mesmo path:\n  %s\n  %s", one, three)
 	}
 	if one == none {
 		t.Fatalf("lista vazia e outro caminho, e saiu igual: %s", none)

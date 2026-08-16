@@ -21,7 +21,7 @@ func decode(t *testing.T, text string) (protocol.Config, error) {
 // The topic is the business flow; the broker is infrastructure. Whoever reads
 // the report needs to know which flow got slow.
 func TestAggregationKeyIsTopic(t *testing.T) {
-	config, err := decode(t, "topico: pedidos\nchave: \"1\"\nvalor: { id: 1 }\n")
+	config, err := decode(t, "topic: pedidos\nkey: \"1\"\nvalue: { id: 1 }\n")
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}
@@ -31,7 +31,7 @@ func TestAggregationKeyIsTopic(t *testing.T) {
 }
 
 func TestMessageKeyIsResolvedPerIteration(t *testing.T) {
-	config, err := decode(t, "topico: pedidos\nchave: \"${pedidos.id}\"\nvalor: { id: \"${pedidos.id}\" }\n")
+	config, err := decode(t, "topic: pedidos\nkey: \"${pedidos.id}\"\nvalue: { id: \"${pedidos.id}\" }\n")
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}
@@ -46,8 +46,8 @@ func TestMessageKeyIsResolvedPerIteration(t *testing.T) {
 
 func TestStepWithoutTopicOrValueTeachesRightForm(t *testing.T) {
 	testCases := map[string]string{
-		"sem tópico": "valor: { id: 1 }\n",
-		"sem valor":  "topico: pedidos\n",
+		"sem tópico": "value: { id: 1 }\n",
+		"sem valor":  "topic: pedidos\n",
 	}
 	for name, text := range testCases {
 		_, err := decode(t, text)
@@ -61,14 +61,14 @@ func TestStepWithoutTopicOrValueTeachesRightForm(t *testing.T) {
 }
 
 func TestUnknownAcksListsOptions(t *testing.T) {
-	_, err := decode(t, "topico: pedidos\nvalor: { id: 1 }\nacks: talvez\n")
+	_, err := decode(t, "topic: pedidos\nvalue: { id: 1 }\nacks: talvez\n")
 	if err == nil || !strings.Contains(err.Error(), "todos, lider ou nenhum") {
 		t.Errorf("erro = %v", err)
 	}
 }
 
 func TestMissingBrokerTeachesWhereToDeclare(t *testing.T) {
-	config, err := decode(t, "topico: pedidos\nvalor: { id: 1 }\n")
+	config, err := decode(t, "topic: pedidos\nvalue: { id: 1 }\n")
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}

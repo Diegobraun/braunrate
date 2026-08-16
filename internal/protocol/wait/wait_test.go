@@ -19,7 +19,7 @@ func decode(t *testing.T, text string) (protocol.Config, error) {
 }
 
 func TestAggregationKeyIsAwaitedDestination(t *testing.T) {
-	config, err := decode(t, "kafka: { topico: pedidos-processados }\nchave: \"${pedidos.id}\"\n")
+	config, err := decode(t, "kafka: { topic: pedidos-processados }\nkey: \"${pedidos.id}\"\n")
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}
@@ -31,7 +31,7 @@ func TestAggregationKeyIsAwaitedDestination(t *testing.T) {
 // With no correlation value any message would do: the measurement would time
 // the fastest consumer on the topic instead of that iteration's message.
 func TestWaitWithoutCorrelationIsRefused(t *testing.T) {
-	_, err := decode(t, "kafka: { topico: pedidos-processados }\n")
+	_, err := decode(t, "kafka: { topic: pedidos-processados }\n")
 	if err == nil {
 		t.Fatal("esperava erro")
 	}
@@ -41,7 +41,7 @@ func TestWaitWithoutCorrelationIsRefused(t *testing.T) {
 }
 
 func TestTimeoutHasDefaultAndCanBeDeclared(t *testing.T) {
-	config, err := decode(t, "kafka: { topico: t }\nchave: x\n")
+	config, err := decode(t, "kafka: { topic: t }\nkey: x\n")
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestTimeoutHasDefaultAndCanBeDeclared(t *testing.T) {
 		t.Errorf("faltou o timeout padrão na descricao: %s", description)
 	}
 
-	withTimeout, err := decode(t, "kafka: { topico: t }\nchave: x\ntimeout: 90s\n")
+	withTimeout, err := decode(t, "kafka: { topic: t }\nkey: x\ntimeout: 90s\n")
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestTimeoutHasDefaultAndCanBeDeclared(t *testing.T) {
 }
 
 func TestMissingAddressTeachesWhereToDeclare(t *testing.T) {
-	config, err := decode(t, "kafka: { topico: t }\nchave: x\n")
+	config, err := decode(t, "kafka: { topic: t }\nkey: x\n")
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestMissingAddressTeachesWhereToDeclare(t *testing.T) {
 // C11 of the audit: "tempo esgotado" says what happened, not what to do about
 // it, and "enderecos:" came out empty when the address came from the target.
 func TestWaitDescribesWhereTheAddressComesFromWhenTheStepDeclaresNone(t *testing.T) {
-	config, err := decode(t, "kafka: { topico: pedidos-processados }\nchave: abc\ntimeout: 5s\n")
+	config, err := decode(t, "kafka: { topic: pedidos-processados }\nkey: abc\ntimeout: 5s\n")
 	if err != nil {
 		t.Fatalf("passo inválido: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestOffsetReadWaitsOutTheLeaderElectionAndGivesUpOnAnythingElse(t *testing.
 	}
 	for _, message := range permanent {
 		if wait.Settling(errorOf(message)) {
-			t.Fatalf("%q não pode virar espera: o erro não passa sozinho", message)
+			t.Fatalf("%q não pode virar expect: o erro não passa sozinho", message)
 		}
 	}
 }

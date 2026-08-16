@@ -53,7 +53,7 @@ import (
 func main() {
 	spec, err := dsl.New("Cenário de fora do módulo").
 		Target("http://127.0.0.1:8080").
-		Plateau(dsl.PerSecond(50), 2*time.Second).
+		Steady(dsl.PerSecond(50), 2*time.Second).
 		Step(dsl.GET("/pedidos/1"), dsl.Name("consultar pedido"), dsl.CheckStatus(200)).
 		SLO("consultar pedido", "p95", "< 500ms").
 		OverallSLO("erros", "< 1").

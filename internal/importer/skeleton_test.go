@@ -40,13 +40,13 @@ func TestSkeletonIsAValidScenario(t *testing.T) {
 // tem outra referencia. A primeira versao deste bloco escrevia "valor" no passo
 // amqp, que usa "corpo".
 func TestCommentedProtocolShapesParse(t *testing.T) {
-	document := `nome: formas
-alvo: 127.0.0.1:9092
-dados:
-  assinantes: { gerar: { id: uuid } }
-carga:
-  perfis:
-    - patamar: { taxa: 20/s, durante: 1m }
+	document := `name: formas
+target: 127.0.0.1:9092
+data:
+  assinantes: { generate: { id: uuid } }
+load:
+  profiles:
+    - steady: { rate: 20/s, duration: 1m }
 ` + importer.ProtocolShapes()
 
 	if _, err := scenario.Parse([]byte(document)); err != nil {

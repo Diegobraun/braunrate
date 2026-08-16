@@ -11,18 +11,18 @@ import (
 
 func seedSpec(t *testing.T, declared string) (scenario.Spec, error) {
 	t.Helper()
-	document := `nome: semente
-alvo: http://127.0.0.1:8080
-dados:
+	document := `name: semente
+target: http://127.0.0.1:8080
+data:
   pedidos:
-    gerar: { id: uuid }
-    semente: ` + declared + `
-carga:
-  perfis:
-    - constante: { taxa: 1/s, durante: 1s }
-cenario:
+    generate: { id: uuid }
+    seed: ` + declared + `
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
+scenario:
   - http: GET /pedidos/${pedidos.id}
-    nome: consultar
+    name: consultar
 `
 	return scenario.Parse([]byte(document))
 }
@@ -58,7 +58,7 @@ func TestWithoutTheVariableTheDefaultIsUsedAndNothingIsAnnounced(t *testing.T) {
 		t.Fatalf("a semente saiu %d e o padrão do arquivo era 42", spec.Data[0].Seed)
 	}
 	if spec.Data[0].SeedFrom != "" {
-		t.Fatalf("declarou origem de ambiente para uma semente que veio do arquivo: %q", spec.Data[0].SeedFrom)
+		t.Fatalf("declarou origem de ambiente para uma semente que veio do file: %q", spec.Data[0].SeedFrom)
 	}
 	if scenario.SeedsFromEnvironment(spec) != nil {
 		t.Fatal("o relatório ganharia uma linha de reproducao que não tem o que reproduzir")
@@ -85,7 +85,7 @@ func TestSeedFromTheEnvironmentThatIsNotANumberIsRefusedNamingTheVariable(t *tes
 		t.Fatal("aceitou uma semente que não e número")
 	}
 	if !strings.Contains(err.Error(), "$SEMENTE") || !strings.Contains(err.Error(), `"hoje"`) {
-		t.Fatalf("a mensagem não diz qual variável esta errada nem com que valor: %v", err)
+		t.Fatalf("a mensagem não diz qual variável esta errada nem com que value: %v", err)
 	}
 }
 

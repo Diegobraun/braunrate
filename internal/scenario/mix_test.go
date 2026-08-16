@@ -11,7 +11,7 @@ import (
 
 func mixSpec(t *testing.T, steps string) (scenario.Spec, error) {
 	t.Helper()
-	document := "nome: mix\nalvo: http://127.0.0.1:8080\ncarga:\n  perfis:\n    - constante: { taxa: 1/s, durante: 1s }\ncenario:\n" + steps
+	document := "name: mix\ntarget: http://127.0.0.1:8080\nload:\n  profiles:\n    - steady: { rate: 1/s, duration: 1s }\nscenario:\n" + steps
 	spec, err := scenario.Parse([]byte(document))
 	if err != nil {
 		return spec, err
@@ -23,14 +23,14 @@ func mixSpec(t *testing.T, steps string) (scenario.Spec, error) {
 // chamada mede cache, nao sistema. Antes disso, a unica saida era rodar tres
 // cenarios em tres processos e tentar somar tres relatorios.
 func TestWeightsProduceTheDeclaredProportionOverACycle(t *testing.T) {
-	spec, err := mixSpec(t, `  - nome: leve
-    peso: 60
+	spec, err := mixSpec(t, `  - name: leve
+    weight: 60
     http: GET /a
-  - nome: pesada
-    peso: 30
+  - name: pesada
+    weight: 30
     http: GET /b
-  - nome: criacao
-    peso: 10
+  - name: criacao
+    weight: 10
     http: GET /c
 `)
 	if err != nil {
@@ -59,11 +59,11 @@ func TestWeightsProduceTheDeclaredProportionOverACycle(t *testing.T) {
 // certa no fim e uma carga que nenhum sistema recebe: durante o primeiro bloco
 // a operacao cara nao existe e o alvo aquece um caminho so.
 func TestTheCycleInterleavesInsteadOfGroupingByAlternative(t *testing.T) {
-	spec, err := mixSpec(t, `  - nome: leve
-    peso: 3
+	spec, err := mixSpec(t, `  - name: leve
+    weight: 3
     http: GET /a
-  - nome: pesada
-    peso: 1
+  - name: pesada
+    weight: 1
     http: GET /b
 `)
 	if err != nil {
@@ -91,14 +91,14 @@ func TestTheCycleInterleavesInsteadOfGroupingByAlternative(t *testing.T) {
 // dispara, e duas execucoes do mesmo arquivo precisam disparar a mesma coisa
 // para que comparar uma com a outra signifique alguma coisa.
 func TestTheSameFileAlwaysProducesTheSameCycle(t *testing.T) {
-	steps := `  - nome: leve
-    peso: 7
+	steps := `  - name: leve
+    weight: 7
     http: GET /a
-  - nome: pesada
-    peso: 5
+  - name: pesada
+    weight: 5
     http: GET /b
-  - nome: rara
-    peso: 2
+  - name: rara
+    weight: 2
     http: GET /c
 `
 	first, err := mixSpec(t, steps)
@@ -116,7 +116,7 @@ func TestTheSameFileAlwaysProducesTheSameCycle(t *testing.T) {
 	}
 	for index := range before {
 		if before[index] != after[index] {
-			t.Fatalf("a posição %d mudou entre duas leituras do mesmo arquivo: %d e %d", index, before[index], after[index])
+			t.Fatalf("a posição %d mudou entre duas leituras do mesmo file: %d e %d", index, before[index], after[index])
 		}
 	}
 }
@@ -125,18 +125,18 @@ func TestTheSameFileAlwaysProducesTheSameCycle(t *testing.T) {
 // Com cadeia, o passo que usa ${valor} rodaria numa iteracao em que o passo que
 // captura nao rodou, e a referencia resolveria para vazio.
 func TestWeightInTheMiddleOfACaptureChainIsRefusedWithTheReason(t *testing.T) {
-	_, err := mixSpec(t, `  - nome: obter token
-    peso: 20
-    http: { metodo: POST, caminho: /auth/token }
-    captura: { pedidoId: $.access_token }
-  - nome: consultar pedido
-    peso: 80
+	_, err := mixSpec(t, `  - name: obter token
+    weight: 20
+    http: { method: POST, path: /auth/token }
+    capture: { pedidoId: $.access_token }
+  - name: consultar pedido
+    weight: 80
     http: GET /pedidos/${pedidoId}
 `)
 	if err == nil {
 		t.Fatal("aceitou peso no meio de uma cadeia de capturas")
 	}
-	for _, expected := range []string{"consultar pedido", "pedidoId", "obter token", "resolveria para vazio"} {
+	for _, expected := range []string{"consultar pedido", "pedidoId", "obter token", "would resolve to nothing"} {
 		if !strings.Contains(err.Error(), expected) {
 			t.Errorf("a mensagem não explica por que não pode: falta %q em\n%v", expected, err)
 		}
@@ -146,23 +146,23 @@ func TestWeightInTheMiddleOfACaptureChainIsRefusedWithTheReason(t *testing.T) {
 // Alternativa sem proporcao nao tem como ser escolhida, e adivinhar um peso
 // para ela seria inventar a carga.
 func TestWeightOnSomeStepsAndNotOthersIsRefused(t *testing.T) {
-	_, err := mixSpec(t, `  - nome: leve
-    peso: 60
+	_, err := mixSpec(t, `  - name: leve
+    weight: 60
     http: GET /a
-  - nome: pesada
+  - name: pesada
     http: GET /b
 `)
 	if err == nil {
 		t.Fatal("aceitou peso em um passo só")
 	}
 	if !strings.Contains(err.Error(), `"pesada"`) {
-		t.Fatalf("a mensagem não nomeia o passo sem peso: %v", err)
+		t.Fatalf("a mensagem não nomeia o passo sem weight: %v", err)
 	}
 }
 
 func TestWeightZeroOrNegativeIsRefused(t *testing.T) {
 	for _, weight := range []string{"0", "-1", "meio"} {
-		if _, err := mixSpec(t, "  - nome: leve\n    peso: "+weight+"\n    http: GET /a\n"); err == nil {
+		if _, err := mixSpec(t, "  - name: leve\n    weight: "+weight+"\n    http: GET /a\n"); err == nil {
 			t.Errorf("aceitou peso %q", weight)
 		}
 	}
@@ -170,7 +170,7 @@ func TestWeightZeroOrNegativeIsRefused(t *testing.T) {
 
 // Sem mix, todo passo roda em toda iteracao — que e o que sempre aconteceu.
 func TestScenarioWithoutWeightsHasNoCycle(t *testing.T) {
-	spec, err := mixSpec(t, "  - nome: um\n    http: GET /a\n  - nome: dois\n    http: GET /b\n")
+	spec, err := mixSpec(t, "  - name: um\n    http: GET /a\n  - name: dois\n    http: GET /b\n")
 	if err != nil {
 		t.Fatalf("cenário inválido: %v", err)
 	}

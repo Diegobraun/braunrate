@@ -176,7 +176,7 @@ func TestErrorRuleIsStillEvaluatedWhenEverythingFails(t *testing.T) {
 	}
 	rules := []scenario.SLORule{{
 		Scope: scenario.ScopeOverall, Metric: "erros",
-		Operator: scenario.OpLess, Limit: 1, Unit: "%", Text: "erros: < 1",
+		Operator: scenario.OpLess, Limit: 1, Unit: "%", Text: "errors: < 1",
 	}}
 
 	verdict := slo.Evaluate(rules, document, nil)

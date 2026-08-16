@@ -52,7 +52,7 @@ func TestAggregationKeyIsOperationNotURL(t *testing.T) {
 }
 
 func TestOperationNameComesFromQuery(t *testing.T) {
-	config := decode(t, "consulta: |\n  mutation PagarFatura($f: ID!) { pagarFatura(id: $f) { status } }\n")
+	config := decode(t, "query: |\n  mutation PagarFatura($f: ID!) { pagarFatura(id: $f) { status } }\n")
 	if config.AggregationKey() != "graphql PagarFatura" {
 		t.Errorf("chave = %q: o nome da operação deveria vir da consulta", config.AggregationKey())
 	}
@@ -69,7 +69,7 @@ func TestAnonymousOperationIsRefusedWithTeachingMessage(t *testing.T) {
 }
 
 func TestVarsAreResolvedEachIteration(t *testing.T) {
-	config := decode(t, "consulta: |\n  query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }\nvariaveis: { id: \"${assinantes.id}\" }\n")
+	config := decode(t, "query: |\n  query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }\nvariables: { id: \"${assinantes.id}\" }\n")
 	resolvida := config.Resolve(func(text string) string {
 		return strings.ReplaceAll(text, "${assinantes.id}", "1002")
 	})
@@ -83,7 +83,7 @@ func TestVarsAreResolvedEachIteration(t *testing.T) {
 }
 
 func TestTokenIsNeverPrintedInFullWhenDebugging(t *testing.T) {
-	config := decode(t, "consulta: |\n  query ConsultarPedido { pedido { status } }\n")
+	config := decode(t, "query: |\n  query ConsultarPedido { pedido { status } }\n")
 	withHeader := config.(protocol.WithHeaders).WithHeader("Authorization", "Bearer abcdefghijklmno")
 	description := strings.Join(withHeader.(protocol.Describable).Describe(), " ")
 	if strings.Contains(description, "abcdefghijklmno") {

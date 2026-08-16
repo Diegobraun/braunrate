@@ -102,26 +102,26 @@ func authenticatedScenario(t *testing.T, broker credential, topic, password stri
 	t.Helper()
 	t.Setenv("BROKER_SENHA", password)
 	return fmt.Sprintf(`
-nome: Broker autenticado
-alvo: %s
+name: Broker autenticado
+target: %s
 
-dados:
+data:
   pedidos:
-    gerar: { id: uuid }
+    generate: { id: uuid }
 
-mensageria:
+messaging:
   kafka:
     brokers: [%s]
-    autenticacao: { tipo: scram_sha512, usuario: %s, senha: "${BROKER_SENHA}" }
+    auth: { type: scramSha512, user: %s, password: "${BROKER_SENHA}" }
     tls: { ca: %s }
 
-carga:
-  perfis:
-    - patamar: { taxa: 20/s, durante: 2s }
+load:
+  profiles:
+    - steady: { rate: 20/s, duration: 2s }
 
-cenario:
-  - kafka: { topico: %s, chave: "${pedidos.id}", valor: '{"id":"${pedidos.id}"}' }
-    nome: publicar pedido
+scenario:
+  - kafka: { topic: %s, key: "${pedidos.id}", value: '{"id":"${pedidos.id}"}' }
+    name: publicar pedido
 `, broker.address, broker.address, broker.user, broker.ca, topic)
 }
 

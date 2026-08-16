@@ -124,7 +124,7 @@ func TestWarnsThreadsAreNotArrivalRate(t *testing.T) {
 		t.Fatalf("não importou: %v", err)
 	}
 	if !containsFragment(importResult.Warnings, "50 threads") || !containsFragment(importResult.Warnings, "não vira taxa de chegada") {
-		t.Errorf("faltou o aviso sobre thread não virar taxa: %v", importResult.Warnings)
+		t.Errorf("faltou o aviso sobre thread não virar rate: %v", importResult.Warnings)
 	}
 }
 
@@ -137,7 +137,7 @@ func TestDeclaresWhatWasNotTranslated(t *testing.T) {
 		t.Errorf("elemento ignorado precisa ser declarado: %v", importResult.Warnings)
 	}
 	if !containsFragment(importResult.Warnings, "faturaId") {
-		t.Errorf("a correlação do .jmx precisa virar instrução de captura: %v", importResult.Warnings)
+		t.Errorf("a correlação do .jmx precisa virar instrução de capture: %v", importResult.Warnings)
 	}
 }
 

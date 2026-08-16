@@ -46,7 +46,7 @@ func TestBrokerThatNeverSettlesFailsWithTheReasonAndNotWithSilence(t *testing.T)
 		t.Fatal("um broker que nunca respondeu foi dado como pronto")
 	}
 	if !strings.Contains(err.Error(), "Not Leader For Partition") {
-		t.Fatalf("a causa do broker se perdeu no caminho: %v", err)
+		t.Fatalf("a causa do broker se perdeu no path: %v", err)
 	}
 	if !strings.Contains(err.Error(), "a partição 0 de \"pedidos\"") {
 		t.Fatalf("o erro não diz o que não ficou pronto: %v", err)

@@ -128,26 +128,26 @@ func runTwoIterations(t *testing.T, generated string) []string {
 	server, seen := recordingTarget(t)
 
 	spec, err := scenario.Parse([]byte(fmt.Sprintf(`
-nome: Idempotencia
-alvo: %s
+name: Idempotencia
+target: %s
 
-dados:
+data:
   pagamento:
-    gerar:
+    generate:
       transactionId: %s
 
-carga:
-  perfis:
-    - patamar: { taxa: 1/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
 
-cenario:
-  - http: { metodo: POST, caminho: "/pedidos", cabecalhos: { X-Idempotency-Key: "${pagamento.transactionId}" } }
-    nome: criar pedido
-    verificar: { status: 201 }
+scenario:
+  - http: { method: POST, path: "/pedidos", headers: { X-Idempotency-Key: "${pagamento.transactionId}" } }
+    name: criar pedido
+    expect: { status: 201 }
 
-  - http: { metodo: GET, caminho: "/pedidos/1", cabecalhos: { X-Idempotency-Key: "${pagamento.transactionId}" } }
-    nome: consultar pedido
-    verificar: { status: 200 }
+  - http: { method: GET, path: "/pedidos/1", headers: { X-Idempotency-Key: "${pagamento.transactionId}" } }
+    name: consultar pedido
+    expect: { status: 200 }
 `, server.URL, generated)))
 	if err != nil {
 		t.Fatalf("cenário inválido: %v", err)
@@ -190,10 +190,10 @@ func TestGeneratedValueIsStableWithinTheIterationAndNewInTheNext(t *testing.T) {
 }
 
 func TestNewPerUseIsExplicitAndChangesAtEveryOccurrence(t *testing.T) {
-	seen := runTwoIterations(t, "{ tipo: uuid, novo_a_cada: uso }")
+	seen := runTwoIterations(t, "{ type: uuid, newEvery: use }")
 
 	if seen[0] == seen[1] {
-		t.Fatalf("declarado 'novo_a_cada: uso' e os dois passos receberam o mesmo valor: %q", seen[0])
+		t.Fatalf("declarado 'novo_a_cada: uso' e os dois passos receberam o mesmo value: %q", seen[0])
 	}
 	if seen[2] == seen[3] {
 		t.Fatalf("declarado 'novo_a_cada: uso' e a segunda iteração repetiu: %q", seen[2])
@@ -202,16 +202,16 @@ func TestNewPerUseIsExplicitAndChangesAtEveryOccurrence(t *testing.T) {
 
 func TestPatternWithoutFormatIsRefusedWithAnExample(t *testing.T) {
 	_, err := scenario.Parse([]byte(`
-nome: x
-alvo: http://127.0.0.1:1
-dados:
+name: x
+target: http://127.0.0.1:1
+data:
   pedidos:
-    gerar:
-      referencia: { tipo: padrao }
-carga:
-  perfis:
-    - patamar: { taxa: 1/s, durante: 1s }
-cenario:
+    generate:
+      referencia: { type: padrao }
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
+scenario:
   - http: GET /
 `))
 
@@ -258,6 +258,6 @@ func TestInlinePatternWithoutFormatSaysWhatIsMissing(t *testing.T) {
 		t.Fatal("padrão sem formato passou calado")
 	}
 	if !strings.Contains(err.Error(), "formato") || !strings.Contains(err.Error(), "######") {
-		t.Fatalf("o erro não ensina o formato: %v", err)
+		t.Fatalf("o erro não ensina o format: %v", err)
 	}
 }

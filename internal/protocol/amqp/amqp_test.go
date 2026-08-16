@@ -19,7 +19,7 @@ func decode(t *testing.T, text string) (protocol.Config, error) {
 }
 
 func TestQueueAloneIsEnoughAndBecomesRoute(t *testing.T) {
-	config, err := decode(t, "fila: pedidos\ncorpo: { id: 1 }\n")
+	config, err := decode(t, "queue: pedidos\nbody: { id: 1 }\n")
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}
@@ -29,7 +29,7 @@ func TestQueueAloneIsEnoughAndBecomesRoute(t *testing.T) {
 }
 
 func TestExchangeWithRouteAppearsInKey(t *testing.T) {
-	config, err := decode(t, "troca: cobranca\nrota: pedido.criado\ncorpo: { id: 1 }\n")
+	config, err := decode(t, "exchange: cobranca\nroutingKey: pedido.criado\nbody: { id: 1 }\n")
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}
@@ -41,7 +41,7 @@ func TestExchangeWithRouteAppearsInKey(t *testing.T) {
 // Without confirmation the measured time is the socket write: it would time
 // the local network, not the broker accepting the message.
 func TestConfirmationIsDefault(t *testing.T) {
-	config, err := decode(t, "fila: pedidos\ncorpo: { id: 1 }\n")
+	config, err := decode(t, "queue: pedidos\nbody: { id: 1 }\n")
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}
@@ -53,8 +53,8 @@ func TestConfirmationIsDefault(t *testing.T) {
 
 func TestStepWithoutDestinationOrBodyTeachesRightForm(t *testing.T) {
 	for name, text := range map[string]string{
-		"sem destino": "corpo: { id: 1 }\n",
-		"sem corpo":   "fila: pedidos\n",
+		"sem destino": "body: { id: 1 }\n",
+		"sem corpo":   "queue: pedidos\n",
 	} {
 		_, err := decode(t, text)
 		if err == nil {

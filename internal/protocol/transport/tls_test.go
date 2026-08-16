@@ -28,7 +28,7 @@ func TestClientReachesATargetWhoseCAOnlyTheScenarioKnows(t *testing.T) {
 	comCA := transport.NewClient(protocol.Options{TLS: &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12}})
 	response, err := comCA.Get(server.URL)
 	if err != nil {
-		t.Fatalf("o cliente com a CA declarada não alcancou o alvo: %v", err)
+		t.Fatalf("o cliente com a CA declarada não alcancou o target: %v", err)
 	}
 	_ = response.Body.Close()
 }

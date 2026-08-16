@@ -45,17 +45,17 @@ func directoryWith(t *testing.T, files map[string]string) string {
 
 func scenarioText(address string) string {
 	return fmt.Sprintf(`
-nome: Consulta de pedidos
-alvo: %s
+name: Consulta de pedidos
+target: %s
 
-carga:
-  perfis:
-    - patamar: { taxa: 50/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 50/s, duration: 1s }
 
-cenario:
+scenario:
   - http: GET /pedido
-    nome: consultar pedido
-    verificar: { status: 200 }
+    name: consultar pedido
+    expect: { status: 200 }
 `, address)
 }
 
@@ -175,7 +175,7 @@ func errorClasses(document metrics.Document) []string {
 }
 
 func TestBrokenScenarioIsRefusedWithTheSameMessageAndThePosition(t *testing.T) {
-	broken := "nome: x\nalvo: http://127.0.0.1:8080\ncarga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /${nao_declarada}\n"
+	broken := "name: x\ntarget: http://127.0.0.1:8080\nload:\n  profiles:\n    - steady: { rate: 1/s, duration: 1s }\nscenario:\n  - http: GET /${nao_declarada}\n"
 	directory := directoryWith(t, map[string]string{"quebrado.yaml": broken})
 	base := serverOn(t, directory, false).URL
 
@@ -368,7 +368,7 @@ func TestStreamReplaysWhatAlreadyHappenedAndEndsWithTheVerdict(t *testing.T) {
 }
 
 func TestScenarioNameIsNeverAPath(t *testing.T) {
-	directory := directoryWith(t, map[string]string{"cenario.yaml": "nome: x\n"})
+	directory := directoryWith(t, map[string]string{"cenario.yaml": "name: x\n"})
 	base := serverOn(t, directory, false).URL
 
 	for _, name := range []string{"..%2f..%2fetc%2fpasswd", "%2etecla", "sub%2fcenario.yaml"} {
@@ -422,7 +422,7 @@ func send(t *testing.T, method, url, body string) (int, []byte) {
 // A interface edita o arquivo, entao o que ela grava e o que o terminal le, byte
 // a byte — comentario incluido.
 func TestTheTextThatComesBackIsTheFileOnDisk(t *testing.T) {
-	original := "# um comentario que o autor escreveu\nnome: Consulta\nalvo: http://127.0.0.1:8080\n"
+	original := "# um comentario que o autor escreveu\nname: Consulta\ntarget: http://127.0.0.1:8080\n"
 	directory := directoryWith(t, map[string]string{"cenario.yaml": original})
 	base := writableServerOn(t, directory).URL
 
@@ -447,29 +447,29 @@ func TestTheTextThatComesBackIsTheFileOnDisk(t *testing.T) {
 // Editar por fora e legitimo: o arquivo e a verdade, e nao a copia que a tela
 // tem na memoria.
 func TestAnEditFromOutsideIsWhatTheInterfaceReads(t *testing.T) {
-	directory := directoryWith(t, map[string]string{"cenario.yaml": "nome: antes\n"})
+	directory := directoryWith(t, map[string]string{"cenario.yaml": "name: antes\n"})
 	base := writableServerOn(t, directory).URL
 
-	if err := os.WriteFile(filepath.Join(directory, "cenario.yaml"), []byte("nome: depois\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(directory, "cenario.yaml"), []byte("name: depois\n"), 0o644); err != nil {
 		t.Fatalf("não consegui editar por fora: %v", err)
 	}
 	_, body := call(t, http.MethodGet, base+"/scenarios/cenario.yaml/text")
-	if string(body) != "nome: depois\n" {
+	if string(body) != "name: depois\n" {
 		t.Fatalf("a leitura não trouxe a edição de fora: %s", body)
 	}
 }
 
 // Sem Writable a porta continua so de leitura: 'serve' nao grava arquivo.
 func TestWithoutWritableNothingIsWritten(t *testing.T) {
-	directory := directoryWith(t, map[string]string{"cenario.yaml": "nome: x\n"})
+	directory := directoryWith(t, map[string]string{"cenario.yaml": "name: x\n"})
 	base := serverOn(t, directory, false).URL
 
-	status, _ := send(t, http.MethodPut, base+"/scenarios/cenario.yaml/text", "nome: outro\n")
+	status, _ := send(t, http.MethodPut, base+"/scenarios/cenario.yaml/text", "name: outro\n")
 	if status == http.StatusOK {
 		t.Fatal("a gravação passou num servidor sem Writable")
 	}
 	onDisk, err := os.ReadFile(filepath.Join(directory, "cenario.yaml"))
-	if err != nil || string(onDisk) != "nome: x\n" {
+	if err != nil || string(onDisk) != "name: x\n" {
 		t.Fatalf("o arquivo mudou: %s (%v)", onDisk, err)
 	}
 }
@@ -480,11 +480,11 @@ func TestTheDraftIsCheckedByTheSameReadingAsTheTerminal(t *testing.T) {
 	directory := directoryWith(t, map[string]string{"cenario.yaml": scenarioText("http://127.0.0.1:8080")})
 	base := writableServerOn(t, directory).URL
 
-	status, body := send(t, http.MethodPost, base+"/scenarios/cenario.yaml/validate", "nome: sem alvo\ncarg: 1\n")
+	status, body := send(t, http.MethodPost, base+"/scenarios/cenario.yaml/validate", "name: sem alvo\ncarg: 1\n")
 	if status != http.StatusUnprocessableEntity {
 		t.Fatalf("o rascunho quebrado passou (%d): %s", status, body)
 	}
-	if !strings.Contains(string(body), "chave desconhecida") {
+	if !strings.Contains(string(body), "unknown key") {
 		t.Fatalf("a recusa do rascunho não é a do terminal: %s", body)
 	}
 
@@ -500,7 +500,7 @@ func TestOnlyScenarioFilesAreWritten(t *testing.T) {
 	base := writableServerOn(t, directoryWith(t, map[string]string{})).URL
 
 	for _, name := range []string{"anotacoes.txt", "..%2fescapou.yaml"} {
-		status, body := send(t, http.MethodPut, base+"/scenarios/"+name+"/text", "nome: x\n")
+		status, body := send(t, http.MethodPut, base+"/scenarios/"+name+"/text", "name: x\n")
 		if status != http.StatusBadRequest {
 			t.Fatalf("%q respondeu %d: %s", name, status, body)
 		}

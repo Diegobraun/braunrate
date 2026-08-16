@@ -11,17 +11,17 @@ import (
 func parseMessaging(t *testing.T, block string) (scenario.Spec, error) {
 	t.Helper()
 	return scenario.Parse([]byte(`
-nome: x
-alvo: kafka.homolog:9093
+name: x
+target: kafka.homolog:9093
 
-mensageria:
+messaging:
 ` + block + `
-carga:
-  perfis:
-    - patamar: { taxa: 1/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
 
-cenario:
-  - kafka: { topico: pedidos, valor: "{}" }
+scenario:
+  - kafka: { topic: pedidos, value: "{}" }
 `))
 }
 
@@ -32,18 +32,18 @@ func TestLiteralSecretIsRefusedAndTheMessageTeachesTheWayOut(t *testing.T) {
 		name     string
 		password string
 	}{
-		{"valor literal", `senha: p4ssw0rd`},
-		{"literal entre aspas", `senha: "p4ssw0rd"`},
-		{"referência com valor de reserva", `senha: "${KAFKA_SENHA:-p4ssw0rd}"`},
+		{"valor literal", `password: p4ssw0rd`},
+		{"literal entre aspas", `password: "p4ssw0rd"`},
+		{"referência com valor de reserva", `password: "${KAFKA_PASSWORD:-p4ssw0rd}"`},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := parseMessaging(t, "  kafka:\n    autenticacao: { tipo: scram_sha512, usuario: ana, "+c.password+" }\n")
+			_, err := parseMessaging(t, "  kafka:\n    auth: { type: scramSha512, user: ana, "+c.password+" }\n")
 			if err == nil {
 				t.Fatal("o cenário com segredo no arquivo foi aceito")
 			}
-			for _, fragment := range []string{"${BROKER_SENHA}", "vai para o repositório", "BROKER_SENHA=..."} {
+			for _, fragment := range []string{"${BROKER_PASSWORD}", "goes into the repository", "BROKER_PASSWORD=..."} {
 				if !strings.Contains(err.Error(), fragment) {
 					t.Fatalf("a mensagem não ensina %q: %v", fragment, err)
 				}
@@ -56,7 +56,7 @@ func TestEnvironmentReferenceIsAcceptedAndKeepsTheVariableName(t *testing.T) {
 	t.Setenv("KAFKA_SENHA", "segredo-do-ambiente")
 
 	spec, err := parseMessaging(t, "  kafka:\n    brokers: [kafka.homolog:9093]\n"+
-		"    autenticacao: { tipo: scram_sha512, usuario: ana, senha: \"${KAFKA_SENHA}\" }\n    tls: { ca: /etc/ssl/ca.pem }\n")
+		"    auth: { type: scramSha512, user: ana, password: \"${KAFKA_SENHA}\" }\n    tls: { ca: /etc/ssl/ca.pem }\n")
 	if err != nil {
 		t.Fatalf("cenário recusado: %v", err)
 	}
@@ -76,27 +76,27 @@ func TestEnvironmentReferenceIsAcceptedAndKeepsTheVariableName(t *testing.T) {
 // Asking for a key in the scenario is the mistake this refuses to make
 // possible, so the key names are refused by name.
 func TestAccessKeyIsRefusedByNameAndPointsAtTheCredentialChain(t *testing.T) {
-	for _, field := range []string{"chave", "token", "segredo", "access_key", "secret_key"} {
-		_, err := parseMessaging(t, "  kafka:\n    autenticacao: { tipo: msk_iam, regiao: us-east-1, "+field+": AKIA123 }\n")
+	for _, field := range []string{"key", "token", "secret", "access_key", "secret_key"} {
+		_, err := parseMessaging(t, "  kafka:\n    auth: { type: mskIam, region: us-east-1, "+field+": AKIA123 }\n")
 		if err == nil {
 			t.Fatalf("o campo %q foi aceito", field)
 		}
-		if !strings.Contains(err.Error(), "cadeia padrão da AWS") {
+		if !strings.Contains(err.Error(), "standard AWS chain") {
 			t.Fatalf("o campo %q não aponta o caminho certo: %v", field, err)
 		}
 	}
 }
 
 func TestMSKWithoutRegionIsRefusedWithTheExample(t *testing.T) {
-	_, err := parseMessaging(t, "  kafka:\n    autenticacao: { tipo: msk_iam }\n")
-	if err == nil || !strings.Contains(err.Error(), "regiao: us-east-1") {
+	_, err := parseMessaging(t, "  kafka:\n    auth: { type: mskIam }\n")
+	if err == nil || !strings.Contains(err.Error(), "region: us-east-1") {
 		t.Fatalf("esperava erro ensinando a região, veio: %v", err)
 	}
 }
 
 func TestRabbitMQRefusesAMechanismItDoesNotHave(t *testing.T) {
-	_, err := parseMessaging(t, "  amqp:\n    autenticacao: { tipo: scram_sha512, usuario: ana, senha: \"${SENHA}\" }\n")
-	if err == nil || !strings.Contains(err.Error(), "sasl_plain") {
+	_, err := parseMessaging(t, "  amqp:\n    auth: { type: scramSha512, user: ana, password: \"${SENHA}\" }\n")
+	if err == nil || !strings.Contains(err.Error(), "saslPlain") {
 		t.Fatalf("esperava erro dizendo o que o RabbitMQ aceita, veio: %v", err)
 	}
 }
@@ -107,7 +107,7 @@ func TestWhatMayBePrintedShowsKindAndUserAndNeverTheSecret(t *testing.T) {
 	t.Setenv("KAFKA_SENHA", "p4ssw0rd-que-nao-pode-vazar")
 
 	spec, err := parseMessaging(t, "  kafka:\n    brokers: [kafka.homolog:9093]\n"+
-		"    autenticacao: { tipo: scram_sha512, usuario: ana, senha: \"${KAFKA_SENHA}\" }\n    tls: { ca: /etc/ssl/ca.pem }\n")
+		"    auth: { type: scramSha512, user: ana, password: \"${KAFKA_SENHA}\" }\n    tls: { ca: /etc/ssl/ca.pem }\n")
 	if err != nil {
 		t.Fatalf("cenário recusado: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestWhatMayBePrintedShowsKindAndUserAndNeverTheSecret(t *testing.T) {
 	if strings.Contains(printed, "p4ssw0rd-que-nao-pode-vazar") {
 		t.Fatalf("a senha apareceu na saída:\n%s", printed)
 	}
-	for _, fragment := range []string{"scram_sha512", "usuário ana", "TLS com CA própria"} {
+	for _, fragment := range []string{"scramSha512", "user ana", "TLS with a private CA"} {
 		if !strings.Contains(printed, fragment) {
 			t.Fatalf("a saída não diz %q:\n%s", fragment, printed)
 		}
@@ -124,12 +124,12 @@ func TestWhatMayBePrintedShowsKindAndUserAndNeverTheSecret(t *testing.T) {
 }
 
 func TestMSKIsDescribedByRegionAndChainNeverByCredential(t *testing.T) {
-	spec, err := parseMessaging(t, "  kafka:\n    autenticacao: { tipo: msk_iam, regiao: us-east-1 }\n")
+	spec, err := parseMessaging(t, "  kafka:\n    auth: { type: mskIam, region: us-east-1 }\n")
 	if err != nil {
 		t.Fatalf("cenário recusado: %v", err)
 	}
 	printed := strings.Join(scenario.DescribeMessaging(spec.Messaging), "\n")
-	if !strings.Contains(printed, "cadeia padrão da AWS") || !strings.Contains(printed, "us-east-1") {
+	if !strings.Contains(printed, "standard AWS chain") || !strings.Contains(printed, "us-east-1") {
 		t.Fatalf("a descricao do msk_iam saiu incompleta:\n%s", printed)
 	}
 	if !spec.Messaging.Kafka.TLS.Enabled {
@@ -142,16 +142,16 @@ func TestMSKIsDescribedByRegionAndChainNeverByCredential(t *testing.T) {
 // `validate` — the cheap gate CI runs — signed it off as valid.
 func TestKafkaStepWithoutAnyBrokerIsRefusedByValidation(t *testing.T) {
 	spec, err := scenario.Parse([]byte(`
-nome: x
-alvo: http://127.0.0.1:8090
+name: x
+target: http://127.0.0.1:8090
 
-carga:
-  perfis:
-    - patamar: { taxa: 1/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
 
-cenario:
-  - nome: publicar evento
-    kafka: { topico: pedidos, valor: "{}" }
+scenario:
+  - name: publicar evento
+    kafka: { topic: pedidos, value: "{}" }
 `))
 	if err != nil {
 		t.Fatalf("o cenário não deveria falhar na leitura: %v", err)
@@ -162,7 +162,7 @@ cenario:
 	}
 	for _, expected := range []string{"publicar evento", "mensageria", "brokers"} {
 		if !strings.Contains(problem.Error(), expected) {
-			t.Errorf("a mensagem não ensina o caminho: falta %q em\n%s", expected, problem)
+			t.Errorf("a mensagem não ensina o path: falta %q em\n%s", expected, problem)
 		}
 	}
 }
@@ -172,15 +172,15 @@ cenario:
 func TestBrokerTargetIsEnoughForAKafkaStep(t *testing.T) {
 	for _, target := range []string{"kafka://127.0.0.1:9092", "127.0.0.1:9092"} {
 		spec, err := scenario.Parse([]byte(`
-nome: x
-alvo: ` + target + `
+name: x
+target: ` + target + `
 
-carga:
-  perfis:
-    - patamar: { taxa: 1/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
 
-cenario:
-  - kafka: { topico: pedidos, valor: "{}" }
+scenario:
+  - kafka: { topic: pedidos, value: "{}" }
 `))
 		if err != nil {
 			t.Fatalf("alvo %q: %v", target, err)
@@ -194,19 +194,19 @@ cenario:
 // Waiting over HTTP polls the target and needs no broker at all.
 func TestWaitingOverHTTPNeedsNoBroker(t *testing.T) {
 	spec, err := scenario.Parse([]byte(`
-nome: x
-alvo: http://127.0.0.1:8090
+name: x
+target: http://127.0.0.1:8090
 
-carga:
-  perfis:
-    - patamar: { taxa: 1/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
 
-cenario:
+scenario:
   - http: POST /pedidos
-    captura: { pedidoId: $.pedido.id }
-  - aguardar:
-      http: { caminho: "/pedidos/${pedidoId}" }
-      ate: { $.status: PROCESSADO }
+    capture: { pedidoId: $.pedido.id }
+  - await:
+      http: { path: "/pedidos/${pedidoId}" }
+      until: { $.status: PROCESSADO }
 `))
 	if err != nil {
 		t.Fatalf("o cenário não deveria falhar na leitura: %v", err)
@@ -220,13 +220,13 @@ cenario:
 // with the whole load already spent.
 func TestSLONamingAStepThatDoesNotExistIsRefused(t *testing.T) {
 	spec, err := scenario.Parse([]byte(`
-nome: x
-alvo: http://127.0.0.1:8090
-carga:
-  perfis:
-    - patamar: { taxa: 1/s, durante: 1s }
-cenario:
-  - nome: consultar produtos
+name: x
+target: http://127.0.0.1:8090
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
+scenario:
+  - name: consultar produtos
     http: GET /produtos
 slo:
   - consultar: { p95: < 200ms }
@@ -247,12 +247,12 @@ slo:
 // rule has to use.
 func TestSLOMatchesTheAggregationKeyOfAnUnnamedStep(t *testing.T) {
 	spec, err := scenario.Parse([]byte(`
-nome: x
-alvo: http://127.0.0.1:8090
-carga:
-  perfis:
-    - patamar: { taxa: 1/s, durante: 1s }
-cenario:
+name: x
+target: http://127.0.0.1:8090
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
+scenario:
   - http: GET /produtos
 slo:
   - GET /produtos: { p95: < 200ms }

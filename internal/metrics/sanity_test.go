@@ -150,7 +150,7 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 				t.Errorf("frase não diz que a execução não mediu o que se propôs: %q", sanity.Sentence)
 			}
 			if strings.Contains(sanity.Sentence, "falha do alvo") {
-				t.Errorf("frase atribui a falha ao alvo: %q", sanity.Sentence)
+				t.Errorf("frase atribui a falha ao target: %q", sanity.Sentence)
 			}
 
 			// This is the proof the test fails with the code that came before

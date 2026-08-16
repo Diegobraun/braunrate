@@ -15,17 +15,17 @@ import (
 )
 
 const gemeoEmYAML = `
-nome: Consulta de pedido
-alvo: %s
+name: Consulta de pedido
+target: %s
 
-carga:
-  perfis:
-    - constante: { taxa: 100/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 100/s, duration: 1s }
 
-cenario:
+scenario:
   - http: GET /pedidos/1
-    nome: consultar pedido
-    verificar: { status: 200 }
+    name: consultar pedido
+    expect: { status: 200 }
 
 slo:
   - consultar pedido: { p95: < 1s }
@@ -47,7 +47,7 @@ func TestGoScenarioRunsOnSameEngineWithSameKeys(t *testing.T) {
 	}
 	daDSL, err := dsl.New("Consulta de pedido").
 		Target(server.URL).
-		Constant(dsl.PerSecond(100), time.Second).
+		Steady(dsl.PerSecond(100), time.Second).
 		Step(dsl.GET("/pedidos/1"), dsl.Name("consultar pedido"), dsl.CheckStatus(200)).
 		SLO("consultar pedido", "p95", "< 1s").
 		Build()

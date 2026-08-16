@@ -38,13 +38,13 @@ func TestImportsCurlPastedFromBrowserWithLineBreaks(t *testing.T) {
 	if _, err := scenario.Parse([]byte(importResult.YAML)); err != nil {
 		t.Fatalf("o cenário gerado não carrega: %v\n%s", err, importResult.YAML)
 	}
-	if !strings.Contains(importResult.YAML, `corpo: '{"valor": 199.90, "metodo": "pix"}'`) {
+	if !strings.Contains(importResult.YAML, `body: '{"valor": 199.90, "metodo": "pix"}'`) {
 		t.Errorf("o corpo não sobreviveu a separacao:\n%s", importResult.YAML)
 	}
-	if !strings.Contains(importResult.YAML, "metodo: POST") {
+	if !strings.Contains(importResult.YAML, "method: POST") {
 		t.Errorf("perdeu o metodo declarado:\n%s", importResult.YAML)
 	}
-	if !strings.Contains(importResult.YAML, "nome: post faturas pagar") {
+	if !strings.Contains(importResult.YAML, "name: post faturas pagar") {
 		t.Errorf("o identificador entrou no nome do passo, o que geraria uma linha de relatório por requisição:\n%s", importResult.YAML)
 	}
 }
@@ -75,7 +75,7 @@ func TestMethodBecomesPostWhenCurlHasBodyWithoutX(t *testing.T) {
 	if err != nil {
 		t.Fatalf("não importou: %v", err)
 	}
-	if !strings.Contains(importResult.YAML, "metodo: POST") {
+	if !strings.Contains(importResult.YAML, "method: POST") {
 		t.Errorf("curl com corpo e POST no curl também:\n%s", importResult.YAML)
 	}
 }
@@ -141,7 +141,7 @@ func TestPasswordInTheBodyNeverReachesTheFile(t *testing.T) {
 	if !strings.Contains(result.YAML, `"senha": "${senha}"`) {
 		t.Fatalf("a senha não virou referência:\n%s", result.YAML)
 	}
-	if !strings.Contains(result.YAML, "senha: ${SENHA}") {
+	if !strings.Contains(result.YAML, "password: ${SENHA}") {
 		t.Fatalf("faltou declarar a variável de ambiente:\n%s", result.YAML)
 	}
 	found := false

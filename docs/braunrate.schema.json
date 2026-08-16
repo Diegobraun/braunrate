@@ -1,38 +1,38 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json",
-  "title": "Cenario braunrate",
-  "description": "Formato do arquivo de cenario. O editor usa este arquivo para completar chaves e apontar erro antes de rodar.",
+  "title": "braunrate scenario",
+  "description": "The scenario file format. The editor uses this file to complete keys and point at errors before you run.",
   "type": "object",
   "required": [
-    "nome",
-    "alvo",
-    "carga",
-    "cenario"
+    "name",
+    "target",
+    "load",
+    "scenario"
   ],
   "additionalProperties": false,
   "properties": {
-    "nome": {
+    "name": {
       "type": "string",
-      "description": "Nome do cenario. Aparece no topo do relatorio."
+      "description": "The scenario name. It appears at the top of the report."
     },
-    "alvo": {
+    "target": {
       "type": "string",
-      "description": "Endereco base do servico sob teste. Ex.: http://127.0.0.1:8080. Use ${VARIAVEL} para nao versionar host real.",
+      "description": "Base address of the service under test. Example: http://127.0.0.1:8080. Use ${VARIABLE} so a real host does not get versioned.",
       "examples": [
         "http://127.0.0.1:8080",
-        "${ALVO}"
+        "${TARGET}"
       ]
     },
-    "requer": {
+    "requires": {
       "type": "array",
-      "description": "Infraestrutura externa sem a qual este cenario nao roda. O laco de exemplos do CI pula com aviso em vez de quebrar.",
+      "description": "External infrastructure without which this scenario does not run. The CI example loop skips it with a warning instead of breaking.",
       "items": {
         "type": "string",
         "enum": [
           "kafka",
           "amqp",
-          "credencial"
+          "credential"
         ]
       },
       "examples": [
@@ -41,9 +41,9 @@
         ]
       ]
     },
-    "variaveis": {
+    "variables": {
       "type": "object",
-      "description": "Valores reaproveitados no cenario. ${NOME:-padrao} le da variavel de ambiente com valor de reserva.",
+      "description": "Values reused across the scenario. ${NAME:-default} reads from an environment variable with a fallback.",
       "additionalProperties": {
         "type": [
           "string",
@@ -52,16 +52,16 @@
         ]
       }
     },
-    "autenticacao": {
-      "$ref": "#/$defs/autenticacao"
+    "auth": {
+      "$ref": "#/$defs/auth"
     },
     "tls": {
       "$ref": "#/$defs/tls",
-      "description": "TLS para alcancar o alvo HTTPS: CA propria quando o certificado nao e assinado por uma CA que a maquina ja confia, e certificado de cliente quando o alvo exige mTLS."
+      "description": "TLS to reach an HTTPS target: a private CA when the certificate is not signed by one the machine already trusts, and a client certificate when the target asks for mTLS."
     },
-    "mensageria": {
+    "messaging": {
       "type": "object",
-      "description": "Como alcancar Kafka e RabbitMQ quando o broker exige credencial. O padrao continua sendo broker local sem autenticacao.",
+      "description": "How to reach Kafka and RabbitMQ when the broker asks for a credential. The default is still a local broker with no authentication.",
       "additionalProperties": false,
       "properties": {
         "kafka": {
@@ -72,89 +72,89 @@
         }
       }
     },
-    "dados": {
+    "data": {
       "type": "object",
-      "description": "Fontes de dados. Cada chave vira um prefixo usavel como ${nome.coluna}.",
+      "description": "Data sources. Each key becomes a prefix usable as ${name.column}.",
       "additionalProperties": {
-        "$ref": "#/$defs/fonteDeDados"
+        "$ref": "#/$defs/dataSource"
       }
     },
-    "carga": {
-      "$ref": "#/$defs/carga"
+    "load": {
+      "$ref": "#/$defs/load"
     },
-    "cenario": {
+    "scenario": {
       "type": "array",
-      "description": "Passos executados em ordem, do primeiro ao ultimo, uma vez por chegada agendada.",
+      "description": "Steps run in order, from the first to the last, once per scheduled arrival.",
       "minItems": 1,
       "items": {
-        "$ref": "#/$defs/passo"
+        "$ref": "#/$defs/step"
       }
     },
     "slo": {
       "type": "array",
-      "description": "Regras que decidem se a execucao passou. Regra falha faz o comando sair com codigo 1.",
+      "description": "The rules that decide whether the run passed. A failing rule makes the command exit with code 1.",
       "items": {
-        "$ref": "#/$defs/regraDeSLO"
+        "$ref": "#/$defs/sloRule"
       }
     }
   },
   "$defs": {
-    "taxa": {
+    "rate": {
       "type": "string",
-      "description": "Chegadas por unidade de tempo.",
+      "description": "Arrivals per unit of time.",
       "pattern": "^(\\$\\{[A-Z][A-Z0-9_]*(:-[^}]*)?\\}|([0-9]+(\\.[0-9]+)?|\\$\\{[A-Z][A-Z0-9_]*(:-[^}]*)?\\})/(s|m|h))$",
       "examples": [
         "300/s",
         "1200/m"
       ]
     },
-    "duracao": {
+    "duration": {
       "type": "string",
-      "description": "Duracao no formato do Go.",
+      "description": "A duration in Go format.",
       "pattern": "^(\\$\\{[A-Z][A-Z0-9_]*(:-[^}]*)?\\}|[0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h))$",
       "examples": [
         "30s",
         "5m"
       ]
     },
-    "carga": {
+    "load": {
       "type": "object",
-      "description": "Como a carga e aplicada. O padrao e o modelo aberto: a taxa nao depende de o alvo responder.",
+      "description": "How the load is applied. The default is the open model: the rate does not depend on the target answering.",
       "additionalProperties": false,
       "properties": {
-        "modelo": {
+        "model": {
           "enum": [
-            "aberto",
-            "fechado"
+            "open",
+            "closed"
           ],
-          "description": "'aberto' (padrao) declara taxa de chegada. 'fechado' declara usuarios em laco: a taxa vira consequencia do tempo de resposta e o relatorio avisa que travada do alvo nao aparece nos numeros."
+          "description": "'open' (the default) declares an arrival rate. 'closed' declares users in a loop: the rate becomes a consequence of the response time, and the report says a freeze in the target does not show up in the numbers."
         },
-        "perfis": {
+        "profiles": {
           "type": "array",
           "minItems": 1,
-          "description": "Trechos executados em sequencia. So no modelo aberto.",
+          "description": "Stretches run in sequence. Open model only.",
           "items": {
-            "$ref": "#/$defs/perfil"
+            "$ref": "#/$defs/profile"
           }
         },
-        "usuarios": {
+        "users": {
           "type": "integer",
           "minimum": 1,
-          "description": "Numero de lacos simultaneos. So no modelo fechado.",
+          "description": "Number of simultaneous loops. Closed model only.",
           "examples": [
             200
           ]
         },
-        "duracao": {
+        "duration": {
           "type": "string",
-          "description": "Por quanto tempo os usuarios ficam em laco. So no modelo fechado.",
+          "description": "How long the users stay in the loop. Closed model only.",
           "examples": [
             "5m"
           ]
         },
-        "intervalo_entre_iteracoes": {
+        "thinkTime": {
           "type": "string",
-          "description": "Espera de cada usuario entre uma iteracao e a proxima. So no modelo fechado.",
+          "description": "How long each user waits between one iteration and the next. Closed model only.",
           "examples": [
             "1s"
           ]
@@ -163,23 +163,23 @@
       "oneOf": [
         {
           "required": [
-            "perfis"
+            "profiles"
           ],
           "not": {
             "anyOf": [
               {
                 "required": [
-                  "usuarios"
+                  "users"
                 ]
               },
               {
                 "required": [
-                  "duracao"
+                  "duration"
                 ]
               },
               {
                 "required": [
-                  "intervalo_entre_iteracoes"
+                  "thinkTime"
                 ]
               }
             ]
@@ -187,128 +187,111 @@
         },
         {
           "required": [
-            "modelo",
-            "usuarios",
-            "duracao"
+            "model",
+            "users",
+            "duration"
           ],
           "properties": {
-            "modelo": {
-              "const": "fechado"
+            "model": {
+              "const": "closed"
             }
           },
           "not": {
             "required": [
-              "perfis"
+              "profiles"
             ]
           }
         }
       ]
     },
-    "perfil": {
+    "profile": {
       "type": "object",
       "minProperties": 1,
       "maxProperties": 1,
       "additionalProperties": false,
       "properties": {
-        "rampa": {
+        "ramp": {
           "type": "object",
-          "description": "Taxa sobe linearmente de um valor a outro.",
+          "description": "The rate rises linearly from one value to another.",
           "additionalProperties": false,
           "required": [
-            "de",
-            "ate",
-            "durante"
+            "from",
+            "to",
+            "duration"
           ],
           "properties": {
-            "de": {
-              "$ref": "#/$defs/taxa"
+            "from": {
+              "$ref": "#/$defs/rate"
             },
-            "ate": {
-              "$ref": "#/$defs/taxa"
+            "to": {
+              "$ref": "#/$defs/rate"
             },
-            "durante": {
-              "$ref": "#/$defs/duracao"
+            "duration": {
+              "$ref": "#/$defs/duration"
             }
           }
         },
-        "patamar": {
+        "steady": {
           "type": "object",
-          "description": "Taxa constante pelo tempo declarado.",
+          "description": "A constant rate for the declared time.",
           "additionalProperties": false,
           "required": [
-            "taxa",
-            "durante"
+            "rate",
+            "duration"
           ],
           "properties": {
-            "taxa": {
-              "$ref": "#/$defs/taxa"
+            "rate": {
+              "$ref": "#/$defs/rate"
             },
-            "durante": {
-              "$ref": "#/$defs/duracao"
+            "duration": {
+              "$ref": "#/$defs/duration"
             }
           }
         },
-        "constante": {
+        "spike": {
           "type": "object",
-          "description": "Mesmo que patamar.",
+          "description": "An instant jump to the declared rate.",
           "additionalProperties": false,
           "required": [
-            "taxa",
-            "durante"
+            "rate",
+            "duration"
           ],
           "properties": {
-            "taxa": {
-              "$ref": "#/$defs/taxa"
+            "rate": {
+              "$ref": "#/$defs/rate"
             },
-            "durante": {
-              "$ref": "#/$defs/duracao"
-            }
-          }
-        },
-        "pico": {
-          "type": "object",
-          "description": "Salto instantaneo para a taxa declarada.",
-          "additionalProperties": false,
-          "required": [
-            "taxa",
-            "durante"
-          ],
-          "properties": {
-            "taxa": {
-              "$ref": "#/$defs/taxa"
-            },
-            "durante": {
-              "$ref": "#/$defs/duracao"
+            "duration": {
+              "$ref": "#/$defs/duration"
             }
           }
         }
       }
     },
-    "passo": {
+    "step": {
       "type": "object",
-      "description": "Um passo do cenario. A forma curta cabe em uma linha: 'http: GET /pedidos/1'.",
+      "description": "One step of the scenario. The short form fits on one line: 'http: GET /orders/1'.",
       "additionalProperties": false,
       "properties": {
-        "nome": {
+        "name": {
           "type": "string",
-          "description": "Nome do passo no relatorio e nas regras de SLO. Sem nome, vale a chave de agregacao do protocolo."
+          "description": "The step name in the report and in the SLO rules. With no name, the protocol aggregation key is used."
         },
-        "peso": {
+        "weight": {
           "type": "integer",
           "minimum": 1,
-          "description": "Proporcao desta alternativa no mix. Cada iteracao executa uma alternativa. Ou todo passo declara peso, ou nenhum declara, e peso nao convive com captura encadeada.",
+          "description": "The share of this alternative in the mix. Each iteration runs one alternative. Either every step declares a weight or none does, and a weight does not coexist with a chained capture.",
           "examples": [
             60
           ]
         },
         "http": {
-          "description": "Forma curta ('GET /caminho') ou objeto com metodo, caminho, cabecalhos, corpo e timeout.",
+          "description": "The short form ('GET /path') or an object with method, path, headers, body and timeout.",
           "oneOf": [
             {
               "type": "string",
               "pattern": "^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) .+",
               "examples": [
-                "GET /pedidos/${assinantes.id}"
+                "GET /orders/${subscribers.id}"
               ]
             },
             {
@@ -316,14 +299,14 @@
             }
           ]
         },
-        "captura": {
+        "capture": {
           "type": "object",
-          "description": "Guarda valor da resposta para os passos seguintes. Uma linha por valor: 'faturaId: $.ultimaFatura.id'.",
+          "description": "Keeps a value from the response for the steps that follow. One line per value: 'invoiceId: $.lastInvoice.id'.",
           "additionalProperties": {
             "oneOf": [
               {
                 "type": "string",
-                "description": "Caminho JSON, cabecalho, cookie ou expressao regular.",
+                "description": "A JSON path, a header, a cookie or a regular expression.",
                 "examples": [
                   "$.ultimaFatura.id",
                   "cabecalho:Location",
@@ -331,24 +314,21 @@
                 ]
               },
               {
-                "$ref": "#/$defs/capturaDetalhada"
+                "$ref": "#/$defs/detailedCapture"
               }
             ]
           }
         },
-        "verificar": {
-          "$ref": "#/$defs/verificar"
-        },
-        "espera": {
-          "$ref": "#/$defs/verificar"
+        "expect": {
+          "$ref": "#/$defs/expect"
         },
         "graphql": {
-          "description": "Operacao GraphQL. A consulta pode vir sozinha (o nome da operacao sai dela) ou dentro de um mapa com variaveis.",
+          "description": "A GraphQL operation. The query can come on its own (the operation name is read from it) or inside a map with variables.",
           "oneOf": [
             {
               "type": "string",
               "examples": [
-                "query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }"
+                "query LookUpOrder($id: ID!) { order(id: $id) { status } }"
               ]
             },
             {
@@ -358,15 +338,15 @@
         },
         "kafka": {
           "$ref": "#/$defs/kafka",
-          "description": "Produz uma mensagem no topico. A chave decide a particao, entao ela precisa variar por iteracao."
+          "description": "Produces a message on the topic. The key decides the partition, so it has to vary per iteration."
         },
         "amqp": {
           "$ref": "#/$defs/amqp",
-          "description": "Publica uma mensagem numa fila ou troca."
+          "description": "Publishes a message to a queue or an exchange."
         },
-        "aguardar": {
-          "$ref": "#/$defs/aguardar",
-          "description": "Espera a mensagem desta iteracao aparecer no destino, fechando a medicao da cadeia assincrona."
+        "await": {
+          "$ref": "#/$defs/await",
+          "description": "Waits for this iteration's message to show up at the destination, closing the measurement of the asynchronous chain."
         }
       }
     },
@@ -374,7 +354,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "metodo": {
+        "method": {
           "enum": [
             "GET",
             "POST",
@@ -385,17 +365,17 @@
             "OPTIONS"
           ]
         },
-        "caminho": {
+        "path": {
           "type": "string",
           "examples": [
-            "/faturas/${faturaId}/pagar"
+            "/invoices/${invoiceId}/pay"
           ]
         },
         "url": {
           "type": "string",
-          "description": "Mesmo que caminho."
+          "description": "Same as path."
         },
-        "cabecalhos": {
+        "headers": {
           "type": "object",
           "additionalProperties": {
             "type": [
@@ -405,8 +385,8 @@
             ]
           }
         },
-        "corpo": {
-          "description": "Objeto vira JSON. Texto vai como esta.",
+        "body": {
+          "description": "An object becomes JSON. Text goes as it is.",
           "type": [
             "object",
             "array",
@@ -416,40 +396,40 @@
           ]
         },
         "timeout": {
-          "$ref": "#/$defs/duracao"
+          "$ref": "#/$defs/duration"
         },
-        "seguir_redirect": {
+        "followRedirects": {
           "type": "boolean"
         }
       }
     },
-    "capturaDetalhada": {
+    "detailedCapture": {
       "type": "object",
-      "description": "Forma longa da captura, para quando falta valor padrao ou a captura pode falhar de proposito.",
+      "description": "The long form of a capture, for when a default value is needed or the capture may fail on purpose.",
       "additionalProperties": false,
       "required": [
-        "de"
+        "from"
       ],
       "properties": {
-        "de": {
+        "from": {
           "type": "string",
           "examples": [
             "$.access_token"
           ]
         },
-        "padrao": {
+        "default": {
           "type": "string",
-          "description": "Valor usado quando a captura nao encontra nada."
+          "description": "The value used when the capture finds nothing."
         },
-        "obrigatoria": {
+        "required": {
           "type": "boolean",
-          "description": "Padrao true. Captura obrigatoria que falha encerra a iteracao com erro de correlacao."
+          "description": "True by default. A required capture that fails ends the iteration with a correlation error."
         }
       }
     },
-    "verificar": {
+    "expect": {
       "type": "object",
-      "description": "O que precisa ser verdade na resposta. Falha aqui conta como erro no relatorio.",
+      "description": "What has to be true about the response. A failure here counts as an error in the report.",
       "additionalProperties": false,
       "properties": {
         "status": {
@@ -476,7 +456,7 @@
         },
         "json": {
           "type": "object",
-          "description": "Caminho JSON esperado. Ex.: '$.status: PAGA'. Use 'existe' para so checar presenca.",
+          "description": "The expected JSON path. Example: '$.status: PAID'. Use 'exists' to only check presence.",
           "additionalProperties": {
             "type": [
               "string",
@@ -485,7 +465,7 @@
             ]
           }
         },
-        "cabecalho": {
+        "header": {
           "type": "object",
           "additionalProperties": {
             "type": [
@@ -495,39 +475,39 @@
             ]
           }
         },
-        "corpo_contem": {
+        "bodyContains": {
           "type": "string"
         },
-        "corpo_casa": {
+        "bodyMatches": {
           "type": "string",
-          "description": "Expressao regular."
+          "description": "A regular expression."
         }
       }
     },
-    "autenticacao": {
+    "auth": {
       "type": "object",
-      "description": "Como o motor obtem credencial e a injeta em todos os passos. O passo nao precisa declarar cabecalho.",
+      "description": "How the engine obtains a credential and injects it into every step. The step does not have to declare a header.",
       "required": [
-        "tipo"
+        "type"
       ],
       "additionalProperties": false,
       "properties": {
-        "tipo": {
+        "type": {
           "enum": [
             "token",
-            "basica",
-            "cabecalho"
+            "basic",
+            "header"
           ]
         },
-        "obter": {
+        "obtain": {
           "type": "object",
-          "description": "Requisicao de login, executada uma vez para a execucao inteira. Ver ADR 0005.",
+          "description": "The login request, performed once for the whole run. See ADR 0005.",
           "additionalProperties": false,
           "properties": {
             "http": {
               "$ref": "#/$defs/http"
             },
-            "captura": {
+            "capture": {
               "type": "object",
               "additionalProperties": {
                 "type": "string"
@@ -535,65 +515,65 @@
             }
           }
         },
-        "renovar_apos": {
-          "$ref": "#/$defs/duracao"
+        "refreshAfter": {
+          "$ref": "#/$defs/duration"
         },
-        "cabecalho": {
+        "header": {
           "type": "string",
-          "description": "Nome do cabecalho. Padrao Authorization.",
+          "description": "The header name. Authorization by default.",
           "default": "Authorization"
         },
-        "usuario": {
+        "user": {
           "type": "string"
         },
-        "senha": {
+        "password": {
           "type": "string"
         }
       }
     },
-    "fonteDeDados": {
+    "dataSource": {
       "type": "object",
-      "description": "Arquivo CSV ou geracao sintetica. Sem isto, toda iteracao usa o mesmo valor e o alvo responde de cache.",
+      "description": "A CSV file or synthetic generation. Without it every iteration uses the same value and the target answers from cache.",
       "additionalProperties": false,
       "properties": {
-        "arquivo": {
+        "file": {
           "type": "string",
           "examples": [
-            "dados/assinantes.csv"
+            "data/subscribers.csv"
           ]
         },
-        "consumo": {
+        "consume": {
           "enum": [
-            "sequencial",
-            "aleatorio",
+            "sequential",
+            "random",
             "circular",
-            "unico_por_usuario"
+            "uniquePerUser"
           ],
-          "description": "circular repete do inicio ao fim do arquivo; unico_por_usuario nao repete valor."
+          "description": "circular loops from the start to the end of the file; uniquePerUser never repeats a value."
         },
-        "semente": {
+        "seed": {
           "type": [
             "integer",
             "string"
           ],
-          "description": "Mesma semente, mesmos dados. Aceita ${SEMENTE:-42} para vir do ambiente. A semente que rodou e a variavel de onde ela veio vao para o relatorio e para o JSON.",
+          "description": "Same seed, same data. It takes ${SEED:-42} to come from the environment. The seed that ran and the variable it came from go into the report and into the JSON.",
           "examples": [
             42,
-            "${SEMENTE:-42}"
+            "${SEED:-42}"
           ]
         },
-        "gerar": {
+        "generate": {
           "type": "object",
-          "description": "Campos sinteticos. Um valor por iteracao, estavel na jornada inteira.",
+          "description": "Synthetic fields. One value per iteration, stable across the whole journey.",
           "additionalProperties": {
-            "$ref": "#/$defs/campoGerado"
+            "$ref": "#/$defs/generatedField"
           }
         }
       }
     },
-    "regraDeSLO": {
+    "sloRule": {
       "type": "object",
-      "description": "Uma regra por passo, ou por 'global', 'jornada' e 'regressao'. Ex.: '- jornada: { p95: < 2s }'.",
+      "description": "One rule per step, or for 'global', 'journey' and 'regression'. Example: '- journey: { p95: < 2s }'.",
       "minProperties": 1,
       "maxProperties": 1,
       "additionalProperties": {
@@ -601,107 +581,103 @@
         "additionalProperties": false,
         "properties": {
           "p50": {
-            "$ref": "#/$defs/limite"
+            "$ref": "#/$defs/limit"
           },
           "p75": {
-            "$ref": "#/$defs/limite"
+            "$ref": "#/$defs/limit"
           },
           "p90": {
-            "$ref": "#/$defs/limite"
+            "$ref": "#/$defs/limit"
           },
           "p95": {
-            "$ref": "#/$defs/limite"
+            "$ref": "#/$defs/limit"
           },
           "p99": {
-            "$ref": "#/$defs/limite"
+            "$ref": "#/$defs/limit"
           },
           "p99.9": {
-            "$ref": "#/$defs/limite"
+            "$ref": "#/$defs/limit"
           },
           "max": {
-            "$ref": "#/$defs/limite"
+            "$ref": "#/$defs/limit"
           },
-          "erros": {
-            "$ref": "#/$defs/limite",
-            "description": "Porcentagem. '< 0.1' e um decimo de um por cento."
+          "errors": {
+            "$ref": "#/$defs/limit",
+            "description": "A percentage. '< 0.1' is one tenth of one percent."
           },
-          "vazao": {
-            "$ref": "#/$defs/limite",
-            "description": "Nome antigo de taxa_efetiva, so em 'global'."
+          "success": {
+            "$ref": "#/$defs/limit",
+            "description": "A percentage. '>= 99.9' is the mirror reading of 'errors: < 0.1'."
           },
-          "sucesso": {
-            "$ref": "#/$defs/limite",
-            "description": "Porcentagem. '>= 99.9' e a leitura espelhada de 'erros: < 0.1'."
+          "throughput": {
+            "$ref": "#/$defs/limit",
+            "description": "'global' only. Completed requests per second. Example: '>= 200/s'."
           },
-          "taxa_efetiva": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'global'. Requisicoes concluidas por segundo. Ex.: '>= 200/s'."
+          "journeyP50": {
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
-          "jornada_p50": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          "journeyP75": {
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
-          "jornada_p75": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          "journeyP90": {
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
-          "jornada_p90": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          "journeyP95": {
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
-          "jornada_p95": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
-          },
-          "jornada_p99": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          "journeyP99": {
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
           "jornada_p99.9": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
-          "jornada_max": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          "journeyMax": {
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
-          "global_p50": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          "globalP50": {
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
-          "global_p75": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          "globalP75": {
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
-          "global_p90": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          "globalP90": {
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
-          "global_p95": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          "globalP95": {
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
-          "global_p99": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          "globalP99": {
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
           "global_p99.9": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
-          "global_max": {
-            "$ref": "#/$defs/limite",
-            "description": "So em 'regressao'. Quanto pode piorar em relacao a base. Ex.: '<= 10%% pior'."
+          "globalMax": {
+            "$ref": "#/$defs/limit",
+            "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           }
         }
       }
     },
-    "limite": {
+    "limit": {
       "type": [
         "string",
         "number"
       ],
-      "description": "Comparacao com unidade. Ex.: '< 150ms', '>= 250/s', '< 0.1'.",
+      "description": "A comparison with a unit. Examples: '< 150ms', '>= 250/s', '< 0.1'.",
       "examples": [
         "< 150ms",
         "<= 2s",
@@ -713,43 +689,39 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "consulta": {
-          "type": "string",
-          "description": "Texto da operacao. O nome dela vira a linha do relatorio, entao nao use operacao anonima."
-        },
         "query": {
           "type": "string",
-          "description": "Mesmo que consulta."
+          "description": "Same as query."
         },
-        "operacao": {
+        "operation": {
           "type": "string",
-          "description": "Nome da operacao. So precisa quando a consulta traz mais de uma.",
+          "description": "The operation name. Only needed when the query carries more than one.",
           "examples": [
             "ConsultarPedido"
           ]
         },
-        "variaveis": {
-          "description": "Variaveis da operacao. Aceita ${dados.coluna} e valores capturados.",
+        "variables": {
+          "description": "The operation variables. It takes ${data.column} and captured values.",
           "type": [
             "object",
             "string"
           ],
           "examples": [
             {
-              "id": "${assinantes.id}"
+              "id": "${subscribers.id}"
             }
           ]
         },
-        "caminho": {
+        "path": {
           "type": "string",
           "default": "/graphql",
-          "description": "Endpoint GraphQL. O padrao serve para quase todo servico."
+          "description": "The GraphQL endpoint. The default fits almost every service."
         },
         "url": {
           "type": "string",
-          "description": "Mesmo que caminho."
+          "description": "Same as path."
         },
-        "cabecalhos": {
+        "headers": {
           "type": "object",
           "additionalProperties": {
             "type": [
@@ -760,7 +732,7 @@
           }
         },
         "timeout": {
-          "$ref": "#/$defs/duracao"
+          "$ref": "#/$defs/duration"
         }
       }
     },
@@ -768,25 +740,25 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "topico",
-        "valor"
+        "topic",
+        "value"
       ],
       "properties": {
-        "topico": {
+        "topic": {
           "type": "string",
           "examples": [
-            "pedidos"
+            "orders"
           ]
         },
-        "chave": {
+        "key": {
           "type": "string",
-          "description": "Chave da mensagem. Chave sempre igual manda tudo para a mesma particao, e o numero fica otimista.",
+          "description": "The message key. An always-identical key sends everything to the same partition, and the number comes out optimistic.",
           "examples": [
-            "${pedidos.id}"
+            "${orders.id}"
           ]
         },
-        "valor": {
-          "description": "Objeto vira JSON; texto vai como esta.",
+        "value": {
+          "description": "An object becomes JSON; text goes as it is.",
           "type": [
             "object",
             "array",
@@ -795,7 +767,7 @@
             "boolean"
           ]
         },
-        "cabecalhos": {
+        "headers": {
           "type": "object",
           "additionalProperties": {
             "type": [
@@ -806,7 +778,7 @@
           }
         },
         "brokers": {
-          "description": "Padrao: o alvo do cenario.",
+          "description": "Default: the scenario target.",
           "type": [
             "array",
             "string"
@@ -817,30 +789,30 @@
         },
         "acks": {
           "enum": [
-            "todos",
-            "lider",
-            "nenhum"
+            "all",
+            "leader",
+            "none"
           ],
           "default": "todos",
-          "description": "Quantas replicas confirmam antes de a mensagem contar como entregue."
+          "description": "How many replicas acknowledge before the message counts as delivered."
         },
-        "particao": {
+        "partition": {
           "type": "integer",
           "minimum": 0,
-          "description": "Manda toda a mensagem deste passo para uma particao so, ignorando a chave. Concentra a carga de proposito, e o relatorio avisa que o numero e o de uma particao.",
+          "description": "Sends every message of this step to a single partition, ignoring the key. It concentrates the load on purpose, and the report says the number belongs to one partition.",
           "examples": [
             0
           ]
         },
-        "grupo": {
+        "group": {
           "type": "string",
-          "description": "Grupo de consumidores a observar durante a execucao. O relatorio mostra quantas mensagens ele ficou para tras, lido do broker.",
+          "description": "The consumer group to watch during the run. The report shows how many messages it fell behind, read from the broker.",
           "examples": [
             "cobranca"
           ]
         },
         "timeout": {
-          "$ref": "#/$defs/duracao"
+          "$ref": "#/$defs/duration"
         }
       }
     },
@@ -848,20 +820,20 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "corpo"
+        "body"
       ],
       "properties": {
-        "fila": {
+        "queue": {
           "type": "string",
-          "description": "Caso comum: publica direto na fila, que e declarada se nao existir."
+          "description": "The common case: publishes straight to the queue, which is declared if it does not exist."
         },
-        "troca": {
+        "exchange": {
           "type": "string"
         },
-        "rota": {
+        "routingKey": {
           "type": "string"
         },
-        "corpo": {
+        "body": {
           "type": [
             "object",
             "array",
@@ -870,14 +842,14 @@
             "boolean"
           ]
         },
-        "identidade": {
+        "messageId": {
           "type": "string",
-          "description": "Vai como message-id e serve de correlacao para o passo aguardar.",
+          "description": "Goes out as message-id and works as the correlation for the await step.",
           "examples": [
-            "${pedidos.id}"
+            "${orders.id}"
           ]
         },
-        "cabecalhos": {
+        "headers": {
           "type": "object",
           "additionalProperties": {
             "type": [
@@ -893,21 +865,21 @@
             "amqp://guest:guest@127.0.0.1:5672/"
           ]
         },
-        "persistente": {
+        "persistent": {
           "type": "boolean",
           "default": true
         },
-        "confirmar": {
+        "confirm": {
           "type": "boolean",
           "default": true,
-          "description": "Espera o broker confirmar. Desligar mede a escrita no socket, nao a entrega."
+          "description": "Waits for the broker to confirm. Turning it off measures the write to the socket, not the delivery."
         },
         "timeout": {
-          "$ref": "#/$defs/duracao"
+          "$ref": "#/$defs/duration"
         }
       }
     },
-    "aguardar": {
+    "await": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -918,7 +890,7 @@
           ],
           "additionalProperties": false,
           "properties": {
-            "topico": {
+            "topic": {
               "type": "string"
             },
             "brokers": {
@@ -939,10 +911,10 @@
           ],
           "additionalProperties": false,
           "properties": {
-            "fila": {
+            "queue": {
               "type": "string"
             },
-            "topico": {
+            "topic": {
               "type": "string"
             },
             "url": {
@@ -962,45 +934,45 @@
             "string"
           ],
           "additionalProperties": false,
-          "description": "Sonda uma requisicao ate a condicao 'ate' valer. Para sistema que so mostra o efeito por API.",
+          "description": "Polls a request until the 'until' condition holds. For a system that only shows the effect through an API.",
           "properties": {
-            "caminho": {
+            "path": {
               "type": "string",
               "examples": [
-                "/pedidos/${pedidos.id}"
+                "/orders/${orders.id}"
               ]
             },
             "url": {
               "type": "string",
-              "description": "Mesmo que caminho."
+              "description": "Same as path."
             }
           }
         },
-        "chave": {
+        "key": {
           "type": "string",
-          "description": "Valor que identifica a mensagem desta iteracao.",
+          "description": "The value that identifies this iteration's message.",
           "examples": [
-            "${pedidos.id}"
+            "${orders.id}"
           ]
         },
-        "igual_a": {
+        "equals": {
           "type": "string",
-          "description": "Mesmo que chave."
+          "description": "Same as key."
         },
-        "campo": {
+        "field": {
           "type": "string",
-          "description": "Caminho JSON dentro da mensagem, quando a correlacao nao esta na chave.",
+          "description": "A JSON path inside the message, when the correlation is not in the key.",
           "examples": [
-            "$.pedido"
+            "$.order"
           ]
         },
         "timeout": {
-          "$ref": "#/$defs/duracao",
+          "$ref": "#/$defs/duration",
           "default": "30s"
         },
-        "ate": {
+        "to": {
           "type": "object",
-          "description": "Condicao que encerra a espera por http: status, corpo_contem ou um caminho JSON com o valor esperado.",
+          "description": "The condition that ends the wait over http: status, bodyContains or a JSON path with the expected value.",
           "examples": [
             {
               "$.status": "PROCESSADO"
@@ -1017,26 +989,26 @@
             ]
           }
         },
-        "intervalo": {
-          "$ref": "#/$defs/duracao",
+        "interval": {
+          "$ref": "#/$defs/duration",
           "default": "500ms",
-          "description": "De quanto em quanto tempo sondar. A latencia medida tem essa granularidade."
+          "description": "How often to poll. The measured latency has that granularity."
         }
       }
     },
-    "campoGerado": {
-      "description": "Receita curta (\"uuid\", \"numero(10,500)\") ou a forma longa com tipo, formato e novo_a_cada.",
+    "generatedField": {
+      "description": "A short recipe (\"uuid\", \"number(10,500)\") or the long form with type, format and newEvery.",
       "oneOf": [
         {
           "type": "string",
           "examples": [
             "uuid",
-            "sequencia",
-            "numero(10,500)",
-            "inteiro(1,99)",
-            "nome",
+            "sequence",
+            "number(10,500)",
+            "integer(1,99)",
+            "name",
             "email",
-            "texto(8)",
+            "text(8)",
             "cpf",
             "cnpj"
           ]
@@ -1045,40 +1017,40 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "tipo"
+            "type"
           ],
           "properties": {
-            "tipo": {
+            "type": {
               "type": "string",
               "enum": [
                 "uuid",
-                "sequencia",
-                "numero",
-                "inteiro",
-                "nome",
+                "sequence",
+                "number",
+                "integer",
+                "name",
                 "email",
-                "texto",
-                "padrao",
+                "text",
+                "default",
                 "cpf",
                 "cnpj"
               ]
             },
-            "formato": {
+            "format": {
               "type": "string",
-              "description": "So para tipo: padrao. # vira digito, @ vira letra, o resto sai literal.",
+              "description": "For type: pattern only. # becomes a digit, @ becomes a letter, everything else comes out literal.",
               "examples": [
-                "PED-######",
+                "ORD-######",
                 "@@-####"
               ]
             },
-            "novo_a_cada": {
+            "newEvery": {
               "type": "string",
               "enum": [
-                "iteracao",
-                "uso"
+                "iteration",
+                "use"
               ],
               "default": "iteracao",
-              "description": "iteracao mantem o mesmo valor na jornada inteira, que e o caso da chave de idempotencia."
+              "description": "iteration keeps the same value across the whole journey, which is what an idempotency key needs."
             }
           }
         }
@@ -1086,7 +1058,7 @@
     },
     "broker": {
       "type": "object",
-      "description": "Como alcancar o broker. Segredo nunca fica no arquivo: 'senha' so aceita referencia a variavel de ambiente, como ${KAFKA_SENHA}.",
+      "description": "How to reach the broker. A secret never stays in the file: 'password' only takes a reference to an environment variable, like ${KAFKA_PASSWORD}.",
       "additionalProperties": false,
       "properties": {
         "brokers": {
@@ -1094,45 +1066,45 @@
           "items": {
             "type": "string"
           },
-          "description": "Enderecos do broker.",
+          "description": "Broker addresses.",
           "examples": [
             [
               "kafka.homolog:9093"
             ]
           ]
         },
-        "autenticacao": {
+        "auth": {
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "tipo"
+            "type"
           ],
           "properties": {
-            "tipo": {
+            "type": {
               "enum": [
-                "sasl_plain",
-                "scram_sha256",
-                "scram_sha512",
-                "msk_iam",
-                "certificado"
+                "saslPlain",
+                "scramSha256",
+                "scramSha512",
+                "mskIam",
+                "certificate"
               ],
-              "description": "sasl_plain e scram_* usam usuario e senha. msk_iam assina com a cadeia padrao da AWS e nunca pede chave. certificado e mTLS. OAUTHBEARER nao entra na v1."
+              "description": "saslPlain and scramSha* use a user and a password. mskIam signs with the standard AWS chain and never asks for a key. certificate is mTLS. OAUTHBEARER is not in v1."
             },
-            "usuario": {
+            "user": {
               "type": "string",
-              "description": "Usuario do broker. Pode vir de ${VARIAVEL}."
+              "description": "The broker user. It can come from ${VARIABLE}."
             },
-            "senha": {
+            "password": {
               "type": "string",
               "pattern": "^\\\\$\\\\{[A-Za-z_][A-Za-z0-9_]*\\\\}$",
-              "description": "So referencia a variavel de ambiente: ${KAFKA_SENHA}. Valor literal e recusado na validacao, e valor de reserva tambem, porque a reserva seria o segredo escrito no arquivo.",
+              "description": "A reference to an environment variable only: ${KAFKA_PASSWORD}. A literal value is refused at validation, and so is a fallback value, because the fallback would be the secret written in the file.",
               "examples": [
-                "${KAFKA_SENHA}"
+                "${KAFKA_PASSWORD}"
               ]
             },
-            "regiao": {
+            "region": {
               "type": "string",
-              "description": "Regiao da AWS, obrigatoria em msk_iam.",
+              "description": "The AWS region, required for mskIam.",
               "examples": [
                 "us-east-1"
               ]
@@ -1155,20 +1127,20 @@
           "properties": {
             "ca": {
               "type": "string",
-              "description": "CA propria, em PEM."
+              "description": "A private CA, in PEM."
             },
-            "certificado": {
+            "certificate": {
               "type": "string",
-              "description": "Certificado de cliente, para mTLS."
+              "description": "A client certificate, for mTLS."
             },
-            "chave": {
+            "key": {
               "type": "string",
-              "description": "Chave do certificado de cliente."
+              "description": "The key of the client certificate."
             }
           }
         }
       ],
-      "description": "true para TLS com as CAs do sistema, ou um mapa com CA propria e certificado de cliente."
+      "description": "true for TLS with the system CAs, or a map with a private CA and a client certificate."
     }
   }
 }

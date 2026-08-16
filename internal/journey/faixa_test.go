@@ -20,24 +20,24 @@ import (
 // The count of distinct values reads as full coverage, and the run exercised
 // one slice of the target — the gap ADR 0007 left open.
 const scenarioWithinOneRange = `
-nome: Faixa
-alvo: %s
+name: Faixa
+target: %s
 
-dados:
+data:
   pedidos:
-    arquivo: pedidos.csv
-    consumo: circular
+    file: pedidos.csv
+    consume: circular
 
-carga:
-  perfis:
-    - constante: { taxa: 60/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 60/s, duration: 1s }
 
-cenario:
-  - nome: criar pedido
+scenario:
+  - name: criar pedido
     http:
-      metodo: POST
-      caminho: /pedidos
-      corpo: { id: "${pedidos.id}", total: "${pedidos.total}", cupom: "${pedidos.cupom}" }
+      method: POST
+      path: /pedidos
+      body: { id: "${pedidos.id}", total: "${pedidos.total}", cupom: "${pedidos.cupom}" }
 `
 
 func TestRangeSaysWhereTheValuesLanded(t *testing.T) {

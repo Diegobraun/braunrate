@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+# Com a extensão YAML do editor, a linha acima liga o autocompletar das chaves.
+
+nome: Meu primeiro cenário
+alvo: http://127.0.0.1:8080
+
+# Taxa de chegada, em requisições por segundo. Não é número de usuários: o
+# gerador dispara na hora marcada mesmo que o alvo esteja lento, que é o que
+# faz a medição não esconder travada.
+carga:
+  perfis:
+    - rampa: { de: 1/s, ate: 20/s, durante: 30s }
+    - patamar: { taxa: 20/s, durante: 1m }
+
+cenario:
+  - http: GET /pedidos/1
+    nome: consultar pedido
+    verificar: { status: 200 }
+
+# Critério de aceite. Sem este bloco a execução roda e reporta, mas nunca falha.
+slo:
+  - consultar pedido: { p95: < 200ms }
+  - global: { erros: < 1 }
+
+# Dados que variam por iteração. Um valor fixo faz o alvo responder de cache e
+# o número fica otimista; o relatório declara a variedade que de fato aconteceu.
+# dados:
+#   assinantes: { arquivo: assinantes.csv, consumo: circular }
+#
+# cenario:
+#   - http: GET /pedidos/${assinantes.id}
+
+# Login uma vez, token reaproveitado pelas iterações seguintes.
+# autenticacao:
+#   tipo: token
+#   obter:
+#     http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: "${SENHA}" } }
+#     captura: { token: $.access_token }
+
+# O passo não precisa ser HTTP. Estes são os outros protocolos, e cada relatório
+# lista quais existem no binário que você está rodando.
+# cenario:
+#   - graphql:
+#       consulta: |
+#         query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }
+#       variaveis: { id: "${assinantes.id}" }
+#
+#   - kafka: { topico: pedidos, chave: "${assinantes.id}", valor: { pedido: "${assinantes.id}" } }
+#   - amqp:  { fila: pedidos, corpo: { pedido: "${assinantes.id}" } }
+#
+#   # Espera o efeito do passo anterior aparecer. A latência dele tem a
+#   # granularidade da sondagem, e o relatório diz isso.
+#   - aguardar:
+#       kafka: { topico: pedidos-processados }
+#       chave: "${assinantes.id}"
+#       timeout: 10s

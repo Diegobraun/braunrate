@@ -28,17 +28,17 @@ func closedRun(t *testing.T, users int, respondIn time.Duration) metrics.Documen
 	t.Cleanup(server.Close)
 
 	spec, err := scenario.Parse([]byte(fmt.Sprintf(`
-nome: Laco fechado
-alvo: %s
+name: Laco fechado
+target: %s
 
-carga:
-  modelo: fechado
-  usuarios: %d
-  duracao: 600ms
+load:
+  model: closed
+  users: %d
+  duration: 600ms
 
-cenario:
+scenario:
   - http: GET /pedidos
-    nome: consultar
+    name: consultar
 `, server.URL, users)))
 	if err != nil {
 		t.Fatalf("cenário inválido: %v", err)
@@ -128,14 +128,14 @@ func TestOpenModelKeepsTheCorrectedLatencyTheClosedOneDrops(t *testing.T) {
 	defer server.Close()
 
 	spec, err := scenario.Parse([]byte(fmt.Sprintf(`
-nome: Aberto
-alvo: %s
-carga:
-  perfis:
-    - patamar: { taxa: 50/s, durante: 400ms }
-cenario:
+name: Aberto
+target: %s
+load:
+  profiles:
+    - steady: { rate: 50/s, duration: 400ms }
+scenario:
   - http: GET /pedidos
-    nome: consultar
+    name: consultar
 `, server.URL)))
 	if err != nil {
 		t.Fatalf("cenário inválido: %v", err)

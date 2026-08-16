@@ -32,74 +32,74 @@ var testCases = []equivalence{
 	{
 		name: "http com variáveis, dados, autenticação por token, capturas e slo",
 		yaml: `
-nome: Jornada autenticada
-alvo: ${BASE:-http://127.0.0.1:8080}
+name: Jornada autenticada
+target: ${BASE:-http://127.0.0.1:8080}
 
-variaveis:
+variables:
   inquilino: acme
 
-autenticacao:
-  tipo: token
-  renovar_apos: 25m
-  obter:
+auth:
+  type: token
+  refreshAfter: 25m
+  obtain:
     http:
-      metodo: POST
-      caminho: /auth/token
-      corpo: { senha: segredo, usuario: ana }
-    captura:
+      method: POST
+      path: /auth/token
+      body: { password: segredo, user: ana }
+    capture:
       token: $.access_token
 
-dados:
+data:
   assinantes:
-    arquivo: dados/assinantes.csv
-    consumo: circular
+    file: dados/assinantes.csv
+    consume: circular
   pedidos:
-    gerar: { id: uuid, valor: "numero(10,500)" }
-    semente: 7
+    generate: { id: uuid, value: "numero(10,500)" }
+    seed: 7
   pagamento:
-    gerar:
-      referencia: { tipo: padrao, formato: "PED-######" }
-      documento: { tipo: cpf }
-      nonce: { tipo: uuid, novo_a_cada: uso }
+    generate:
+      referencia: { type: pattern, format: "PED-######" }
+      documento: { type: cpf }
+      nonce: { type: uuid, newEvery: use }
 
-carga:
-  perfis:
-    - rampa: { de: 10/s, ate: 100/s, durante: 30s }
-    - patamar: { taxa: 100/s, durante: 1m }
-    - pico: { taxa: 600/m, durante: 10s }
-    - constante: { taxa: 36000/h, durante: 5s }
+load:
+  profiles:
+    - ramp: { from: 10/s, to: 100/s, duration: 30s }
+    - steady: { rate: 100/s, duration: 1m }
+    - spike: { rate: 600/m, duration: 10s }
+    - steady: { rate: 36000/h, duration: 5s }
 
-cenario:
+scenario:
   - http: GET /pedidos/${assinantes.id}
-    nome: consultar pedido
-    captura:
+    name: consultar pedido
+    capture:
       faturaId: $.ultimaFatura.id
-      requisicao: cabecalho:X-Request-Id
+      requisicao: header:X-Request-Id
       sessao: /sessao=([a-z0-9]+)/
       cookieDeSessao: cookie:sessao
       codigo: status
       inteiro: corpo
-      opcional: { de: $.talvez, padrao: vazio }
-    verificar:
+      opcional: { from: $.talvez, default: vazio }
+    expect:
       status: 200
-      corpo_contem: ABERTO
-      corpo_casa: "pedido-[0-9]+"
+      bodyContains: ABERTO
+      bodyMatches: "pedido-[0-9]+"
       json: { $.status: ABERTO, $.total: "> 10", $.cupom: existe, $.tags: contem promo }
-      cabecalho: { Content-Type: application/json }
+      header: { Content-Type: application/json }
 
   - http:
-      metodo: POST
-      caminho: /pedidos
-      cabecalhos: { X-Inquilino: "${inquilino}" }
-      corpo: { assinante: "${assinantes.id}", total: 199.9 }
+      method: POST
+      path: /pedidos
+      headers: { X-Inquilino: "${inquilino}" }
+      body: { assinante: "${assinantes.id}", total: 199.9 }
       timeout: 2s
-      seguir_redirect: false
+      followRedirects: false
 
 slo:
   - consultar pedido: { p95: < 150ms, max: < 1s }
-  - jornada: { p95: < 2s, p99: < 5s }
-  - global: { erros: < 0.1, sucesso: ">= 99.9", taxa_efetiva: "> 50/s" }
-  - regressao: { jornada_p95: "<= 10% pior" }
+  - journey: { p95: < 2s, p99: < 5s }
+  - global: { errors: < 0.1, success: ">= 99.9", throughput: "> 50/s" }
+  - regression: { journeyP95: "<= 10% pior" }
 `,
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Jornada autenticada").
@@ -117,9 +117,9 @@ slo:
 					"nonce":      dsl.Generator("uuid").NewPerUse(),
 				}).
 				Ramp(dsl.PerSecond(10), dsl.PerSecond(100), 30*time.Second).
-				Plateau(dsl.PerSecond(100), time.Minute).
+				Steady(dsl.PerSecond(100), time.Minute).
 				Spike(dsl.PerMinute(600), 10*time.Second).
-				Constant(dsl.PerHour(36000), 5*time.Second).
+				Steady(dsl.PerHour(36000), 5*time.Second).
 				Step(dsl.GET("/pedidos/${assinantes.id}"),
 					dsl.Name("consultar pedido"),
 					dsl.Capture("faturaId", "$.ultimaFatura.id"),
@@ -157,25 +157,25 @@ slo:
 	{
 		name: "graphql por operação",
 		yaml: `
-nome: Cobranca em GraphQL
-alvo: http://127.0.0.1:8080
+name: Cobranca em GraphQL
+target: http://127.0.0.1:8080
 
-dados:
-  assinantes: { arquivo: dados/assinantes.csv, consumo: circular }
+data:
+  assinantes: { file: dados/assinantes.csv, consume: circular }
 
-carga:
-  perfis:
-    - patamar: { taxa: 50/s, durante: 20s }
+load:
+  profiles:
+    - steady: { rate: 50/s, duration: 20s }
 
-cenario:
+scenario:
   - graphql:
-      consulta: |
+      query: |
         query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }
-      variaveis: { id: "${assinantes.id}" }
-      caminho: /graphql
-      cabecalhos: { X-Origem: braunrate }
+      variables: { id: "${assinantes.id}" }
+      path: /graphql
+      headers: { X-Origem: braunrate }
       timeout: 3s
-    verificar:
+    expect:
       json: { $.data.pedido.status: ABERTO }
 
   - graphql: |
@@ -188,7 +188,7 @@ slo:
 			return dsl.New("Cobranca em GraphQL").
 				Target("http://127.0.0.1:8080").
 				DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(scenario.ConsumeCircular)).
-				Plateau(dsl.PerSecond(50), 20*time.Second).
+				Steady(dsl.PerSecond(50), 20*time.Second).
 				Step(dsl.GraphQL("query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }\n").
 					Vars(map[string]any{"id": "${assinantes.id}"}).
 					Path("/graphql").
@@ -203,41 +203,41 @@ slo:
 	{
 		name: "kafka com aguardar fechando a cadeia",
 		yaml: `
-nome: Cadeia assíncrona
-alvo: 127.0.0.1:9092
-requer: [kafka]
+name: Cadeia assíncrona
+target: 127.0.0.1:9092
+requires: [kafka]
 
-dados:
+data:
   pedidos:
-    gerar: { id: uuid }
-    consumo: sequencial
+    generate: { id: uuid }
+    consume: sequential
 
-carga:
-  perfis:
-    - patamar: { taxa: 100/s, durante: 10s }
+load:
+  profiles:
+    - steady: { rate: 100/s, duration: 10s }
 
-cenario:
+scenario:
   - kafka:
-      topico: pedidos-cadeia
-      chave: "${pedidos.id}"
-      valor: { pedido: "${pedidos.id}" }
-      cabecalhos: { origem: braunrate }
+      topic: pedidos-cadeia
+      key: "${pedidos.id}"
+      value: { pedido: "${pedidos.id}" }
+      headers: { origem: braunrate }
       brokers: [127.0.0.1:9092]
-      acks: lider
+      acks: leader
       timeout: 5s
-      particao: 2
-      grupo: cobranca
+      partition: 2
+      group: cobranca
 
-  - aguardar:
-      kafka: { topico: pedidos-processados, brokers: [127.0.0.1:9092] }
-      chave: "${pedidos.id}"
-      campo: $.pedido
+  - await:
+      kafka: { topic: pedidos-processados, brokers: [127.0.0.1:9092] }
+      key: "${pedidos.id}"
+      field: $.pedido
       timeout: 10s
 
-  - aguardar:
-      http: { caminho: "/pedidos/${pedidos.id}" }
-      ate: { $.status: PROCESSADO }
-      intervalo: 200ms
+  - await:
+      http: { path: "/pedidos/${pedidos.id}" }
+      until: { $.status: PROCESSADO }
+      interval: 200ms
       timeout: 30s
 
 slo:
@@ -248,7 +248,7 @@ slo:
 				Target("127.0.0.1:9092").
 				Requires("kafka").
 				GeneratedData("pedidos", map[string]string{"id": "uuid"}, dsl.Consume(scenario.ConsumeSequential)).
-				Plateau(dsl.PerSecond(100), 10*time.Second).
+				Steady(dsl.PerSecond(100), 10*time.Second).
 				Step(dsl.Kafka("pedidos-cadeia").
 					Key("${pedidos.id}").
 					Value(map[string]any{"pedido": "${pedidos.id}"}).
@@ -274,43 +274,43 @@ slo:
 	{
 		name: "amqp em fila e em troca com rota",
 		yaml: `
-nome: Publicação em RabbitMQ
-alvo: amqp://127.0.0.1:5672
+name: Publicação em RabbitMQ
+target: amqp://127.0.0.1:5672
 
-dados:
+data:
   clientes:
-    arquivo: dados/clientes.csv
-    consumo: aleatorio
+    file: dados/clientes.csv
+    consume: random
 
-carga:
-  perfis:
-    - patamar: { taxa: 30/s, durante: 10s }
+load:
+  profiles:
+    - steady: { rate: 30/s, duration: 10s }
 
-cenario:
+scenario:
   - amqp:
-      fila: pedidos
-      identidade: "${clientes.id}"
-      corpo: { cliente: "${clientes.id}" }
-      cabecalhos: { origem: braunrate }
+      queue: pedidos
+      messageId: "${clientes.id}"
+      body: { cliente: "${clientes.id}" }
+      headers: { origem: braunrate }
       url: amqp://127.0.0.1:5672
-      persistente: false
-      confirmar: false
+      persistent: false
+      confirm: false
       timeout: 4s
 
   - amqp:
-      troca: cobranca
-      rota: fatura.emitida
-      corpo: texto puro
+      exchange: cobranca
+      routingKey: fatura.emitida
+      body: texto puro
 
-  - aguardar:
+  - await:
       amqp: pedidos-processados
-      chave: "${clientes.id}"
+      key: "${clientes.id}"
 `,
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Publicação em RabbitMQ").
 				Target("amqp://127.0.0.1:5672").
 				DataFromFile("clientes", "dados/clientes.csv", dsl.Consume(scenario.ConsumeRandom)).
-				Plateau(dsl.PerSecond(30), 10*time.Second).
+				Steady(dsl.PerSecond(30), 10*time.Second).
 				Step(dsl.AMQP("pedidos").
 					Identity("${clientes.id}").
 					Body(map[string]any{"cliente": "${clientes.id}"}).
@@ -327,24 +327,24 @@ cenario:
 	{
 		name: "autenticação básica e consumo único por usuário",
 		yaml: `
-nome: Basica
-alvo: http://127.0.0.1:8080
+name: Basica
+target: http://127.0.0.1:8080
 
-autenticacao:
-  tipo: basica
-  usuario: ana
-  senha: segredo
+auth:
+  type: basic
+  user: ana
+  password: segredo
 
-dados:
+data:
   assinantes:
-    arquivo: dados/assinantes.csv
-    consumo: unico_por_usuario
+    file: dados/assinantes.csv
+    consume: uniquePerUser
 
-carga:
-  perfis:
-    - patamar: { taxa: 10/s, durante: 5s }
+load:
+  profiles:
+    - steady: { rate: 10/s, duration: 5s }
 
-cenario:
+scenario:
   - http: GET /pedidos
 `,
 		dsl: func() (scenario.Spec, error) {
@@ -352,7 +352,7 @@ cenario:
 				Target("http://127.0.0.1:8080").
 				Auth(dsl.Basic("ana", "segredo")).
 				DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(scenario.ConsumeUniquePerUser)).
-				Plateau(dsl.PerSecond(10), 5*time.Second).
+				Steady(dsl.PerSecond(10), 5*time.Second).
 				Step(dsl.GET("/pedidos")).
 				Build()
 		},
@@ -360,21 +360,21 @@ cenario:
 	{
 		name: "autenticação por cabecalho fixo",
 		yaml: `
-nome: Chave de api
-alvo: http://127.0.0.1:8080
+name: Chave de api
+target: http://127.0.0.1:8080
 
-variaveis:
+variables:
   api_key: "${API_KEY:-chave-de-teste}"
 
-autenticacao:
-  tipo: cabecalho
-  cabecalho: "X-API-Key: ${api_key}"
+auth:
+  type: cabecalho
+  header: "X-API-Key: ${api_key}"
 
-carga:
-  perfis:
-    - patamar: { taxa: 10/s, durante: 5s }
+load:
+  profiles:
+    - steady: { rate: 10/s, duration: 5s }
 
-cenario:
+scenario:
   - http: DELETE /pedidos/1
 `,
 		dsl: func() (scenario.Spec, error) {
@@ -382,7 +382,7 @@ cenario:
 				Target("http://127.0.0.1:8080").
 				Variable("api_key", "${API_KEY:-chave-de-teste}").
 				Auth(dsl.WithHeaderAuth("X-API-Key: ${api_key}")).
-				Plateau(dsl.PerSecond(10), 5*time.Second).
+				Steady(dsl.PerSecond(10), 5*time.Second).
 				Step(dsl.DELETE("/pedidos/1")).
 				Build()
 		},
@@ -390,27 +390,27 @@ cenario:
 	{
 		name: "semente vinda do ambiente",
 		yaml: `
-nome: Semente do ambiente
-alvo: http://127.0.0.1:8080
+name: Semente do ambiente
+target: http://127.0.0.1:8080
 
-dados:
+data:
   pedidos:
-    gerar: { id: uuid }
-    semente: ${SEMENTE_DE_TESTE:-42}
+    generate: { id: uuid }
+    seed: ${SEMENTE_DE_TESTE:-42}
 
-carga:
-  perfis:
-    - patamar: { taxa: 10/s, durante: 5s }
+load:
+  profiles:
+    - steady: { rate: 10/s, duration: 5s }
 
-cenario:
+scenario:
   - http: GET /pedidos/${pedidos.id}
-    nome: consultar pedido
+    name: consultar pedido
 `,
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Semente do ambiente").
 				Target("http://127.0.0.1:8080").
 				GeneratedData("pedidos", map[string]string{"id": "uuid"}, dsl.SeedFromEnv("SEMENTE_DE_TESTE", 42)).
-				Plateau(dsl.PerSecond(10), 5*time.Second).
+				Steady(dsl.PerSecond(10), 5*time.Second).
 				Step(dsl.GET("/pedidos/${pedidos.id}"), dsl.Name("consultar pedido")).
 				Build()
 		},
@@ -418,28 +418,28 @@ cenario:
 	{
 		name: "mix ponderado de operações",
 		yaml: `
-nome: Mix de operações
-alvo: http://127.0.0.1:8080
+name: Mix de operações
+target: http://127.0.0.1:8080
 
-carga:
-  perfis:
-    - patamar: { taxa: 100/s, durante: 5s }
+load:
+  profiles:
+    - steady: { rate: 100/s, duration: 5s }
 
-cenario:
+scenario:
   - http: GET /pedidos
-    nome: consulta leve
-    peso: 60
+    name: consulta leve
+    weight: 60
   - http: GET /pedidos/1/detalhe
-    nome: consulta pesada
-    peso: 30
-  - http: { metodo: POST, caminho: /pedidos }
-    nome: criacao
-    peso: 10
+    name: consulta pesada
+    weight: 30
+  - http: { method: POST, path: /pedidos }
+    name: criacao
+    weight: 10
 `,
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Mix de operações").
 				Target("http://127.0.0.1:8080").
-				Plateau(dsl.PerSecond(100), 5*time.Second).
+				Steady(dsl.PerSecond(100), 5*time.Second).
 				Step(dsl.GET("/pedidos"), dsl.Name("consulta leve"), dsl.Weight(60)).
 				Step(dsl.GET("/pedidos/1/detalhe"), dsl.Name("consulta pesada"), dsl.Weight(30)).
 				Step(dsl.POST("/pedidos"), dsl.Name("criacao"), dsl.Weight(10)).
@@ -449,18 +449,18 @@ cenario:
 	{
 		name: "alvo https com CA própria",
 		yaml: `
-nome: Homologacao atrás de CA própria
-alvo: https://api.homolog.interno
+name: Homologacao atrás de CA própria
+target: https://api.homolog.interno
 
-tls: { ca: /etc/ssl/ca-interna.pem, certificado: /etc/ssl/cliente.pem, chave: /etc/ssl/cliente.key }
+tls: { ca: /etc/ssl/ca-interna.pem, certificate: /etc/ssl/cliente.pem, key: /etc/ssl/cliente.key }
 
-carga:
-  perfis:
-    - patamar: { taxa: 10/s, durante: 5s }
+load:
+  profiles:
+    - steady: { rate: 10/s, duration: 5s }
 
-cenario:
+scenario:
   - http: GET /pedidos/1
-    nome: consultar pedido
+    name: consultar pedido
 `,
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Homologacao atrás de CA própria").
@@ -470,7 +470,7 @@ cenario:
 					Certificate: "/etc/ssl/cliente.pem",
 					Key:         "/etc/ssl/cliente.key",
 				}).
-				Plateau(dsl.PerSecond(10), 5*time.Second).
+				Steady(dsl.PerSecond(10), 5*time.Second).
 				Step(dsl.GET("/pedidos/1"), dsl.Name("consultar pedido")).
 				Build()
 		},
@@ -478,24 +478,24 @@ cenario:
 	{
 		name: "mensageria autenticada",
 		yaml: `
-nome: Cobranca autenticada
-alvo: kafka.homolog:9093
+name: Cobranca autenticada
+target: kafka.homolog:9093
 
-requer: [kafka, credencial]
+requires: [kafka, credencial]
 
-mensageria:
+messaging:
   kafka:
     brokers: [kafka.homolog:9093]
-    autenticacao: { tipo: scram_sha512, usuario: "${KAFKA_USUARIO}", senha: "${KAFKA_SENHA}" }
+    auth: { type: scramSha512, user: "${KAFKA_USUARIO}", password: "${KAFKA_SENHA}" }
     tls: { ca: /etc/ssl/ca.pem }
 
-carga:
-  perfis:
-    - patamar: { taxa: 10/s, durante: 5s }
+load:
+  profiles:
+    - steady: { rate: 10/s, duration: 5s }
 
-cenario:
-  - kafka: { topico: pedidos, valor: "{}" }
-    nome: publicar pedido
+scenario:
+  - kafka: { topic: pedidos, value: "{}" }
+    name: publicar pedido
 `,
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Cobranca autenticada").
@@ -504,7 +504,7 @@ cenario:
 				KafkaBroker(dsl.BrokerAt("kafka.homolog:9093").
 					SCRAM512("${KAFKA_USUARIO}", "${KAFKA_SENHA}").
 					CA("/etc/ssl/ca.pem")).
-				Plateau(dsl.PerSecond(10), 5*time.Second).
+				Steady(dsl.PerSecond(10), 5*time.Second).
 				Step(dsl.Kafka("pedidos").Value("{}"), dsl.Name("publicar pedido")).
 				Build()
 		},
@@ -512,16 +512,16 @@ cenario:
 	{
 		name: "modelo fechado",
 		yaml: `
-nome: Laço fechado
-alvo: http://127.0.0.1:8080
+name: Laço fechado
+target: http://127.0.0.1:8080
 
-carga:
-  modelo: fechado
-  usuarios: 200
-  duracao: 5m
-  intervalo_entre_iteracoes: 1s
+load:
+  model: closed
+  users: 200
+  duration: 5m
+  thinkTime: 1s
 
-cenario:
+scenario:
   - http: GET /pedidos
 `,
 		dsl: func() (scenario.Spec, error) {
@@ -645,7 +645,7 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 			for _, field := range source.Fields {
 				generators[field.Recipe] = true
 				if field.PerUse {
-					generators["novo_a_cada: uso"] = true
+					generators["newEvery: uso"] = true
 				}
 			}
 		}
@@ -676,7 +676,7 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 		scenario.ConsumeCircular, scenario.ConsumeSequential, scenario.ConsumeRandom, scenario.ConsumeUniquePerUser,
 	}, consumePolicies)
 	missing(t, "métrica de slo", []string{"p95", "p99", "max", "erros", "sucesso", "taxa_efetiva", "jornada_p95"}, metrics)
-	missing(t, "gerador de dados", []string{"uuid", "padrao", "cpf", "novo_a_cada: uso"}, generators)
+	missing(t, "gerador de dados", []string{"uuid", "padrao", "cpf", "newEvery: uso"}, generators)
 	missing(t, "escopo de slo", []scenario.SLOScope{
 		scenario.ScopeStep, scenario.ScopeOverall, scenario.ScopeJourney, scenario.ScopeRegression,
 	}, scopes)
@@ -855,22 +855,22 @@ func TestUndeclaredVariableIsRefusedInTheDSLToo(t *testing.T) {
 	cases := map[string]func() (scenario.Spec, error){
 		"no caminho": func() (scenario.Spec, error) {
 			return dsl.New("x").Target("http://127.0.0.1:8080").
-				Plateau(dsl.PerSecond(1), time.Second).
+				Steady(dsl.PerSecond(1), time.Second).
 				Step(dsl.GET("/pedidos/${nao_declarada}"), dsl.Name("consultar")).Build()
 		},
 		"no corpo": func() (scenario.Spec, error) {
 			return dsl.New("x").Target("http://127.0.0.1:8080").
-				Plateau(dsl.PerSecond(1), time.Second).
+				Steady(dsl.PerSecond(1), time.Second).
 				Step(dsl.POST("/pedidos").Body(map[string]any{"cupom": "${nao_declarada}"}), dsl.Name("criar")).Build()
 		},
 		"no cabecalho": func() (scenario.Spec, error) {
 			return dsl.New("x").Target("http://127.0.0.1:8080").
-				Plateau(dsl.PerSecond(1), time.Second).
+				Steady(dsl.PerSecond(1), time.Second).
 				Step(dsl.GET("/pedidos").Header("X-Inquilino", "${nao_declarada}"), dsl.Name("consultar")).Build()
 		},
 		"na chave do kafka": func() (scenario.Spec, error) {
 			return dsl.New("x").Target("127.0.0.1:9092").
-				Plateau(dsl.PerSecond(1), time.Second).
+				Steady(dsl.PerSecond(1), time.Second).
 				Step(dsl.Kafka("pedidos").Key("${nao_declarada}").Value(map[string]any{"id": "1"}), dsl.Name("publicar")).Build()
 		},
 	}
@@ -896,7 +896,7 @@ func TestDeclaredVariablesKeepPassingInTheDSL(t *testing.T) {
 	_, err := dsl.New("x").Target("http://127.0.0.1:8080").
 		Variable("inquilino", "acme").
 		GeneratedData("pedidos", map[string]string{"id": "uuid"}).
-		Plateau(dsl.PerSecond(1), time.Second).
+		Steady(dsl.PerSecond(1), time.Second).
 		Step(dsl.GET("/pedidos/${pedidos.id}"),
 			dsl.Name("consultar"),
 			dsl.Capture("faturaId", "$.ultimaFatura.id")).

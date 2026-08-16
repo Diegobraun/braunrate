@@ -18,52 +18,52 @@ import (
 )
 
 const scenarioModel = `
-nome: Jornada de cobrança
-alvo: %s
+name: Jornada de cobrança
+target: %s
 
-variaveis:
-  usuario: ${USUARIO_DE_TESTE:-ana}
+variables:
+  user: ${USUARIO_DE_TESTE:-ana}
 
-autenticacao:
-  tipo: token
-  obter:
+auth:
+  type: token
+  obtain:
     http:
-      metodo: POST
-      caminho: /auth/token
-      corpo: { usuario: "${usuario}", senha: "${SENHA:-segredo}" }
-    captura: { token: $.access_token }
-  renovar_apos: 25m
+      method: POST
+      path: /auth/token
+      body: { user: "${usuario}", password: "${SENHA:-segredo}" }
+    capture: { token: $.access_token }
+  refreshAfter: 25m
 
-dados:
+data:
   assinantes:
-    arquivo: assinantes.csv
-    consumo: circular
+    file: assinantes.csv
+    consume: circular
 
-carga:
-  perfis:
-    - constante: { taxa: 100/s, durante: 2s }
+load:
+  profiles:
+    - steady: { rate: 100/s, duration: 2s }
 
-cenario:
+scenario:
   - http: GET /pedidos/${assinantes.id}
-    nome: consultar pedido
-    verificar:
+    name: consultar pedido
+    expect:
       status: 200
       json: { $.ultimaFatura.status: ABERTA }
-    captura:
+    capture:
       faturaId: $.ultimaFatura.id
 
-  - nome: pagar fatura
+  - name: pagar fatura
     http:
-      metodo: POST
-      caminho: /faturas/${faturaId}/pagar
-      corpo: { valor: 199.90 }
-    verificar:
+      method: POST
+      path: /faturas/${faturaId}/pagar
+      body: { value: 199.90 }
+    expect:
       status: 200
       json: { $.status: PAGA }
 
 slo:
   - consultar pedido: { p95: < 2s }
-  - global: { erros: < 0.1 }
+  - global: { errors: < 0.1 }
 `
 
 func prepareScenario(t *testing.T, address string) (scenario.Spec, string) {

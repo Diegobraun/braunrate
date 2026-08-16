@@ -39,7 +39,7 @@ func TestPublishedGoScenarioRunsAndPasses(t *testing.T) {
 		t.Fatalf("o cenário publicado produziu resultado inválido: %+v", document.Sanity.Findings)
 	}
 	if document.Overall.Errors > 0 {
-		t.Fatalf("o cenário publicado teve %d erros: %+v", document.Overall.Errors, document.Steps)
+		t.Fatalf("o cenário publicado teve %d errors: %+v", document.Overall.Errors, document.Steps)
 	}
 	if !braunrate.Passed(document) {
 		t.Fatalf("o cenário publicado não passou no próprio slo: %s", document.SLO.Sentence)
@@ -72,7 +72,7 @@ func TestPublishedSnippetIsThisFile(t *testing.T) {
 	}
 
 	if published != expected {
-		t.Fatalf("docs/guias/50-guias-receitas.md derivou de examples/cenario-em-go/cenario.go.\nna página:\n%s\n\nno arquivo:\n%s", published, expected)
+		t.Fatalf("docs/guias/50-guias-receitas.md derivou de examples/cenario-em-go/cenario.go.\nna página:\n%s\n\nno file:\n%s", published, expected)
 	}
 }
 

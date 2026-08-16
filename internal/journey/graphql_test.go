@@ -17,44 +17,44 @@ import (
 )
 
 const graphqlScenario = `
-nome: Cobrança via GraphQL
-alvo: %s
+name: Cobrança via GraphQL
+target: %s
 
-autenticacao:
-  tipo: token
-  obter:
-    http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana } }
-    captura: { token: $.access_token }
+auth:
+  type: token
+  obtain:
+    http: { method: POST, path: /auth/token, body: { user: ana } }
+    capture: { token: $.access_token }
 
-dados:
+data:
   assinantes:
-    arquivo: assinantes.csv
-    consumo: circular
+    file: assinantes.csv
+    consume: circular
 
-carga:
-  perfis:
-    - constante: { taxa: 50/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 50/s, duration: 1s }
 
-cenario:
+scenario:
   - graphql:
-      consulta: |
+      query: |
         query ConsultarPedido($id: ID!) { pedido(id: $id) { id status ultimaFatura { id status } } }
-      variaveis: { id: "${assinantes.id}" }
-    verificar:
+      variables: { id: "${assinantes.id}" }
+    expect:
       json: { $.data.pedido.status: ABERTO }
-    captura:
+    capture:
       faturaId: $.data.pedido.ultimaFatura.id
 
   - graphql:
-      consulta: |
+      query: |
         mutation PagarFatura($fatura: ID!) { pagarFatura(id: $fatura) { id status } }
-      variaveis: { fatura: "${faturaId}" }
-    verificar:
+      variables: { fatura: "${faturaId}" }
+    expect:
       json: { $.data.pagarFatura.status: PAGA }
 
 slo:
   - graphql ConsultarPedido: { p95: < 2s }
-  - global: { erros: < 0.1 }
+  - global: { errors: < 0.1 }
 `
 
 func executeGraphQL(t *testing.T, lines string) (metrics.Document, slo.Verdict) {

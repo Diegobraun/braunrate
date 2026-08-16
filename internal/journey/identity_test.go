@@ -15,27 +15,27 @@ import (
 )
 
 const scenarioWithAuthAndData = `
-nome: Rotacao de dados
-alvo: %s
+name: Rotacao de dados
+target: %s
 
-autenticacao:
-  tipo: token
-  obter:
-    http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana } }
-    captura: { token: $.access_token }
+auth:
+  type: token
+  obtain:
+    http: { method: POST, path: /auth/token, body: { user: ana } }
+    capture: { token: $.access_token }
 
-dados:
+data:
   assinantes:
-    arquivo: assinantes.csv
-    consumo: circular
+    file: assinantes.csv
+    consume: circular
 
-carga:
-  perfis:
-    - constante: { taxa: 50/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 50/s, duration: 1s }
 
-cenario:
+scenario:
   - http: GET /pedidos/${assinantes.id}
-    nome: consultar pedido
+    name: consultar pedido
 `
 
 // Auth kept the whole context of the first iteration and reinjected it into

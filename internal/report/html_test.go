@@ -183,7 +183,7 @@ func TestCSVSeparatesCorrectedFromServiceLatency(t *testing.T) {
 		t.Error("o CSV precisa dizer de que tipo e cada latência")
 	}
 	if !strings.HasPrefix(lines[1], "Jornada de cobrança,http://127.0.0.1:8080") || !strings.Contains(lines[1], "jornada inteira") {
-		t.Errorf("a primeira linha de dados precisa ser a jornada: %s", lines[1])
+		t.Errorf("a primeira linha de dados precisa ser a journey: %s", lines[1])
 	}
 	if !strings.Contains(lines[3], ",servico,") {
 		t.Errorf("o passo de latência de serviço precisa estar marcado: %s", lines[3])

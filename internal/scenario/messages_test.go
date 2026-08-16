@@ -21,95 +21,95 @@ func TestErrorMessagesShowTheRightForm(t *testing.T) {
 	}{
 		{
 			name: "perfil escrito como mapa em vez de lista",
-			content: `nome: teste
-alvo: http://127.0.0.1:8080
-carga:
-  perfis:
-    patamar: { taxa: 300/s, durante: 5m }
-cenario:
+			content: `name: teste
+target: http://127.0.0.1:8080
+load:
+  profiles:
+    steady: { rate: 300/s, duration: 5m }
+scenario:
   - http: GET /pedidos/1
 `,
-			contains: []string{"perfis precisa ser uma lista", "- patamar: { taxa: 300/s, durante: 5m }"},
+			contains: []string{"profiles has to be a list", "- steady: { rate: 300/s, duration: 5m }"},
 		},
 		{
 			name: "duração no formato de outra ferramenta",
-			content: `nome: teste
-alvo: http://127.0.0.1:8080
-carga:
-  perfis:
-    - patamar: { taxa: 300/s, durante: 5 minutos }
-cenario:
+			content: `name: teste
+target: http://127.0.0.1:8080
+load:
+  profiles:
+    - steady: { rate: 300/s, duration: 5 minutos }
+scenario:
   - http: GET /pedidos/1
 `,
-			contains: []string{"duração inválida", "30s, 5m, 1h30m"},
+			contains: []string{"invalid duration", "30s, 5m, 1h30m"},
 		},
 		{
 			name: "chave de carga com erro de digitacao",
-			content: `nome: teste
-alvo: http://127.0.0.1:8080
-carga:
+			content: `name: teste
+target: http://127.0.0.1:8080
+load:
   perfil:
-    - patamar: { taxa: 300/s, durante: 5m }
-cenario:
+    - steady: { rate: 300/s, duration: 5m }
+scenario:
   - http: GET /pedidos/1
 `,
-			contains: []string{"chave desconhecida em carga", "perfis"},
+			contains: []string{"unknown key in load", "profiles"},
 		},
 		{
 			name: "tipo de perfil inventado",
-			content: `nome: teste
-alvo: http://127.0.0.1:8080
-carga:
-  perfis:
-    - degrau: { taxa: 300/s, durante: 5m }
-cenario:
+			content: `name: teste
+target: http://127.0.0.1:8080
+load:
+  profiles:
+    - degrau: { rate: 300/s, duration: 5m }
+scenario:
   - http: GET /pedidos/1
 `,
-			contains: []string{"tipo de perfil desconhecido", "patamar"},
+			contains: []string{"unknown profile kind", "steady"},
 		},
 		{
 			name: "autenticação por token sem o bloco obter",
-			content: `nome: teste
-alvo: http://127.0.0.1:8080
-autenticacao:
-  tipo: token
-carga:
-  perfis:
-    - patamar: { taxa: 300/s, durante: 5m }
-cenario:
+			content: `name: teste
+target: http://127.0.0.1:8080
+auth:
+  type: token
+load:
+  profiles:
+    - steady: { rate: 300/s, duration: 5m }
+scenario:
   - http: GET /pedidos/1
 `,
-			contains: []string{"bloco 'obter'", "captura: { token: $.access_token }"},
+			contains: []string{"the 'obtain' block", "capture: { token: $.access_token }"},
 		},
 		{
 			name: "slo escrito como mapa em vez de lista",
-			content: `nome: teste
-alvo: http://127.0.0.1:8080
-carga:
-  perfis:
-    - patamar: { taxa: 300/s, durante: 5m }
-cenario:
+			content: `name: teste
+target: http://127.0.0.1:8080
+load:
+  profiles:
+    - steady: { rate: 300/s, duration: 5m }
+scenario:
   - http: GET /pedidos/1
-    nome: consultar pedido
+    name: consultar pedido
 slo:
   consultar pedido: { p95: < 150ms }
 `,
-			contains: []string{"slo precisa ser uma lista", "p95"},
+			contains: []string{"slo has to be a list", "p95"},
 		},
 		{
 			name: "métrica de slo que não existe",
-			content: `nome: teste
-alvo: http://127.0.0.1:8080
-carga:
-  perfis:
-    - patamar: { taxa: 300/s, durante: 5m }
-cenario:
+			content: `name: teste
+target: http://127.0.0.1:8080
+load:
+  profiles:
+    - steady: { rate: 300/s, duration: 5m }
+scenario:
   - http: GET /pedidos/1
-    nome: consultar pedido
+    name: consultar pedido
 slo:
   - consultar pedido: { média: < 150ms }
 `,
-			contains: []string{"métrica de slo desconhecida", "p95"},
+			contains: []string{"unknown slo metric", "p95"},
 		},
 	}
 
@@ -120,7 +120,7 @@ slo:
 				t.Fatal("esperava erro e o cenário carregou")
 			}
 			message := err.Error()
-			if !strings.Contains(message, "linha") {
+			if !strings.Contains(message, "line") {
 				t.Errorf("a mensagem precisa apontar a linha:\n%s", message)
 			}
 			for _, fragment := range testCase.contains {
@@ -136,7 +136,7 @@ slo:
 // same password in 'variaveis' was accepted and went to the repository.
 func TestLiteralCredentialInVariablesIsRefused(t *testing.T) {
 	for _, name := range []string{"senha", "password", "token", "api_key", "client_secret"} {
-		_, err := Parse([]byte("nome: x\nalvo: http://a\nvariaveis:\n  " + name + ": valor-de-verdade\ncarga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n"))
+		_, err := Parse([]byte("name: x\ntarget: http://a\nvariables:\n  " + name + ": valor-de-verdade\nload:\n  profiles:\n    - steady: { rate: 1/s, duration: 1s }\nscenario:\n  - http: GET /\n"))
 		if err == nil {
 			t.Errorf("%q literal foi aceita e vai para o repositorio", name)
 			continue
@@ -148,7 +148,7 @@ func TestLiteralCredentialInVariablesIsRefused(t *testing.T) {
 }
 
 func TestCredentialFromTheEnvironmentIsAccepted(t *testing.T) {
-	_, err := Parse([]byte("nome: x\nalvo: http://a\nvariaveis:\n  senha: \"${SENHA}\"\ncarga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n"))
+	_, err := Parse([]byte("name: x\ntarget: http://a\nvariables:\n  password: \"${SENHA}\"\nload:\n  profiles:\n    - steady: { rate: 1/s, duration: 1s }\nscenario:\n  - http: GET /\n"))
 	if err != nil {
 		t.Fatalf("senha vinda do ambiente foi recusada: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestCredentialFromTheEnvironmentIsAccepted(t *testing.T) {
 // A variable whose name is not a credential keeps working with a literal: the
 // rule is about secrets, not about writing values in the file.
 func TestOrdinaryVariableKeepsAcceptingALiteral(t *testing.T) {
-	_, err := Parse([]byte("nome: x\nalvo: http://a\nvariaveis:\n  usuario: ana\ncarga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n"))
+	_, err := Parse([]byte("name: x\ntarget: http://a\nvariables:\n  user: ana\nload:\n  profiles:\n    - steady: { rate: 1/s, duration: 1s }\nscenario:\n  - http: GET /\n"))
 	if err != nil {
 		t.Fatalf("variável comum foi recusada: %v", err)
 	}

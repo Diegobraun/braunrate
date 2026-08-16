@@ -13,7 +13,7 @@ import (
 )
 
 // docs/vocabulario.md fixa uma palavra por conceito. Estas sao as que nao tem
-// leitura legitima no texto ao usuario: qualquer aparicao e o mesmo conceito
+// leitura legitima no texto ao user: qualquer aparicao e o mesmo conceito
 // ganhando um segundo nome, que e como quem nunca fez teste de carga conclui
 // que sao duas coisas.
 //

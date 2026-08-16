@@ -68,7 +68,7 @@ func TestSameRouteWithDifferentIdentifiersBecomesOneStepAndOneDataSource(t *test
 		t.Fatalf("o caminho não virou parâmetro: %q", script.Steps[0].Path)
 	}
 	if len(files) != 1 || len(files[0].Values) != 3 {
-		t.Fatalf("os valores observados não viraram fonte de dados: %+v", files)
+		t.Fatalf("os valores observados não viraram fonte de data: %+v", files)
 	}
 	if files[0].CSV() != "valor\n9912\n8123\n7001\n" {
 		t.Fatalf("o CSV saiu diferente:\n%s", files[0].CSV())
@@ -184,7 +184,7 @@ func TestSessionCookieBecomesCaptureAndIsSentBackCorrelated(t *testing.T) {
 
 	captures := script.Steps[0].Captures
 	if len(captures) != 1 || captures[0].Variable != "sessao" || captures[0].Expression != "cookie:sessao" {
-		t.Fatalf("o cookie de sessão não virou captura: %+v", captures)
+		t.Fatalf("o cookie de sessão não virou capture: %+v", captures)
 	}
 	if got := script.Steps[1].Headers["Cookie"]; got != "sessao=${sessao}" {
 		t.Fatalf("o segundo passo continuou com a sessão gravada: %q", got)

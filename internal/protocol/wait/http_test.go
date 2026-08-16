@@ -38,9 +38,9 @@ func TestHTTPWaitPollsUntilEffectAppears(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	config := configuracaoHTTP(t, `
-http: { caminho: /pedidos/1 }
-ate: { $.status: PROCESSADO }
-intervalo: 20ms
+http: { path: /pedidos/1 }
+until: { $.status: PROCESSADO }
+interval: 20ms
 timeout: 2s
 `)
 
@@ -68,9 +68,9 @@ func TestHTTPWaitTimeoutSaysWhatItSawAndHowManyPolls(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	config := configuracaoHTTP(t, `
-http: { caminho: /pedidos/1 }
-ate: { $.status: PROCESSADO }
-intervalo: 20ms
+http: { path: /pedidos/1 }
+until: { $.status: PROCESSADO }
+interval: 20ms
 timeout: 120ms
 `)
 
@@ -90,7 +90,7 @@ timeout: 120ms
 
 // Polling without a condition would measure response time, not time to effect.
 func TestHTTPWaitWithoutConditionIsRefusedWithExplanation(t *testing.T) {
-	_, err := decode(t, "http: { caminho: /pedidos/1 }\n")
+	_, err := decode(t, "http: { path: /pedidos/1 }\n")
 	if err == nil {
 		t.Fatal("aguardar por http sem 'ate' precisa ser recusado")
 	}

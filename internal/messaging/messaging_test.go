@@ -86,30 +86,30 @@ func execute(t *testing.T, content string) (metrics.Document, slo.Verdict) {
 }
 
 const chainScenario = `
-nome: Cadeia assincrona
-alvo: %s
+name: Cadeia assincrona
+target: %s
 
-dados:
+data:
   pedidos:
-    gerar: { id: uuid }
+    generate: { id: uuid }
 
-carga:
-  perfis:
-    - constante: { taxa: 30/s, durante: 2s }
+load:
+  profiles:
+    - steady: { rate: 30/s, duration: 2s }
 
-cenario:
+scenario:
   - kafka:
-      topico: %s
-      chave: "%s"
-      valor: { pedido: "${pedidos.id}" }
+      topic: %s
+      key: "%s"
+      value: { pedido: "${pedidos.id}" }
 
-  - aguardar:
-      kafka: { topico: %s }
-      chave: "${pedidos.id}"
+  - await:
+      kafka: { topic: %s }
+      key: "${pedidos.id}"
       timeout: 15s
 
 slo:
-  - global: { erros: < 1 }
+  - global: { errors: < 1 }
 `
 
 // Async chain measurement: the wait step only ends when that iteration's
@@ -207,26 +207,26 @@ func TestFixedPartitionKeyInvalidatesResult(t *testing.T) {
 }
 
 const scenarioWithoutProcessor = `
-nome: Espera sem resposta
-alvo: %s
+name: Espera sem resposta
+target: %s
 
-dados:
+data:
   pedidos:
-    gerar: { id: uuid }
+    generate: { id: uuid }
 
-carga:
-  perfis:
-    - constante: { taxa: 5/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 5/s, duration: 1s }
 
-cenario:
+scenario:
   - kafka:
-      topico: %s
-      chave: "${pedidos.id}"
-      valor: { pedido: "${pedidos.id}" }
+      topic: %s
+      key: "${pedidos.id}"
+      value: { pedido: "${pedidos.id}" }
 
-  - aguardar:
-      kafka: { topico: %s }
-      chave: "${pedidos.id}"
+  - await:
+      kafka: { topic: %s }
+      key: "${pedidos.id}"
       timeout: 2s
 `
 
@@ -261,30 +261,30 @@ func TestMessageThatNeverArrivesBecomesExplainedTimeout(t *testing.T) {
 }
 
 const amqpScenario = `
-nome: Cadeia AMQP
-alvo: %s
+name: Cadeia AMQP
+target: %s
 
-dados:
+data:
   pedidos:
-    gerar: { id: uuid }
+    generate: { id: uuid }
 
-carga:
-  perfis:
-    - constante: { taxa: 50/s, durante: 2s }
+load:
+  profiles:
+    - steady: { rate: 50/s, duration: 2s }
 
-cenario:
+scenario:
   - amqp:
-      fila: %s
-      identidade: "${pedidos.id}"
-      corpo: { pedido: "${pedidos.id}" }
+      queue: %s
+      messageId: "${pedidos.id}"
+      body: { pedido: "${pedidos.id}" }
 
-  - aguardar:
-      amqp: { fila: %s, url: %s }
-      chave: "${pedidos.id}"
+  - await:
+      amqp: { queue: %s, url: %s }
+      key: "${pedidos.id}"
       timeout: 10s
 
 slo:
-  - global: { erros: < 1 }
+  - global: { errors: < 1 }
 `
 
 func TestAMQPPublishesAndWaitsOnSameQueue(t *testing.T) {
@@ -313,22 +313,22 @@ func TestAMQPPublishesAndWaitsOnSameQueue(t *testing.T) {
 }
 
 const saturationScenario = `
-nome: Saturacao produzindo
-alvo: %s
+name: Saturacao produzindo
+target: %s
 
-dados:
+data:
   pedidos:
-    gerar: { id: uuid }
+    generate: { id: uuid }
 
-carga:
-  perfis:
-    - constante: { taxa: 3000/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 3000/s, duration: 1s }
 
-cenario:
+scenario:
   - kafka:
-      topico: %s
-      chave: "${pedidos.id}"
-      valor: { pedido: "${pedidos.id}" }
+      topic: %s
+      key: "${pedidos.id}"
+      value: { pedido: "${pedidos.id}" }
 `
 
 // Back-pressure is not a protocol matter: the scheduler is the same one. If

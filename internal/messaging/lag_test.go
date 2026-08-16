@@ -65,20 +65,20 @@ func TestConsumerLagShowsTheServiceFallingBehind(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	document := runScenario(t, fmt.Sprintf(`
-nome: Atraso do consumidor
-alvo: %s
+name: Atraso do consumidor
+target: %s
 
-dados:
+data:
   pedidos:
-    gerar: { id: uuid }
+    generate: { id: uuid }
 
-carga:
-  perfis:
-    - patamar: { taxa: 200/s, durante: 5s }
+load:
+  profiles:
+    - steady: { rate: 200/s, duration: 5s }
 
-cenario:
-  - kafka: { topico: %s, grupo: %s, chave: "${pedidos.id}", valor: '{"id":"${pedidos.id}"}' }
-    nome: publicar pedido
+scenario:
+  - kafka: { topic: %s, group: %s, key: "${pedidos.id}", value: '{"id":"${pedidos.id}"}' }
+    name: publicar pedido
 `, address, topic, group))
 
 	if document.Overall.Errors > 0 {
@@ -93,7 +93,7 @@ cenario:
 		t.Fatalf("a medição do atraso falhou: %s", lag.Problem)
 	}
 	if lag.Group != group || lag.Topic != topic {
-		t.Fatalf("o atraso foi atribuido a outro grupo: %+v", lag)
+		t.Fatalf("o atraso foi atribuido a outro group: %+v", lag)
 	}
 	// 200/s against a consumer that takes 40 ms per message: the group cannot
 	// keep up, and that is the whole point of measuring this.
@@ -112,20 +112,20 @@ func TestDeclaredPartitionIsWhereTheMessageLands(t *testing.T) {
 	createPlainTopic(t, address, topic, 3)
 
 	document := runScenario(t, fmt.Sprintf(`
-nome: Particao declarada
-alvo: %s
+name: Particao declarada
+target: %s
 
-dados:
+data:
   pedidos:
-    gerar: { id: uuid }
+    generate: { id: uuid }
 
-carga:
-  perfis:
-    - patamar: { taxa: 20/s, durante: 2s }
+load:
+  profiles:
+    - steady: { rate: 20/s, duration: 2s }
 
-cenario:
-  - kafka: { topico: %s, particao: 2, chave: "${pedidos.id}", valor: '{"id":"${pedidos.id}"}' }
-    nome: publicar pedido
+scenario:
+  - kafka: { topic: %s, partition: 2, key: "${pedidos.id}", value: '{"id":"${pedidos.id}"}' }
+    name: publicar pedido
 `, address, topic))
 
 	if document.Overall.Errors > 0 {
@@ -139,7 +139,7 @@ cenario:
 		}
 		found = true
 		if !strings.HasPrefix(variety.Name, "kafka.particao.declarada.") {
-			t.Fatalf("a partição declarada foi contada como se tivesse sido escolhida pela chave: %s", variety.Name)
+			t.Fatalf("a partição declarada foi contada como se tivesse sido escolhida pela key: %s", variety.Name)
 		}
 		if variety.Distinct != 1 {
 			t.Fatalf("a carga foi para %d partições, e o cenário declarou uma", variety.Distinct)

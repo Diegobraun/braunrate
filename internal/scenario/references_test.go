@@ -10,14 +10,14 @@ import (
 func parseWithSteps(t *testing.T, blocks, step string) (scenario.Spec, error) {
 	t.Helper()
 	return scenario.Parse([]byte(`
-nome: x
-alvo: http://127.0.0.1:8080
+name: x
+target: http://127.0.0.1:8080
 ` + blocks + `
-carga:
-  perfis:
-    - patamar: { taxa: 1/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
 
-cenario:
+scenario:
   - ` + step + `
 `))
 }
@@ -32,8 +32,8 @@ func TestUndeclaredVariableIsRefusedWithTheLineAndWhereToDeclareIt(t *testing.T)
 
 	message := err.Error()
 	for _, fragment := range []string{
-		"não sei de onde vem ${variavel_que_ninguem_declarou}",
-		"variaveis:", "captura:", "dados:", "CAIXA ALTA",
+		"I do not know where ${variavel_que_ninguem_declarou} comes from",
+		"variables:", "capture:", "data:", "UPPERCASE",
 	} {
 		if !strings.Contains(message, fragment) {
 			t.Fatalf("a mensagem não ensina %q: %v", fragment, err)
@@ -47,7 +47,7 @@ func TestUndeclaredVariableIsRefusedWithTheLineAndWhereToDeclareIt(t *testing.T)
 // Pointing at the start of the line would send the person to the first
 // reference when the broken one is the third.
 func TestTheColumnPointsAtTheReferenceThatFailedNotAtTheLine(t *testing.T) {
-	_, err := parseWithSteps(t, "variaveis:\n  a: 1\n  b: 2\n",
+	_, err := parseWithSteps(t, "variables:\n  a: 1\n  b: 2\n",
 		"http: GET /${a}/${b}/${quebrada}")
 	position, is := err.(scenario.ScenarioError)
 	if !is {
@@ -59,23 +59,23 @@ func TestTheColumnPointsAtTheReferenceThatFailedNotAtTheLine(t *testing.T) {
 }
 
 func TestSimilarNameIsSuggested(t *testing.T) {
-	_, err := parseWithSteps(t, "variaveis:\n  faturaId: 7\n", "http: GET /faturas/${faturald}")
-	if err == nil || !strings.Contains(err.Error(), `você quis dizer "faturaId"?`) {
+	_, err := parseWithSteps(t, "variables:\n  faturaId: 7\n", "http: GET /faturas/${faturald}")
+	if err == nil || !strings.Contains(err.Error(), `did you mean "faturaId"?`) {
 		t.Fatalf("a sugestao não apareceu: %v", err)
 	}
 }
 
 func TestEveryDeclaredOriginResolves(t *testing.T) {
 	blocks := `
-variaveis:
+variables:
   tenant: acme
 
-dados:
-  pedidos: { gerar: { id: { tipo: padrao, formato: "PED-######" } } }
-  assinantes: { arquivo: dados/assinantes.csv }
+data:
+  pedidos: { generate: { id: { type: pattern, format: "PED-######" } } }
+  assinantes: { file: dados/assinantes.csv }
 `
 	step := `http: GET /${tenant}/${pedidos.id}/${assinantes.qualquer_coluna}/${faturaId}
-    captura: { faturaId: $.fatura.id }`
+    capture: { faturaId: $.fatura.id }`
 
 	if _, err := parseWithSteps(t, blocks, step); err != nil {
 		t.Fatalf("origem declarada foi recusada: %v", err)
@@ -86,7 +86,7 @@ dados:
 // examples. Checking the environment instead of the case would make 'validate'
 // impossible on a machine without the secret.
 func TestUpperCaseNameComesFromTheEnvironmentWithoutBeingDeclared(t *testing.T) {
-	if _, err := parseWithSteps(t, "", `http: { metodo: GET, caminho: /pedidos, cabecalhos: { Authorization: "Bearer ${API_KEY}" } }`); err != nil {
+	if _, err := parseWithSteps(t, "", `http: { method: GET, path: /pedidos, headers: { Authorization: "Bearer ${API_KEY}" } }`); err != nil {
 		t.Fatalf("referência de ambiente foi recusada: %v", err)
 	}
 }
@@ -98,9 +98,9 @@ func TestDefaultValueAlwaysResolves(t *testing.T) {
 }
 
 func TestUnknownDataSourceSaysWhichOnesExist(t *testing.T) {
-	_, err := parseWithSteps(t, "dados:\n  assinantes: { arquivo: dados/assinantes.csv }\n",
+	_, err := parseWithSteps(t, "data:\n  assinantes: { file: dados/assinantes.csv }\n",
 		"http: GET /${assinante.id}")
-	if err == nil || !strings.Contains(err.Error(), `você quis dizer "assinantes"?`) {
+	if err == nil || !strings.Contains(err.Error(), `did you mean "assinantes"?`) {
 		t.Fatalf("a fonte parecida não foi sugerida: %v", err)
 	}
 }
@@ -108,13 +108,13 @@ func TestUnknownDataSourceSaysWhichOnesExist(t *testing.T) {
 // A CSV brings its columns from the file, so only a synthetic source can have
 // its field names checked here.
 func TestSyntheticSourceChecksTheFieldAndTheCSVDoesNot(t *testing.T) {
-	_, err := parseWithSteps(t, "dados:\n  pedidos: { gerar: { id: { tipo: padrao, formato: \"PED-######\" } } }\n",
+	_, err := parseWithSteps(t, "data:\n  pedidos: { generate: { id: { type: pattern, format: \"PED-######\" } } }\n",
 		"http: GET /${pedidos.identificador}")
-	if err == nil || !strings.Contains(err.Error(), `a fonte "pedidos" não gera o campo "identificador"`) {
+	if err == nil || !strings.Contains(err.Error(), `the source "pedidos" does not generate the field "identificador"`) {
 		t.Fatalf("o campo inexistente da fonte sintetica passou: %v", err)
 	}
 
-	if _, err := parseWithSteps(t, "dados:\n  assinantes: { arquivo: dados/assinantes.csv }\n",
+	if _, err := parseWithSteps(t, "data:\n  assinantes: { file: dados/assinantes.csv }\n",
 		"http: GET /${assinantes.coluna_que_so_o_arquivo_conhece}"); err != nil {
 		t.Fatalf("coluna de CSV foi recusada sem o arquivo ter sido lido: %v", err)
 	}
@@ -124,23 +124,23 @@ func TestSyntheticSourceChecksTheFieldAndTheCSVDoesNot(t *testing.T) {
 // enters the observed-variety check. The run hits the same URL thousands of
 // times and nothing in the report says so.
 func TestStepWithNothingVaryingIsWarnedAbout(t *testing.T) {
-	spec, err := parseWithSteps(t, "", "http: GET /pedidos/1\n    nome: consultar pedido")
+	spec, err := parseWithSteps(t, "", "http: GET /pedidos/1\n    name: consultar pedido")
 	if err != nil {
 		t.Fatalf("cenário recusado: %v", err)
 	}
 
 	warnings := strings.Join(scenario.FixedStepWarnings(spec), "\n")
-	if !strings.Contains(warnings, "consultar pedido") || !strings.Contains(warnings, "idêntica") {
+	if !strings.Contains(warnings, "consultar pedido") || !strings.Contains(warnings, "identical") {
 		t.Fatalf("o passo fixo não foi avisado:\n%s", warnings)
 	}
-	if !strings.Contains(warnings, "${pedidos.id}") {
+	if !strings.Contains(warnings, "${orders.id}") {
 		t.Fatalf("o aviso não mostra como variar:\n%s", warnings)
 	}
 }
 
 func TestStepThatVariesIsNotWarnedAbout(t *testing.T) {
-	spec, err := parseWithSteps(t, "dados:\n  pedidos: { arquivo: pedidos.csv }\n",
-		"http: GET /pedidos/${pedidos.id}\n    nome: consultar pedido")
+	spec, err := parseWithSteps(t, "data:\n  pedidos: { file: pedidos.csv }\n",
+		"http: GET /pedidos/${pedidos.id}\n    name: consultar pedido")
 	if err != nil {
 		t.Fatalf("cenário recusado: %v", err)
 	}

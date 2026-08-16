@@ -12,14 +12,14 @@ import (
 // with a blank in the middle of the path and only the target's 404 said so.
 func TestColumnThatIsNotInTheCSVIsRefusedBeforeTheRun(t *testing.T) {
 	spec, err := scenario.Parse([]byte(`
-nome: x
-alvo: http://127.0.0.1:8090
-dados:
-  clientes: { arquivo: clientes.csv, consumo: circular }
-carga:
-  perfis:
-    - patamar: { taxa: 1/s, durante: 1s }
-cenario:
+name: x
+target: http://127.0.0.1:8090
+data:
+  clientes: { file: clientes.csv, consume: circular }
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
+scenario:
   - http: GET /pessoas/${clientes.identificador}/limite
 `))
 	if err != nil {
@@ -41,14 +41,14 @@ cenario:
 
 func TestColumnThatExistsKeepsWorking(t *testing.T) {
 	spec, err := scenario.Parse([]byte(`
-nome: x
-alvo: http://127.0.0.1:8090
-dados:
-  clientes: { arquivo: clientes.csv, consumo: circular }
-carga:
-  perfis:
-    - patamar: { taxa: 1/s, durante: 1s }
-cenario:
+name: x
+target: http://127.0.0.1:8090
+data:
+  clientes: { file: clientes.csv, consume: circular }
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
+scenario:
   - http: GET /pessoas/${clientes.id}/limite
 `))
 	if err != nil {

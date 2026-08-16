@@ -32,22 +32,22 @@ func TestMixSendsTheDeclaredProportionToTheTarget(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	spec, err := scenario.Parse([]byte(fmt.Sprintf(`
-nome: Mix
-alvo: %s
+name: Mix
+target: %s
 
-carga:
-  perfis:
-    - constante: { taxa: 2000/s, durante: 500ms }
+load:
+  profiles:
+    - steady: { rate: 2000/s, duration: 500ms }
 
-cenario:
-  - nome: leve
-    peso: 60
+scenario:
+  - name: leve
+    weight: 60
     http: GET /leve
-  - nome: pesada
-    peso: 30
+  - name: pesada
+    weight: 30
     http: GET /pesada
-  - nome: criacao
-    peso: 10
+  - name: criacao
+    weight: 10
     http: GET /criacao
 `, server.URL)))
 	if err != nil {
@@ -103,12 +103,12 @@ func TestReportShowsDeclaredAndObservedProportionOnlyWhenThereIsMix(t *testing.T
 	run := func(steps string) string {
 		t.Helper()
 		spec, err := scenario.Parse([]byte(fmt.Sprintf(`
-nome: Mix
-alvo: %s
-carga:
-  perfis:
-    - constante: { taxa: 500/s, durante: 200ms }
-cenario:
+name: Mix
+target: %s
+load:
+  profiles:
+    - steady: { rate: 500/s, duration: 200ms }
+scenario:
 %s`, server.URL, steps)))
 		if err != nil {
 			t.Fatalf("cenário inválido: %v", err)
@@ -124,7 +124,7 @@ cenario:
 		return terminal.String()
 	}
 
-	withMix := run("  - nome: leve\n    peso: 60\n    http: GET /leve\n  - nome: pesada\n    peso: 40\n    http: GET /pesada\n")
+	withMix := run("  - name: leve\n    weight: 60\n    http: GET /leve\n  - name: pesada\n    weight: 40\n    http: GET /pesada\n")
 	if !strings.Contains(withMix, "Mix declarado e observado") {
 		t.Fatalf("o relatório não diz qual proporção foi aplicada:\n%s", withMix)
 	}
@@ -135,7 +135,7 @@ cenario:
 		t.Errorf("o relatório não avisa que o percentil de jornada junta as alternativas:\n%s", withMix)
 	}
 
-	withoutMix := run("  - nome: leve\n    http: GET /leve\n")
+	withoutMix := run("  - name: leve\n    http: GET /leve\n")
 	if strings.Contains(withoutMix, "Mix declarado") {
 		t.Fatalf("o bloco de mix apareceu num cenário sem mix:\n%s", withoutMix)
 	}
@@ -160,17 +160,17 @@ func TestSeedFromEnvironmentChangesTheDataAndDoesNotExcuseCollapsedVariety(t *te
 		paths = nil
 		mutex.Unlock()
 		spec, err := scenario.Parse([]byte(fmt.Sprintf(`
-nome: Semente
-alvo: %s
-dados:
+name: Semente
+target: %s
+data:
   pedidos:
-    gerar: { %s }
-    semente: ${SEMENTE_DO_TESTE:-42}
-carga:
-  perfis:
-    - constante: { taxa: 200/s, durante: 200ms }
-cenario:
-  - nome: consultar
+    generate: { %s }
+    seed: ${SEMENTE_DO_TESTE:-42}
+load:
+  profiles:
+    - steady: { rate: 200/s, duration: 200ms }
+scenario:
+  - name: consultar
     http: GET /pedidos/${pedidos.id}
 `, server.URL, field)))
 		if err != nil {
@@ -194,10 +194,10 @@ cenario:
 	t.Setenv("SEMENTE_DO_TESTE", "1")
 	first, output := run(varying)
 	if !strings.Contains(output, "(de $SEMENTE_DO_TESTE)") {
-		t.Errorf("o relatório não diz de onde veio a semente:\n%s", output)
+		t.Errorf("o relatório não diz de onde veio a seed:\n%s", output)
 	}
 	if !strings.Contains(output, "SEMENTE_DO_TESTE=1") {
-		t.Errorf("o relatório não diz como repetir estes dados:\n%s", output)
+		t.Errorf("o relatório não diz como repetir estes data:\n%s", output)
 	}
 
 	t.Setenv("SEMENTE_DO_TESTE", "2")
@@ -206,7 +206,7 @@ cenario:
 		t.Fatal("nenhuma requisição chegou ao alvo")
 	}
 	if first[0] == second[0] {
-		t.Fatalf("duas sementes diferentes geraram o mesmo primeiro valor: %s", first[0])
+		t.Fatalf("duas sementes diferentes geraram o mesmo primeiro value: %s", first[0])
 	}
 
 	// Uma fonte que gera sempre o mesmo valor continua sendo resultado invalido,

@@ -86,7 +86,7 @@ func stringLiterals(t *testing.T, path string) []literal {
 
 // Uma chave dentro de exemplo aparece de dois jeitos: num trecho de YAML, que
 // traz `{` ou comeca comentado, e numa enumeracao das chaves aceitas, que vem
-// entre parenteses depois de "use" ou depois de "disponíveis:". Nome de bloco no
+// entre parenteses depois de "use" ou depois de "available:". Nome de bloco no
 // meio de uma frase — "erro no cenário:" — nao e exemplo, e continua acentuado.
 var (
 	insideYAML  = regexp.MustCompile(`(?:^|[{,#]\s*|\n\s*)([\p{L}_]+)\s*:`)

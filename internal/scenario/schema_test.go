@@ -45,17 +45,17 @@ func TestPublishedSchemaHasSameTopKeysAsParser(t *testing.T) {
 func TestPublishedSchemaHasSameStepKeysAsParser(t *testing.T) {
 	read := readSchema(t)
 	expected := append(append([]string{}, StepKeys...), protocol.Registered()...)
-	compareKeys(t, "passo", expected, keysOf(read.Definitions["passo"].Properties))
+	compareKeys(t, "passo", expected, keysOf(read.Definitions["step"].Properties))
 }
 
-// O editor le o schema antes de a ferramenta ler o arquivo: um campo que o
+// O editor le o schema antes de a ferramenta ler o file: um campo que o
 // parser resolve pelo ambiente e o schema marca em vermelho vira a mesma
 // inconsistencia de sempre, agora com o QA vendo o erro antes de rodar.
 func TestPublishedSchemaAcceptsEnvironmentReferencesWhereTheParserDoes(t *testing.T) {
 	read := readSchema(t)
 	accepted := map[string][]string{
-		"taxa":    {"300/s", "1.5/m", "${TAXA}/s", "${TAXA:-100}/s", "${TAXA}"},
-		"duracao": {"30s", "1.5m", "${DURACAO}", "${DURACAO:-1m}"},
+		"rate":     {"300/s", "1.5/m", "${RATE}/s", "${RATE:-100}/s", "${RATE}"},
+		"duration": {"30s", "1.5m", "${DURATION}", "${DURATION:-1m}"},
 	}
 	for name, values := range accepted {
 		pattern, err := regexp.Compile(read.Definitions[name].Pattern)
@@ -68,7 +68,7 @@ func TestPublishedSchemaAcceptsEnvironmentReferencesWhereTheParserDoes(t *testin
 			}
 		}
 	}
-	for name, refused := range map[string]string{"taxa": "300", "duracao": "30"} {
+	for name, refused := range map[string]string{"rate": "300", "duration": "30"} {
 		pattern := regexp.MustCompile(read.Definitions[name].Pattern)
 		if pattern.MatchString(refused) {
 			t.Errorf("o schema de %s passou a aceitar %q, que não tem unidade", name, refused)

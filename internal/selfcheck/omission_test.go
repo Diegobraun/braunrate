@@ -121,7 +121,7 @@ func TestClosedLoopWouldHideThePauseOpenModelShows(t *testing.T) {
 	openP99 := document.Overall.Latency.P99
 	closedP99 := closed.P99
 
-	t.Logf("mesma pausa de %s no mesmo alvo:", freezeDuration)
+	t.Logf("mesma pausa de %s no mesmo target:", freezeDuration)
 	t.Logf("  modelo aberto (braunrate): p99 %.1f ms sobre %d amostras", openP99, document.Overall.Count)
 	t.Logf("  laço fechado:              p99 %.1f ms sobre %d amostras", closedP99, closed.Samples)
 	t.Logf("  omissão coordenada: %.1f ms escondidos pelo laço fechado", openP99-closedP99)

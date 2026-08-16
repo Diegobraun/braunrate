@@ -27,44 +27,44 @@ import (
 // count, latency and errors all stay pretty when the whole load uses the same
 // value.
 const scenarioWithVariety = `
-nome: Variedade
-alvo: %s
+name: Variedade
+target: %s
 
-autenticacao:
-  tipo: token
-  obter:
-    http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana } }
-    captura: { token: $.access_token }
+auth:
+  type: token
+  obtain:
+    http: { method: POST, path: /auth/token, body: { user: ana } }
+    capture: { token: $.access_token }
 
-dados:
+data:
   assinantes:
-    arquivo: assinantes.csv
-    consumo: circular
+    file: assinantes.csv
+    consume: circular
 
-carga:
-  perfis:
-    - constante: { taxa: 60/s, durante: 1s }
+load:
+  profiles:
+    - steady: { rate: 60/s, duration: 1s }
 
-cenario:
+scenario:
   - http: GET /pedidos/${assinantes.id}
-    nome: caminho
+    name: caminho
 
-  - nome: corpo
+  - name: corpo
     http:
-      metodo: POST
-      caminho: /faturas/pagar
-      corpo: { assinante: "${assinantes.id}", regiao: "${assinantes.regiao}" }
+      method: POST
+      path: /faturas/pagar
+      body: { assinante: "${assinantes.id}", region: "${assinantes.regiao}" }
 
-  - nome: cabecalho
+  - name: cabecalho
     http:
-      metodo: GET
-      caminho: /eco
-      cabecalhos: { X-Assinante: "${assinantes.id}" }
+      method: GET
+      path: /eco
+      headers: { X-Assinante: "${assinantes.id}" }
 
   - graphql:
-      consulta: |
+      query: |
         query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }
-      variaveis: { id: "${assinantes.id}" }
+      variables: { id: "${assinantes.id}" }
 `
 
 type valueCollector struct {

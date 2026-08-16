@@ -12,7 +12,7 @@ import (
 	"github.com/Diegobraun/braunrate/internal/scenario"
 )
 
-// O comando existe para quem nunca fez teste de carga: sem arquivo, sem alvo,
+// O comando existe para quem nunca fez teste de load: sem arquivo, sem alvo,
 // sem segundo terminal. Se ele precisar de preparo, ele nao serve para nada.
 func TestTheDemoRunsWithNoPreparationAndExplainsWhatItMeasured(t *testing.T) {
 	directory := t.TempDir()

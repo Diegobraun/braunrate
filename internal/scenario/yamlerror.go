@@ -92,17 +92,17 @@ func explainYAML(problem, text string) string {
 func inlineAdvice(text string) string {
 	switch {
 	case strings.Contains(text, "${"):
-		return "Dentro de { } o YAML trata '{' e '}' como estrutura, e ${variavel} carrega os dois.\n" +
-			"    ponha o valor entre aspas, por exemplo:\n" +
-			"      kafka: { topico: pedidos, chave: \"${pedidos.id}\" }"
+		return "Inside { } YAML reads '{' and '}' as structure, and ${variable} carries both.\n" +
+			"    quote the value, for example:\n" +
+			"      kafka: { topic: orders, key: \"${orders.id}\" }"
 	case strings.Contains(text, "[") && strings.Contains(text, "$."):
-		return "Um caminho JSON com colchete, como $.itens[0].id, precisa de aspas dentro de { }:\n" +
-			"      captura: { faturaId: \"$.itens[0].id\" }"
+		return "A JSON path with a bracket, like $.items[0].id, needs quotes inside { }:\n" +
+			"      capture: { invoiceId: \"$.items[0].id\" }"
 	case strings.Contains(text, "#"):
 		return "A '#' inside { } starts a comment and swallows the rest of the line.\n" +
-			"    ponha o valor entre aspas, por exemplo:\n" +
-			"      gerar: { id: { tipo: padrao, formato: \"PED-######\" } }"
+			"    quote the value, for example:\n" +
+			"      generate: { id: { type: pattern, format: \"ORD-######\" } }"
 	}
 	return "check that every key has a value and that keys are separated by commas, for example:\n" +
-		"      http: { metodo: GET, caminho: /pedidos }"
+		"      http: { method: GET, path: /orders }"
 }

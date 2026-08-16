@@ -19,22 +19,22 @@ func TestYAMLSyntaxErrorAnswersInPortugueseWithThePositionAndTheFix(t *testing.T
 	}{
 		{
 			name: "variável sem aspas dentro de mapa em linha",
-			content: "nome: x\nalvo: 127.0.0.1:9092\ncarga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\ncenario:\n" +
-				"  - kafka: { topico: pedidos, chave: ${pedidos.id} }\n",
-			fragment: `chave: "${pedidos.id}"`,
+			content: "name: x\ntarget: 127.0.0.1:9092\nload:\n  profiles:\n    - steady: { rate: 1/s, duration: 1s }\nscenario:\n" +
+				"  - kafka: { topic: pedidos, key: ${pedidos.id} }\n",
+			fragment: `key: "${orders.id}"`,
 			line:     7,
 		},
 		{
 			name: "caminho json com colchete dentro de mapa em linha",
-			content: "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\ncenario:\n" +
-				"  - http: GET /faturas\n    captura: { faturaId: $.itens[0].id }\n",
-			fragment: `"$.itens[0].id"`,
+			content: "name: x\ntarget: http://a\nload:\n  profiles:\n    - steady: { rate: 1/s, duration: 1s }\nscenario:\n" +
+				"  - http: GET /faturas\n    capture: { faturaId: $.items[0].id }\n",
+			fragment: `"$.items[0].id"`,
 			line:     8,
 		},
 		{
 			name:     "tabulacao no lugar de espaço",
-			content:  "nome: x\nalvo: http://a\ncarga:\n\tperfis: []\n",
-			fragment: "tabulacao",
+			content:  "name: x\ntarget: http://a\nload:\n\tprofiles: []\n",
+			fragment: "replace the tab",
 			line:     4,
 		},
 	}
@@ -62,7 +62,7 @@ func TestYAMLSyntaxErrorAnswersInPortugueseWithThePositionAndTheFix(t *testing.T
 	}
 }
 
-// Knowing that "perfis" exists does not teach that "perfis" is a list of maps
+// Knowing that "profiles" exists does not teach that "profiles" is a list of maps
 // with a profile kind inside. A3 and A5 of the audit cost two edits each
 // because the message listed names and stopped there.
 func TestUnknownKeyShowsTheShapeAndNotOnlyTheNames(t *testing.T) {
@@ -73,31 +73,31 @@ func TestUnknownKeyShowsTheShapeAndNotOnlyTheNames(t *testing.T) {
 	}{
 		{
 			name:    "carga",
-			content: "nome: x\nalvo: http://a\ncarga:\n  taxa: 100/s\ncenario:\n  - http: GET /\n",
-			shape:   "patamar: { taxa: 200/s, durante: 5m }",
+			content: "name: x\ntarget: http://a\nload:\n  rate: 100/s\nscenario:\n  - http: GET /\n",
+			shape:   "steady: { rate: 200/s, duration: 5m }",
 		},
 		{
 			name: "autenticacao",
-			content: "nome: x\nalvo: http://a\nautenticacao:\n  tipo: token\n  url: /auth\n" +
-				"carga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n",
-			shape: "captura: { token: \"$.access_token\" }",
+			content: "name: x\ntarget: http://a\nauth:\n  type: token\n  url: /auth\n" +
+				"load:\n  profiles:\n    - steady: { rate: 1/s, duration: 1s }\nscenario:\n  - http: GET /\n",
+			shape: "capture: { token: \"$.access_token\" }",
 		},
 		{
 			name:    "chave de topo",
-			content: "nome: x\nalvo: http://a\nvelocidade: 10\ncenario:\n  - http: GET /\n",
-			shape:   "alvo: http://127.0.0.1:8080",
+			content: "name: x\ntarget: http://a\nvelocidade: 10\nscenario:\n  - http: GET /\n",
+			shape:   "target: http://127.0.0.1:8080",
 		},
 		{
 			name: "perfil",
-			content: "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamar: { velocidade: 1/s, durante: 1s }\n" +
-				"cenario:\n  - http: GET /\n",
-			shape: "rampa: { de: 10/s, ate: 200/s, durante: 30s }",
+			content: "name: x\ntarget: http://a\nload:\n  profiles:\n    - steady: { velocidade: 1/s, duration: 1s }\n" +
+				"scenario:\n  - http: GET /\n",
+			shape: "ramp: { from: 10/s, to: 200/s, duration: 30s }",
 		},
 		{
 			name: "passo",
-			content: "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\n" +
-				"cenario:\n  - http: GET /\n    conferir: { status: 200 }\n",
-			shape: "verificar: { status: 200 }",
+			content: "name: x\ntarget: http://a\nload:\n  profiles:\n    - steady: { rate: 1/s, duration: 1s }\n" +
+				"scenario:\n  - http: GET /\n    conferir: { status: 200 }\n",
+			shape: "expect: { status: 200 }",
 		},
 	}
 
@@ -107,7 +107,7 @@ func TestUnknownKeyShowsTheShapeAndNotOnlyTheNames(t *testing.T) {
 			if err == nil {
 				t.Fatal("a chave desconhecida foi aceita")
 			}
-			if !strings.Contains(err.Error(), "disponíveis:") {
+			if !strings.Contains(err.Error(), "available:") {
 				t.Fatalf("a mensagem não lista as chaves validas: %v", err)
 			}
 			if !strings.Contains(err.Error(), testCase.shape) {
@@ -128,7 +128,7 @@ func TestMissingFileAnswersInPortugueseAndPointsAtTheNextStep(t *testing.T) {
 	if strings.Contains(message, "no such file") {
 		t.Fatalf("o erro do sistema operacional saiu cru: %v", err)
 	}
-	for _, fragment := range []string{"não encontrei o arquivo", "braunrate new"} {
+	for _, fragment := range []string{"I could not find the file", "braunrate new"} {
 		if !strings.Contains(message, fragment) {
 			t.Fatalf("a mensagem não traz %q: %v", fragment, err)
 		}
@@ -138,16 +138,16 @@ func TestMissingFileAnswersInPortugueseAndPointsAtTheNextStep(t *testing.T) {
 // A4 of the audit: "taxa" is not a typo of "rampa", and the fixed distance of
 // three said it was. The tolerance grows with the word.
 func TestSuggestionOnlyFiresForAPlausibleTypo(t *testing.T) {
-	_, err := scenario.Parse([]byte("nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - taxa: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n"))
+	_, err := scenario.Parse([]byte("name: x\ntarget: http://a\nload:\n  profiles:\n    - velocidade: { rate: 1/s, duration: 1s }\nscenario:\n  - http: GET /\n"))
 	if err == nil {
 		t.Fatal("o perfil desconhecido foi aceito")
 	}
-	if strings.Contains(err.Error(), "você quis dizer") {
+	if strings.Contains(err.Error(), "did you mean") {
 		t.Fatalf("sugeriu para palavra sem relação: %v", err)
 	}
 
-	_, err = scenario.Parse([]byte("nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamer: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n"))
-	if err == nil || !strings.Contains(err.Error(), `você quis dizer "patamar"?`) {
+	_, err = scenario.Parse([]byte("name: x\ntarget: http://a\nload:\n  profiles:\n    - steedy: { rate: 1/s, duration: 1s }\nscenario:\n  - http: GET /\n"))
+	if err == nil || !strings.Contains(err.Error(), `did you mean "steady"?`) {
 		t.Fatalf("erro de digitacao de verdade deixou de ser sugerido: %v", err)
 	}
 }
