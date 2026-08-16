@@ -82,7 +82,7 @@ func readBroker(technology string, node *yaml.Node) (*messaging.Broker, error) {
 	}
 
 	if broker.Auth.Kind == messaging.MSKIAM && broker.Auth.Region == "" {
-		return nil, nodeError(node, "msk_iam precisa da regiao, por exemplo:\n"+
+		return nil, nodeError(node, "msk_iam precisa da região, por exemplo:\n"+
 			"    autenticacao: { tipo: msk_iam, regiao: us-east-1 }")
 	}
 	if broker.Auth.Kind == messaging.MSKIAM {
@@ -99,7 +99,7 @@ func readBroker(technology string, node *yaml.Node) (*messaging.Broker, error) {
 func readBrokerAuth(node *yaml.Node) (messaging.Auth, error) {
 	auth := messaging.Auth{}
 	if node.Kind != yaml.MappingNode {
-		return auth, nodeError(node, "autenticacao precisa ser um mapa, por exemplo:\n"+
+		return auth, nodeError(node, "autenticação precisa ser um mapa, por exemplo:\n"+
 			"    autenticacao: { tipo: scram_sha512, usuario: \"${KAFKA_USUARIO}\", senha: \"${KAFKA_SENHA}\" }")
 	}
 
@@ -110,8 +110,8 @@ func readBrokerAuth(node *yaml.Node) (messaging.Auth, error) {
 		case "tipo":
 			kind := messaging.Kind(value.Value)
 			if !slices.Contains(messaging.KnownKinds, kind) {
-				return auth, nodeError(value, "tipo de autenticacao desconhecido: %q\n%s\n"+
-					"    OAUTHBEARER nao entra na v1: veja o README", value.Value, suggest(value.Value, kindNames()))
+				return auth, nodeError(value, "tipo de autenticação desconhecido: %q\n%s\n"+
+					"    OAUTHBEARER não entra na v1: veja o README", value.Value, suggest(value.Value, kindNames()))
 			}
 			auth.Kind = kind
 		case "usuario":
@@ -125,17 +125,17 @@ func readBrokerAuth(node *yaml.Node) (messaging.Auth, error) {
 		case "regiao":
 			auth.Region = ExpandFromEnv(value.Value)
 		case "chave", "token", "segredo", "secret_key", "access_key":
-			return auth, nodeError(key, "nao existe %q aqui, e nao vai existir: chave de acesso nunca e pedida no cenario.\n"+
-				"    Para AWS MSK use a cadeia padrao da AWS (variavel de ambiente, perfil ou role da maquina):\n"+
+			return auth, nodeError(key, "não existe %q aqui, e não vai existir: chave de acesso nunca é pedida no cenário.\n"+
+				"    Para AWS MSK use a cadeia padrão da AWS (variável de ambiente, perfil ou role da máquina):\n"+
 				"      autenticacao: { tipo: msk_iam, regiao: us-east-1 }", key.Value)
 		default:
-			return auth, nodeError(key, "chave desconhecida em autenticacao: %q\n%s",
+			return auth, nodeError(key, "chave desconhecida em autenticação: %q\n%s",
 				key.Value, suggest(key.Value, []string{"tipo", "usuario", "senha", "regiao"}))
 		}
 	}
 
 	if auth.Kind == messaging.NoAuth {
-		return auth, nodeError(node, "autenticacao sem 'tipo': declare qual, entre %s", strings.Join(kindNames(), ", "))
+		return auth, nodeError(node, "autenticação sem 'tipo': declare qual, entre %s", strings.Join(kindNames(), ", "))
 	}
 	return auth, nil
 }
@@ -186,10 +186,10 @@ func refuseLiteralSecret(field string, node *yaml.Node) error {
 	if environmentReference.MatchString(strings.TrimSpace(node.Value)) {
 		return nil
 	}
-	return nodeError(node, "%s literal no cenario: credencial nunca vai para o arquivo, porque o arquivo vai para o repositorio.\n"+
+	return nodeError(node, "%s literal no cenário: credencial nunca vai para o arquivo, porque o arquivo vai para o repositorio.\n"+
 		"    troque por:  %s: ${BROKER_SENHA}\n"+
 		"    e rode com:  BROKER_SENHA=... braunrate execute cenario.yaml\n"+
-		"    valor de reserva (${VAR:-algo}) tambem nao serve: a reserva seria o segredo escrito no arquivo", field, field)
+		"    valor de reserva (${VAR:-algo}) também não serve: a reserva seria o segredo escrito no arquivo", field, field)
 }
 
 func kindNames() []string {
@@ -213,7 +213,7 @@ func DescribeMessaging(settings *messaging.Settings) []string {
 		if pair.broker == nil {
 			continue
 		}
-		addresses := "endereco do alvo"
+		addresses := "endereço do alvo"
 		if len(pair.broker.Addresses) > 0 {
 			addresses = strings.Join(pair.broker.Addresses, ", ")
 		}

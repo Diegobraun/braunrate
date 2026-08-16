@@ -43,7 +43,7 @@ func TestGoScenarioRunsOnSameEngineWithSameKeys(t *testing.T) {
 
 	doYAML, err := scenario.Parse([]byte(fmt.Sprintf(gemeoEmYAML, server.URL)))
 	if err != nil {
-		t.Fatalf("yaml nao carregou: %v", err)
+		t.Fatalf("yaml não carregou: %v", err)
 	}
 	daDSL, err := dsl.New("Consulta de pedido").
 		Target(server.URL).
@@ -52,7 +52,7 @@ func TestGoScenarioRunsOnSameEngineWithSameKeys(t *testing.T) {
 		SLO("consultar pedido", "p95", "< 1s").
 		Build()
 	if err != nil {
-		t.Fatalf("dsl nao montou: %v", err)
+		t.Fatalf("dsl não montou: %v", err)
 	}
 
 	pelaYAML := execute(t, doYAML)
@@ -63,14 +63,14 @@ func TestGoScenarioRunsOnSameEngineWithSameKeys(t *testing.T) {
 	}
 	for index := range pelaYAML.Steps {
 		if pelaYAML.Steps[index].Key != pelaDSL.Steps[index].Key {
-			t.Errorf("chave de agregacao: yaml %q, dsl %q", pelaYAML.Steps[index].Key, pelaDSL.Steps[index].Key)
+			t.Errorf("chave de agregação: yaml %q, dsl %q", pelaYAML.Steps[index].Key, pelaDSL.Steps[index].Key)
 		}
 	}
 	if pelaYAML.SLO.Passed != pelaDSL.SLO.Passed {
 		t.Errorf("veredito de slo: yaml %v, dsl %v", pelaYAML.SLO.Passed, pelaDSL.SLO.Passed)
 	}
 	if pelaDSL.Overall.Count == 0 {
-		t.Error("o cenario em Go nao executou nenhuma requisicao")
+		t.Error("o cenário em Go não executou nenhuma requisição")
 	}
 }
 
@@ -80,7 +80,7 @@ func execute(t *testing.T, c scenario.Spec) metrics.Document {
 	options.DataRoot = t.TempDir()
 	m, err := engine.New(c, options)
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	return m.Execute(context.Background())
 }

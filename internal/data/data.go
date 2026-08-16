@@ -50,7 +50,7 @@ func openCSV(source scenario.DataSource, root string) (Source, error) {
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("nao consegui abrir o arquivo de dados %q: %w", source.File, err)
+		return nil, fmt.Errorf("não consegui abrir o arquivo de dados %q: %w", source.File, err)
 	}
 	defer func() { _ = file.Close() }()
 
@@ -58,10 +58,10 @@ func openCSV(source scenario.DataSource, root string) (Source, error) {
 	reader.TrimLeadingSpace = true
 	lines, err := reader.ReadAll()
 	if err != nil {
-		return nil, fmt.Errorf("arquivo de dados %q invalido: %w", source.File, err)
+		return nil, fmt.Errorf("arquivo de dados %q inválido: %w", source.File, err)
 	}
 	if len(lines) < 2 {
-		return nil, fmt.Errorf("arquivo de dados %q precisa de cabecalho e pelo menos uma linha", source.File)
+		return nil, fmt.Errorf("arquivo de dados %q precisa de cabeçalho e pelo menos uma linha", source.File)
 	}
 
 	seed := source.Seed
@@ -136,7 +136,7 @@ type syntheticSource struct {
 
 func newSyntheticSource(source scenario.DataSource) (Source, error) {
 	if len(source.Fields) == 0 {
-		return nil, fmt.Errorf("a fonte de dados %q nao tem arquivo nem campos para gerar", source.Name)
+		return nil, fmt.Errorf("a fonte de dados %q não tem arquivo nem campos para gerar", source.Name)
 	}
 	seed := source.Seed
 	if seed == 0 {
@@ -215,14 +215,14 @@ func generate(generator scenario.Generator, random *rand.Rand, sequence int64) (
 		if len(args) == 2 {
 			var err error
 			if minimum, err = strconv.ParseFloat(args[0], 64); err != nil {
-				return "", fmt.Errorf("primeiro argumento de numero() invalido: %q", args[0])
+				return "", fmt.Errorf("primeiro argumento de numero() inválido: %q", args[0])
 			}
 			if maximum, err = strconv.ParseFloat(args[1], 64); err != nil {
-				return "", fmt.Errorf("segundo argumento de numero() invalido: %q", args[1])
+				return "", fmt.Errorf("segundo argumento de numero() inválido: %q", args[1])
 			}
 		}
 		if maximum <= minimum {
-			return "", fmt.Errorf("numero(%v,%v) precisa de maximo maior que minimo", minimum, maximum)
+			return "", fmt.Errorf("numero(%v,%v) precisa de máximo maior que mínimo", minimum, maximum)
 		}
 		return strconv.FormatFloat(minimum+random.Float64()*(maximum-minimum), 'f', 2, 64), nil
 	case "inteiro":
@@ -232,7 +232,7 @@ func generate(generator scenario.Generator, random *rand.Rand, sequence int64) (
 			maximum, _ = strconv.ParseInt(args[1], 10, 64)
 		}
 		if maximum <= minimum {
-			return "", fmt.Errorf("inteiro(%d,%d) precisa de maximo maior que minimo", minimum, maximum)
+			return "", fmt.Errorf("inteiro(%d,%d) precisa de máximo maior que mínimo", minimum, maximum)
 		}
 		return strconv.FormatInt(minimum+random.Int63n(maximum-minimum), 10), nil
 	case "nome":
@@ -262,7 +262,7 @@ func generate(generator scenario.Generator, random *rand.Rand, sequence int64) (
 			format = strings.Join(args, ",")
 		}
 		if strings.TrimSpace(format) == "" {
-			return "", fmt.Errorf(`padrao sem formato: diga o formato do valor, por exemplo padrao(BR-######) ou { tipo: padrao, formato: "BR-######" }
+			return "", fmt.Errorf(`padrão sem formato: diga o formato do valor, por exemplo padrao(BR-######) ou { tipo: padrão, formato: "BR-######" }
     # gera digito, @ gera letra maiuscula; o resto sai como esta`)
 		}
 		return fromPattern(format, random), nil

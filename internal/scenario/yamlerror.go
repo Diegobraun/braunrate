@@ -16,7 +16,7 @@ var yamlLine = regexp.MustCompile(`^yaml: (?:line (\d+): )?(.*)$`)
 func translateYAMLError(content []byte, err error) error {
 	match := yamlLine.FindStringSubmatch(strings.TrimSpace(err.Error()))
 	if match == nil {
-		return ScenarioError{Line: 1, Message: fmt.Sprintf("o arquivo nao e YAML valido: %v", err)}
+		return ScenarioError{Line: 1, Message: fmt.Sprintf("o arquivo não é YAML válido: %v", err)}
 	}
 
 	problem := match[2]
@@ -68,22 +68,22 @@ func explainYAML(problem, text string) string {
 	switch {
 	case strings.Contains(problem, "did not find expected ',' or '}'"),
 		strings.Contains(problem, "did not find expected ',' or ']'"):
-		return "mapa em linha que nao fecha. " + inlineAdvice(text)
+		return "mapa em linha que não fecha. " + inlineAdvice(text)
 	case strings.Contains(problem, "could not find expected ':'"):
 		return "faltou os dois-pontos depois da chave.\n" +
 			"    em YAML cada chave termina em ':', por exemplo:  nome: Consulta de pedidos"
 	case strings.Contains(problem, "found character that cannot start any token"):
-		return "ha um caractere de tabulacao nesta linha, e YAML nao aceita tabulacao para indentar.\n" +
-			"    troque a tabulacao por espacos (dois por nivel, como no resto do arquivo)"
+		return "há um caractere de tabulação nesta linha, e YAML não aceita tabulação para indentar.\n" +
+			"    troque a tabulacao por espaços (dois por nível, como no resto do arquivo)"
 	case strings.Contains(problem, "mapping values are not allowed in this context"):
-		return "ha dois-pontos dentro de um valor que nao esta entre aspas.\n" +
+		return "há dois-pontos dentro de um valor que não está entre aspas.\n" +
 			"    ponha o valor entre aspas, por exemplo:  cabecalho: \"X-API-Key: ${API_KEY}\""
 	case strings.Contains(problem, "did not find expected key"),
 		strings.Contains(problem, "found a tab character"):
 		return "indentacao inconsistente nesta linha.\n" +
-			"    use sempre espacos, e o mesmo numero de espacos para itens do mesmo nivel"
+			"    use sempre espaços, e o mesmo número de espaços para itens do mesmo nível"
 	}
-	return "o arquivo nao e YAML valido nesta linha: " + problem
+	return "o arquivo não é YAML válido nesta linha: " + problem
 }
 
 // The advice changes with what is on the line, because "a map that does not
@@ -99,10 +99,10 @@ func inlineAdvice(text string) string {
 		return "Um caminho JSON com colchete, como $.itens[0].id, precisa de aspas dentro de { }:\n" +
 			"      captura: { faturaId: \"$.itens[0].id\" }"
 	case strings.Contains(text, "#"):
-		return "Um '#' dentro de { } comeca comentario e engole o resto da linha.\n" +
+		return "Um '#' dentro de { } começa comentário e engole o resto da linha.\n" +
 			"    ponha o valor entre aspas, por exemplo:\n" +
 			"      gerar: { id: { tipo: padrao, formato: \"PED-######\" } }"
 	}
-	return "confira se toda chave tem valor e se as chaves estao separadas por virgula, por exemplo:\n" +
+	return "confira se toda chave tem valor e se as chaves estão separadas por vírgula, por exemplo:\n" +
 		"      http: { metodo: GET, caminho: /pedidos }"
 }

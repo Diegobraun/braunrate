@@ -24,7 +24,7 @@ func (server *Server) handleGraphQL(w http.ResponseWriter, r *http.Request) {
 
 	var order pedidoGraphQL
 	if err := json.NewDecoder(r.Body).Decode(&order); err != nil {
-		serveGraphQL(w, "", `{"errors":[{"message":"corpo nao e JSON","extensions":{"code":"BAD_REQUEST"}}]}`)
+		serveGraphQL(w, "", `{"errors":[{"message":"corpo não e JSON","extensions":{"code":"BAD_REQUEST"}}]}`)
 		return
 	}
 
@@ -38,7 +38,7 @@ func (server *Server) handleGraphQL(w http.ResponseWriter, r *http.Request) {
 	case "ConsultarPedido":
 		if strings.HasSuffix(identifier, "7") {
 			serveGraphQL(w, operation, fmt.Sprintf(
-				`{"data":{"pedido":null},"errors":[{"message":"pedido %s nao encontrado","path":["pedido"],"extensions":{"code":"NOT_FOUND"}}]}`,
+				`{"data":{"pedido":null},"errors":[{"message":"pedido %s não encontrado","path":["pedido"],"extensions":{"code":"NOT_FOUND"}}]}`,
 				identifier))
 			return
 		}
@@ -51,7 +51,7 @@ func (server *Server) handleGraphQL(w http.ResponseWriter, r *http.Request) {
 			`{"data":{"pagarFatura":{"id":%q,"status":"PAGA","pagoEm":"2026-08-15T00:00:00Z"}}}`, invoice))
 	default:
 		serveGraphQL(w, operation, fmt.Sprintf(
-			`{"errors":[{"message":"operacao %q nao existe no schema","extensions":{"code":"GRAPHQL_VALIDATION_FAILED"}}]}`, operation))
+			`{"errors":[{"message":"operação %q não existe no schema","extensions":{"code":"GRAPHQL_VALIDATION_FAILED"}}]}`, operation))
 	}
 }
 

@@ -35,11 +35,11 @@ func TestTheReportSpeaksTheVocabulary(t *testing.T) {
 
 	var terminal strings.Builder
 	if err := report.Summary(&terminal, document, slo.Verdict{}); err != nil {
-		t.Fatalf("nao gerou o resumo: %v", err)
+		t.Fatalf("não gerou o resumo: %v", err)
 	}
 	var page strings.Builder
 	if err := report.HTML(&page, document); err != nil {
-		t.Fatalf("nao gerou o HTML: %v", err)
+		t.Fatalf("não gerou o HTML: %v", err)
 	}
 
 	for _, surface := range []struct {
@@ -49,7 +49,7 @@ func TestTheReportSpeaksTheVocabulary(t *testing.T) {
 		lowered := strings.ToLower(surface.text)
 		for _, term := range forbiddenInUserText {
 			if strings.Contains(lowered, term) {
-				t.Errorf("%s usa %q, que docs/vocabulario.md proibe no texto ao usuario", surface.name, term)
+				t.Errorf("%s usa %q, que docs/vocabulario.md proibe no texto ao usuário", surface.name, term)
 			}
 		}
 	}
@@ -59,11 +59,11 @@ func publishedExample(t *testing.T) metrics.Document {
 	t.Helper()
 	content, err := os.ReadFile(filepath.Join("..", "..", "docs", "exemplo-resultado.json"))
 	if err != nil {
-		t.Fatalf("nao consegui ler o resultado de exemplo: %v", err)
+		t.Fatalf("não consegui ler o resultado de exemplo: %v", err)
 	}
 	var document metrics.Document
 	if err := json.Unmarshal(content, &document); err != nil {
-		t.Fatalf("o resultado de exemplo nao carrega: %v", err)
+		t.Fatalf("o resultado de exemplo não carrega: %v", err)
 	}
 	return document
 }

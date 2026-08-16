@@ -31,17 +31,17 @@ func TestEveryScenarioBlockIsAScenarioTheToolAccepts(t *testing.T) {
 	for _, block := range allBlocks(t, "yaml") {
 		spec, err := scenario.Parse([]byte(block.code))
 		if err != nil {
-			t.Errorf("%s: o cenario publicado nao carrega: %v\n%s", block.where, err, block.code)
+			t.Errorf("%s: o cenário publicado não carrega: %v\n%s", block.where, err, block.code)
 			continue
 		}
 		if err := spec.Validate(); err != nil {
-			t.Errorf("%s: o cenario publicado nao passa na validacao: %v\n%s", block.where, err, block.code)
+			t.Errorf("%s: o cenário publicado não passa na validação: %v\n%s", block.where, err, block.code)
 			continue
 		}
 		checked++
 	}
 	if checked == 0 {
-		t.Log("nenhum cenario completo publicado; os trechos sao conferidos pelo teste seguinte")
+		t.Log("nenhum cenário completo publicado; os trechos são conferidos pelo teste seguinte")
 	}
 }
 
@@ -52,17 +52,17 @@ func TestEveryScenarioBlockIsAScenarioTheToolAccepts(t *testing.T) {
 func TestEveryFragmentUsesKeysThatStillExist(t *testing.T) {
 	blocks := allBlocks(t, "yaml trecho")
 	if len(blocks) == 0 {
-		t.Fatal("nenhum trecho encontrado: o teste nao estaria provando nada")
+		t.Fatal("nenhum trecho encontrado: o teste não estaria provando nada")
 	}
 	for _, block := range blocks {
 		var document map[string]yaml.Node
 		if err := yaml.Unmarshal([]byte(block.code), &document); err != nil {
-			t.Errorf("%s: o trecho nao e YAML valido: %v\n%s", block.where, err, block.code)
+			t.Errorf("%s: o trecho não e YAML válido: %v\n%s", block.where, err, block.code)
 			continue
 		}
 		for key, value := range document {
 			if !slices.Contains(scenario.TopKeys, key) {
-				t.Errorf("%s: %q nao e chave de topo do cenario; aceitas: %s",
+				t.Errorf("%s: %q não e chave de topo do cenário; aceitas: %s",
 					block.where, key, strings.Join(scenario.TopKeys, ", "))
 			}
 			if key == "cenario" {
@@ -79,7 +79,7 @@ func checkSteps(t *testing.T, where string, steps yaml.Node) {
 		for index := 0; index+1 < len(step.Content); index += 2 {
 			key := step.Content[index].Value
 			if !slices.Contains(valid, key) {
-				t.Errorf("%s: %q nao e chave de passo nem protocolo compilado; aceitos: %s",
+				t.Errorf("%s: %q não e chave de passo nem protocolo compilado; aceitos: %s",
 					where, key, strings.Join(valid, ", "))
 			}
 		}
@@ -93,26 +93,26 @@ func checkSteps(t *testing.T, where string, steps yaml.Node) {
 func TestEverySchemaKeyReachesTheReference(t *testing.T) {
 	page, err := site.ReferencePage(root)
 	if err != nil {
-		t.Fatalf("a referencia nao foi gerada: %v", err)
+		t.Fatalf("a referência não foi gerada: %v", err)
 	}
 	content, err := os.ReadFile(filepath.Join(root, "docs", "braunrate.schema.json"))
 	if err != nil {
-		t.Fatalf("nao consegui ler o schema: %v", err)
+		t.Fatalf("não consegui ler o schema: %v", err)
 	}
 	var document map[string]any
 	if err := json.Unmarshal(content, &document); err != nil {
-		t.Fatalf("o schema nao carrega: %v", err)
+		t.Fatalf("o schema não carrega: %v", err)
 	}
 
 	missing := 0
 	for _, key := range schemaKeys(document) {
 		if !strings.Contains(page.Markdown, "`"+key+"`") {
-			t.Errorf("a chave %q existe no schema e nao aparece na referencia publicada", key)
+			t.Errorf("a chave %q existe no schema e não aparece na referência publicada", key)
 			missing++
 		}
 	}
 	if missing == 0 && len(schemaKeys(document)) == 0 {
-		t.Fatal("nao achei chave nenhuma no schema: o teste nao estaria provando nada")
+		t.Fatal("não achei chave nenhuma no schema: o teste não estaria provando nada")
 	}
 }
 
@@ -145,11 +145,11 @@ func schemaKeys(node any) []string {
 func TestThePagesFetchNothingFromTheNetwork(t *testing.T) {
 	destination := t.TempDir()
 	if err := site.Build(root, destination, "teste"); err != nil {
-		t.Fatalf("o site nao foi gerado: %v", err)
+		t.Fatalf("o site não foi gerado: %v", err)
 	}
 	entries, err := os.ReadDir(destination)
 	if err != nil {
-		t.Fatalf("nao consegui ler o site gerado: %v", err)
+		t.Fatalf("não consegui ler o site gerado: %v", err)
 	}
 
 	// Uma ancora para o GitHub e o leitor clicando, nao a pagina buscando. O que
@@ -162,7 +162,7 @@ func TestThePagesFetchNothingFromTheNetwork(t *testing.T) {
 		}
 		content, err := os.ReadFile(filepath.Join(destination, entry.Name()))
 		if err != nil {
-			t.Fatalf("nao consegui ler %s: %v", entry.Name(), err)
+			t.Fatalf("não consegui ler %s: %v", entry.Name(), err)
 		}
 		if found := fetching.FindString(string(content)); found != "" {
 			t.Errorf("%s busca recurso externo: %q", entry.Name(), found)
@@ -170,24 +170,24 @@ func TestThePagesFetchNothingFromTheNetwork(t *testing.T) {
 		pages++
 	}
 	if pages == 0 {
-		t.Fatal("nenhuma pagina gerada")
+		t.Fatal("nenhuma página gerada")
 	}
 }
 
 func TestEveryPageHasATitleAndABody(t *testing.T) {
 	pages, err := site.Pages(root)
 	if err != nil {
-		t.Fatalf("nao consegui montar as paginas: %v", err)
+		t.Fatalf("não consegui montar as páginas: %v", err)
 	}
 	if len(pages) < 8 {
-		t.Fatalf("o site tem so %d paginas; a estrutura minima tem inicio, instalacao, primeiros passos, conceitos, referencia, protocolos, receitas, comandos, problemas e decisoes", len(pages))
+		t.Fatalf("o site tem só %d páginas; a estrutura minima tem inicio, instalacao, primeiros passos, conceitos, referência, protocolos, receitas, comandos, problemas e decisões", len(pages))
 	}
 	for _, page := range pages {
 		if strings.TrimSpace(page.Title) == "" || strings.TrimSpace(page.Slug) == "" {
-			t.Errorf("pagina sem titulo ou sem endereco: %+v", page)
+			t.Errorf("página sem título ou sem endereço: %+v", page)
 		}
 		if len(page.Markdown) < 200 {
-			t.Errorf("a pagina %q esta praticamente vazia", page.Slug)
+			t.Errorf("a página %q esta praticamente vazia", page.Slug)
 		}
 	}
 }
@@ -204,7 +204,7 @@ func allBlocks(t *testing.T, language string) []block {
 	directory := filepath.Join(root, "docs", "guias")
 	entries, err := os.ReadDir(directory)
 	if err != nil {
-		t.Fatalf("nao consegui ler %s: %v", directory, err)
+		t.Fatalf("não consegui ler %s: %v", directory, err)
 	}
 	var found []block
 	for _, entry := range entries {
@@ -213,7 +213,7 @@ func allBlocks(t *testing.T, language string) []block {
 		}
 		content, err := os.ReadFile(filepath.Join(directory, entry.Name()))
 		if err != nil {
-			t.Fatalf("nao consegui ler %s: %v", entry.Name(), err)
+			t.Fatalf("não consegui ler %s: %v", entry.Name(), err)
 		}
 		for _, match := range fence.FindAllStringSubmatch(string(content), -1) {
 			if strings.TrimSpace(match[1]) == language {
@@ -230,13 +230,13 @@ func allBlocks(t *testing.T, language string) []block {
 func TestEveryInternalLinkResolves(t *testing.T) {
 	destination := t.TempDir()
 	if err := site.Build(root, destination, "teste"); err != nil {
-		t.Fatalf("o site nao foi gerado: %v", err)
+		t.Fatalf("o site não foi gerado: %v", err)
 	}
 
 	pages := map[string]string{}
 	entries, err := os.ReadDir(destination)
 	if err != nil {
-		t.Fatalf("nao consegui ler o site gerado: %v", err)
+		t.Fatalf("não consegui ler o site gerado: %v", err)
 	}
 	for _, entry := range entries {
 		if !strings.HasSuffix(entry.Name(), ".html") {
@@ -244,7 +244,7 @@ func TestEveryInternalLinkResolves(t *testing.T) {
 		}
 		content, err := os.ReadFile(filepath.Join(destination, entry.Name()))
 		if err != nil {
-			t.Fatalf("nao consegui ler %s: %v", entry.Name(), err)
+			t.Fatalf("não consegui ler %s: %v", entry.Name(), err)
 		}
 		pages[entry.Name()] = string(content)
 	}
@@ -263,16 +263,16 @@ func TestEveryInternalLinkResolves(t *testing.T) {
 			}
 			destinationContent, exists := pages[file]
 			if !exists {
-				t.Errorf("%s aponta para %q, que o site nao publica", name, target)
+				t.Errorf("%s aponta para %q, que o site não publica", name, target)
 				continue
 			}
 			if anchor != "" && !strings.Contains(destinationContent, `id="`+anchor+`"`) {
-				t.Errorf("%s aponta para %q, e essa ancora nao existe em %s", name, target, file)
+				t.Errorf("%s aponta para %q, e essa ancora não existe em %s", name, target, file)
 			}
 			checked++
 		}
 	}
 	if checked == 0 {
-		t.Fatal("nenhum link interno encontrado: o teste nao estaria provando nada")
+		t.Fatal("nenhum link interno encontrado: o teste não estaria provando nada")
 	}
 }

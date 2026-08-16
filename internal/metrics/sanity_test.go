@@ -32,13 +32,13 @@ func TestSaneRunIsNotInvalidated(t *testing.T) {
 	document, input := sane()
 	sanity := CheckSanity(document, input)
 	if !sanity.Valid {
-		t.Fatalf("execucao sadia foi invalidada: %+v", sanity.Findings)
+		t.Fatalf("execução sadia foi invalidada: %+v", sanity.Findings)
 	}
 	if !sanity.Checked {
-		t.Error("verificacao nao ficou marcada como feita")
+		t.Error("verificação não ficou marcada como feita")
 	}
 	if sanity.Sentence != "" {
-		t.Errorf("execucao valida nao deveria ter frase: %q", sanity.Sentence)
+		t.Errorf("execução valida não deveria ter frase: %q", sanity.Sentence)
 	}
 }
 
@@ -77,7 +77,7 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 			name:    "um passo teve 100% de erro",
 			check:   "tudo_falhou",
 			kind:    "passo_totalmente_falho",
-			mention: `o passo "consultar pedido" falhou em 100% das requisicoes`,
+			mention: `o passo "consultar pedido" falhou em 100% das requisições`,
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Steps[1].Successes = 0
 				d.Steps[1].Errors = d.Steps[1].Count
@@ -86,20 +86,20 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 			},
 		},
 		{
-			name:    "a execucao durou menos que o perfil declarado",
+			name:    "a execução durou menos que o perfil declarado",
 			check:   "execucao_curta",
 			kind:    "execucao_curta",
-			mention: "parou em 4s com 38 de 100 requisicoes do perfil declarado",
+			mention: "parou em 4s com 38 de 100 requisições do perfil declarado",
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Run.DurationMs = 4_000
 				d.Scheduling.Sent = 38
 			},
 		},
 		{
-			name:    "um passo declarado nao registrou amostra",
+			name:    "um passo declarado não registrou amostra",
 			check:   "passo_sem_amostra",
 			kind:    "passo_sem_amostra",
-			mention: `o passo "consultar pedido" foi declarado e nao registrou nenhuma amostra`,
+			mention: `o passo "consultar pedido" foi declarado e não registrou nenhuma amostra`,
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Steps = d.Steps[:1]
 				d.Overall.Count, d.Overall.Successes = 100, 100
@@ -109,7 +109,7 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 			name:    "variedade colapsada em fonte com varios valores",
 			check:   "medicao_invalidada",
 			kind:    "variedade_ausente",
-			mention: "um unico valor",
+			mention: "um único valor",
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Variety = []Variety{{Name: "pedidos.id", Distinct: 1, Uses: 200, Available: 500}}
 				d.Warnings = VarietyWarnings(d.Variety)
@@ -119,7 +119,7 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 			name:    "gerador saturado",
 			check:   "medicao_invalidada",
 			kind:    "gerador_saturado",
-			mention: "limite de requisicoes em voo",
+			mention: "limite de requisições em voo",
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Scheduling = Scheduling{Sent: 200, DroppedByInflightLimit: 40, PeakInflight: 512}
 				d.Warnings = evaluateWarnings(NewCollector(time.Unix(0, 0), time.Second), *d)
@@ -134,20 +134,20 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 
 			sanity := CheckSanity(document, input)
 			if sanity.Valid {
-				t.Fatalf("execucao vazia passou como valida")
+				t.Fatalf("execução vazia passou como valida")
 			}
 			finding, found := findingOfKind(sanity, c.kind)
 			if !found {
-				t.Fatalf("achado %q nao apareceu; achados: %+v", c.kind, sanity.Findings)
+				t.Fatalf("achado %q não apareceu; achados: %+v", c.kind, sanity.Findings)
 			}
 			if !strings.Contains(finding.Message, c.mention) {
-				t.Errorf("mensagem nao explica o caso: %q", finding.Message)
+				t.Errorf("mensagem não explica o caso: %q", finding.Message)
 			}
 			if finding.Evidence == "" {
 				t.Error("achado sem evidencia")
 			}
-			if !strings.Contains(sanity.Sentence, "nao mediu o que se propos a medir") {
-				t.Errorf("frase nao diz que a execucao nao mediu o que se propos: %q", sanity.Sentence)
+			if !strings.Contains(sanity.Sentence, "não mediu o que se propôs a medir") {
+				t.Errorf("frase não diz que a execução não mediu o que se propôs: %q", sanity.Sentence)
 			}
 			if strings.Contains(sanity.Sentence, "falha do alvo") {
 				t.Errorf("frase atribui a falha ao alvo: %q", sanity.Sentence)
@@ -157,7 +157,7 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 			// the check: without it, the same empty run passes as valid.
 			withoutIt := runSanityChecks(checksExcept(c.check), document, input)
 			if !withoutIt.Valid {
-				t.Fatalf("sem a verificacao %q a execucao ainda foi invalidada por %+v; o teste nao prova nada",
+				t.Fatalf("sem a verificação %q a execução ainda foi invalidada por %+v; o teste não prova nada",
 					c.check, withoutIt.Findings)
 			}
 		})
@@ -177,7 +177,7 @@ func TestSingleFailingStepIsNamedInsteadOfCounted(t *testing.T) {
 
 	finding, found := findingOfKind(CheckSanity(document, input), "passo_totalmente_falho")
 	if !found {
-		t.Fatal("passo unico que falhou inteiro nao foi apontado pelo nome")
+		t.Fatal("passo único que falhou inteiro não foi apontado pelo nome")
 	}
 	if strings.Contains(finding.Message, "todos os 1") {
 		t.Errorf("concordancia quebrada: %q", finding.Message)
@@ -195,7 +195,7 @@ func TestRunThatEndsBeforeTheDeclaredWindowIsStillValid(t *testing.T) {
 	input.PlannedRequests = 60
 
 	if sanity := CheckSanity(document, input); !sanity.Valid {
-		t.Fatalf("execucao completa foi invalidada por %+v", sanity.Findings)
+		t.Fatalf("execução completa foi invalidada por %+v", sanity.Findings)
 	}
 }
 
@@ -208,7 +208,7 @@ func TestDroppedRequestsDoNotCountAsAShortRun(t *testing.T) {
 
 	findings := runShorterThanPlan(document, input)
 	if len(findings) > 0 {
-		t.Fatalf("descarte por saturacao virou execucao curta: %+v", findings)
+		t.Fatalf("descarte por saturacao virou execução curta: %+v", findings)
 	}
 }
 
@@ -218,7 +218,7 @@ func TestVerdictNeverPassesOnAnInvalidRun(t *testing.T) {
 	document.Sanity = CheckSanity(document, input)
 
 	if document.Valid() {
-		t.Fatal("documento com execucao vazia se declarou valido")
+		t.Fatal("documento com execução vazia se declarou válido")
 	}
 }
 
@@ -227,11 +227,11 @@ func TestVerdictNeverPassesOnAnInvalidRun(t *testing.T) {
 func TestDocumentWithoutSanityBlockFallsBackToWarnings(t *testing.T) {
 	document := Document{}
 	if !document.Valid() {
-		t.Error("documento antigo sem aviso grave foi tratado como invalido")
+		t.Error("documento antigo sem aviso grave foi tratado como inválido")
 	}
 	document.Warnings = []Warning{{Kind: "gerador_saturado", Severity: SeverityHigh}}
 	if document.Valid() {
-		t.Error("documento antigo com aviso grave foi tratado como valido")
+		t.Error("documento antigo com aviso grave foi tratado como válido")
 	}
 }
 
@@ -252,7 +252,7 @@ func checksExcept(name string) []sanityCheck {
 		}
 	}
 	if len(kept) == len(sanityChecks) {
-		panic("verificacao inexistente: " + name)
+		panic("verificação inexistente: " + name)
 	}
 	return kept
 }
@@ -270,7 +270,7 @@ func TestAlmostCompleteRunIsNotInvalidatedForOneRequest(t *testing.T) {
 
 	sanity := CheckSanity(document, input)
 	if !sanity.Valid {
-		t.Fatalf("execucao com uma requisicao a menos em 360.000 foi invalidada: %+v", sanity.Findings)
+		t.Fatalf("execução com uma requisição a menos em 360.000 foi invalidada: %+v", sanity.Findings)
 	}
 }
 
@@ -286,6 +286,6 @@ func TestRunThatAppliedAFifthOfTheProfileIsStillInvalid(t *testing.T) {
 
 	sanity := CheckSanity(document, input)
 	if sanity.Valid {
-		t.Fatal("execucao que aplicou um quinto do perfil declarado passou como valida")
+		t.Fatal("execução que aplicou um quinto do perfil declarado passou como valida")
 	}
 }

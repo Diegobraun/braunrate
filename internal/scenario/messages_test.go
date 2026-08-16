@@ -32,7 +32,7 @@ cenario:
 			contains: []string{"perfis precisa ser uma lista", "- patamar: { taxa: 300/s, durante: 5m }"},
 		},
 		{
-			name: "duracao no formato de outra ferramenta",
+			name: "duração no formato de outra ferramenta",
 			content: `nome: teste
 alvo: http://127.0.0.1:8080
 carga:
@@ -41,7 +41,7 @@ carga:
 cenario:
   - http: GET /pedidos/1
 `,
-			contains: []string{"duracao invalida", "30s, 5m, 1h30m"},
+			contains: []string{"duração inválida", "30s, 5m, 1h30m"},
 		},
 		{
 			name: "chave de carga com erro de digitacao",
@@ -68,7 +68,7 @@ cenario:
 			contains: []string{"tipo de perfil desconhecido", "patamar"},
 		},
 		{
-			name: "autenticacao por token sem o bloco obter",
+			name: "autenticação por token sem o bloco obter",
 			content: `nome: teste
 alvo: http://127.0.0.1:8080
 autenticacao:
@@ -97,7 +97,7 @@ slo:
 			contains: []string{"slo precisa ser uma lista", "p95"},
 		},
 		{
-			name: "metrica de slo que nao existe",
+			name: "métrica de slo que não existe",
 			content: `nome: teste
 alvo: http://127.0.0.1:8080
 carga:
@@ -107,9 +107,9 @@ cenario:
   - http: GET /pedidos/1
     nome: consultar pedido
 slo:
-  - consultar pedido: { media: < 150ms }
+  - consultar pedido: { média: < 150ms }
 `,
-			contains: []string{"metrica de slo desconhecida", "p95"},
+			contains: []string{"métrica de slo desconhecida", "p95"},
 		},
 	}
 
@@ -117,7 +117,7 @@ slo:
 		t.Run(testCase.name, func(t *testing.T) {
 			_, err := Parse([]byte(testCase.content))
 			if err == nil {
-				t.Fatal("esperava erro e o cenario carregou")
+				t.Fatal("esperava erro e o cenário carregou")
 			}
 			message := err.Error()
 			if !strings.Contains(message, "linha") {
@@ -125,7 +125,7 @@ slo:
 			}
 			for _, fragment := range testCase.contains {
 				if !strings.Contains(message, fragment) {
-					t.Errorf("a mensagem nao mostra %q:\n%s", fragment, message)
+					t.Errorf("a mensagem não mostra %q:\n%s", fragment, message)
 				}
 			}
 		})
@@ -142,7 +142,7 @@ func TestLiteralCredentialInVariablesIsRefused(t *testing.T) {
 			continue
 		}
 		if !strings.Contains(err.Error(), "${"+strings.ToUpper(name)+"}") {
-			t.Errorf("a mensagem de %q nao ensina a forma certa: %v", name, err)
+			t.Errorf("a mensagem de %q não ensina a forma certa: %v", name, err)
 		}
 	}
 }
@@ -159,6 +159,6 @@ func TestCredentialFromTheEnvironmentIsAccepted(t *testing.T) {
 func TestOrdinaryVariableKeepsAcceptingALiteral(t *testing.T) {
 	_, err := Parse([]byte("nome: x\nalvo: http://a\nvariaveis:\n  usuario: ana\ncarga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n"))
 	if err != nil {
-		t.Fatalf("variavel comum foi recusada: %v", err)
+		t.Fatalf("variável comum foi recusada: %v", err)
 	}
 }

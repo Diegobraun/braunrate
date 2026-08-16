@@ -19,13 +19,13 @@ import (
 func TestPublishedGoScenarioRunsAndPasses(t *testing.T) {
 	target := testsupport.New(testsupport.Options{Latency: time.Millisecond})
 	if err := target.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("alvo nao subiu: %v", err)
+		t.Fatalf("alvo não subiu: %v", err)
 	}
 	t.Cleanup(func() { _ = target.Close() })
 
 	specification, err := cenarioemgo.Scenario(target.Address())
 	if err != nil {
-		t.Fatalf("o cenario publicado no README nao constroi: %v", err)
+		t.Fatalf("o cenário publicado no README não constroi: %v", err)
 	}
 
 	// Pela superficie publica, que e a que alguem de fora do modulo tem: rodar o
@@ -33,19 +33,19 @@ func TestPublishedGoScenarioRunsAndPasses(t *testing.T) {
 	// o caminho publicado funciona.
 	document, err := braunrate.Run(context.Background(), specification, braunrate.Options{DataRoot: ".."})
 	if err != nil {
-		t.Fatalf("o cenario publicado nao rodou: %v", err)
+		t.Fatalf("o cenário publicado não rodou: %v", err)
 	}
 	if !document.Valid() {
-		t.Fatalf("o cenario publicado produziu resultado invalido: %+v", document.Sanity.Findings)
+		t.Fatalf("o cenário publicado produziu resultado inválido: %+v", document.Sanity.Findings)
 	}
 	if document.Overall.Errors > 0 {
-		t.Fatalf("o cenario publicado teve %d erros: %+v", document.Overall.Errors, document.Steps)
+		t.Fatalf("o cenário publicado teve %d erros: %+v", document.Overall.Errors, document.Steps)
 	}
 	if !braunrate.Passed(document) {
-		t.Fatalf("o cenario publicado nao passou no proprio slo: %s", document.SLO.Sentence)
+		t.Fatalf("o cenário publicado não passou no próprio slo: %s", document.SLO.Sentence)
 	}
 	if code := braunrate.ExitCode(document); code != 0 {
-		t.Fatalf("o codigo de saida do cenario publicado foi %d", code)
+		t.Fatalf("o código de saída do cenário publicado foi %d", code)
 	}
 }
 
@@ -55,24 +55,24 @@ func TestPublishedGoScenarioRunsAndPasses(t *testing.T) {
 func TestPublishedSnippetIsThisFile(t *testing.T) {
 	readme, err := os.ReadFile("../../docs/guias/50-guias-receitas.md")
 	if err != nil {
-		t.Fatalf("nao consegui ler a receita publicada: %v", err)
+		t.Fatalf("não consegui ler a receita publicada: %v", err)
 	}
 	source, err := os.ReadFile("cenario.go")
 	if err != nil {
-		t.Fatalf("nao consegui ler o cenario: %v", err)
+		t.Fatalf("não consegui ler o cenário: %v", err)
 	}
 
 	published, found := betweenFences(string(readme))
 	if !found {
-		t.Fatal("a receita nao tem mais o bloco de codigo Go; se ele saiu de proposito, este teste sai junto")
+		t.Fatal("a receita não tem mais o bloco de código Go; se ele saiu de proposito, este teste sai junto")
 	}
 	expected, found := betweenMarkers(string(source))
 	if !found {
-		t.Fatal("os marcadores README:inicio e README:fim sumiram de cenario.go")
+		t.Fatal("os marcadores README:inicio e README:fim sumiram de cenário.go")
 	}
 
 	if published != expected {
-		t.Fatalf("docs/guias/50-guias-receitas.md derivou de examples/cenario-em-go/cenario.go.\nna pagina:\n%s\n\nno arquivo:\n%s", published, expected)
+		t.Fatalf("docs/guias/50-guias-receitas.md derivou de examples/cenario-em-go/cenario.go.\nna página:\n%s\n\nno arquivo:\n%s", published, expected)
 	}
 }
 

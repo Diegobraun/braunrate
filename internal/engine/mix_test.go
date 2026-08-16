@@ -51,15 +51,15 @@ cenario:
     http: GET /criacao
 `, server.URL)))
 	if err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 	if err := spec.Validate(); err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 
 	executor, err := engine.New(spec, engine.DefaultOptions())
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	document := executor.Execute(context.Background())
 
@@ -70,7 +70,7 @@ cenario:
 		total += count
 	}
 	if total == 0 {
-		t.Fatal("nenhuma requisicao chegou ao alvo")
+		t.Fatal("nenhuma requisição chegou ao alvo")
 	}
 	for path, expected := range map[string]float64{"/leve": 0.6, "/pesada": 0.3, "/criacao": 0.1} {
 		observed := float64(received[path]) / float64(total)
@@ -87,7 +87,7 @@ cenario:
 		sum += step.Count
 	}
 	if sum != document.Overall.Count {
-		t.Errorf("a soma dos passos (%d) nao bate com o total (%d): alguma iteracao executou mais de uma alternativa",
+		t.Errorf("a soma dos passos (%d) não bate com o total (%d): alguma iteração executou mais de uma alternativa",
 			sum, document.Overall.Count)
 	}
 }
@@ -111,33 +111,33 @@ carga:
 cenario:
 %s`, server.URL, steps)))
 		if err != nil {
-			t.Fatalf("cenario invalido: %v", err)
+			t.Fatalf("cenário inválido: %v", err)
 		}
 		executor, err := engine.New(spec, engine.DefaultOptions())
 		if err != nil {
-			t.Fatalf("motor nao subiu: %v", err)
+			t.Fatalf("motor não subiu: %v", err)
 		}
 		var terminal bytes.Buffer
 		if err := report.Summary(&terminal, executor.Execute(context.Background()), slo.Verdict{}); err != nil {
-			t.Fatalf("relatorio nao saiu: %v", err)
+			t.Fatalf("relatório não saiu: %v", err)
 		}
 		return terminal.String()
 	}
 
 	withMix := run("  - nome: leve\n    peso: 60\n    http: GET /leve\n  - nome: pesada\n    peso: 40\n    http: GET /pesada\n")
 	if !strings.Contains(withMix, "Mix declarado e observado") {
-		t.Fatalf("o relatorio nao diz qual proporcao foi aplicada:\n%s", withMix)
+		t.Fatalf("o relatório não diz qual proporção foi aplicada:\n%s", withMix)
 	}
 	if !strings.Contains(withMix, "60.0% declarado") {
-		t.Errorf("o relatorio nao mostra a proporcao declarada:\n%s", withMix)
+		t.Errorf("o relatório não mostra a proporção declarada:\n%s", withMix)
 	}
 	if !strings.Contains(withMix, "alternativas do mix") {
-		t.Errorf("o relatorio nao avisa que o percentil de jornada junta as alternativas:\n%s", withMix)
+		t.Errorf("o relatório não avisa que o percentil de jornada junta as alternativas:\n%s", withMix)
 	}
 
 	withoutMix := run("  - nome: leve\n    http: GET /leve\n")
 	if strings.Contains(withoutMix, "Mix declarado") {
-		t.Fatalf("o bloco de mix apareceu num cenario sem mix:\n%s", withoutMix)
+		t.Fatalf("o bloco de mix apareceu num cenário sem mix:\n%s", withoutMix)
 	}
 }
 
@@ -174,16 +174,16 @@ cenario:
     http: GET /pedidos/${pedidos.id}
 `, server.URL, field)))
 		if err != nil {
-			t.Fatalf("cenario invalido: %v", err)
+			t.Fatalf("cenário inválido: %v", err)
 		}
 		executor, err := engine.New(spec, engine.DefaultOptions())
 		if err != nil {
-			t.Fatalf("motor nao subiu: %v", err)
+			t.Fatalf("motor não subiu: %v", err)
 		}
 		document := executor.Execute(context.Background())
 		var terminal bytes.Buffer
 		if err := report.Summary(&terminal, document, slo.Verdict{}); err != nil {
-			t.Fatalf("relatorio nao saiu: %v", err)
+			t.Fatalf("relatório não saiu: %v", err)
 		}
 		mutex.Lock()
 		defer mutex.Unlock()
@@ -194,16 +194,16 @@ cenario:
 	t.Setenv("SEMENTE_DO_TESTE", "1")
 	first, output := run(varying)
 	if !strings.Contains(output, "(de $SEMENTE_DO_TESTE)") {
-		t.Errorf("o relatorio nao diz de onde veio a semente:\n%s", output)
+		t.Errorf("o relatório não diz de onde veio a semente:\n%s", output)
 	}
 	if !strings.Contains(output, "SEMENTE_DO_TESTE=1") {
-		t.Errorf("o relatorio nao diz como repetir estes dados:\n%s", output)
+		t.Errorf("o relatório não diz como repetir estes dados:\n%s", output)
 	}
 
 	t.Setenv("SEMENTE_DO_TESTE", "2")
 	second, _ := run(varying)
 	if len(first) == 0 || len(second) == 0 {
-		t.Fatal("nenhuma requisicao chegou ao alvo")
+		t.Fatal("nenhuma requisição chegou ao alvo")
 	}
 	if first[0] == second[0] {
 		t.Fatalf("duas sementes diferentes geraram o mesmo primeiro valor: %s", first[0])
@@ -213,6 +213,6 @@ cenario:
 	// venha a semente do arquivo ou do ambiente.
 	_, collapsed := run(`id: "padrao(FIXO)"`)
 	if !strings.Contains(collapsed, "valor") || !strings.Contains(collapsed, "pedidos.id") {
-		t.Fatalf("a variedade observada sumiu do relatorio:\n%s", collapsed)
+		t.Fatalf("a variedade observada sumiu do relatório:\n%s", collapsed)
 	}
 }

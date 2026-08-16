@@ -16,11 +16,11 @@ import (
 // as duas coisas mentirem.
 func TestAHandBuiltBinarySaysItIsDev(t *testing.T) {
 	if build.Version != "dev" {
-		t.Fatalf("a versao padrao saiu %q e devia ser dev", build.Version)
+		t.Fatalf("a versão padrão saiu %q e devia ser dev", build.Version)
 	}
 	for name, value := range map[string]string{"commit": build.Commit, "data": build.Date} {
 		if value != "desconhecido" {
-			t.Errorf("%s padrao saiu %q", name, value)
+			t.Errorf("%s padrão saiu %q", name, value)
 		}
 	}
 }
@@ -31,12 +31,12 @@ func TestAHandBuiltBinarySaysItIsDev(t *testing.T) {
 func TestTheReleaseConfigurationInjectsTheseSymbols(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("..", "..", ".goreleaser.yaml"))
 	if err != nil {
-		t.Fatalf("nao consegui ler a configuracao de release: %v", err)
+		t.Fatalf("não consegui ler a configuração de release: %v", err)
 	}
 	const symbols = "github.com/Diegobraun/braunrate/internal/build"
 	for _, name := range []string{"Version", "Commit", "Date"} {
 		if !strings.Contains(string(content), "-X "+symbols+"."+name+"=") {
-			t.Errorf("a release nao injeta %s.%s: o binario publicado sai com o valor padrao", symbols, name)
+			t.Errorf("a release não injeta %s.%s: o binario publicado sai com o valor padrão", symbols, name)
 		}
 	}
 }
@@ -51,7 +51,7 @@ func TestTheInjectedValuesReachTheBinary(t *testing.T) {
 	}
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
-		t.Fatalf("nao consegui achar a raiz do modulo: %v", err)
+		t.Fatalf("não consegui achar a raiz do módulo: %v", err)
 	}
 	binary := filepath.Join(t.TempDir(), "braunrate")
 
@@ -62,16 +62,16 @@ func TestTheInjectedValuesReachTheBinary(t *testing.T) {
 	compile.Dir = root
 	compile.Env = os.Environ()
 	if output, err := compile.CombinedOutput(); err != nil {
-		t.Fatalf("nao consegui compilar com injecao: %v\n%s", err, output)
+		t.Fatalf("não consegui compilar com injecao: %v\n%s", err, output)
 	}
 
 	printed, err := exec.Command(binary, "version").CombinedOutput()
 	if err != nil {
-		t.Fatalf("o binario injetado nao rodou: %v\n%s", err, printed)
+		t.Fatalf("o binario injetado não rodou: %v\n%s", err, printed)
 	}
 	for _, expected := range []string{"braunrate 9.9.9", "commit: abcdef1", "data: 2026-01-02T03:04:05Z"} {
 		if !strings.Contains(string(printed), expected) {
-			t.Errorf("a saida nao traz %q:\n%s", expected, printed)
+			t.Errorf("a saída não traz %q:\n%s", expected, printed)
 		}
 	}
 }

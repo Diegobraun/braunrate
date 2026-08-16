@@ -95,10 +95,10 @@ func summable(document Document) error {
 	if document.FormatVersion == ResultFormatVersion {
 		return nil
 	}
-	return fmt.Errorf("o resultado esta no formato %q e somar exige o formato %q, que guarda o histograma.\n"+
-		"    o arquivo antigo continua sendo lido pelo relatorio e pela comparacao, com os percentis que ele ja tem —\n"+
-		"    o que ele nao tem e de onde esses percentis vieram, e percentil nao soma com percentil.\n"+
-		"    para somar, gere os dois resultados com esta versao",
+	return fmt.Errorf("o resultado está no formato %q e somar exige o formato %q, que guarda o histograma.\n"+
+		"    o arquivo antigo continua sendo lido pelo relatório e pela comparação, com os percentis que ele já tem —\n"+
+		"    o que ele não tem é de onde esses percentis vieram, e percentil não soma com percentil.\n"+
+		"    para somar, gere os dois resultados com esta versão",
 		document.FormatVersion, ResultFormatVersion)
 }
 
@@ -106,10 +106,10 @@ func comparable(documents []Document) error {
 	first := documents[0].Run
 	for _, document := range documents[1:] {
 		if document.Run.Spec != first.Spec {
-			return fmt.Errorf("nao somo execucoes de cenarios diferentes: %q e %q", first.Spec, document.Run.Spec)
+			return fmt.Errorf("não somo execuções de cenários diferentes: %q e %q", first.Spec, document.Run.Spec)
 		}
 		if document.Run.Model != first.Model {
-			return fmt.Errorf("nao somo execucoes de modelos de chegada diferentes: %q e %q", first.Model, document.Run.Model)
+			return fmt.Errorf("não somo execuções de modelos de chegada diferentes: %q e %q", first.Model, document.Run.Model)
 		}
 	}
 	return nil

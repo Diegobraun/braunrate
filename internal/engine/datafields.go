@@ -29,7 +29,7 @@ func checkDataFields(spec scenario.Spec, sources []data.Source) error {
 			if available[sourceName+"."+field] {
 				continue
 			}
-			return fmt.Errorf("a fonte de dados %q nao tem o campo %q.\n    campos disponiveis: %s",
+			return fmt.Errorf("a fonte de dados %q não tem o campo %q.\n    campos disponíveis: %s",
 				sourceName, field, strings.Join(known, ", "))
 		}
 	}

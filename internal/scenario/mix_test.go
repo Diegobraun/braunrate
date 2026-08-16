@@ -34,7 +34,7 @@ func TestWeightsProduceTheDeclaredProportionOverACycle(t *testing.T) {
     http: GET /c
 `)
 	if err != nil {
-		t.Fatalf("o cenario com mix nao passou: %v", err)
+		t.Fatalf("o cenário com mix não passou: %v", err)
 	}
 
 	order := scenario.MixOrder(spec)
@@ -43,7 +43,7 @@ func TestWeightsProduceTheDeclaredProportionOverACycle(t *testing.T) {
 		counts[step]++
 	}
 	if len(order) != 10 {
-		t.Fatalf("o ciclo devia ser reduzido pelo maximo divisor comum, e veio com %d posicoes", len(order))
+		t.Fatalf("o ciclo devia ser reduzido pelo máximo divisor comum, e veio com %d posições", len(order))
 	}
 	for index, expected := range map[int]int{0: 6, 1: 3, 2: 1} {
 		if counts[index] != expected {
@@ -51,7 +51,7 @@ func TestWeightsProduceTheDeclaredProportionOverACycle(t *testing.T) {
 		}
 	}
 	if share := scenario.DeclaredShare(spec, 0); share != 0.6 {
-		t.Errorf("a proporcao declarada da primeira alternativa saiu %g, esperava 0.6", share)
+		t.Errorf("a proporção declarada da primeira alternativa saiu %g, esperava 0.6", share)
 	}
 }
 
@@ -67,7 +67,7 @@ func TestTheCycleInterleavesInsteadOfGroupingByAlternative(t *testing.T) {
     http: GET /b
 `)
 	if err != nil {
-		t.Fatalf("o cenario com mix nao passou: %v", err)
+		t.Fatalf("o cenário com mix não passou: %v", err)
 	}
 
 	order := scenario.MixOrder(spec)
@@ -103,11 +103,11 @@ func TestTheSameFileAlwaysProducesTheSameCycle(t *testing.T) {
 `
 	first, err := mixSpec(t, steps)
 	if err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 	second, err := mixSpec(t, steps)
 	if err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 
 	before, after := scenario.MixOrder(first), scenario.MixOrder(second)
@@ -116,7 +116,7 @@ func TestTheSameFileAlwaysProducesTheSameCycle(t *testing.T) {
 	}
 	for index := range before {
 		if before[index] != after[index] {
-			t.Fatalf("a posicao %d mudou entre duas leituras do mesmo arquivo: %d e %d", index, before[index], after[index])
+			t.Fatalf("a posição %d mudou entre duas leituras do mesmo arquivo: %d e %d", index, before[index], after[index])
 		}
 	}
 }
@@ -138,7 +138,7 @@ func TestWeightInTheMiddleOfACaptureChainIsRefusedWithTheReason(t *testing.T) {
 	}
 	for _, expected := range []string{"consultar pedido", "pedidoId", "obter token", "resolveria para vazio"} {
 		if !strings.Contains(err.Error(), expected) {
-			t.Errorf("a mensagem nao explica por que nao pode: falta %q em\n%v", expected, err)
+			t.Errorf("a mensagem não explica por que não pode: falta %q em\n%v", expected, err)
 		}
 	}
 }
@@ -153,10 +153,10 @@ func TestWeightOnSomeStepsAndNotOthersIsRefused(t *testing.T) {
     http: GET /b
 `)
 	if err == nil {
-		t.Fatal("aceitou peso em um passo so")
+		t.Fatal("aceitou peso em um passo só")
 	}
 	if !strings.Contains(err.Error(), `"pesada"`) {
-		t.Fatalf("a mensagem nao nomeia o passo sem peso: %v", err)
+		t.Fatalf("a mensagem não nomeia o passo sem peso: %v", err)
 	}
 }
 
@@ -172,12 +172,12 @@ func TestWeightZeroOrNegativeIsRefused(t *testing.T) {
 func TestScenarioWithoutWeightsHasNoCycle(t *testing.T) {
 	spec, err := mixSpec(t, "  - nome: um\n    http: GET /a\n  - nome: dois\n    http: GET /b\n")
 	if err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 	if spec.HasMix() {
-		t.Fatal("um cenario sem peso foi tratado como mix")
+		t.Fatal("um cenário sem peso foi tratado como mix")
 	}
 	if scenario.MixOrder(spec) != nil {
-		t.Fatal("um cenario sem peso ganhou ciclo de alternativas")
+		t.Fatal("um cenário sem peso ganhou ciclo de alternativas")
 	}
 }

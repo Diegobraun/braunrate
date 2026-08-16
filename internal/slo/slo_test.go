@@ -62,7 +62,7 @@ func TestFailureSentenceIsReadableByNonEngineers(t *testing.T) {
 		rule("consultar pedido", "p95", scenario.OpLess, 150, "ms"),
 	}, sampleDocument(), nil)
 
-	expected := `Falhou: "consultar pedido" respondeu 95% em ate 210 ms, acima do limite de 150 ms.`
+	expected := `Falhou: "consultar pedido" respondeu 95% em até 210 ms, acima do limite de 150 ms.`
 	if verdict.Sentence != expected {
 		t.Errorf("frase = %q\nesperada = %q", verdict.Sentence, expected)
 	}
@@ -97,13 +97,13 @@ func TestOverallRuleUsesWholeScenarioNumbers(t *testing.T) {
 
 func TestUnknownStepFailsWithClearMessage(t *testing.T) {
 	verdict := slo.Evaluate([]scenario.SLORule{
-		rule("passo que nao existe", "p95", scenario.OpLess, 100, "ms"),
+		rule("passo que não existe", "p95", scenario.OpLess, 100, "ms"),
 	}, sampleDocument(), nil)
 
 	if verdict.Passed {
-		t.Fatal("regra apontando para passo inexistente nao pode passar em silencio")
+		t.Fatal("regra apontando para passo inexistente não pode passar em silencio")
 	}
-	if !strings.Contains(verdict.Sentence, "nao produziu nenhuma requisicao") {
+	if !strings.Contains(verdict.Sentence, "não produziu nenhuma requisição") {
 		t.Errorf("frase = %q", verdict.Sentence)
 	}
 }
@@ -111,7 +111,7 @@ func TestUnknownStepFailsWithClearMessage(t *testing.T) {
 func TestNoRulesMeansNoVerdict(t *testing.T) {
 	verdict := slo.Evaluate(nil, sampleDocument(), nil)
 	if !verdict.Passed {
-		t.Error("sem regras declaradas nao ha o que falhar")
+		t.Error("sem regras declaradas não há o que falhar")
 	}
 	if !strings.Contains(verdict.Sentence, "Sem SLO declarado") {
 		t.Errorf("frase = %q", verdict.Sentence)
@@ -136,12 +136,12 @@ func TestLatencyRuleIsNotApprovedOverASampleOfFailures(t *testing.T) {
 
 	verdict := slo.Evaluate(rules, document, nil)
 	if verdict.Passed {
-		t.Fatal("o gate aprovou latencia num passo que falhou em 98% das requisicoes")
+		t.Fatal("o gate aprovou latência num passo que falhou em 98% das requisições")
 	}
 	sentence := verdict.Evaluations[0].Sentence
 	for _, expected := range []string{"98% de falha", "tempo de falhar"} {
 		if !strings.Contains(sentence, expected) {
-			t.Errorf("a frase nao explica por que nao avaliou: falta %q em %q", expected, sentence)
+			t.Errorf("a frase não explica por que não avaliou: falta %q em %q", expected, sentence)
 		}
 	}
 }
@@ -163,7 +163,7 @@ func TestLatencyRuleIsStillEvaluatedWhileMostRequestsWork(t *testing.T) {
 
 	verdict := slo.Evaluate(rules, document, nil)
 	if !verdict.Passed {
-		t.Fatalf("30%% de erro deixou de avaliar a latencia: %q", verdict.Evaluations[0].Sentence)
+		t.Fatalf("30%% de erro deixou de avaliar a latência: %q", verdict.Evaluations[0].Sentence)
 	}
 }
 
@@ -181,10 +181,10 @@ func TestErrorRuleIsStillEvaluatedWhenEverythingFails(t *testing.T) {
 
 	verdict := slo.Evaluate(rules, document, nil)
 	if verdict.Passed {
-		t.Fatal("98% de erro passou no criterio de erro")
+		t.Fatal("98% de erro passou no critério de erro")
 	}
 	if verdict.Evaluations[0].NoData {
-		t.Fatalf("o criterio de erro deixou de ser avaliado: %q", verdict.Evaluations[0].Sentence)
+		t.Fatalf("o critério de erro deixou de ser avaliado: %q", verdict.Evaluations[0].Sentence)
 	}
 }
 
@@ -226,9 +226,9 @@ func TestRegressionSentenceNamesTheBaseline(t *testing.T) {
 	base := &slo.Baseline{Comparison: comparison.Compare(before, document), Path: "antes-do-cache.json"}
 	verdict := slo.Evaluate(rules, document, base)
 	if verdict.Passed {
-		t.Fatal("regressao de 15 vezes passou no gate")
+		t.Fatal("regressão de 15 vezes passou no gate")
 	}
 	if !strings.Contains(verdict.Evaluations[0].Sentence, "antes-do-cache.json") {
-		t.Errorf("a frase nao diz contra qual base comparou: %q", verdict.Evaluations[0].Sentence)
+		t.Errorf("a frase não diz contra qual base comparou: %q", verdict.Evaluations[0].Sentence)
 	}
 }

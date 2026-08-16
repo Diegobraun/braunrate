@@ -113,13 +113,13 @@ func Build(entries []Entry, dataPrefix string) (importer.Script, []DataFile) {
 		})
 		if len(values[name]) < 2 {
 			script.Warnings = append(script.Warnings, fmt.Sprintf(
-				"a fonte %q ficou com um valor so: com um valor o alvo responde de cache e o numero fica otimista. Grave mais navegacao ou troque por um bloco 'gerar'", name))
+				"a fonte %q ficou com um valor só: com um valor o alvo responde de cache e o número fica otimista. Grave mais navegação ou troque por um bloco 'gerar'", name))
 		}
 	}
 
 	script.Warnings = append(script.Warnings, repetitionNotices(groups)...)
 	script.Warnings = append(script.Warnings,
-		"a sequencia gravada e uma passagem so: o mix de producao tem outras proporcoes entre as rotas, e nenhuma medicao aqui sabe disso")
+		"a sequência gravada é uma passagem só: o mix de produção tem outras proporções entre as rotas, e nenhuma medição aqui sabe disso")
 	return script, files
 }
 
@@ -135,7 +135,7 @@ func repetitionNotices(groups []group) []string {
 			continue
 		}
 		notices = append(notices, fmt.Sprintf(
-			"o passo %q foi gravado %d vezes com a mesma chamada e virou um passo so: se a repeticao era o que voce queria medir (reenvio, idempotencia, cache), ela nao esta no cenario",
+			"o passo %q foi gravado %d vezes com a mesma chamada e virou um passo só: se a repetição era o que você queria medir (reenvio, idempotência, cache), ela não está no cenário",
 			current.method+" "+current.subject, len(current.entries)))
 	}
 	return notices
@@ -390,7 +390,7 @@ func templatePath(current group, substitutions []substitution, values map[string
 	if representative.URL.RawQuery != "" {
 		path += "?" + apply(representative.URL.RawQuery, substitutions)
 		warnings = append(warnings, fmt.Sprintf(
-			"o passo %q ficou com a query da gravacao: se ela tiver identificador, troque por ${dados.coluna} tambem",
+			"o passo %q ficou com a query da gravacao: se ela tiver identificador, troque por ${dados.coluna} também",
 			current.method+" "+current.subject))
 	}
 	return path, warnings

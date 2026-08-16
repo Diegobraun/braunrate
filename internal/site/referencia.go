@@ -70,10 +70,10 @@ func ReferencePage(repositoryRoot string) (Page, error) {
 		return Page{}, err
 	}
 	var markdown strings.Builder
-	markdown.WriteString(`# Referencia do cenario
+	markdown.WriteString(`# Referência do cenário
 
-Esta pagina e gerada de ` + "`docs/braunrate.schema.json`" + `, o mesmo arquivo que
-o seu editor usa para completar as chaves. Chave que o braunrate aceita e nao
+Esta página e gerada de ` + "`docs/braunrate.schema.json`" + `, o mesmo arquivo que
+o seu editor usa para completar as chaves. Chave que o braunrate aceita e não
 aparece aqui reprova o build.
 
 `)
@@ -92,11 +92,11 @@ aparece aqui reprova o build.
 func readSchema(repositoryRoot string) (schemaNode, error) {
 	content, err := os.ReadFile(filepath.Join(repositoryRoot, schemaPath))
 	if err != nil {
-		return schemaNode{}, fmt.Errorf("nao consegui ler o schema: %w", err)
+		return schemaNode{}, fmt.Errorf("não consegui ler o schema: %w", err)
 	}
 	var root schemaNode
 	if err := json.Unmarshal(content, &root); err != nil {
-		return schemaNode{}, fmt.Errorf("o schema nao carrega: %w", err)
+		return schemaNode{}, fmt.Errorf("o schema não carrega: %w", err)
 	}
 	return root, nil
 }
@@ -111,7 +111,7 @@ func writeBlock(out *strings.Builder, root, node schemaNode, path string, level 
 		return
 	}
 
-	out.WriteString("| chave | tipo | obrigatoria | o que faz | exemplo |\n|---|---|---|---|---|\n")
+	out.WriteString("| chave | tipo | obrigatória | o que faz | exemplo |\n|---|---|---|---|---|\n")
 	for _, name := range sortedNames(properties) {
 		property := resolve(root, properties[name])
 		fmt.Fprintf(out, "| `%s` | %s | %s | %s | %s |\n",
@@ -207,7 +207,7 @@ func translated(jsonType string) string {
 	case "number":
 		return "numero"
 	case "boolean":
-		return "sim ou nao"
+		return "sim ou não"
 	case "object":
 		return "objeto"
 	case "array":

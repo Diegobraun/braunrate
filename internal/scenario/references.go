@@ -100,7 +100,7 @@ func (known variableScope) resolve(used reference, node *yaml.Node) error {
 	if source, field, dotted := strings.Cut(used.name, "."); dotted {
 		return known.resolveFromSource(source, field, used, node)
 	}
-	return referenceError(node, used, fmt.Sprintf("nao sei de onde vem ${%s}.\n%s", used.name, known.wherePeopleDeclare(used.name)))
+	return referenceError(node, used, fmt.Sprintf("não sei de onde vem ${%s}.\n%s", used.name, known.wherePeopleDeclare(used.name)))
 }
 
 // Case is what tells the two apart, and it is the convention the tool already
@@ -123,7 +123,7 @@ func (known variableScope) resolveFromSource(source, field string, used referenc
 	// A CSV brings its columns from the file, which is not open at this point;
 	// only a synthetic source declares its fields here.
 	if declared.Synthetic() && len(declared.Fields) > 0 && !hasField(declared.Fields, field) {
-		return referenceError(node, used, fmt.Sprintf("a fonte %q nao gera o campo %q.\n%s",
+		return referenceError(node, used, fmt.Sprintf("a fonte %q não gera o campo %q.\n%s",
 			source, field, suggest(field, sortedFields(declared.Fields))))
 	}
 	return nil
@@ -144,10 +144,10 @@ func (known variableScope) wherePeopleDeclare(name string) string {
 
 func declarationForms(name string) string {
 	return fmt.Sprintf("    declare de onde ela vem:\n"+
-		"      variaveis: { %s: valor }                 # fixa no cenario\n"+
+		"      variaveis: { %s: valor }                 # fixa no cenário\n"+
 		"      variaveis: { %s: \"${%s:-reserva}\" }   # do ambiente, com reserva\n"+
 		"      captura: { %s: $.campo }                 # de uma resposta anterior\n"+
-		"      dados: { pedidos: { arquivo: dados.csv } }  # e entao ${pedidos.%s}\n"+
+		"      dados: { pedidos: { arquivo: dados.csv } }  # e então ${pedidos.%s}\n"+
 		"    nome em CAIXA ALTA vem do ambiente sem precisar declarar: ${%s}",
 		name, name, strings.ToUpper(name), name, name, strings.ToUpper(name))
 }
@@ -175,7 +175,7 @@ func (known variableScope) availableSources(received string) string {
 		names = append(names, name)
 	}
 	if len(names) == 0 {
-		return "    nenhuma fonte de dados foi declarada; o bloco 'dados' e onde elas entram"
+		return "    nenhuma fonte de dados foi declarada; o bloco 'dados' é onde elas entram"
 	}
 	sort.Strings(names)
 	return suggest(received, names)

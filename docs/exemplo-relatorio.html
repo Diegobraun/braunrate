@@ -71,36 +71,36 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 <body>
 <main>
 <header>
-  <div class="cenario">Jornada de cobranca — http://127.0.0.1:8080</div>
-  <h1 class="falhou">Falhou: &#34;consultar pedido&#34; respondeu 95% em ate 582 ms, acima do limite de 150 ms.</h1>
-  <p class="subtitulo">2.375 jornadas em 10s, 4.750 requisicoes a 471 por segundo, 0% de erro.</p>
+  <div class="cenário">Jornada de cobranca — http://127.0.0.1:8080</div>
+  <h1 class="falhou">Falhou: &#34;consultar pedido&#34; respondeu 95% em até 582 ms, acima do limite de 150 ms.</h1>
+  <p class="subtitulo">2.375 jornadas em 10s, 4.750 requisições a 471 por segundo, 0% de erro.</p>
 </header>
 
 
 
 
 <div class="aviso media">
-  <div class="rotulo">atencao</div>
-  <div>o tempo de resposta do alvo cresceu ao longo da execucao enquanto o despacho continuou pontual; a degradacao e do alvo, nao do gerador</div>
+  <div class="rotulo">atenção</div>
+  <div>o tempo de resposta do alvo cresceu ao longo da execução enquanto o despacho continuou pontual; a degradação é do alvo, não do gerador</div>
   <div class="evidencia">p99 por segundo passou de 82.6 ms para 1033.2 ms</div>
 </div>
 
 
 <h2>O que aconteceu</h2>
-<ul class="numeros">
-  <li><div class="valor">4.750</div><div class="rotulo">requisicoes</div></li>
+<ul class="números">
+  <li><div class="valor">4.750</div><div class="rotulo">requisições</div></li>
   <li><div class="valor">471</div><div class="rotulo">por segundo</div></li>
   <li><div class="valor">0%</div><div class="rotulo">de erro</div></li>
-  <li><div class="valor">200 ms</div><div class="rotulo">95% das respostas ate</div></li>
+  <li><div class="valor">200 ms</div><div class="rotulo">95% das respostas até</div></li>
 </ul>
 
 
 <h2>A jornada inteira</h2>
-<div class="leitura">Todas as 2375 jornadas chegaram ao fim; metade levou ate 80 ms e 95% ate 666 ms, contados do instante em que deveriam ter comecado.</div>
+<div class="leitura">Todas as 2375 jornadas chegaram ao fim; metade levou até 80 ms e 95% até 666 ms, contados do instante em que deveriam ter começado.</div>
 <table>
   <tr><th>jornada</th><th>metade</th><th>95%</th><th>99%</th><th>pior</th></tr>
   <tr>
-    <td>do instante agendado ao ultimo passo</td>
+    <td>do instante agendado ao último passo</td>
     <td>80 ms</td><td>666 ms</td>
     <td>1.03 s</td><td>1.08 s</td>
   </tr>
@@ -110,7 +110,7 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 <h2>Por passo</h2>
 
 <table>
-  <tr><th>passo</th><th>requisicoes</th><th>metade</th><th>95%</th><th>99%</th><th>99,9%</th><th>pior</th><th>erros</th></tr>
+  <tr><th>passo</th><th>requisições</th><th>metade</th><th>95%</th><th>99%</th><th>99,9%</th><th>pior</th><th>erros</th></tr>
   
   <tr>
     <td><span class="marca">(1)</span> consultar pedido</td>
@@ -130,9 +130,9 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 
 
 
-<p class="nota">(1) tempo contado do instante em que a requisicao deveria ter partido — inclui qualquer atraso e por isso nao esconde travada do alvo.</p>
+<p class="nota">(1) tempo contado do instante em que a requisição deveria ter partido — inclui qualquer atraso e por isso não esconde travada do alvo.</p>
 
-<p class="nota">(2) tempo de resposta puro, contado de quando o passo anterior terminou. Esse passo depende de um valor capturado antes dele, entao nao tem instante agendado proprio. Para a leitura honesta da jornada, use o bloco "A jornada inteira".</p>
+<p class="nota">(2) tempo de resposta puro, contado de quando o passo anterior terminou. Esse passo depende de um valor capturado antes dele, então não tem instante agendado próprio. Para a leitura honesta da jornada, use o bloco "A jornada inteira".</p>
 
 
 
@@ -150,18 +150,18 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 <h2>SLO</h2>
 <ul class="frases slo">
   
-  <li><span class="nao">falha</span><span>Falhou: &#34;consultar pedido&#34; respondeu 95% em ate 582 ms, acima do limite de 150 ms.</span></li>
+  <li><span class="não">falha</span><span>Falhou: &#34;consultar pedido&#34; respondeu 95% em até 582 ms, acima do limite de 150 ms.</span></li>
   
-  <li><span class="ok">ok</span><span>Passou: &#34;pagar fatura&#34; respondeu 95% em ate 43 ms, dentro do limite de 200 ms.</span></li>
+  <li><span class="ok">ok</span><span>Passou: &#34;pagar fatura&#34; respondeu 95% em até 43 ms, dentro do limite de 200 ms.</span></li>
   
-  <li><span class="ok">ok</span><span>Passou: a jornada inteira respondeu 95% em ate 666 ms, dentro do limite de 2000 ms.</span></li>
+  <li><span class="ok">ok</span><span>Passou: a jornada inteira respondeu 95% em até 666 ms, dentro do limite de 2000 ms.</span></li>
   
-  <li><span class="ok">ok</span><span>Passou: a jornada inteira respondeu 99% em ate 1027 ms, dentro do limite de 5000 ms.</span></li>
+  <li><span class="ok">ok</span><span>Passou: a jornada inteira respondeu 99% em até 1027 ms, dentro do limite de 5000 ms.</span></li>
   
-  <li><span class="ok">ok</span><span>Passou: o cenario inteiro teve taxa de erro de 0.00%, dentro do limite de 0.10%.</span></li>
+  <li><span class="ok">ok</span><span>Passou: o cenário inteiro teve taxa de erro de 0.00%, dentro do limite de 0.10%.</span></li>
   
   
-  <li><span class="sem">nao declarado</span><span>regressao: sem criterio declarado — o gate aprova sem comparar com a execucao anterior</span></li>
+  <li><span class="sem">não declarado</span><span>regressao: sem critério declarado — o gate aprova sem comparar com a execução anterior</span></li>
   
 </ul>
 
@@ -170,21 +170,21 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 
 
 
-<h2>Confiabilidade da medicao</h2>
+<h2>Confiabilidade da medição</h2>
 <ul class="frases">
-  <li>O gerador disparou todas as requisicoes na hora certa, entao os numeros acima valem.</li><li>Atraso tipico para disparar: 0.001 ms; pior caso: 4.6 ms. O tempo de resposta ja desconta esse atraso.</li><li>Pico de 298 requisicoes ao mesmo tempo, com limite de 20.000.</li>
+  <li>O gerador disparou todas as requisições na hora certa, então os números acima valem.</li><li>Atraso típico para disparar: 0.001 ms; pior caso: 4.6 ms. O tempo de resposta já desconta esse atraso.</li><li>Pico de 298 requisições ao mesmo tempo, com limite de 20.000.</li>
 </ul>
 
-<h2>Como este numero foi produzido</h2>
+<h2>Como este número foi produzido</h2>
 <ul class="frases">
-  <li>Modelo de chegada aberto: a carga nao espera o alvo responder, entao travada do alvo aparece na conta.</li>
-  <li>Plano: rampa de 50/s ate 300/s durante 5s</li><li>Plano: patamar de 300/s durante 5s</li>
-  <li>Mac, darwin/arm64, 10 nucleos</li><li>braunrate 0.5.0 (go1.26.6), gerador e alvo medidos como declarado acima</li><li>Protocolos compilados neste binario: aguardar, amqp, graphql, http, kafka.</li><li>Variedade observada: 4 valores distintos de assinantes.id em 2.375 usos, entre 1.001 e 1.004.</li><li>Variedade observada: 4 valores distintos de faturaId em 2.375 usos, todos comecando com &#34;f-100&#34;.</li><li>Variedade observada: 1 unico valor de token em 2.375 usos.</li><li>Autenticacao obtida uma vez e reaproveitada por todas as jornadas. Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.</li>
+  <li>Modelo de chegada aberto: a carga não espera o alvo responder, então travada do alvo aparece na conta.</li>
+  <li>Plano: rampa de 50/s até 300/s durante 5s</li><li>Plano: patamar de 300/s durante 5s</li>
+  <li>Mac, darwin/arm64, 10 núcleos</li><li>braunrate 0.5.0 (go1.26.6), gerador e alvo medidos como declarado acima</li><li>Protocolos compilados neste binario: aguardar, amqp, graphql, http, kafka.</li><li>Variedade observada: 4 valores distintos de assinantes.id em 2.375 usos, entre 1.001 e 1.004.</li><li>Variedade observada: 4 valores distintos de faturaId em 2.375 usos, todos começando com &#34;f-100&#34;.</li><li>Variedade observada: 1 único valor de token em 2.375 usos.</li><li>Autenticação obtida uma vez e reaproveitada por todas as jornadas. Se o alvo tiver cache, rate limit ou sharding por token, este número fica otimista.</li>
 </ul>
 
 <footer>
-  braunrate 0.5.0 — execucao de 16/08/2026 15:18:10, formato de resultado 2.
-  Este arquivo abre sem rede: nao busca script, fonte nem imagem externa.
+  braunrate 0.5.0 — execução de 16/08/2026 15:18:10, formato de resultado 2.
+  Este arquivo abre sem rede: não busca script, fonte nem imagem externa.
 </footer>
 </main>
 </body>

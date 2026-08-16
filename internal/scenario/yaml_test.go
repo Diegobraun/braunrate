@@ -38,7 +38,7 @@ func TestParseMinimalScenario(t *testing.T) {
 		t.Errorf("nome = %q", c.Name)
 	}
 	if c.Load.Model != scenario.OpenArrival {
-		t.Errorf("modelo = %q, esperado aberto por padrao", c.Load.Model)
+		t.Errorf("modelo = %q, esperado aberto por padrão", c.Load.Model)
 	}
 	if len(c.Load.Phases) != 2 {
 		t.Fatalf("fases = %d, esperado 2", len(c.Load.Phases))
@@ -54,13 +54,13 @@ func TestParseMinimalScenario(t *testing.T) {
 		t.Errorf("passo lido errado: %+v", step)
 	}
 	if step.AggregationKey() != "GET /assinaturas/1" {
-		t.Errorf("chave de agregacao = %q", step.AggregationKey())
+		t.Errorf("chave de agregação = %q", step.AggregationKey())
 	}
 	if len(step.Checks) != 1 || step.Checks[0].Status != 200 {
 		t.Errorf("verificacoes lidas errado: %+v", step.Checks)
 	}
 	if err := c.Validate(); err != nil {
-		t.Errorf("cenario deveria ser valido: %v", err)
+		t.Errorf("cenário deveria ser válido: %v", err)
 	}
 }
 
@@ -98,13 +98,13 @@ func TestErrorPointsToLine(t *testing.T) {
 		{
 			name:     "protocolo desconhecido",
 			input:    "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - constante: { taxa: 1/s, durante: 1s }\ncenario:\n  - grpc: /servico\n",
-			fragment: "nao reconheco",
+			fragment: "não reconheço",
 			line:     7,
 		},
 		{
-			name:     "taxa invalida",
+			name:     "taxa inválida",
 			input:    "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - constante: { taxa: rapido, durante: 1s }\ncenario:\n  - http: GET /\n",
-			fragment: "taxa invalida",
+			fragment: "taxa inválida",
 			line:     5,
 		},
 		{
@@ -159,7 +159,7 @@ cenario:
 		t.Fatalf("erro inesperado: %v", err)
 	}
 	if key := c.Steps[0].AggregationKey(); key != "GET /pedidos/${pedidoId}" {
-		t.Errorf("chave = %q; o relatorio agrega pela rota declarada, nunca pela URL com o valor dentro", key)
+		t.Errorf("chave = %q; o relatório agrega pela rota declarada, nunca pela URL com o valor dentro", key)
 	}
 	if len(c.Steps[0].Captures) != 1 || c.Steps[0].Captures[0].Origin != scenario.CaptureJSON {
 		t.Errorf("captura lida errado: %+v", c.Steps[0].Captures)
@@ -185,10 +185,10 @@ cenario:
 		t.Fatalf("erro inesperado: %v", err)
 	}
 	if c.Vars["tenant"] != "acme" || c.Vars["regiao"] != "sul" {
-		t.Fatalf("variaveis = %v", c.Vars)
+		t.Fatalf("variáveis = %v", c.Vars)
 	}
 	if key := c.Steps[0].AggregationKey(); key != "GET /clientes/${tenant}/${regiao}" {
-		t.Errorf("chave = %q; a interpolacao acontece na execucao, nao no carregamento", key)
+		t.Errorf("chave = %q; a interpolação acontece na execução, não no carregamento", key)
 	}
 }
 
@@ -196,11 +196,11 @@ func TestValidationReportsProblems(t *testing.T) {
 	c := scenario.Spec{}
 	err := c.Validate()
 	if err == nil {
-		t.Fatal("esperava erro de validacao")
+		t.Fatal("esperava erro de validação")
 	}
 	for _, fragment := range []string{"nome", "alvo", "passo", "perfil"} {
 		if !strings.Contains(err.Error(), fragment) {
-			t.Errorf("validacao nao mencionou %q: %v", fragment, err)
+			t.Errorf("validação não mencionou %q: %v", fragment, err)
 		}
 	}
 }
@@ -233,18 +233,18 @@ cenario:
 func TestRateWithoutUnitIsRefusedInsteadOfAssumedPerSecond(t *testing.T) {
 	_, err := scenario.Parse([]byte("nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamar: { taxa: 100, durante: 5s }\ncenario:\n  - http: GET /\n"))
 	if err == nil {
-		t.Fatal("taxa sem unidade foi aceita: 100 virou 100/s sem ninguem ser avisado")
+		t.Fatal("taxa sem unidade foi aceita: 100 virou 100/s sem ninguém ser avisado")
 	}
 	for _, expected := range []string{"sem unidade", "100/s", "100/m", "100/h"} {
 		if !strings.Contains(err.Error(), expected) {
-			t.Errorf("a mensagem nao ensina as unidades: falta %q em\n%s", expected, err)
+			t.Errorf("a mensagem não ensina as unidades: falta %q em\n%s", expected, err)
 		}
 	}
 }
 
 func TestRateThatIsNotANumberKeepsItsOwnMessage(t *testing.T) {
 	_, err := scenario.Parse([]byte("nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamar: { taxa: rapido, durante: 5s }\ncenario:\n  - http: GET /\n"))
-	if err == nil || !strings.Contains(err.Error(), "taxa invalida") {
-		t.Fatalf("taxa que nao e numero passou a sugerir unidades sem sentido: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "taxa inválida") {
+		t.Fatalf("taxa que não e número passou a sugerir unidades sem sentido: %v", err)
 	}
 }

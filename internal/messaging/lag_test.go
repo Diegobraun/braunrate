@@ -85,12 +85,12 @@ cenario:
 		t.Fatalf("erro ao produzir: %+v", document.Steps[0].Details)
 	}
 	if len(document.Run.ConsumerLag) != 1 {
-		t.Fatalf("o atraso do grupo nao foi medido: %+v", document.Run.ConsumerLag)
+		t.Fatalf("o atraso do grupo não foi medido: %+v", document.Run.ConsumerLag)
 	}
 
 	lag := document.Run.ConsumerLag[0]
 	if lag.Problem != "" {
-		t.Fatalf("a medicao do atraso falhou: %s", lag.Problem)
+		t.Fatalf("a medição do atraso falhou: %s", lag.Problem)
 	}
 	if lag.Group != group || lag.Topic != topic {
 		t.Fatalf("o atraso foi atribuido a outro grupo: %+v", lag)
@@ -98,9 +98,9 @@ cenario:
 	// 200/s against a consumer that takes 40 ms per message: the group cannot
 	// keep up, and that is the whole point of measuring this.
 	if lag.Max < 100 {
-		t.Fatalf("consumidor de 25/s sob carga de 200/s deveria ficar para tras; atraso maximo medido: %d", lag.Max)
+		t.Fatalf("consumidor de 25/s sob carga de 200/s deveria ficar para trás; atraso máximo medido: %d", lag.Max)
 	}
-	t.Logf("atraso maximo %d, no fim %d, em %d leituras", lag.Max, lag.Final, lag.Readings)
+	t.Logf("atraso máximo %d, no fim %d, em %d leituras", lag.Max, lag.Final, lag.Readings)
 }
 
 // Producing to a declared partition is the opposite of the usual advice, so it
@@ -139,42 +139,42 @@ cenario:
 		}
 		found = true
 		if !strings.HasPrefix(variety.Name, "kafka.particao.declarada.") {
-			t.Fatalf("a particao declarada foi contada como se tivesse sido escolhida pela chave: %s", variety.Name)
+			t.Fatalf("a partição declarada foi contada como se tivesse sido escolhida pela chave: %s", variety.Name)
 		}
 		if variety.Distinct != 1 {
-			t.Fatalf("a carga foi para %d particoes, e o cenario declarou uma", variety.Distinct)
+			t.Fatalf("a carga foi para %d partições, e o cenário declarou uma", variety.Distinct)
 		}
 		if variety.Available != 3 {
-			t.Fatalf("o topico tem 3 particoes e o relatorio viu %d", variety.Available)
+			t.Fatalf("o tópico tem 3 partições e o relatório viu %d", variety.Available)
 		}
 	}
 	if !found {
-		t.Fatalf("o relatorio nao registrou a particao de %s: %+v", topic, document.Variety)
+		t.Fatalf("o relatório não registrou a partição de %s: %+v", topic, document.Variety)
 	}
 
 	// Concentration asked for is still concentration: the report has to say the
 	// number is that of one partition, without accusing the key of not varying.
 	warned := false
 	for _, warning := range document.Warnings {
-		if !strings.Contains(warning.Message, "particao declarada") {
+		if !strings.Contains(warning.Message, "partição declarada") {
 			continue
 		}
 		warned = true
 		if warning.Severity != metrics.SeverityMedium {
-			t.Fatalf("particao declarada e deliberada, e o aviso saiu como %q", warning.Severity)
+			t.Fatalf("partição declarada e deliberada, e o aviso saiu como %q", warning.Severity)
 		}
 		if strings.Contains(warning.Message, "chave") {
-			t.Fatalf("o aviso mandou variar a chave, que nao e o que resolve: %s", warning.Message)
+			t.Fatalf("o aviso mandou variar a chave, que não e o que resolve: %s", warning.Message)
 		}
 		// Whoever declared a fixed partition out of convenience has to read that
 		// the number stopped being about the topic. Softening it for the case
 		// that was deliberate hides it from the case that was not.
-		if !strings.Contains(warning.Message, "nao representa producao") {
-			t.Fatalf("o aviso nao disse com todas as letras que o numero nao representa producao: %s", warning.Message)
+		if !strings.Contains(warning.Message, "não representa produção") {
+			t.Fatalf("o aviso não disse com todas as letras que o número não representa produção: %s", warning.Message)
 		}
 	}
 	if !warned {
-		t.Fatalf("carga numa particao so nao foi avisada: %+v", document.Warnings)
+		t.Fatalf("carga numa partição só não foi avisada: %+v", document.Warnings)
 	}
 }
 
@@ -182,7 +182,7 @@ func createPlainTopic(t *testing.T, address, name string, partitions int) {
 	t.Helper()
 	conn, err := kafka.Dial("tcp", address)
 	if err != nil {
-		t.Fatalf("nao consegui falar com o broker: %v", err)
+		t.Fatalf("não consegui falar com o broker: %v", err)
 	}
 	defer func() { _ = conn.Close() }()
 
@@ -192,7 +192,7 @@ func createPlainTopic(t *testing.T, address, name string, partitions int) {
 	// A broker with automatic creation may have got there first, and that is not
 	// a failure of the test — the topic existing is what the test wanted.
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "already exists") {
-		t.Fatalf("nao consegui criar o topico: %v", err)
+		t.Fatalf("não consegui criar o tópico: %v", err)
 	}
 	for attempt := 0; attempt < 50; attempt++ {
 		found, err := conn.ReadPartitions(name)
@@ -201,5 +201,5 @@ func createPlainTopic(t *testing.T, address, name string, partitions int) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	t.Fatalf("o topico %q nao ficou pronto", name)
+	t.Fatalf("o tópico %q não ficou pronto", name)
 }

@@ -23,13 +23,13 @@ cenario:
 func TestClosedLoadIsReadWholeRegardlessOfKeyOrder(t *testing.T) {
 	spec, err := parseLoad(t, "  usuarios: 200\n  duracao: 5m\n  intervalo_entre_iteracoes: 1s\n  modelo: fechado\n")
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 	if !spec.Load.Closed() || spec.Load.Users != 200 || spec.Load.For != 5*time.Minute || spec.Load.ThinkTime != time.Second {
 		t.Fatalf("carga lida errada: %+v", spec.Load)
 	}
 	if spec.Duration() != 5*time.Minute {
-		t.Fatalf("duracao do cenario fechado veio %s", spec.Duration())
+		t.Fatalf("duração do cenário fechado veio %s", spec.Duration())
 	}
 }
 
@@ -44,25 +44,25 @@ func TestEachMixOfTheTwoModelsIsRefusedWithTheWayOut(t *testing.T) {
 		{
 			"perfis dentro do fechado",
 			"  modelo: fechado\n  usuarios: 10\n  duracao: 1m\n  perfis:\n    - patamar: { taxa: 10/s, durante: 1m }\n",
-			[]string{"nao usa 'perfis'", "consequencia do tempo de resposta"},
+			[]string{"não usa 'perfis'", "consequência do tempo de resposta"},
 		},
 		{
-			"usuarios dentro do aberto",
+			"usuários dentro do aberto",
 			"  usuarios: 10\n  perfis:\n    - patamar: { taxa: 10/s, durante: 1m }\n",
-			[]string{"so existe no modelo fechado", "taxa: 300/s"},
+			[]string{"só existe no modelo fechado", "taxa: 300/s"},
 		},
 		{
-			"fechado sem usuarios",
+			"fechado sem usuários",
 			"  modelo: fechado\n  duracao: 1m\n",
 			[]string{"precisa de 'usuarios'", "usuarios: 200"},
 		},
 		{
-			"fechado sem duracao",
+			"fechado sem duração",
 			"  modelo: fechado\n  usuarios: 10\n",
 			[]string{"precisa de 'duracao'"},
 		},
 		{
-			"usuarios que nao e numero",
+			"usuários que não e número",
 			"  modelo: fechado\n  usuarios: muitos\n  duracao: 1m\n",
 			[]string{"inteiro maior que zero"},
 		},
@@ -72,11 +72,11 @@ func TestEachMixOfTheTwoModelsIsRefusedWithTheWayOut(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := parseLoad(t, c.load)
 			if err == nil {
-				t.Fatal("o cenario foi aceito")
+				t.Fatal("o cenário foi aceito")
 			}
 			for _, fragment := range c.contains {
 				if !strings.Contains(err.Error(), fragment) {
-					t.Fatalf("a mensagem nao ensina %q: %v", fragment, err)
+					t.Fatalf("a mensagem não ensina %q: %v", fragment, err)
 				}
 			}
 		})
@@ -88,7 +88,7 @@ func TestEachMixOfTheTwoModelsIsRefusedWithTheWayOut(t *testing.T) {
 func TestValidateWarnsAboutTheClosedModelWithTheRateItWouldProduce(t *testing.T) {
 	spec, err := parseLoad(t, "  modelo: fechado\n  usuarios: 200\n  duracao: 5m\n  intervalo_entre_iteracoes: 1s\n")
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 
 	warning, closed := scenario.ClosedModelWarning(spec)
@@ -97,13 +97,13 @@ func TestValidateWarnsAboutTheClosedModelWithTheRateItWouldProduce(t *testing.T)
 	}
 	for _, fragment := range []string{"182/s", "133/s", "67/s", "se o alvo travar"} {
 		if !strings.Contains(warning, fragment) {
-			t.Fatalf("o aviso nao traz %q:\n%s", fragment, warning)
+			t.Fatalf("o aviso não traz %q:\n%s", fragment, warning)
 		}
 	}
 
 	open, err := parseLoad(t, "  perfis:\n    - patamar: { taxa: 10/s, durante: 1m }\n")
 	if err != nil {
-		t.Fatalf("cenario aberto recusado: %v", err)
+		t.Fatalf("cenário aberto recusado: %v", err)
 	}
 	if _, closed := scenario.ClosedModelWarning(open); closed {
 		t.Fatal("o modelo aberto recebeu o aviso do fechado")

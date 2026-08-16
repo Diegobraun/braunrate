@@ -18,7 +18,7 @@ func TestCaveatIsPrintedAsASentence(t *testing.T) {
 
 	var out strings.Builder
 	if err := report.Comparison(&out, comparison.Compare(before, after)); err != nil {
-		t.Fatalf("nao gerou a comparacao: %v", err)
+		t.Fatalf("não gerou a comparação: %v", err)
 	}
 	text := out.String()
 
@@ -26,7 +26,7 @@ func TestCaveatIsPrintedAsASentence(t *testing.T) {
 		t.Fatalf("a ressalva saiu como valor de Go em vez de frase:\n%s", text)
 	}
 	if !strings.Contains(text, "outra-maquina") {
-		t.Fatalf("a comparacao nao disse que o alvo mudou:\n%s", text)
+		t.Fatalf("a comparação não disse que o alvo mudou:\n%s", text)
 	}
 }
 
@@ -40,18 +40,18 @@ func TestNoCaveatSaysWhatItCompared(t *testing.T) {
 	before.Run.AuthObtains, after.Run.AuthObtains = 0, 0
 	compared := comparison.Compare(before, after)
 	if len(compared.Caveats) != 0 {
-		t.Fatalf("as duas execucoes deveriam sair sem ressalva: %+v", compared.Caveats)
+		t.Fatalf("as duas execuções deveriam sair sem ressalva: %+v", compared.Caveats)
 	}
 
 	var terminal strings.Builder
 	if err := report.Comparison(&terminal, compared); err != nil {
-		t.Fatalf("nao gerou a comparacao: %v", err)
+		t.Fatalf("não gerou a comparação: %v", err)
 	}
 	text := terminal.String()
-	if strings.Contains(text, "Nada: mesmo cenario") {
-		t.Error("a comparacao afirma que nada explica a diferenca, sobre cinco campos que ela checou")
+	if strings.Contains(text, "Nada: mesmo cenário") {
+		t.Error("a comparação afirma que nada explica a diferença, sobre cinco campos que ela checou")
 	}
 	if !strings.Contains(text, "dados") {
-		t.Error("a comparacao nao avisa que o conteudo dos dados fica de fora do que ela compara")
+		t.Error("a comparação não avisa que o conteúdo dos dados fica de fora do que ela compara")
 	}
 }

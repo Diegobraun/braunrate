@@ -81,26 +81,26 @@ func (broker *Broker) Secured() bool {
 // a broker any other way.
 func (broker *Broker) Describe() string {
 	if broker == nil || !broker.Secured() {
-		return "sem autenticacao"
+		return "sem autenticação"
 	}
 	var parts []string
 	switch broker.Auth.Kind {
 	case NoAuth:
 	case MSKIAM:
-		parts = append(parts, fmt.Sprintf("msk_iam (regiao %s, credencial da cadeia padrao da AWS)", broker.Auth.Region))
+		parts = append(parts, fmt.Sprintf("msk_iam (região %s, credencial da cadeia padrão da AWS)", broker.Auth.Region))
 	case External:
 		parts = append(parts, "certificado de cliente")
 	default:
 		user := broker.Auth.User
 		if user == "" {
-			user = "sem usuario"
+			user = "sem usuário"
 		}
-		parts = append(parts, fmt.Sprintf("%s, usuario %s", broker.Auth.Kind, user))
+		parts = append(parts, fmt.Sprintf("%s, usuário %s", broker.Auth.Kind, user))
 	}
 	if broker.TLS.Enabled {
 		tlsPart := "TLS"
 		if broker.TLS.CA != "" {
-			tlsPart += " com CA propria"
+			tlsPart += " com CA própria"
 		}
 		if broker.TLS.Certificate != "" {
 			tlsPart += " e certificado de cliente"
@@ -128,11 +128,11 @@ func (settings TLS) Config() (*tls.Config, error) {
 	if settings.CA != "" {
 		pem, err := os.ReadFile(settings.CA)
 		if err != nil {
-			return nil, fmt.Errorf("nao consegui ler a CA em %s: %w", settings.CA, err)
+			return nil, fmt.Errorf("não consegui ler a CA em %s: %w", settings.CA, err)
 		}
 		pool := x509.NewCertPool()
 		if !pool.AppendCertsFromPEM(pem) {
-			return nil, fmt.Errorf("o arquivo %s nao tem certificado PEM valido", settings.CA)
+			return nil, fmt.Errorf("o arquivo %s não tem certificado PEM válido", settings.CA)
 		}
 		config.RootCAs = pool
 	}
@@ -143,7 +143,7 @@ func (settings TLS) Config() (*tls.Config, error) {
 		}
 		pair, err := tls.LoadX509KeyPair(settings.Certificate, settings.Key)
 		if err != nil {
-			return nil, fmt.Errorf("nao consegui carregar o par certificado/chave: %w", err)
+			return nil, fmt.Errorf("não consegui carregar o par certificado/chave: %w", err)
 		}
 		config.Certificates = []tls.Certificate{pair}
 	}

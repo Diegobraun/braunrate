@@ -15,11 +15,11 @@ import (
 func TestMetricsDoesNotKnowAnyProtocolInParticular(t *testing.T) {
 	packageInfo, err := build.Import("github.com/Diegobraun/braunrate/internal/metrics", "", 0)
 	if err != nil {
-		t.Fatalf("nao consegui ler o pacote: %v", err)
+		t.Fatalf("não consegui ler o pacote: %v", err)
 	}
 	for _, imported := range packageInfo.Imports {
 		if strings.Contains(imported, "internal/protocol/") {
-			t.Errorf("metrics importa %q: medicao especifica de protocolo comeca aqui", imported)
+			t.Errorf("metrics importa %q: medição específica de protocolo começa aqui", imported)
 		}
 	}
 }
@@ -34,7 +34,7 @@ func TestMetricsDoesNotKnowAnyProtocolInParticular(t *testing.T) {
 func TestMetricsDoesNotNameAnyProtocolInItsText(t *testing.T) {
 	entries, err := os.ReadDir(".")
 	if err != nil {
-		t.Fatalf("nao consegui ler o pacote: %v", err)
+		t.Fatalf("não consegui ler o pacote: %v", err)
 	}
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
@@ -42,7 +42,7 @@ func TestMetricsDoesNotNameAnyProtocolInItsText(t *testing.T) {
 		}
 		content, err := os.ReadFile(entry.Name())
 		if err != nil {
-			t.Fatalf("nao consegui ler %s: %v", entry.Name(), err)
+			t.Fatalf("não consegui ler %s: %v", entry.Name(), err)
 		}
 		lines := strings.Split(string(content), "\n")
 		for number, line := range lines {
@@ -51,7 +51,7 @@ func TestMetricsDoesNotNameAnyProtocolInItsText(t *testing.T) {
 				if !strings.Contains(lowered, name) || fromTheSharedVocabulary(lines, number) {
 					continue
 				}
-				t.Errorf("%s:%d cita %q: o que a dimensao significa e do protocolo, nao da medicao",
+				t.Errorf("%s:%d cita %q: o que a dimensao significa e do protocolo, não da medição",
 					entry.Name(), number+1, name)
 			}
 		}

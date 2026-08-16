@@ -20,7 +20,7 @@ func TestClientReachesATargetWhoseCAOnlyTheScenarioKnows(t *testing.T) {
 
 	semCA := transport.NewClient(protocol.Options{})
 	if _, err := semCA.Get(server.URL); err == nil {
-		t.Fatal("o cliente sem CA aceitou um certificado que nao tem por que confiar")
+		t.Fatal("o cliente sem CA aceitou um certificado que não tem por que confiar")
 	}
 
 	pool := x509.NewCertPool()
@@ -28,7 +28,7 @@ func TestClientReachesATargetWhoseCAOnlyTheScenarioKnows(t *testing.T) {
 	comCA := transport.NewClient(protocol.Options{TLS: &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12}})
 	response, err := comCA.Get(server.URL)
 	if err != nil {
-		t.Fatalf("o cliente com a CA declarada nao alcancou o alvo: %v", err)
+		t.Fatalf("o cliente com a CA declarada não alcancou o alvo: %v", err)
 	}
 	_ = response.Body.Close()
 }
@@ -46,7 +46,7 @@ func TestTLSFailureSaysWhatToDeclare(t *testing.T) {
 	summary := transport.SummarizeError(err)
 	for _, expected := range []string{"CA", "tls:", "ca:"} {
 		if !strings.Contains(summary, expected) {
-			t.Errorf("a mensagem nao ensina a saida: falta %q em %q", expected, summary)
+			t.Errorf("a mensagem não ensina a saída: falta %q em %q", expected, summary)
 		}
 	}
 }

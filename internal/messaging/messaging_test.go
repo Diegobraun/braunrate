@@ -28,7 +28,7 @@ func kafkaBroker(t *testing.T) string {
 	t.Helper()
 	address := os.Getenv("BRAUNRATE_KAFKA")
 	if address == "" {
-		t.Skip("sem BRAUNRATE_KAFKA: teste de mensageria pulado, nao aprovado")
+		t.Skip("sem BRAUNRATE_KAFKA: teste de mensageria pulado, não aprovado")
 	}
 	return address
 }
@@ -37,7 +37,7 @@ func amqpBroker(t *testing.T) string {
 	t.Helper()
 	address := os.Getenv("BRAUNRATE_AMQP")
 	if address == "" {
-		t.Skip("sem BRAUNRATE_AMQP: teste de mensageria pulado, nao aprovado")
+		t.Skip("sem BRAUNRATE_AMQP: teste de mensageria pulado, não aprovado")
 	}
 	return address
 }
@@ -47,7 +47,7 @@ func topic(t *testing.T, brokers string, name string, partitions int) string {
 	complete := fmt.Sprintf("%s-%d", name, time.Now().UnixNano())
 	conn, err := kafka.Dial("tcp", brokers)
 	if err != nil {
-		t.Fatalf("nao consegui falar com o broker: %v", err)
+		t.Fatalf("não consegui falar com o broker: %v", err)
 	}
 	defer func() { _ = conn.Close() }()
 	if err := conn.CreateTopics(kafka.TopicConfig{
@@ -55,7 +55,7 @@ func topic(t *testing.T, brokers string, name string, partitions int) string {
 		NumPartitions:     partitions,
 		ReplicationFactor: 1,
 	}); err != nil {
-		t.Fatalf("nao consegui criar o topico: %v", err)
+		t.Fatalf("não consegui criar o tópico: %v", err)
 	}
 	return complete
 }
@@ -65,20 +65,20 @@ func execute(t *testing.T, content string) (metrics.Document, slo.Verdict) {
 	root := t.TempDir()
 	path := filepath.Join(root, "cenario.yaml")
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o cenario: %v", err)
+		t.Fatalf("não consegui escrever o cenário: %v", err)
 	}
 	c, err := scenario.ParseFile(path)
 	if err != nil {
-		t.Fatalf("cenario nao carregou: %v", err)
+		t.Fatalf("cenário não carregou: %v", err)
 	}
 	if err := c.Validate(); err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 	options := engine.DefaultOptions()
 	options.DataRoot = root
 	m, err := engine.New(c, options)
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	document := m.Execute(context.Background())
 	t.Cleanup(func() { protocol.CloseAll() })
@@ -128,7 +128,7 @@ func TestAsyncChainMeasuresProducerToConsumer(t *testing.T) {
 		Delay:   processorDelay,
 	})
 	if err := processor.Start(); err != nil {
-		t.Fatalf("processador nao subiu: %v", err)
+		t.Fatalf("processador não subiu: %v", err)
 	}
 	t.Cleanup(func() { _ = processor.Close() })
 
@@ -149,18 +149,18 @@ func TestAsyncChainMeasuresProducerToConsumer(t *testing.T) {
 	production, hasProduction := byName["kafka produzir "+input]
 	wait, temEspera := byName["aguardar "+out]
 	if !hasProduction || !temEspera {
-		t.Fatalf("o relatorio precisa de uma linha por destino: %+v", byName)
+		t.Fatalf("o relatório precisa de uma linha por destino: %+v", byName)
 	}
 	if wait.Latency.P50 < float64(processorDelay.Milliseconds()) {
-		t.Errorf("a espera mediu %0.1f ms, menos que os %s do processador: nao mediu a cadeia",
+		t.Errorf("a espera mediu %0.1f ms, menos que os %s do processador: não mediu a cadeia",
 			wait.Latency.P50, processorDelay)
 	}
 	if production.Latency.P50 > wait.Latency.P50 {
-		t.Errorf("produzir (%0.1f ms) nao deveria custar mais que a cadeia inteira (%0.1f ms)",
+		t.Errorf("produzir (%0.1f ms) não deveria custar mais que a cadeia inteira (%0.1f ms)",
 			production.Latency.P50, wait.Latency.P50)
 	}
 	if document.Journey.Latency.P50 < wait.Latency.P50 {
-		t.Error("a jornada precisa incluir producao e espera")
+		t.Error("a jornada precisa incluir produção e espera")
 	}
 }
 
@@ -178,7 +178,7 @@ func TestFixedPartitionKeyInvalidatesResult(t *testing.T) {
 		Output:  out,
 	})
 	if err := processor.Start(); err != nil {
-		t.Fatalf("processador nao subiu: %v", err)
+		t.Fatalf("processador não subiu: %v", err)
 	}
 	t.Cleanup(func() { _ = processor.Close() })
 
@@ -199,10 +199,10 @@ func TestFixedPartitionKeyInvalidatesResult(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatalf("carga inteira numa particao so precisa avisar; avisos: %+v", document.Warnings)
+		t.Fatalf("carga inteira numa partição só precisa avisar; avisos: %+v", document.Warnings)
 	}
 	if document.Valid() {
-		t.Error("resultado concentrado numa particao nao pode ser dado como valido")
+		t.Error("resultado concentrado numa partição não pode ser dado como válido")
 	}
 }
 
@@ -248,7 +248,7 @@ func TestMessageThatNeverArrivesBecomesExplainedTimeout(t *testing.T) {
 	}
 	var explicou bool
 	for detail := range wait.Details {
-		if strings.Contains(detail, "nao chegou em") && strings.Contains(detail, out) {
+		if strings.Contains(detail, "não chegou em") && strings.Contains(detail, out) {
 			explicou = true
 		}
 	}
@@ -256,7 +256,7 @@ func TestMessageThatNeverArrivesBecomesExplainedTimeout(t *testing.T) {
 		t.Errorf("o detalhe precisa dizer o que era esperado e onde: %+v", wait.Details)
 	}
 	if document.Journey.Completed != 0 {
-		t.Error("jornada sem a mensagem de volta nao pode contar como completa")
+		t.Error("jornada sem a mensagem de volta não pode contar como completa")
 	}
 }
 
@@ -303,12 +303,12 @@ func TestAMQPPublishesAndWaitsOnSameQueue(t *testing.T) {
 		if step.Name == "amqp publicar "+queue {
 			publishing = true
 			if step.Latency.P50 <= 0 {
-				t.Error("publicacao com confirmacao precisa ter latencia medida")
+				t.Error("publicação com confirmacao precisa ter latência medida")
 			}
 		}
 	}
 	if !publishing {
-		t.Errorf("faltou a linha da publicacao no relatorio: %+v", document.Steps)
+		t.Errorf("faltou a linha da publicação no relatório: %+v", document.Steps)
 	}
 }
 
@@ -341,11 +341,11 @@ func TestSaturatedGeneratorWhileProducingInvalidatesResult(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "cenario.yaml")
 	if err := os.WriteFile(path, []byte(fmt.Sprintf(saturationScenario, brokers, loadTopic)), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o cenario: %v", err)
+		t.Fatalf("não consegui escrever o cenário: %v", err)
 	}
 	c, err := scenario.ParseFile(path)
 	if err != nil {
-		t.Fatalf("cenario nao carregou: %v", err)
+		t.Fatalf("cenário não carregou: %v", err)
 	}
 
 	options := engine.DefaultOptions()
@@ -354,7 +354,7 @@ func TestSaturatedGeneratorWhileProducingInvalidatesResult(t *testing.T) {
 
 	m, err := engine.New(c, options)
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	document := m.Execute(context.Background())
 	t.Cleanup(func() { protocol.CloseAll() })
@@ -366,16 +366,16 @@ func TestSaturatedGeneratorWhileProducingInvalidatesResult(t *testing.T) {
 		}
 		found = true
 		if warning.Severity != metrics.SeverityHigh {
-			t.Errorf("gravidade = %q, esperava alta: o numero nao vale", warning.Severity)
+			t.Errorf("gravidade = %q, esperava alta: o número não vale", warning.Severity)
 		}
 	}
 	if !found {
-		t.Fatalf("gerador que nao sustentou a producao precisa avisar; avisos: %+v", document.Warnings)
+		t.Fatalf("gerador que não sustentou a produção precisa avisar; avisos: %+v", document.Warnings)
 	}
 	if document.Valid() {
-		t.Error("resultado com gerador saturado produzindo nao pode ser dado como valido")
+		t.Error("resultado com gerador saturado produzindo não pode ser dado como válido")
 	}
 	if document.Scheduling.DroppedByInflightLimit == 0 && document.Scheduling.LateDispatches == 0 {
-		t.Error("a saturacao precisa aparecer no agendamento, e nao so no texto")
+		t.Error("a saturacao precisa aparecer no agendamento, e não só no texto")
 	}
 }

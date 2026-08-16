@@ -46,11 +46,11 @@ func (processor *Processor) Processed() int64 { return processor.processed.Load(
 func createTopics(conn *kafka.Conn, topics ...string) error {
 	controller, err := conn.Controller()
 	if err != nil {
-		return fmt.Errorf("nao consegui achar o controlador do broker: %w", err)
+		return fmt.Errorf("não consegui achar o controlador do broker: %w", err)
 	}
 	leader, err := kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
 	if err != nil {
-		return fmt.Errorf("nao consegui falar com o controlador do broker: %w", err)
+		return fmt.Errorf("não consegui falar com o controlador do broker: %w", err)
 	}
 	defer func() { _ = leader.Close() }()
 
@@ -59,7 +59,7 @@ func createTopics(conn *kafka.Conn, topics ...string) error {
 		settings = append(settings, kafka.TopicConfig{Topic: topic, NumPartitions: 1, ReplicationFactor: 1})
 	}
 	if err := leader.CreateTopics(settings...); err != nil {
-		return fmt.Errorf("nao consegui criar os topicos %v: %w", topics, err)
+		return fmt.Errorf("não consegui criar os tópicos %v: %w", topics, err)
 	}
 	for _, topic := range topics {
 		if err := waitForLeader(conn, topic); err != nil {
@@ -87,24 +87,24 @@ func untilReadyWithin(wait, interval time.Duration, what string, attempt func() 
 			return nil
 		}
 		if !time.Now().Before(deadline) {
-			return fmt.Errorf("%s nao ficou pronto em %s: %w", what, wait, last)
+			return fmt.Errorf("%s não ficou pronto em %s: %w", what, wait, last)
 		}
 		time.Sleep(interval)
 	}
 }
 
 func waitForLeader(conn *kafka.Conn, topic string) error {
-	return untilReady(fmt.Sprintf("o topico %q", topic), func() error {
+	return untilReady(fmt.Sprintf("o tópico %q", topic), func() error {
 		partitions, err := conn.ReadPartitions(topic)
 		if err != nil {
 			return err
 		}
 		if len(partitions) == 0 {
-			return fmt.Errorf("nenhuma particao")
+			return fmt.Errorf("nenhuma partição")
 		}
 		for _, partition := range partitions {
 			if partition.Leader.Host == "" {
-				return fmt.Errorf("particao %d sem lider eleito", partition.ID)
+				return fmt.Errorf("partição %d sem líder eleito", partition.ID)
 			}
 		}
 		return nil
@@ -114,7 +114,7 @@ func waitForLeader(conn *kafka.Conn, topic string) error {
 func (processor *Processor) Start() error {
 	conn, err := kafka.Dial("tcp", processor.options.Brokers[0])
 	if err != nil {
-		return fmt.Errorf("nao consegui falar com o broker: %w", err)
+		return fmt.Errorf("não consegui falar com o broker: %w", err)
 	}
 	defer func() { _ = conn.Close() }()
 
@@ -128,7 +128,7 @@ func (processor *Processor) Start() error {
 
 	partitions, err := conn.ReadPartitions(processor.options.Input)
 	if err != nil {
-		return fmt.Errorf("nao consegui ler as particoes de %q: %w", processor.options.Input, err)
+		return fmt.Errorf("não consegui ler as partições de %q: %w", processor.options.Input, err)
 	}
 
 	processor.writer = &kafka.Writer{
@@ -163,7 +163,7 @@ func (processor *Processor) Start() error {
 		if err := reader.SetOffset(offset); err != nil {
 			cancel()
 			_ = reader.Close()
-			return fmt.Errorf("nao consegui posicionar a leitura da particao %d: %w", partition.ID, err)
+			return fmt.Errorf("não consegui posicionar a leitura da partição %d: %w", partition.ID, err)
 		}
 		processor.readers = append(processor.readers, reader)
 
@@ -201,16 +201,16 @@ func (processor *Processor) Start() error {
 
 func lastOffset(broker, topic string, partition int) (int64, error) {
 	var offset int64
-	err := untilReady(fmt.Sprintf("a particao %d de %q", partition, topic), func() error {
+	err := untilReady(fmt.Sprintf("a partição %d de %q", partition, topic), func() error {
 		leader, err := kafka.DialLeader(context.Background(), "tcp", broker, topic, partition)
 		if err != nil {
-			return fmt.Errorf("nao consegui falar com o lider: %w", err)
+			return fmt.Errorf("não consegui falar com o líder: %w", err)
 		}
 		defer func() { _ = leader.Close() }()
 
 		offset, err = leader.ReadLastOffset()
 		if err != nil {
-			return fmt.Errorf("nao consegui ler o offset: %w", err)
+			return fmt.Errorf("não consegui ler o offset: %w", err)
 		}
 		return nil
 	})

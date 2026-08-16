@@ -40,7 +40,7 @@ func TestRampSchedulesByRateIntegral(t *testing.T) {
 	half := plan.InstantOf(250)
 	expected := 7071 * time.Millisecond
 	if difference := half - expected; difference > 5*time.Millisecond || difference < -5*time.Millisecond {
-		t.Errorf("metade das requisicoes em %v, esperado ~%v", half, expected)
+		t.Errorf("metade das requisições em %v, esperado ~%v", half, expected)
 	}
 }
 
@@ -52,7 +52,7 @@ func TestSequentialPhasesSumDurationAndCount(t *testing.T) {
 	)
 
 	if duration := plan.Duration(); duration != 6*time.Second {
-		t.Errorf("duracao = %v, esperado 6s", duration)
+		t.Errorf("duração = %v, esperado 6s", duration)
 	}
 	if total := plan.TotalRequests(); total != 100+300+500 {
 		t.Errorf("total = %d, esperado 900", total)
@@ -75,7 +75,7 @@ func TestInstantsAreMonotonic(t *testing.T) {
 			t.Fatalf("instante %d (%v) veio antes do anterior (%v)", index, instant, previous)
 		}
 		if instant > plan.Duration() {
-			t.Fatalf("instante %d (%v) passou da duracao do plano (%v)", index, instant, plan.Duration())
+			t.Fatalf("instante %d (%v) passou da duração do plano (%v)", index, instant, plan.Duration())
 		}
 		previous = instant
 	}

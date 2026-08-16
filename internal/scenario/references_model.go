@@ -20,7 +20,7 @@ func CheckReferences(spec *Spec) error {
 	missing := map[string]bool{}
 
 	for name, value := range spec.Vars {
-		if err := checkText(known, value, fmt.Sprintf("variavel %q", name), missing); err != nil {
+		if err := checkText(known, value, fmt.Sprintf("variável %q", name), missing); err != nil {
 			return err
 		}
 	}

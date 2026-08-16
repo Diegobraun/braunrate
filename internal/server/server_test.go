@@ -26,7 +26,7 @@ func target(t *testing.T) *testsupport.Server {
 	t.Helper()
 	fake := testsupport.New(testsupport.Options{Latency: time.Millisecond})
 	if err := fake.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("alvo nao subiu: %v", err)
+		t.Fatalf("alvo não subiu: %v", err)
 	}
 	t.Cleanup(func() { _ = fake.Close() })
 	return fake
@@ -37,7 +37,7 @@ func directoryWith(t *testing.T, files map[string]string) string {
 	directory := t.TempDir()
 	for name, content := range files {
 		if err := os.WriteFile(filepath.Join(directory, name), []byte(content), 0o644); err != nil {
-			t.Fatalf("nao consegui escrever %s: %v", name, err)
+			t.Fatalf("não consegui escrever %s: %v", name, err)
 		}
 	}
 	return directory
@@ -73,11 +73,11 @@ func call(t *testing.T, method, url string) (int, []byte) {
 	t.Helper()
 	request, err := http.NewRequest(method, url, nil)
 	if err != nil {
-		t.Fatalf("requisicao invalida: %v", err)
+		t.Fatalf("requisição inválida: %v", err)
 	}
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
-		t.Fatalf("o servidor nao respondeu: %v", err)
+		t.Fatalf("o servidor não respondeu: %v", err)
 	}
 	defer func() { _ = response.Body.Close() }()
 	body, _ := io.ReadAll(response.Body)
@@ -91,14 +91,14 @@ func waitForRun(t *testing.T, base, id string) map[string]any {
 		status, body := call(t, http.MethodGet, base+"/runs/"+id)
 		var answer map[string]any
 		if err := json.Unmarshal(body, &answer); err != nil {
-			t.Fatalf("resposta nao e JSON: %s", body)
+			t.Fatalf("resposta não e JSON: %s", body)
 		}
 		if status == http.StatusOK && answer["status"] != "running" {
 			return answer
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	t.Fatalf("a execucao %s nao terminou", id)
+	t.Fatalf("a execução %s não terminou", id)
 	return nil
 }
 
@@ -106,11 +106,11 @@ func startRun(t *testing.T, base, name string) string {
 	t.Helper()
 	status, body := call(t, http.MethodPost, base+"/scenarios/"+name+"/runs")
 	if status != http.StatusAccepted {
-		t.Fatalf("inicio da execucao respondeu %d: %s", status, body)
+		t.Fatalf("inicio da execução respondeu %d: %s", status, body)
 	}
 	var answer struct{ ID string }
 	if err := json.Unmarshal(body, &answer); err != nil {
-		t.Fatalf("resposta nao e JSON: %s", body)
+		t.Fatalf("resposta não e JSON: %s", body)
 	}
 	return answer.ID
 }
@@ -130,17 +130,17 @@ func TestServerAndCLIProduceTheSameDocument(t *testing.T) {
 	for attempt := 1; attempt <= 2; attempt++ {
 		fromCLI, err := runner.Execute(context.Background(), filepath.Join(directory, "cenario.yaml"), runner.DefaultOptions(version))
 		if err != nil {
-			t.Fatalf("execucao pela CLI falhou: %v", err)
+			t.Fatalf("execução pela CLI falhou: %v", err)
 		}
 
 		answer := waitForRun(t, base, startRun(t, base, "cenario.yaml"))
 		body, err := json.Marshal(answer)
 		if err != nil {
-			t.Fatalf("nao consegui reserializar: %v", err)
+			t.Fatalf("não consegui reserializar: %v", err)
 		}
 		var fromServer metrics.Document
 		if err := json.Unmarshal(body, &fromServer); err != nil {
-			t.Fatalf("a resposta nao e um documento de resultado: %v", err)
+			t.Fatalf("a resposta não e um documento de resultado: %v", err)
 		}
 
 		got, want := comparable(fromServer), comparable(fromCLI.Document)
@@ -148,7 +148,7 @@ func TestServerAndCLIProduceTheSameDocument(t *testing.T) {
 			return
 		}
 		if attempt < 2 && (!fromServer.Valid() || !fromCLI.Document.Valid()) {
-			t.Logf("uma das execucoes saiu invalida numa maquina ocupada; repetindo o par:\n servidor: %s\n cli:      %s", got, want)
+			t.Logf("uma das execuções saiu inválida numa máquina ocupada; repetindo o par:\n servidor: %s\n cli:      %s", got, want)
 			continue
 		}
 		t.Fatalf("o servidor produziu documento diferente do da CLI:\n servidor: %s\n cli:      %s", got, want)
@@ -181,12 +181,12 @@ func TestBrokenScenarioIsRefusedWithTheSameMessageAndThePosition(t *testing.T) {
 
 	_, _, cliError := runner.Load(filepath.Join(directory, "quebrado.yaml"))
 	if cliError == nil {
-		t.Fatal("a CLI aceitou o cenario quebrado")
+		t.Fatal("a CLI aceitou o cenário quebrado")
 	}
 
 	status, body := call(t, http.MethodPost, base+"/scenarios/quebrado.yaml/validate")
 	if status != http.StatusUnprocessableEntity {
-		t.Fatalf("cenario quebrado respondeu %d: %s", status, body)
+		t.Fatalf("cenário quebrado respondeu %d: %s", status, body)
 	}
 	var answer struct {
 		Valid   bool
@@ -195,7 +195,7 @@ func TestBrokenScenarioIsRefusedWithTheSameMessageAndThePosition(t *testing.T) {
 		Column  int
 	}
 	if err := json.Unmarshal(body, &answer); err != nil {
-		t.Fatalf("resposta nao e JSON: %s", body)
+		t.Fatalf("resposta não e JSON: %s", body)
 	}
 	if answer.Valid {
 		t.Fatal("o servidor aprovou o que a CLI recusou")
@@ -204,7 +204,7 @@ func TestBrokenScenarioIsRefusedWithTheSameMessageAndThePosition(t *testing.T) {
 		t.Fatalf("mensagens diferentes:\n servidor: %s\n cli:      %s", answer.Message, cliError.Error())
 	}
 	if answer.Line == 0 || answer.Column == 0 {
-		t.Fatalf("a resposta nao carrega linha e coluna: %s", body)
+		t.Fatalf("a resposta não carrega linha e coluna: %s", body)
 	}
 }
 
@@ -215,22 +215,22 @@ func TestValidScenarioAnswersTheSameLinesTheTerminalPrints(t *testing.T) {
 
 	spec, plan, err := runner.Load(filepath.Join(directory, "cenario.yaml"))
 	if err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 
 	status, body := call(t, http.MethodPost, base+"/scenarios/cenario.yaml/validate")
 	if status != http.StatusOK {
-		t.Fatalf("validacao respondeu %d: %s", status, body)
+		t.Fatalf("validação respondeu %d: %s", status, body)
 	}
 	var answer struct {
 		Valid bool
 		Lines []string
 	}
 	if err := json.Unmarshal(body, &answer); err != nil {
-		t.Fatalf("resposta nao e JSON: %s", body)
+		t.Fatalf("resposta não e JSON: %s", body)
 	}
 	if !answer.Valid || strings.Join(answer.Lines, "\n") != strings.Join(runner.Describe(spec, plan), "\n") {
-		t.Fatalf("o servidor descreveu o cenario de outro jeito:\n%v", answer.Lines)
+		t.Fatalf("o servidor descreveu o cenário de outro jeito:\n%v", answer.Lines)
 	}
 }
 
@@ -245,15 +245,15 @@ func TestSecondRunIsRefusedWhileTheFirstIsRunning(t *testing.T) {
 
 	status, body := call(t, http.MethodPost, base+"/scenarios/cenario.yaml/runs")
 	if status != http.StatusConflict {
-		t.Fatalf("a segunda execucao respondeu %d: %s", status, body)
+		t.Fatalf("a segunda execução respondeu %d: %s", status, body)
 	}
 	if !strings.Contains(string(body), "-concurrent") {
-		t.Fatalf("a recusa nao diz como aceitar a contaminacao: %s", body)
+		t.Fatalf("a recusa não diz como aceitar a contaminação: %s", body)
 	}
 
 	waitForRun(t, base, first)
 	if status, body := call(t, http.MethodPost, base+"/scenarios/cenario.yaml/runs"); status != http.StatusAccepted {
-		t.Fatalf("depois de terminar, a execucao seguinte respondeu %d: %s", status, body)
+		t.Fatalf("depois de terminar, a execução seguinte respondeu %d: %s", status, body)
 	}
 }
 
@@ -264,15 +264,15 @@ func TestConcurrentIsOptInAndSaysSoOnStartup(t *testing.T) {
 
 	startRun(t, base, "cenario.yaml")
 	if status, body := call(t, http.MethodPost, base+"/scenarios/cenario.yaml/runs"); status != http.StatusAccepted {
-		t.Fatalf("com -concurrent a segunda execucao respondeu %d: %s", status, body)
+		t.Fatalf("com -concurrent a segunda execução respondeu %d: %s", status, body)
 	}
 
 	options := server.DefaultOptions(version)
 	options.Concurrent = true
 	warning := strings.Join(server.New(options).StartupWarning(), "\n")
-	for _, fragment := range []string{"Sem autenticacao", "127.0.0.1", "Execucao concorrente ligada"} {
+	for _, fragment := range []string{"Sem autenticação", "127.0.0.1", "Execução concorrente ligada"} {
 		if !strings.Contains(warning, fragment) {
-			t.Fatalf("o aviso de partida nao diz %q:\n%s", fragment, warning)
+			t.Fatalf("o aviso de partida não diz %q:\n%s", fragment, warning)
 		}
 	}
 }
@@ -297,13 +297,13 @@ func TestRunListCarriesVerdictAndExitCode(t *testing.T) {
 		}
 	}
 	if err := json.Unmarshal(body, &answer); err != nil {
-		t.Fatalf("resposta nao e JSON: %s", body)
+		t.Fatalf("resposta não e JSON: %s", body)
 	}
 	if len(answer.Runs) != 1 {
-		t.Fatalf("esperava uma execucao na lista: %s", body)
+		t.Fatalf("esperava uma execução na lista: %s", body)
 	}
 	if answer.Runs[0].Verdict == "" || answer.Runs[0].Status != "done" {
-		t.Fatalf("a lista nao diz o veredito: %s", body)
+		t.Fatalf("a lista não diz o veredito: %s", body)
 	}
 }
 
@@ -319,27 +319,27 @@ func TestReportAndComparisonComeFromTheSameProjectionsTheCLIUses(t *testing.T) {
 
 	status, body := call(t, http.MethodGet, base+"/runs/"+after+"/report")
 	if status != http.StatusOK || !strings.Contains(string(body), "<html") {
-		t.Fatalf("o relatorio HTML respondeu %d: %.200s", status, body)
+		t.Fatalf("o relatório HTML respondeu %d: %.200s", status, body)
 	}
 
 	status, body = call(t, http.MethodGet, base+"/runs/"+before+"/comparison/"+after)
 	if status != http.StatusOK {
-		t.Fatalf("a comparacao respondeu %d: %s", status, body)
+		t.Fatalf("a comparação respondeu %d: %s", status, body)
 	}
 	if !strings.Contains(string(body), "passos") && !strings.Contains(string(body), "steps") {
-		t.Fatalf("a comparacao nao trouxe os passos: %.300s", body)
+		t.Fatalf("a comparação não trouxe os passos: %.300s", body)
 	}
 
 	status, body = call(t, http.MethodGet, base+"/runs/"+before+"/comparison/"+after+"/report")
 	if status != http.StatusOK || !strings.Contains(string(body), "<html") {
-		t.Fatalf("a comparacao em HTML respondeu %d: %.200s", status, body)
+		t.Fatalf("a comparação em HTML respondeu %d: %.200s", status, body)
 	}
 	if !strings.Contains(string(body), "antes e depois") {
-		t.Fatalf("a pagina de comparacao nao se identifica como comparacao: %.300s", body)
+		t.Fatalf("a página de comparação não se identifica como comparação: %.300s", body)
 	}
 	for _, forbidden := range []string{"<script", "src=", "@import", "<link"} {
 		if strings.Contains(string(body), forbidden) {
-			t.Fatalf("a comparacao em HTML deixou de ser autocontida: encontrei %q", forbidden)
+			t.Fatalf("a comparação em HTML deixou de ser autocontida: encontrei %q", forbidden)
 		}
 	}
 }
@@ -360,10 +360,10 @@ func TestStreamReplaysWhatAlreadyHappenedAndEndsWithTheVerdict(t *testing.T) {
 	}
 	text := string(body)
 	if !strings.Contains(text, "executando") {
-		t.Fatalf("o stream nao replicou o inicio:\n%s", text)
+		t.Fatalf("o stream não replicou o inicio:\n%s", text)
 	}
-	if !strings.Contains(text, "codigo") {
-		t.Fatalf("o stream nao termina com o veredito:\n%s", text)
+	if !strings.Contains(text, "código") {
+		t.Fatalf("o stream não termina com o veredito:\n%s", text)
 	}
 }
 
@@ -384,9 +384,9 @@ func TestUnknownRunSaysWhereTheRunsLive(t *testing.T) {
 
 	status, body := call(t, http.MethodGet, base+"/runs/r999")
 	if status != http.StatusNotFound {
-		t.Fatalf("execucao inexistente respondeu %d: %s", status, body)
+		t.Fatalf("execução inexistente respondeu %d: %s", status, body)
 	}
-	if !strings.Contains(string(body), "memoria") {
-		t.Fatalf("a mensagem nao diz que as execucoes vivem na memoria: %s", body)
+	if !strings.Contains(string(body), "memória") {
+		t.Fatalf("a mensagem não diz que as execuções vivem na memória: %s", body)
 	}
 }

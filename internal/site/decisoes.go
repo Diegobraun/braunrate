@@ -14,7 +14,7 @@ func DecisionsPage(repositoryRoot string) (Page, error) {
 	directory := filepath.Join(repositoryRoot, adrDirectory)
 	entries, err := os.ReadDir(directory)
 	if err != nil {
-		return Page{}, fmt.Errorf("nao consegui ler %s: %w", directory, err)
+		return Page{}, fmt.Errorf("não consegui ler %s: %w", directory, err)
 	}
 	var names []string
 	for _, entry := range entries {
@@ -25,23 +25,23 @@ func DecisionsPage(repositoryRoot string) (Page, error) {
 	sort.Strings(names)
 
 	var markdown strings.Builder
-	markdown.WriteString(`# Decisoes
+	markdown.WriteString(`# Decisões
 
-Cada uma registra o que foi decidido, o que foi recusado e o criterio que
-reabre a discussao. Os arquivos completos estao em ` + "`docs/adr`" + ` no
+Cada uma registra o que foi decidido, o que foi recusado e o critério que
+reabre a discussao. Os arquivos completos estão em ` + "`docs/adr`" + ` no
 repositorio.
 
-| # | decisao |
+| # | decisão |
 |---|---|
 `)
 	for _, name := range names {
 		content, err := os.ReadFile(filepath.Join(directory, name))
 		if err != nil {
-			return Page{}, fmt.Errorf("nao consegui ler %s: %w", name, err)
+			return Page{}, fmt.Errorf("não consegui ler %s: %w", name, err)
 		}
 		title, found := firstHeading(string(content))
 		if !found {
-			return Page{}, fmt.Errorf("%s nao comeca com um titulo '# '", name)
+			return Page{}, fmt.Errorf("%s não começa com um título '# '", name)
 		}
 		link := "https://github.com/Diegobraun/braunrate/blob/main/docs/adr/" + name
 		number, decision := splitTitle(title)

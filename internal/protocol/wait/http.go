@@ -111,14 +111,14 @@ func waitDetail(config *Config, address string, timeout, interval time.Duration,
 	polls int, status int, body []byte, err string) string {
 
 	if err != "" {
-		return fmt.Sprintf("esperei %s por %s em %s e a ultima tentativa falhou: %s (%d sondagens a cada %s)",
+		return fmt.Sprintf("esperei %s por %s em %s e a última tentativa falhou: %s (%d sondagens a cada %s)",
 			timeout, config.To.describe(), address, err, polls, interval)
 	}
 	sample := string(body)
 	if len(sample) > 120 {
 		sample = sample[:120] + "…"
 	}
-	return fmt.Sprintf("esperei %s por %s em %s e o efeito nao apareceu; ultima resposta: status %d, corpo %q (%d sondagens a cada %s)",
+	return fmt.Sprintf("esperei %s por %s em %s e o efeito não apareceu; última resposta: status %d, corpo %q (%d sondagens a cada %s)",
 		timeout, config.To.describe(), address, status, sample, polls, interval)
 }
 
@@ -156,7 +156,7 @@ func readCondition(key string, raw map[string]string) (Condition, error) {
 		case "status":
 			number, err := strconv.Atoi(strings.TrimSpace(value))
 			if err != nil {
-				return condition, fmt.Errorf("status invalido em %s: %q (use um numero, por exemplo 200)", key, value)
+				return condition, fmt.Errorf("status inválido em %s: %q (use um número, por exemplo 200)", key, value)
 			}
 			condition.Status = number
 		case "corpo_contem":

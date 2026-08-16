@@ -159,7 +159,7 @@ func buildPage(document metrics.Document) htmlPage {
 
 	for _, finding := range document.Sanity.Findings {
 		page.Warnings = append(page.Warnings, htmlWarning{
-			Class: "alta", Label: "resultado invalido",
+			Class: "alta", Label: "resultado inválido",
 			Message: finding.Message, Evidence: finding.Evidence,
 		})
 	}
@@ -171,9 +171,9 @@ func buildPage(document metrics.Document) htmlPage {
 			if document.Sanity.Checked {
 				continue
 			}
-			line.Class, line.Label = "alta", "resultado invalido"
+			line.Class, line.Label = "alta", "resultado inválido"
 		case metrics.SeverityMedium:
-			line.Class, line.Label = "media", "atencao"
+			line.Class, line.Label = "media", "atenção"
 		}
 		page.Warnings = append(page.Warnings, line)
 	}
@@ -207,11 +207,11 @@ func buildVerdict(document metrics.Document) htmlVerdict {
 
 	if !document.Valid() {
 		verdict.Class = "invalido"
-		verdict.Sentence = "Resultado invalido: a execucao nao mediu o que se propos a medir."
-		verdict.Subtitle = "Isto nao e veredito sobre o alvo — e a medicao que nao vale, e por isso nenhuma regra de SLO foi avaliada."
+		verdict.Sentence = "Resultado inválido: a execução não mediu o que se propôs a medir."
+		verdict.Subtitle = "Isto não é veredito sobre o alvo — é a medição que não vale, e por isso nenhuma regra de SLO foi avaliada."
 		if !document.Sanity.Checked {
-			verdict.Sentence = "Resultado invalido: o gerador nao sustentou a carga declarada."
-			verdict.Subtitle = "Os numeros abaixo medem o gerador, nao o alvo. Rode de novo com taxa menor ou em uma maquina maior antes de tirar qualquer conclusao."
+			verdict.Sentence = "Resultado inválido: o gerador não sustentou a carga declarada."
+			verdict.Subtitle = "Os números abaixo medem o gerador, não o alvo. Rode de novo com taxa menor ou em uma máquina maior antes de tirar qualquer conclusão."
 		}
 		return verdict
 	}
@@ -219,9 +219,9 @@ func buildVerdict(document metrics.Document) htmlVerdict {
 	switch {
 	case len(document.SLO.Evaluations) == 0:
 		verdict.Class = "neutro"
-		verdict.Sentence = fmt.Sprintf("%s respondeu %s requisicoes com %s de erro.",
+		verdict.Sentence = fmt.Sprintf("%s respondeu %s requisições com %s de erro.",
 			document.Run.Target, thousands(document.Overall.Count), percentage(document.Overall.ErrorRate*100))
-		verdict.Subtitle = "Nenhum slo declarado: esta execucao descreve, mas nao aprova nem reprova. Declare um bloco 'slo' para virar gate de CI."
+		verdict.Subtitle = "Nenhum slo declarado: esta execução descreve, mas não aprova nem reprova. Declare um bloco 'slo' para virar gate de CI."
 	case document.SLO.Passed:
 		verdict.Class = "passou"
 		verdict.Sentence = document.SLO.Sentence
@@ -237,11 +237,11 @@ func buildVerdict(document metrics.Document) htmlVerdict {
 func phraseVolume(document metrics.Document) string {
 	duration := (time.Duration(document.Run.DurationMs) * time.Millisecond).Round(time.Second)
 	if document.Journey.Started > 0 {
-		return fmt.Sprintf("%s jornadas em %s, %s requisicoes a %.0f por segundo, %s de erro.",
+		return fmt.Sprintf("%s jornadas em %s, %s requisições a %.0f por segundo, %s de erro.",
 			thousands(document.Journey.Started), duration, thousands(document.Overall.Count),
 			document.Overall.EffectiveRate, percentage(document.Overall.ErrorRate*100))
 	}
-	return fmt.Sprintf("%s requisicoes em %s, %.0f por segundo, %s de erro.",
+	return fmt.Sprintf("%s requisições em %s, %.0f por segundo, %s de erro.",
 		thousands(document.Overall.Count), duration, document.Overall.EffectiveRate,
 		percentage(document.Overall.ErrorRate*100))
 }
@@ -266,24 +266,24 @@ func reliabilitySentences(document metrics.Document) []string {
 	scheduling := document.Scheduling
 	if document.Closed() {
 		return []string{
-			fmt.Sprintf("Nao ha agendamento para comparar: a taxa efetiva de %.0f/s foi consequencia do tempo de resposta do alvo, nao uma carga declarada.",
+			fmt.Sprintf("Não há agendamento para comparar: a taxa efetiva de %.0f/s foi consequência do tempo de resposta do alvo, não uma carga declarada.",
 				document.Overall.EffectiveRate),
-			"Se o alvo ficar mais lento, os usuarios virtuais pedem menos e a carga cai junto — o atraso nao aparece nos numeros.",
+			"Se o alvo ficar mais lento, os usuários virtuais pedem menos e a carga cai junto — o atraso não aparece nos números.",
 		}
 	}
 	if scheduling.LateDispatches == 0 && scheduling.DroppedByInflightLimit == 0 {
-		sentences = append(sentences, "O gerador disparou todas as requisicoes na hora certa, entao os numeros acima valem.")
+		sentences = append(sentences, "O gerador disparou todas as requisições na hora certa, então os números acima valem.")
 	}
-	sentences = append(sentences, fmt.Sprintf("Atraso tipico para disparar: %s; pior caso: %s. O tempo de resposta ja desconta esse atraso.",
+	sentences = append(sentences, fmt.Sprintf("Atraso típico para disparar: %s; pior caso: %s. O tempo de resposta já desconta esse atraso.",
 		milliseconds(scheduling.Skew.P50), milliseconds(scheduling.Skew.Max)))
 
 	hidden := document.Overall.Latency.P99 - document.Overall.ServiceLatency.P99
 	if hidden >= 1 {
-		sentences = append(sentences, fmt.Sprintf("Uma ferramenta de laco fechado teria reportado %s a menos no 99%%: e a parte do atraso que so aparece contando do instante agendado.",
+		sentences = append(sentences, fmt.Sprintf("Uma ferramenta de laço fechado teria reportado %s a menos no 99%%: é a parte do atraso que só aparece contando do instante agendado.",
 			milliseconds(hidden)))
 	}
 	if scheduling.PeakInflight > 0 {
-		sentences = append(sentences, fmt.Sprintf("Pico de %s requisicoes ao mesmo tempo, com limite de %s.",
+		sentences = append(sentences, fmt.Sprintf("Pico de %s requisições ao mesmo tempo, com limite de %s.",
 			thousands(scheduling.PeakInflight), thousands(document.Run.MaxInflight)))
 	}
 	return sentences
@@ -294,7 +294,7 @@ func planSentences(document metrics.Document) []string {
 	for _, phase := range document.Run.AppliedPlan {
 		duration := (time.Duration(phase.DurationMs) * time.Millisecond).Round(time.Second)
 		if phase.Kind == "rampa" {
-			sentences = append(sentences, fmt.Sprintf("rampa de %.0f/s ate %.0f/s durante %s", phase.From, phase.To, duration))
+			sentences = append(sentences, fmt.Sprintf("rampa de %.0f/s até %.0f/s durante %s", phase.From, phase.To, duration))
 			continue
 		}
 		sentences = append(sentences, fmt.Sprintf("%s de %.0f/s durante %s", phase.Kind, phase.To, duration))
@@ -304,7 +304,7 @@ func planSentences(document metrics.Document) []string {
 
 func environmentSentences(document metrics.Document) []string {
 	sentences := []string{
-		fmt.Sprintf("%s, %s/%s, %d nucleos", document.Environment.Host, document.Environment.OS,
+		fmt.Sprintf("%s, %s/%s, %d núcleos", document.Environment.Host, document.Environment.OS,
 			document.Environment.Arch, document.Environment.Cores),
 		fmt.Sprintf("braunrate %s (%s), gerador e alvo medidos como declarado acima", document.Version, document.Environment.GoVersion),
 	}
@@ -330,7 +330,7 @@ func environmentSentences(document metrics.Document) []string {
 		sentences = append(sentences, sentence)
 	}
 	if document.Run.AuthObtains > 0 {
-		sentences = append(sentences, fmt.Sprintf("Autenticacao obtida %s e reaproveitada por todas as jornadas. Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.",
+		sentences = append(sentences, fmt.Sprintf("Autenticação obtida %s e reaproveitada por todas as jornadas. Se o alvo tiver cache, rate limit ou sharding por token, este número fica otimista.",
 			texto.Times(document.Run.AuthObtains)))
 	}
 	return sentences
@@ -449,14 +449,14 @@ var htmlTemplate = template.Must(template.Must(template.New("report").Parse(page
 <body>
 <main>
 <header>
-  <div class="cenario">{{.Title}} — {{.Document.Run.Target}}</div>
+  <div class="cenário">{{.Title}} — {{.Document.Run.Target}}</div>
   <h1 class="{{.Verdict.Class}}">{{.Verdict.Sentence}}</h1>
   {{if .Verdict.Subtitle}}<p class="subtitulo">{{.Verdict.Subtitle}}</p>{{end}}
 </header>
 
 {{if .ClosedLoop}}
-<div class="aviso media">
-  <div class="rotulo">laco fechado</div>
+<div class="aviso média">
+  <div class="rotulo">laço fechado</div>
   <div>{{.ClosedLoop}}</div>
 </div>
 {{end}}
@@ -470,11 +470,11 @@ var htmlTemplate = template.Must(template.Must(template.New("report").Parse(page
 {{end}}
 
 <h2>O que aconteceu</h2>
-<ul class="numeros">
-  <li><div class="valor">{{.Count}}</div><div class="rotulo">requisicoes</div></li>
+<ul class="números">
+  <li><div class="valor">{{.Count}}</div><div class="rotulo">requisições</div></li>
   <li><div class="valor">{{.Rate}}</div><div class="rotulo">por segundo</div></li>
   <li><div class="valor">{{.ErrorRate}}</div><div class="rotulo">de erro</div></li>
-  <li><div class="valor">{{.P95}}</div><div class="rotulo">95% das respostas ate</div></li>
+  <li><div class="valor">{{.P95}}</div><div class="rotulo">95% das respostas até</div></li>
 </ul>
 
 {{if .Journey.Started}}
@@ -483,7 +483,7 @@ var htmlTemplate = template.Must(template.Must(template.New("report").Parse(page
 <table>
   <tr><th>jornada</th><th>metade</th><th>95%</th><th>99%</th><th>pior</th></tr>
   <tr>
-    <td>do instante agendado ao ultimo passo</td>
+    <td>do instante agendado ao último passo</td>
     <td>{{.JourneyP50}}</td><td>{{.JourneyP95}}</td>
     <td>{{.JourneyP99}}</td><td>{{.JourneyMax}}</td>
   </tr>
@@ -492,10 +492,10 @@ var htmlTemplate = template.Must(template.Must(template.New("report").Parse(page
 
 <h2>Por passo</h2>
 {{if not .Steps}}
-<p class="nota">Nenhum passo registrou amostra: a execucao nao chegou a medir nada. Rode <code>braunrate debug</code> para ver onde a iteracao para.</p>
+<p class="nota">Nenhum passo registrou amostra: a execução não chegou a medir nada. Rode <code>braunrate debug</code> para ver onde a iteração para.</p>
 {{else}}
 <table>
-  <tr><th>passo</th><th>requisicoes</th><th>metade</th><th>95%</th><th>99%</th><th>99,9%</th><th>pior</th><th>erros</th></tr>
+  <tr><th>passo</th><th>requisições</th><th>metade</th><th>95%</th><th>99%</th><th>99,9%</th><th>pior</th><th>erros</th></tr>
   {{range .Steps}}
   <tr>
     <td>{{if .NeverRan}}{{.Name}}{{else}}<span class="marca">({{.Mark}})</span> {{.Name}}{{end}}</td>
@@ -506,24 +506,24 @@ var htmlTemplate = template.Must(template.Must(template.New("report").Parse(page
   {{end}}
 </table>
 {{if .HasNeverRan}}
-<p class="nota">Passo com traco nunca chegou a executar: a iteracao parou antes dele. O motivo esta em "Erros", no passo que falhou primeiro.</p>
+<p class="nota">Passo com traço nunca chegou a executar: a iteração parou antes dele. O motivo está em "Erros", no passo que falhou primeiro.</p>
 {{end}}
 {{end}}
 {{- if .Mix}}
 <h2>Mix declarado e observado</h2>
 <table>
-  <tr><th>alternativa</th><th>declarado</th><th>observado</th><th>requisicoes</th></tr>
+  <tr><th>alternativa</th><th>declarado</th><th>observado</th><th>requisições</th></tr>
   {{range .Mix}}
   <tr><td>{{.Name}}</td><td>{{.Declared}}</td><td>{{.Observed}}</td><td>{{.Count}} de {{.Total}}</td></tr>
   {{end}}
 </table>
 {{- end}}
 {{if .ClosedLoop}}
-<p class="nota">(2) tempo de resposta puro. No laco fechado nao existe instante agendado: o usuario virtual so pede de novo depois da resposta anterior, entao nenhum atraso de fila aparece nestes numeros.</p>
+<p class="nota">(2) tempo de resposta puro. No laço fechado não existe instante agendado: o usuário virtual só pede de novo depois da resposta anterior, então nenhum atraso de fila aparece nestes números.</p>
 {{else}}
-<p class="nota">(1) tempo contado do instante em que a requisicao deveria ter partido — inclui qualquer atraso e por isso nao esconde travada do alvo.</p>
+<p class="nota">(1) tempo contado do instante em que a requisição deveria ter partido — inclui qualquer atraso e por isso não esconde travada do alvo.</p>
 {{if .HasServiceLatency}}
-<p class="nota">(2) tempo de resposta puro, contado de quando o passo anterior terminou. Esse passo depende de um valor capturado antes dele, entao nao tem instante agendado proprio. Para a leitura honesta da jornada, use o bloco "A jornada inteira".</p>
+<p class="nota">(2) tempo de resposta puro, contado de quando o passo anterior terminou. Esse passo depende de um valor capturado antes dele, então não tem instante agendado próprio. Para a leitura honesta da jornada, use o bloco "A jornada inteira".</p>
 {{end}}
 {{end}}
 
@@ -541,10 +541,10 @@ var htmlTemplate = template.Must(template.Must(template.New("report").Parse(page
 <h2>SLO</h2>
 <ul class="frases slo">
   {{range .Verdict.Evaluations}}
-  <li>{{if .Untrustworthy}}<span class="sem">sem veredito</span>{{else if .Passed}}<span class="ok">ok</span>{{else}}<span class="nao">falha</span>{{end}}<span>{{.Sentence}}</span></li>
+  <li>{{if .Untrustworthy}}<span class="sem">sem veredito</span>{{else if .Passed}}<span class="ok">ok</span>{{else}}<span class="não">falha</span>{{end}}<span>{{.Sentence}}</span></li>
   {{end}}
   {{range .Verdict.Undeclared}}
-  <li><span class="sem">nao declarado</span><span>{{.}}</span></li>
+  <li><span class="sem">não declarado</span><span>{{.}}</span></li>
   {{end}}
 </ul>
 {{end}}
@@ -552,7 +552,7 @@ var htmlTemplate = template.Must(template.Must(template.New("report").Parse(page
 {{if .ConsumerLag}}
 <h2>Atraso do consumidor</h2>
 <table>
-  <tr><th>grupo</th><th>topico</th><th>atraso</th><th>amostras</th></tr>
+  <tr><th>grupo</th><th>tópico</th><th>atraso</th><th>amostras</th></tr>
   {{range .ConsumerLag}}<tr><td>{{.Group}}</td><td>{{.Topic}}</td><td>{{.Headline}}</td><td>{{.Readings}}</td></tr>{{end}}
 </table>
 <ul class="frases">
@@ -568,21 +568,21 @@ var htmlTemplate = template.Must(template.Must(template.New("report").Parse(page
 </table>
 {{end}}
 
-<h2>Confiabilidade da medicao</h2>
+<h2>Confiabilidade da medição</h2>
 <ul class="frases">
   {{range .Reliability}}<li>{{.}}</li>{{end}}
 </ul>
 
-<h2>Como este numero foi produzido</h2>
+<h2>Como este número foi produzido</h2>
 <ul class="frases">
-  <li>Modelo de chegada {{.Document.Run.Model}}: a carga nao espera o alvo responder, entao travada do alvo aparece na conta.</li>
+  <li>Modelo de chegada {{.Document.Run.Model}}: a carga não espera o alvo responder, então travada do alvo aparece na conta.</li>
   {{range .Plan}}<li>Plano: {{.}}</li>{{end}}
   {{range .Environment}}<li>{{.}}</li>{{end}}
 </ul>
 
 <footer>
-  braunrate {{.Document.Version}} — execucao de {{.GeneratedAt}}, formato de resultado {{.Document.FormatVersion}}.
-  Este arquivo abre sem rede: nao busca script, fonte nem imagem externa.
+  braunrate {{.Document.Version}} — execução de {{.GeneratedAt}}, formato de resultado {{.Document.FormatVersion}}.
+  Este arquivo abre sem rede: não busca script, fonte nem imagem externa.
 </footer>
 </main>
 </body>

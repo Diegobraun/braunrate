@@ -35,7 +35,7 @@ func TestPatternFillsOnlyItsPlaceholders(t *testing.T) {
 	generated := value(t, scenario.Generator{Recipe: "padrao", Format: "PED-######/@@"})
 
 	if !regexp.MustCompile(`^PED-\d{6}/[A-Z]{2}$`).MatchString(generated) {
-		t.Fatalf("formato nao respeitado: %q", generated)
+		t.Fatalf("formato não respeitado: %q", generated)
 	}
 }
 
@@ -69,7 +69,7 @@ func TestGeneratedDocumentsHaveValidCheckDigits(t *testing.T) {
 					t.Fatalf("%s com %d digitos: %q", c.recipe, len(document), document)
 				}
 				if !validCheckDigits(t, document, c.weights) {
-					t.Fatalf("%s com digito verificador invalido: %q", c.recipe, document)
+					t.Fatalf("%s com digito verificador inválido: %q", c.recipe, document)
 				}
 			}
 		})
@@ -150,24 +150,24 @@ cenario:
     verificar: { status: 200 }
 `, server.URL, generated)))
 	if err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 
 	executor, err := engine.New(spec, engine.DefaultOptions())
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	for iteration := 0; iteration < 2; iteration++ {
 		observations, _, err := executor.Debug(context.Background())
 		if err != nil {
-			t.Fatalf("iteracao %d falhou: %v", iteration, err)
+			t.Fatalf("iteração %d falhou: %v", iteration, err)
 		}
 		if len(observations) != 2 {
-			t.Fatalf("iteracao %d parou no passo %d", iteration, len(observations))
+			t.Fatalf("iteração %d parou no passo %d", iteration, len(observations))
 		}
 	}
 	if len(*seen) != 4 {
-		t.Fatalf("esperava 4 requisicoes, chegaram %d", len(*seen))
+		t.Fatalf("esperava 4 requisições, chegaram %d", len(*seen))
 	}
 	return *seen
 }
@@ -179,13 +179,13 @@ func TestGeneratedValueIsStableWithinTheIterationAndNewInTheNext(t *testing.T) {
 	seen := runTwoIterations(t, "uuid")
 
 	if seen[0] != seen[1] {
-		t.Fatalf("a mesma iteracao usou dois valores: %q e %q — chave de idempotencia quebrada", seen[0], seen[1])
+		t.Fatalf("a mesma iteração usou dois valores: %q e %q — chave de idempotência quebrada", seen[0], seen[1])
 	}
 	if seen[2] != seen[3] {
-		t.Fatalf("a segunda iteracao usou dois valores: %q e %q", seen[2], seen[3])
+		t.Fatalf("a segunda iteração usou dois valores: %q e %q", seen[2], seen[3])
 	}
 	if seen[0] == seen[2] {
-		t.Fatalf("as duas iteracoes usaram o mesmo valor %q — a chave nao renovou por jornada", seen[0])
+		t.Fatalf("as duas iterações usaram o mesmo valor %q — a chave não renovou por jornada", seen[0])
 	}
 }
 
@@ -196,7 +196,7 @@ func TestNewPerUseIsExplicitAndChangesAtEveryOccurrence(t *testing.T) {
 		t.Fatalf("declarado 'novo_a_cada: uso' e os dois passos receberam o mesmo valor: %q", seen[0])
 	}
 	if seen[2] == seen[3] {
-		t.Fatalf("declarado 'novo_a_cada: uso' e a segunda iteracao repetiu: %q", seen[2])
+		t.Fatalf("declarado 'novo_a_cada: uso' e a segunda iteração repetiu: %q", seen[2])
 	}
 }
 
@@ -228,10 +228,10 @@ func TestInlinePatternProducesTheValueAndNotSilence(t *testing.T) {
 	generated := value(t, scenario.Generator{Recipe: "padrao(BR-######)"})
 
 	if generated == "" {
-		t.Fatal("padrao(BR-######) devolveu vazio: valor em branco sai para o alvo sem ninguem ser avisado")
+		t.Fatal("padrao(BR-######) devolveu vazio: valor em branco sai para o alvo sem ninguém ser avisado")
 	}
 	if !regexp.MustCompile(`^BR-\d{6}$`).MatchString(generated) {
-		t.Fatalf("formato nao respeitado: %q", generated)
+		t.Fatalf("formato não respeitado: %q", generated)
 	}
 }
 
@@ -255,9 +255,9 @@ func TestInlinePatternWithoutFormatSaysWhatIsMissing(t *testing.T) {
 		_, err = open.Next(0)
 	}
 	if err == nil {
-		t.Fatal("padrao sem formato passou calado")
+		t.Fatal("padrão sem formato passou calado")
 	}
 	if !strings.Contains(err.Error(), "formato") || !strings.Contains(err.Error(), "######") {
-		t.Fatalf("o erro nao ensina o formato: %v", err)
+		t.Fatalf("o erro não ensina o formato: %v", err)
 	}
 }

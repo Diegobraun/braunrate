@@ -47,9 +47,9 @@ func TestSaturationVerdictSitsExactlyOnOnePercent(t *testing.T) {
 		invalid bool
 	}{
 		{"abaixo de 1% e atraso pontual", 1000, 9, "gerador_com_atraso_pontual", false},
-		{"exatamente 1% ja invalida", 1000, 10, "gerador_saturado", true},
-		{"acima de 1% invalida", 1000, 40, "gerador_saturado", true},
-		{"nenhum atraso nao gera aviso", 1000, 0, "", false},
+		{"exatamente 1% já inválida", 1000, 10, "gerador_saturado", true},
+		{"acima de 1% inválida", 1000, 40, "gerador_saturado", true},
+		{"nenhum atraso não gera aviso", 1000, 0, "", false},
 	}
 
 	for _, c := range cases {
@@ -64,13 +64,13 @@ func TestSaturationVerdictSitsExactlyOnOnePercent(t *testing.T) {
 			}
 			if c.kind == "" {
 				if _, had := warningOfKind(document.Warnings, "gerador_saturado"); had {
-					t.Error("execucao pontual acusou saturacao")
+					t.Error("execução pontual acusou saturacao")
 				}
 				return
 			}
 			warning, had := warningOfKind(document.Warnings, c.kind)
 			if !had {
-				t.Fatalf("aviso %q nao apareceu; avisos: %+v", c.kind, document.Warnings)
+				t.Fatalf("aviso %q não apareceu; avisos: %+v", c.kind, document.Warnings)
 			}
 			if warning.Evidence == "" {
 				t.Error("aviso sem evidencia")
@@ -93,7 +93,7 @@ func TestDegradationIsNotBlamedOnTheTargetWhenDispatchSlipped(t *testing.T) {
 	}
 	warning, had := detectTargetDegradation(punctual)
 	if !had {
-		t.Fatal("com despacho pontual, a degradacao do alvo precisa ser apontada")
+		t.Fatal("com despacho pontual, a degradação do alvo precisa ser apontada")
 	}
 	if !strings.Contains(warning.Message, "despacho continuou pontual") {
 		t.Errorf("mensagem mudou sem o teste acompanhar: %q", warning.Message)
@@ -102,12 +102,12 @@ func TestDegradationIsNotBlamedOnTheTargetWhenDispatchSlipped(t *testing.T) {
 	slipped := punctual
 	slipped.Scheduling.LateDispatches = 40
 	if _, had := detectTargetDegradation(slipped); had {
-		t.Error("com 4% dos despachos atrasados, o relatorio afirmou que o despacho continuou pontual")
+		t.Error("com 4% dos despachos atrasados, o relatório afirmou que o despacho continuou pontual")
 	}
 
 	dropped := punctual
 	dropped.Scheduling.DroppedByInflightLimit = 1
 	if _, had := detectTargetDegradation(dropped); had {
-		t.Error("com requisicao descartada por saturacao, a degradacao nao pode ser atribuida ao alvo")
+		t.Error("com requisição descartada por saturacao, a degradação não pode ser atribuida ao alvo")
 	}
 }

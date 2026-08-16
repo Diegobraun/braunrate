@@ -19,7 +19,7 @@ const jmeterPlan = `<?xml version="1.0" encoding="UTF-8"?>
         <boolProp name="recycle">true</boolProp>
       </CSVDataSet>
       <hashTree/>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Usuarios" enabled="true">
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Usuários" enabled="true">
         <stringProp name="ThreadGroup.num_threads">50</stringProp>
         <stringProp name="ThreadGroup.ramp_time">30</stringProp>
         <stringProp name="ThreadGroup.duration">300</stringProp>
@@ -79,15 +79,15 @@ const jmeterPlan = `<?xml version="1.0" encoding="UTF-8"?>
 func TestImportsJMXIntoParsableScenario(t *testing.T) {
 	importResult, err := importer.FromJMX([]byte(jmeterPlan))
 	if err != nil {
-		t.Fatalf("nao importou: %v", err)
+		t.Fatalf("não importou: %v", err)
 	}
 
 	c, err := scenario.Parse([]byte(importResult.YAML))
 	if err != nil {
-		t.Fatalf("gerei um cenario que o parser recusa:\n%v\n%s", err, importResult.YAML)
+		t.Fatalf("gerei um cenário que o parser recusa:\n%v\n%s", err, importResult.YAML)
 	}
 	if err := c.Validate(); err != nil {
-		t.Fatalf("cenario invalido: %v\n%s", err, importResult.YAML)
+		t.Fatalf("cenário inválido: %v\n%s", err, importResult.YAML)
 	}
 	if len(c.Steps) != 2 {
 		t.Fatalf("esperava 2 passos, veio %d:\n%s", len(c.Steps), importResult.YAML)
@@ -99,20 +99,20 @@ func TestImportsJMXIntoParsableScenario(t *testing.T) {
 		t.Errorf("nomes dos passos: %q e %q", c.Steps[0].Name, c.Steps[1].Name)
 	}
 	if len(c.Data) != 1 || c.Data[0].File != "dados/assinantes.csv" {
-		t.Errorf("bloco de dados nao veio do CSVDataSet: %+v", c.Data)
+		t.Errorf("bloco de dados não veio do CSVDataSet: %+v", c.Data)
 	}
 }
 
 func TestJMXTokenNeverReachesFile(t *testing.T) {
 	importResult, err := importer.FromJMX([]byte(jmeterPlan))
 	if err != nil {
-		t.Fatalf("nao importou: %v", err)
+		t.Fatalf("não importou: %v", err)
 	}
 	if strings.Contains(importResult.YAML, "token-secreto-de-verdade") {
-		t.Fatalf("o token do .jmx foi escrito no cenario:\n%s", importResult.YAML)
+		t.Fatalf("o token do .jmx foi escrito no cenário:\n%s", importResult.YAML)
 	}
 	if !strings.Contains(importResult.YAML, "${token}") {
-		t.Errorf("o cabecalho de credencial devia virar variavel:\n%s", importResult.YAML)
+		t.Errorf("o cabecalho de credencial devia virar variável:\n%s", importResult.YAML)
 	}
 }
 
@@ -121,30 +121,30 @@ func TestJMXTokenNeverReachesFile(t *testing.T) {
 func TestWarnsThreadsAreNotArrivalRate(t *testing.T) {
 	importResult, err := importer.FromJMX([]byte(jmeterPlan))
 	if err != nil {
-		t.Fatalf("nao importou: %v", err)
+		t.Fatalf("não importou: %v", err)
 	}
-	if !containsFragment(importResult.Warnings, "50 threads") || !containsFragment(importResult.Warnings, "nao vira taxa de chegada") {
-		t.Errorf("faltou o aviso sobre thread nao virar taxa: %v", importResult.Warnings)
+	if !containsFragment(importResult.Warnings, "50 threads") || !containsFragment(importResult.Warnings, "não vira taxa de chegada") {
+		t.Errorf("faltou o aviso sobre thread não virar taxa: %v", importResult.Warnings)
 	}
 }
 
 func TestDeclaresWhatWasNotTranslated(t *testing.T) {
 	importResult, err := importer.FromJMX([]byte(jmeterPlan))
 	if err != nil {
-		t.Fatalf("nao importou: %v", err)
+		t.Fatalf("não importou: %v", err)
 	}
 	if !containsFragment(importResult.Warnings, "BeanShellPreProcessor") {
 		t.Errorf("elemento ignorado precisa ser declarado: %v", importResult.Warnings)
 	}
 	if !containsFragment(importResult.Warnings, "faturaId") {
-		t.Errorf("a correlacao do .jmx precisa virar instrucao de captura: %v", importResult.Warnings)
+		t.Errorf("a correlação do .jmx precisa virar instrução de captura: %v", importResult.Warnings)
 	}
 }
 
 func TestJMXWithoutHTTPRequestExplainsImporterCoverage(t *testing.T) {
 	_, err := importer.FromJMX([]byte(`<?xml version="1.0"?><jmeterTestPlan><hashTree><TestPlan testname="vazio"/></hashTree></jmeterTestPlan>`))
 	if err == nil {
-		t.Fatal("plano sem requisicao precisa falhar")
+		t.Fatal("plano sem requisição precisa falhar")
 	}
 	if !strings.Contains(err.Error(), "HTTPSamplerProxy") {
 		t.Errorf("o erro precisa dizer o que o importador cobre: %v", err)

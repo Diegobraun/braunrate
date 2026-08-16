@@ -27,20 +27,20 @@ cenario:
 func TestUndeclaredVariableIsRefusedWithTheLineAndWhereToDeclareIt(t *testing.T) {
 	_, err := parseWithSteps(t, "", "http: GET /pedidos/${variavel_que_ninguem_declarou}")
 	if err == nil {
-		t.Fatal("a variavel inventada passou na validacao")
+		t.Fatal("a variável inventada passou na validação")
 	}
 
 	message := err.Error()
 	for _, fragment := range []string{
-		"nao sei de onde vem ${variavel_que_ninguem_declarou}",
+		"não sei de onde vem ${variavel_que_ninguem_declarou}",
 		"variaveis:", "captura:", "dados:", "CAIXA ALTA",
 	} {
 		if !strings.Contains(message, fragment) {
-			t.Fatalf("a mensagem nao ensina %q: %v", fragment, err)
+			t.Fatalf("a mensagem não ensina %q: %v", fragment, err)
 		}
 	}
 	if position, is := err.(scenario.ScenarioError); !is || position.Line == 0 || position.Column == 0 {
-		t.Fatalf("o erro nao aponta linha e coluna: %#v", err)
+		t.Fatalf("o erro não aponta linha e coluna: %#v", err)
 	}
 }
 
@@ -51,17 +51,17 @@ func TestTheColumnPointsAtTheReferenceThatFailedNotAtTheLine(t *testing.T) {
 		"http: GET /${a}/${b}/${quebrada}")
 	position, is := err.(scenario.ScenarioError)
 	if !is {
-		t.Fatalf("erro sem posicao: %v", err)
+		t.Fatalf("erro sem posição: %v", err)
 	}
 	if position.Column < 25 {
-		t.Fatalf("a coluna %d aponta antes da referencia quebrada, que comeca depois de ${a} e ${b}", position.Column)
+		t.Fatalf("a coluna %d aponta antes da referência quebrada, que começa depois de ${a} e ${b}", position.Column)
 	}
 }
 
 func TestSimilarNameIsSuggested(t *testing.T) {
 	_, err := parseWithSteps(t, "variaveis:\n  faturaId: 7\n", "http: GET /faturas/${faturald}")
-	if err == nil || !strings.Contains(err.Error(), `voce quis dizer "faturaId"?`) {
-		t.Fatalf("a sugestao nao apareceu: %v", err)
+	if err == nil || !strings.Contains(err.Error(), `você quis dizer "faturaId"?`) {
+		t.Fatalf("a sugestao não apareceu: %v", err)
 	}
 }
 
@@ -87,21 +87,21 @@ dados:
 // impossible on a machine without the secret.
 func TestUpperCaseNameComesFromTheEnvironmentWithoutBeingDeclared(t *testing.T) {
 	if _, err := parseWithSteps(t, "", `http: { metodo: GET, caminho: /pedidos, cabecalhos: { Authorization: "Bearer ${API_KEY}" } }`); err != nil {
-		t.Fatalf("referencia de ambiente foi recusada: %v", err)
+		t.Fatalf("referência de ambiente foi recusada: %v", err)
 	}
 }
 
 func TestDefaultValueAlwaysResolves(t *testing.T) {
 	if _, err := parseWithSteps(t, "", "http: GET /${nunca_declarada:-1}"); err != nil {
-		t.Fatalf("referencia com reserva foi recusada: %v", err)
+		t.Fatalf("referência com reserva foi recusada: %v", err)
 	}
 }
 
 func TestUnknownDataSourceSaysWhichOnesExist(t *testing.T) {
 	_, err := parseWithSteps(t, "dados:\n  assinantes: { arquivo: dados/assinantes.csv }\n",
 		"http: GET /${assinante.id}")
-	if err == nil || !strings.Contains(err.Error(), `voce quis dizer "assinantes"?`) {
-		t.Fatalf("a fonte parecida nao foi sugerida: %v", err)
+	if err == nil || !strings.Contains(err.Error(), `você quis dizer "assinantes"?`) {
+		t.Fatalf("a fonte parecida não foi sugerida: %v", err)
 	}
 }
 
@@ -110,7 +110,7 @@ func TestUnknownDataSourceSaysWhichOnesExist(t *testing.T) {
 func TestSyntheticSourceChecksTheFieldAndTheCSVDoesNot(t *testing.T) {
 	_, err := parseWithSteps(t, "dados:\n  pedidos: { gerar: { id: { tipo: padrao, formato: \"PED-######\" } } }\n",
 		"http: GET /${pedidos.identificador}")
-	if err == nil || !strings.Contains(err.Error(), `a fonte "pedidos" nao gera o campo "identificador"`) {
+	if err == nil || !strings.Contains(err.Error(), `a fonte "pedidos" não gera o campo "identificador"`) {
 		t.Fatalf("o campo inexistente da fonte sintetica passou: %v", err)
 	}
 
@@ -126,15 +126,15 @@ func TestSyntheticSourceChecksTheFieldAndTheCSVDoesNot(t *testing.T) {
 func TestStepWithNothingVaryingIsWarnedAbout(t *testing.T) {
 	spec, err := parseWithSteps(t, "", "http: GET /pedidos/1\n    nome: consultar pedido")
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 
 	warnings := strings.Join(scenario.FixedStepWarnings(spec), "\n")
-	if !strings.Contains(warnings, "consultar pedido") || !strings.Contains(warnings, "identica") {
-		t.Fatalf("o passo fixo nao foi avisado:\n%s", warnings)
+	if !strings.Contains(warnings, "consultar pedido") || !strings.Contains(warnings, "idêntica") {
+		t.Fatalf("o passo fixo não foi avisado:\n%s", warnings)
 	}
 	if !strings.Contains(warnings, "${pedidos.id}") {
-		t.Fatalf("o aviso nao mostra como variar:\n%s", warnings)
+		t.Fatalf("o aviso não mostra como variar:\n%s", warnings)
 	}
 }
 
@@ -142,7 +142,7 @@ func TestStepThatVariesIsNotWarnedAbout(t *testing.T) {
 	spec, err := parseWithSteps(t, "dados:\n  pedidos: { arquivo: pedidos.csv }\n",
 		"http: GET /pedidos/${pedidos.id}\n    nome: consultar pedido")
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 	if warnings := scenario.FixedStepWarnings(spec); len(warnings) > 0 {
 		t.Fatalf("passo que varia foi avisado como fixo: %v", warnings)

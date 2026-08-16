@@ -295,7 +295,7 @@ func (executor *Executor) declaredSteps() []string {
 // comparing it against an SLO.
 func firstLine(text string) string {
 	line, _, _ := strings.Cut(text, "\n")
-	return strings.TrimPrefix(line, "Atencao: ")
+	return strings.TrimPrefix(line, "Atenção: ")
 }
 
 func (executor *Executor) scenarioWarnings() []metrics.Warning {
@@ -305,7 +305,7 @@ func (executor *Executor) scenarioWarnings() []metrics.Warning {
 			Kind:     "passo_sem_variacao",
 			Severity: metrics.SeverityLow,
 			Message:  firstLine(warning),
-			Evidence: "nenhum ${} no passo, entao ele nao entra na variedade observada",
+			Evidence: "nenhum ${} no passo, então ele não entra na variedade observada",
 		})
 	}
 	for _, step := range executor.scenario.Steps {
@@ -320,7 +320,7 @@ func (executor *Executor) scenarioWarnings() []metrics.Warning {
 		warnings = append(warnings, metrics.Warning{
 			Kind:     "espera_por_sondagem",
 			Severity: metrics.SeverityLow,
-			Message: fmt.Sprintf("o passo %q espera sondando a cada %s: a latencia dele tem essa granularidade e fica maior que a real, nunca menor",
+			Message: fmt.Sprintf("o passo %q espera sondando a cada %s: o tempo dele tem essa granularidade e fica maior que a real, nunca menor",
 				step.Name, interval),
 			Evidence: step.AggregationKey(),
 		})
@@ -419,7 +419,7 @@ func (executor *Executor) runStep(runContext context.Context, step scenario.Step
 		sample.SentAt = clock.Now()
 		sample.FinishedAt = sample.SentAt
 		sample.Class = protocol.ErrConfig
-		sample.Detail = "protocolo nao compilado neste binario"
+		sample.Detail = "protocolo não compilado neste binario"
 		return sample, observation
 	}
 
@@ -508,7 +508,7 @@ func (executor *Executor) verificar(step scenario.Step, response protocol.Respon
 			}
 		case scenario.CheckBody:
 			if !bytes.Contains(response.Body, []byte(check.Text)) {
-				return protocol.ErrAssertion, fmt.Sprintf("o corpo nao contem %q", check.Text)
+				return protocol.ErrAssertion, fmt.Sprintf("o corpo não contém %q", check.Text)
 			}
 		}
 	}
@@ -604,7 +604,7 @@ func (executor *Executor) prepareProtocols(runContext context.Context) error {
 			Messaging: executor.scenario.Messaging,
 		})
 		if err != nil {
-			return fmt.Errorf("nao consegui preparar o passo %q: %w", step.Name, err)
+			return fmt.Errorf("não consegui preparar o passo %q: %w", step.Name, err)
 		}
 	}
 	return nil

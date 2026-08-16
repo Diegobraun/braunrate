@@ -61,31 +61,31 @@ func executeGraphQL(t *testing.T, lines string) (metrics.Document, slo.Verdict) 
 	t.Helper()
 	server := testsupport.New(testsupport.Options{Latency: time.Millisecond})
 	if err := server.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("alvo nao subiu: %v", err)
+		t.Fatalf("alvo não subiu: %v", err)
 	}
 	t.Cleanup(func() { _ = server.Close() })
 
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "assinantes.csv"), []byte(lines), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o csv: %v", err)
+		t.Fatalf("não consegui escrever o csv: %v", err)
 	}
 	path := filepath.Join(root, "cenario.yaml")
 	if err := os.WriteFile(path, []byte(fmt.Sprintf(graphqlScenario, server.Address())), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o cenario: %v", err)
+		t.Fatalf("não consegui escrever o cenário: %v", err)
 	}
 
 	c, err := scenario.ParseFile(path)
 	if err != nil {
-		t.Fatalf("cenario nao carregou: %v", err)
+		t.Fatalf("cenário não carregou: %v", err)
 	}
 	if err := c.Validate(); err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 	options := engine.DefaultOptions()
 	options.DataRoot = root
 	m, err := engine.New(c, options)
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	document := m.Execute(context.Background())
 	return document, slo.Evaluate(c.SLO, document, nil)
@@ -105,10 +105,10 @@ func TestGraphQLYieldsOneRowPerOperation(t *testing.T) {
 		}
 	}
 	if !names["graphql ConsultarPedido"] || !names["graphql PagarFatura"] {
-		t.Fatalf("o relatorio precisa de uma linha por operacao, obtive %v", names)
+		t.Fatalf("o relatório precisa de uma linha por operação, obtive %v", names)
 	}
 	if len(document.Steps) != 2 {
-		t.Errorf("consulta e mutation nao podem cair na mesma linha: %d passo(s)", len(document.Steps))
+		t.Errorf("consulta e mutation não podem cair na mesma linha: %d passo(s)", len(document.Steps))
 	}
 	if !verdict.Passed {
 		t.Errorf("SLO deveria passar: %s", verdict.Sentence)
@@ -122,15 +122,15 @@ func TestGraphQLErrorWithStatus200FailsSLO(t *testing.T) {
 
 	query := document.Steps[0]
 	if query.ErrorsByClass["graphql"] == 0 {
-		t.Fatalf("erro de graphql nao foi contado: %+v", query.ErrorsByClass)
+		t.Fatalf("erro de graphql não foi contado: %+v", query.ErrorsByClass)
 	}
 	if query.StatusByCode["200"] == 0 {
 		t.Errorf("o status HTTP era 200 mesmo: %+v", query.StatusByCode)
 	}
 	if verdict.Passed {
-		t.Error("execucao com 100% de erro de graphql nao pode passar no SLO")
+		t.Error("execução com 100% de erro de graphql não pode passar no SLO")
 	}
 	if len(document.Steps) != 1 {
-		t.Errorf("a mutation nao deveria rodar depois do erro: %d passo(s)", len(document.Steps))
+		t.Errorf("a mutation não deveria rodar depois do erro: %d passo(s)", len(document.Steps))
 	}
 }

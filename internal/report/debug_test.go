@@ -16,12 +16,12 @@ func TestEveryErrorClassPrintsAProblemInDebug(t *testing.T) {
 		var out strings.Builder
 		observation := engine.Observation{Step: "publicar pedido", Class: class}
 		if err := report.Debug(&out, 1, observation, false); err != nil {
-			t.Fatalf("depuracao nao escreveu: %v", err)
+			t.Fatalf("depuracao não escreveu: %v", err)
 		}
 
 		line := problemLine(out.String())
 		if line == "" {
-			t.Fatalf("a classe %q nao produziu linha de problema:\n%s", class, out.String())
+			t.Fatalf("a classe %q não produziu linha de problema:\n%s", class, out.String())
 		}
 		if strings.TrimSpace(strings.TrimPrefix(line, "problema:")) == "" {
 			t.Fatalf("a classe %q produziu problema vazio:\n%s", class, out.String())
@@ -37,14 +37,14 @@ func TestDebugShowsTheDetailOfTheFailure(t *testing.T) {
 	observation := engine.Observation{
 		Step:     "publicar pedido",
 		Class:    protocol.ErrAuth,
-		Response: protocol.Response{Detail: "o broker recusou a credencial (scram_sha512, usuario ana + TLS com CA propria)"},
+		Response: protocol.Response{Detail: "o broker recusou a credencial (scram_sha512, usuário ana + TLS com CA própria)"},
 	}
 	if err := report.Debug(&out, 1, observation, false); err != nil {
-		t.Fatalf("depuracao nao escreveu: %v", err)
+		t.Fatalf("depuracao não escreveu: %v", err)
 	}
 
-	if !strings.Contains(out.String(), "usuario ana") {
-		t.Fatalf("a depuracao nao diz quem foi recusado:\n%s", out.String())
+	if !strings.Contains(out.String(), "usuário ana") {
+		t.Fatalf("a depuracao não diz quem foi recusado:\n%s", out.String())
 	}
 }
 
@@ -69,21 +69,21 @@ func TestReportShowsTheStepThatNeverRanAndNamesTheError(t *testing.T) {
 
 	var out strings.Builder
 	if err := report.Summary(&out, document, document.SLO); err != nil {
-		t.Fatalf("resumo nao escreveu: %v", err)
+		t.Fatalf("resumo não escreveu: %v", err)
 	}
 	text := out.String()
 
 	if !strings.Contains(text, "passo que nunca rodou") {
-		t.Fatalf("o passo que nunca rodou sumiu do relatorio:\n%s", text)
+		t.Fatalf("o passo que nunca rodou sumiu do relatório:\n%s", text)
 	}
 	if !strings.Contains(text, "nunca chegou a executar") {
-		t.Fatalf("nada explica o traco na linha do passo:\n%s", text)
+		t.Fatalf("nada explica o traço na linha do passo:\n%s", text)
 	}
 	if !strings.Contains(text, "status 401") {
-		t.Fatalf("a linha de erro nao diz qual status:\n%s", text)
+		t.Fatalf("a linha de erro não diz qual status:\n%s", text)
 	}
 	if !strings.Contains(text, document.Steps[0].Name) {
-		t.Fatalf("a linha de erro nao diz em qual passo:\n%s", text)
+		t.Fatalf("a linha de erro não diz em qual passo:\n%s", text)
 	}
 }
 
@@ -96,17 +96,17 @@ func TestEmptyStepTableSaysWhatHappenedInsteadOfPrintingAHeader(t *testing.T) {
 
 	var out strings.Builder
 	if err := report.Summary(&out, document, document.SLO); err != nil {
-		t.Fatalf("resumo nao escreveu: %v", err)
+		t.Fatalf("resumo não escreveu: %v", err)
 	}
 	text := out.String()
 
 	if !strings.Contains(text, "Nenhum passo registrou amostra") {
 		t.Fatalf("a tabela vazia saiu sem explicacao:\n%s", text)
 	}
-	if strings.Contains(text, "requisicoes    metade") {
+	if strings.Contains(text, "requisições    metade") {
 		t.Fatalf("o cabecalho da tabela foi impresso sem linha nenhuma:\n%s", text)
 	}
 	if !strings.Contains(text, "braunrate debug") {
-		t.Fatalf("nada diz qual e o proximo passo:\n%s", text)
+		t.Fatalf("nada diz qual e o próximo passo:\n%s", text)
 	}
 }

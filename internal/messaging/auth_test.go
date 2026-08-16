@@ -46,12 +46,12 @@ func TestExplanationSaysWhereToFixItWithoutShowingTheSecret(t *testing.T) {
 		if strings.Contains(explanation, "p4ssw0rd-secreta") {
 			t.Fatalf("a senha vazou na explicacao de %s: %s", kind, explanation)
 		}
-		if !strings.Contains(explanation, "usuario ana") {
-			t.Fatalf("a explicacao de %s nao diz o usuario: %s", kind, explanation)
+		if !strings.Contains(explanation, "usuário ana") {
+			t.Fatalf("a explicacao de %s não diz o usuário: %s", kind, explanation)
 		}
 	}
 	if !strings.Contains(Explain("autorizacao", broker), "ACL") {
-		t.Fatal("a autorizacao nao aponta a ACL, que e onde se resolve")
+		t.Fatal("a autorização não aponta a ACL, que e onde se resolve")
 	}
 }
 
@@ -62,14 +62,14 @@ func TestMSKMechanismCarriesTheRegionAndAsksForNoKey(t *testing.T) {
 
 	mechanism, err := broker.mechanism()
 	if err != nil {
-		t.Fatalf("mecanismo nao montou: %v", err)
+		t.Fatalf("mecanismo não montou: %v", err)
 	}
 	if mechanism.Name() != "AWS_MSK_IAM" {
 		t.Fatalf("nome do mecanismo: %q", mechanism.Name())
 	}
 	signer, isMSK := mechanism.(mskMechanism)
 	if !isMSK || signer.region != "us-east-1" {
-		t.Fatalf("a regiao nao chegou ao assinador: %+v", mechanism)
+		t.Fatalf("a região não chegou ao assinador: %+v", mechanism)
 	}
 	if broker.Auth.Password != "" || broker.Auth.PasswordVar != "" {
 		t.Fatal("msk_iam guardou credencial, e ele nunca deve pedir uma")
@@ -86,14 +86,14 @@ func TestUnsetVariableIsReportedByNameInsteadOfBecomingAnEmptyPassword(t *testin
 		t.Fatal("senha vazia passou como se fosse credencial")
 	}
 	if !strings.Contains(err.Error(), "KAFKA_SENHA") {
-		t.Fatalf("o erro nao diz qual variavel falta: %v", err)
+		t.Fatalf("o erro não diz qual variável falta: %v", err)
 	}
 }
 
 func TestTransportIsNilWhenThereIsNothingToSecure(t *testing.T) {
 	transport, err := (*Broker)(nil).Transport()
 	if err != nil || transport != nil {
-		t.Fatalf("broker sem autenticacao montou transporte: %v, %v", transport, err)
+		t.Fatalf("broker sem autenticação montou transporte: %v, %v", transport, err)
 	}
 	plain := &Broker{Addresses: []string{"127.0.0.1:9092"}}
 	transport, err = plain.Transport()
@@ -108,9 +108,9 @@ func TestAMQPAddressLosesThePasswordBeforeBeingPrinted(t *testing.T) {
 	safe := SafeAddress("amqp://ana:p4ssw0rd@rabbit.homolog:5672/producao")
 
 	if strings.Contains(safe, "p4ssw0rd") {
-		t.Fatalf("a senha ficou no endereco: %s", safe)
+		t.Fatalf("a senha ficou no endereço: %s", safe)
 	}
 	if !strings.Contains(safe, "ana") || !strings.Contains(safe, "rabbit.homolog:5672") {
-		t.Fatalf("o endereco perdeu o que serve para ler: %s", safe)
+		t.Fatalf("o endereço perdeu o que serve para ler: %s", safe)
 	}
 }

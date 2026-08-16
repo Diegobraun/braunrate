@@ -91,7 +91,7 @@ func (recorder *Recorder) Tunneled() map[string]int {
 func (recorder *Recorder) Serve(runContext context.Context, ready func(address string)) error {
 	listener, err := net.Listen("tcp", recorder.options.Address)
 	if err != nil {
-		return fmt.Errorf("nao consegui escutar em %s: %w", recorder.options.Address, err)
+		return fmt.Errorf("não consegui escutar em %s: %w", recorder.options.Address, err)
 	}
 	if ready != nil {
 		ready(listener.Addr().String())
@@ -121,7 +121,7 @@ func (recorder *Recorder) handle(writer http.ResponseWriter, request *http.Reque
 		return
 	}
 	if request.URL.Host == "" {
-		http.Error(writer, "o braunrate esta escutando como proxy; configure o cliente para usar este endereco como proxy HTTP", http.StatusBadRequest)
+		http.Error(writer, "o braunrate está escutando como proxy; configure o cliente para usar este endereço como proxy HTTP", http.StatusBadRequest)
 		return
 	}
 
@@ -147,8 +147,8 @@ func (recorder *Recorder) handle(writer http.ResponseWriter, request *http.Reque
 
 	response, err := recorder.transport.RoundTrip(outgoing)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("nao consegui falar com %s: %v", request.URL.Host, err), http.StatusBadGateway)
-		recorder.drop("alvo nao respondeu")
+		http.Error(writer, fmt.Sprintf("não consegui falar com %s: %v", request.URL.Host, err), http.StatusBadGateway)
+		recorder.drop("alvo não respondeu")
 		return
 	}
 	defer func() { _ = response.Body.Close() }()
@@ -188,7 +188,7 @@ func (recorder *Recorder) tunnel(writer http.ResponseWriter, request *http.Reque
 	hijacker, canHijack := writer.(http.Hijacker)
 	if !canHijack {
 		_ = upstream.Close()
-		http.Error(writer, "conexao nao pode ser assumida", http.StatusInternalServerError)
+		http.Error(writer, "conexão não pode ser assumida", http.StatusInternalServerError)
 		return
 	}
 	client, _, err := hijacker.Hijack()
@@ -272,7 +272,7 @@ func (recorder *Recorder) classify(request *http.Request) (string, bool) {
 		return "telemetria", true
 	}
 	if isStatic(path) {
-		return "recurso estatico", true
+		return "recurso estático", true
 	}
 	for _, pattern := range recorder.options.Ignore {
 		pattern = strings.TrimSpace(pattern)

@@ -61,22 +61,22 @@ func TestAuthDoesNotFreezeFirstIterationData(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "assinantes.csv"),
 		[]byte("id,nome\n1001,ana\n1002,bruno\n1003,carla\n"), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o csv: %v", err)
+		t.Fatalf("não consegui escrever o csv: %v", err)
 	}
 	path := filepath.Join(root, "cenario.yaml")
 	if err := os.WriteFile(path, []byte(fmt.Sprintf(scenarioWithAuthAndData, server.URL)), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o cenario: %v", err)
+		t.Fatalf("não consegui escrever o cenário: %v", err)
 	}
 
 	c, err := scenario.ParseFile(path)
 	if err != nil {
-		t.Fatalf("cenario nao carregou: %v", err)
+		t.Fatalf("cenário não carregou: %v", err)
 	}
 	options := engine.DefaultOptions()
 	options.DataRoot = root
 	m, err := engine.New(c, options)
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	document := m.Execute(context.Background())
 	if document.Overall.Errors != 0 {
@@ -87,7 +87,7 @@ func TestAuthDoesNotFreezeFirstIterationData(t *testing.T) {
 	defer mu.Unlock()
 	for _, identifier := range []string{"1001", "1002", "1003"} {
 		if seen[identifier] == 0 {
-			t.Errorf("o assinante %s nunca foi usado; os dados nao rodaram: %v", identifier, seen)
+			t.Errorf("o assinante %s nunca foi usado; os dados não rodaram: %v", identifier, seen)
 		}
 	}
 }

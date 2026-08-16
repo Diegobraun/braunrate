@@ -13,7 +13,7 @@ func comparisonPage(t *testing.T, before, after metrics.Document) string {
 	t.Helper()
 	var out strings.Builder
 	if err := report.ComparisonHTML(&out, comparison.Compare(before, after), "0.4.0"); err != nil {
-		t.Fatalf("nao gerou a comparacao em HTML: %v", err)
+		t.Fatalf("não gerou a comparação em HTML: %v", err)
 	}
 	return out.String()
 }
@@ -36,19 +36,19 @@ func TestComparisonInHTMLReachesTheSameVerdictAsTheTerminal(t *testing.T) {
 	result := comparison.Compare(before, after)
 	var terminal strings.Builder
 	if err := report.Comparison(&terminal, result); err != nil {
-		t.Fatalf("nao gerou o terminal: %v", err)
+		t.Fatalf("não gerou o terminal: %v", err)
 	}
 	page := comparisonPage(t, before, after)
 
 	if !strings.Contains(page, result.Sentence) {
-		t.Fatalf("a pagina nao trouxe a frase do veredito %q", result.Sentence)
+		t.Fatalf("a página não trouxe a frase do veredito %q", result.Sentence)
 	}
 	if !strings.Contains(terminal.String(), result.Sentence) {
-		t.Fatalf("o terminal nao trouxe a frase do veredito %q", result.Sentence)
+		t.Fatalf("o terminal não trouxe a frase do veredito %q", result.Sentence)
 	}
 	for _, step := range result.Steps {
 		if !strings.Contains(page, step.Step) {
-			t.Fatalf("a pagina nao trouxe o passo %q", step.Step)
+			t.Fatalf("a página não trouxe o passo %q", step.Step)
 		}
 	}
 }
@@ -62,7 +62,7 @@ func TestComparisonPercentilesComeOutInReadingOrder(t *testing.T) {
 	for _, percentile := range []string{"p50", "p75", "p90", "p95", "p99", "p99.9", "max"} {
 		found := strings.Index(page, ">"+percentile+"<")
 		if found < 0 {
-			t.Fatalf("a pagina nao trouxe o percentil %s", percentile)
+			t.Fatalf("a página não trouxe o percentil %s", percentile)
 		}
 		if found < position {
 			t.Fatalf("o percentil %s saiu fora de ordem", percentile)
@@ -78,15 +78,15 @@ func TestComparisonOfInvalidRunShowsNoNumbers(t *testing.T) {
 	after := slower(sampleDocument())
 	after.Sanity = metrics.Sanity{
 		Checked: true, Valid: false,
-		Findings: []metrics.SanityFinding{{Kind: "gerador_saturado", Message: "o gerador nao sustentou a carga"}},
+		Findings: []metrics.SanityFinding{{Kind: "gerador_saturado", Message: "o gerador não sustentou a carga"}},
 	}
 
 	page := comparisonPage(t, before, after)
-	if !strings.Contains(page, "nao vale como medicao") {
-		t.Fatalf("a pagina nao disse que a comparacao nao vale:\n%s", page)
+	if !strings.Contains(page, "não vale como medição") {
+		t.Fatalf("a página não disse que a comparação não vale:\n%s", page)
 	}
 	if strings.Contains(page, "Por passo") {
-		t.Fatalf("a pagina mostrou tabela de passo de uma comparacao que nao vale")
+		t.Fatalf("a página mostrou tabela de passo de uma comparação que não vale")
 	}
 }
 
@@ -94,7 +94,7 @@ func TestComparisonInHTMLFetchesNothingFromNetwork(t *testing.T) {
 	page := comparisonPage(t, sampleDocument(), slower(sampleDocument()))
 	for _, forbidden := range []string{"<script", "src=", "@import", "cdn.", "https://fonts", "<link"} {
 		if strings.Contains(page, forbidden) {
-			t.Errorf("a comparacao deixou de ser autocontida: encontrei %q", forbidden)
+			t.Errorf("a comparação deixou de ser autocontida: encontrei %q", forbidden)
 		}
 	}
 }

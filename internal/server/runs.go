@@ -68,10 +68,10 @@ func (store *runStore) start(scenarioName string, spec scenario.Spec, plan engin
 
 func headline(spec scenario.Spec, plan engine.Plan) string {
 	if spec.Load.Closed() {
-		return fmt.Sprintf("executando %q contra %s: %d usuarios em laco fechado durante %s",
+		return fmt.Sprintf("executando %q contra %s: %d usuários em laço fechado durante %s",
 			spec.Name, spec.Target, spec.Load.Users, plan.Duration())
 	}
-	return fmt.Sprintf("executando %q contra %s: %d iteracoes em %s",
+	return fmt.Sprintf("executando %q contra %s: %d iterações em %s",
 		spec.Name, spec.Target, plan.TotalRequests(), plan.Duration())
 }
 
@@ -132,12 +132,12 @@ func (store *runStore) finish(id string, result runner.Result, err error) {
 // verdict is the part someone following a run is waiting for.
 func verdictLine(result runner.Result) string {
 	if !result.Document.Valid() {
-		return fmt.Sprintf("resultado invalido (codigo %d): a execucao nao mediu o que se propos a medir", result.Exit)
+		return fmt.Sprintf("resultado inválido (código %d): a execução não mediu o que se propôs a medir", result.Exit)
 	}
 	if !result.Document.SLO.Passed {
-		return fmt.Sprintf("falhou o SLO (codigo %d)", result.Exit)
+		return fmt.Sprintf("falhou o SLO (código %d)", result.Exit)
 	}
-	return fmt.Sprintf("passou (codigo %d)", result.Exit)
+	return fmt.Sprintf("passou (código %d)", result.Exit)
 }
 
 func (store *runStore) get(id string) (*run, bool) {
@@ -186,10 +186,10 @@ func verdictOf(found *run) string {
 	case statusRunning:
 		return "em andamento"
 	case statusFailed:
-		return "nao executou"
+		return "não executou"
 	case statusDone:
 		if !found.Document.Valid() {
-			return "resultado invalido"
+			return "resultado inválido"
 		}
 		if !found.Document.SLO.Passed {
 			return "falhou o SLO"

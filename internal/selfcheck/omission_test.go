@@ -29,7 +29,7 @@ func startFreezingTarget(t *testing.T) *testsupport.Server {
 		FreezeFor:   freezeDuration,
 	})
 	if err := server.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("alvo nao subiu: %v", err)
+		t.Fatalf("alvo não subiu: %v", err)
 	}
 	t.Cleanup(func() { _ = server.Close() })
 	return server
@@ -38,7 +38,7 @@ func startFreezingTarget(t *testing.T) *testsupport.Server {
 func runOpenModel(t *testing.T, address string) metrics.Document {
 	t.Helper()
 	c := scenario.Spec{
-		Name:   "auto-validacao de medicao",
+		Name:   "auto-validacao de medição",
 		Target: address,
 		Load: scenario.LoadPlan{
 			Model:  scenario.OpenArrival,
@@ -55,7 +55,7 @@ func runOpenModel(t *testing.T, address string) metrics.Document {
 	options.Version = "teste"
 	m, err := engine.New(c, options)
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	return m.Execute(context.Background())
 }
@@ -66,14 +66,14 @@ func TestMeasurementReflectsTargetFreeze(t *testing.T) {
 
 	pisoEsperado := float64(freezeDuration.Milliseconds()) / 2
 	if document.Overall.Latency.P99 < pisoEsperado {
-		t.Fatalf("p99 corrigida = %.1f ms; o alvo congelou por %s e a medicao precisa refletir isso (piso %.1f ms)",
+		t.Fatalf("p99 corrigida = %.1f ms; o alvo congelou por %s e a medição precisa refletir isso (piso %.1f ms)",
 			document.Overall.Latency.P99, freezeDuration, pisoEsperado)
 	}
 	if document.Overall.Latency.Max < float64(freezeDuration.Milliseconds())*0.9 {
-		t.Errorf("maximo = %.1f ms, esperado proximo de %s", document.Overall.Latency.Max, freezeDuration)
+		t.Errorf("máximo = %.1f ms, esperado próximo de %s", document.Overall.Latency.Max, freezeDuration)
 	}
 	if document.Overall.Count == 0 {
-		t.Fatal("nenhuma requisicao concluida")
+		t.Fatal("nenhuma requisição concluida")
 	}
 	t.Logf("modelo aberto: p50 %.1f ms | p99 %.1f ms | max %.1f ms | n %d",
 		document.Overall.Latency.P50, document.Overall.Latency.P99,
@@ -98,7 +98,7 @@ func TestTargetFreezeIsNotConfusedWithGeneratorSaturation(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatalf("degradacao do alvo nao foi detectada; avisos: %+v", document.Warnings)
+		t.Fatalf("degradação do alvo não foi detectada; avisos: %+v", document.Warnings)
 	}
 }
 
@@ -114,11 +114,11 @@ func TestClosedLoopWouldHideThePauseOpenModelShows(t *testing.T) {
 
 	t.Logf("mesma pausa de %s no mesmo alvo:", freezeDuration)
 	t.Logf("  modelo aberto (braunrate): p99 %.1f ms sobre %d amostras", openP99, document.Overall.Count)
-	t.Logf("  laco fechado:              p99 %.1f ms sobre %d amostras", closedP99, closed.Samples)
-	t.Logf("  omissao coordenada: %.1f ms escondidos pelo laco fechado", openP99-closedP99)
+	t.Logf("  laço fechado:              p99 %.1f ms sobre %d amostras", closedP99, closed.Samples)
+	t.Logf("  omissão coordenada: %.1f ms escondidos pelo laço fechado", openP99-closedP99)
 
 	if closedP99*5 > openP99 {
-		t.Fatalf("o experimento nao demonstrou omissao coordenada: aberto %.1f ms, fechado %.1f ms",
+		t.Fatalf("o experimento não demonstrou omissão coordenada: aberto %.1f ms, fechado %.1f ms",
 			openP99, closedP99)
 	}
 }

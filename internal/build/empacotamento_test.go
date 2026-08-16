@@ -33,16 +33,16 @@ func TestTheExamplesInTheArchiveAreTheOnesTheCIRuns(t *testing.T) {
 	inCI := yamlScenarios(ciScenarios(t))
 
 	if len(inCI) == 0 {
-		t.Fatal("nao achei nenhum cenario no laco do script de exemplos: o teste nao estaria provando nada")
+		t.Fatal("não achei nenhum cenário no laço do script de exemplos: o teste não estaria provando nada")
 	}
 	for _, scenario := range inCI {
 		if !slices.Contains(inArchive, scenario) {
-			t.Errorf("o CI executa %s e o artefato publicado nao leva: quem baixa o binario nao consegue rodar o exemplo", scenario)
+			t.Errorf("o CI executa %s e o artefato publicado não leva: quem baixa o binario não consegue rodar o exemplo", scenario)
 		}
 	}
 	for _, scenario := range inArchive {
 		if !slices.Contains(inCI, scenario) {
-			t.Errorf("o artefato leva %s e o CI nao executa: exemplo publicado que ninguem roda ja quebrou tres vezes sem ninguem ver", scenario)
+			t.Errorf("o artefato leva %s e o CI não executa: exemplo publicado que ninguém roda já quebrou três vezes sem ninguém ver", scenario)
 		}
 	}
 }
@@ -53,7 +53,7 @@ func archiveFiles(t *testing.T) []string {
 	t.Helper()
 	content, err := os.ReadFile(".goreleaser.yaml")
 	if err != nil {
-		t.Fatalf("nao consegui ler a configuracao de release: %v", err)
+		t.Fatalf("não consegui ler a configuração de release: %v", err)
 	}
 	var configuration struct {
 		Archives []struct {
@@ -61,17 +61,17 @@ func archiveFiles(t *testing.T) []string {
 		} `yaml:"archives"`
 	}
 	if err := yaml.Unmarshal(content, &configuration); err != nil {
-		t.Fatalf("a configuracao de release nao e YAML valido: %v", err)
+		t.Fatalf("a configuração de release não e YAML válido: %v", err)
 	}
 	if len(configuration.Archives) == 0 {
-		t.Fatal("a configuracao de release nao declara nenhum arquivo")
+		t.Fatal("a configuração de release não declara nenhum arquivo")
 	}
 
 	var packaged []string
 	for _, pattern := range configuration.Archives[0].Files {
 		matches, err := fileglob.Glob(pattern)
 		if err != nil {
-			t.Fatalf("o padrao %q nao casa com nada no repositorio: %v", pattern, err)
+			t.Fatalf("o padrão %q não casa com nada no repositorio: %v", pattern, err)
 		}
 		packaged = append(packaged, matches...)
 	}
@@ -85,15 +85,15 @@ func ciScenarios(t *testing.T) []string {
 	script := filepath.Join(".github", "executar-exemplos.sh")
 	content, err := os.ReadFile(script)
 	if err != nil {
-		t.Fatalf("nao consegui ler %s: %v", script, err)
+		t.Fatalf("não consegui ler %s: %v", script, err)
 	}
 	loop := regexp.MustCompile(`for +\w+ +in +(\S+); *do`).FindSubmatch(content)
 	if loop == nil {
-		t.Fatalf("nao achei o laco que roda os exemplos em %s", script)
+		t.Fatalf("não achei o laço que roda os exemplos em %s", script)
 	}
 	matches, err := filepath.Glob(string(loop[1]))
 	if err != nil {
-		t.Fatalf("o padrao %q do script nao resolve: %v", loop[1], err)
+		t.Fatalf("o padrão %q do script não resolve: %v", loop[1], err)
 	}
 	return matches
 }
@@ -114,7 +114,7 @@ func repositoryRoot(t *testing.T) string {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
-		t.Fatalf("nao consegui achar a raiz do modulo: %v", err)
+		t.Fatalf("não consegui achar a raiz do módulo: %v", err)
 	}
 	return root
 }
@@ -125,10 +125,10 @@ func workingDirectory(t *testing.T, path string) func() {
 	t.Helper()
 	previous, err := os.Getwd()
 	if err != nil {
-		t.Fatalf("nao consegui ler o diretorio de trabalho: %v", err)
+		t.Fatalf("não consegui ler o diretorio de trabalho: %v", err)
 	}
 	if err := os.Chdir(path); err != nil {
-		t.Fatalf("nao consegui entrar em %s: %v", path, err)
+		t.Fatalf("não consegui entrar em %s: %v", path, err)
 	}
 	return func() { _ = os.Chdir(previous) }
 }

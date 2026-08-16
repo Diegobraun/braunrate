@@ -78,7 +78,7 @@ func (config *Config) Describe() []string {
 		lines = append(lines, fmt.Sprintf("%s: %s", name, transport.MaskSecret(name, config.Headers[name])))
 	}
 	if config.Vars != "" && config.Vars != "{}" {
-		lines = append(lines, "variaveis: "+config.Vars)
+		lines = append(lines, "variáveis: "+config.Vars)
 	}
 	lines = append(lines, "consulta: "+summarizeQuery(config.Query))
 	return lines
@@ -118,7 +118,7 @@ var operationPattern = regexp.MustCompile(`(?s)\b(query|mutation|subscription)\s
 
 func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
 	if node == nil {
-		return nil, errors.New("passo graphql sem configuracao")
+		return nil, errors.New("passo graphql sem configuração")
 	}
 	config := Default()
 
@@ -158,11 +158,11 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 		case "timeout":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout invalido: %q (use 30s, 2m)", value.Value)
+				return nil, fmt.Errorf("timeout inválido: %q (use 30s, 2m)", value.Value)
 			}
 			config.Timeout = duration
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo graphql: %q (use consulta, operacao, variaveis, caminho, cabecalhos ou timeout)", key.Value)
+			return nil, fmt.Errorf("chave desconhecida no passo graphql: %q (use consulta, operação, variáveis, caminho, cabecalhos ou timeout)", key.Value)
 		}
 	}
 	return Finish(config)
@@ -192,8 +192,8 @@ func Finish(config *Config) (protocol.Config, error) {
 		config.Kind = "query"
 	}
 	if config.Operation == "" {
-		return nil, errors.New(`a operacao graphql precisa de nome: e o nome que vira a linha do relatorio.
-Sem nome, todas as operacoes cairiam na mesma linha e a mais cara ficaria escondida na media.
+		return nil, errors.New(`a operação graphql precisa de nome: e o nome que vira a linha do relatório.
+Sem nome, todas as operações cairiam na mesma linha e a mais cara ficaria escondida na média.
   - graphql: |
       query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }`)
 	}
@@ -209,11 +209,11 @@ func readVars(node *yaml.Node) (string, error) {
 	}
 	var structure any
 	if err := node.Decode(&structure); err != nil {
-		return "", fmt.Errorf("variaveis invalidas: %v", err)
+		return "", fmt.Errorf("variáveis inválidas: %v", err)
 	}
 	content, err := json.Marshal(structure)
 	if err != nil {
-		return "", fmt.Errorf("variaveis nao serializam para JSON: %v", err)
+		return "", fmt.Errorf("variáveis não serializam para JSON: %v", err)
 	}
 	return string(content), nil
 }
@@ -241,7 +241,7 @@ type graphQLError struct {
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de graphql"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não e de graphql"}
 	}
 
 	address, err := transport.BuildURL(request.URLBase, config.Path)
@@ -254,7 +254,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		if !json.Valid([]byte(vars)) {
 			return protocol.Response{
 				Class:  protocol.ErrConfig,
-				Detail: "as variaveis nao formaram JSON valido depois da interpolacao: " + summarize(vars),
+				Detail: "as variáveis não formaram JSON válido depois da interpolação: " + summarize(vars),
 			}
 		}
 		body.Vars = json.RawMessage(vars)
@@ -317,7 +317,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 func classifyBody(content []byte) (protocol.ErrorClass, string) {
 	var body responseBody
 	if err := json.Unmarshal(content, &body); err != nil {
-		return protocol.ErrGraphQL, "a resposta nao e JSON de GraphQL: " + summarize(string(content))
+		return protocol.ErrGraphQL, "a resposta não e JSON de GraphQL: " + summarize(string(content))
 	}
 	if len(body.Errors) == 0 {
 		if len(body.Data) == 0 || string(body.Data) == "null" {

@@ -57,15 +57,15 @@ func BuildURL(base, path string) (string, error) {
 		return path, nil
 	}
 	if base == "" {
-		return "", fmt.Errorf("passo com caminho relativo %q e cenario sem alvo", path)
+		return "", fmt.Errorf("passo com caminho relativo %q e cenário sem alvo", path)
 	}
 	enderecoBase, err := url.Parse(base)
 	if err != nil {
-		return "", fmt.Errorf("alvo invalido: %q", base)
+		return "", fmt.Errorf("alvo inválido: %q", base)
 	}
 	relative, err := url.Parse(path)
 	if err != nil {
-		return "", fmt.Errorf("caminho invalido: %q", path)
+		return "", fmt.Errorf("caminho inválido: %q", path)
 	}
 	return enderecoBase.ResolveReference(relative).String(), nil
 }
@@ -148,11 +148,11 @@ func maskCookiePairs(value string) string {
 func summarizeTLS(text string) string {
 	switch {
 	case strings.Contains(text, "certificate signed by unknown authority"):
-		return "certificado assinado por CA que esta maquina nao conhece — declare tls: { ca: /caminho/ca.pem }"
+		return "certificado assinado por CA que esta máquina não conhece — declare tls: { ca: /caminho/ca.pem }"
 	case strings.Contains(text, "cannot validate certificate for"):
-		return "o certificado do alvo nao vale para o endereco chamado — use o nome que esta no certificado"
+		return "o certificado do alvo não vale para o endereço chamado — use o nome que está no certificado"
 	case strings.Contains(text, "certificate has expired"):
-		return "certificado do alvo expirado ou ainda nao valido"
+		return "certificado do alvo expirado ou ainda não válido"
 	case strings.Contains(text, "tls: bad certificate"), strings.Contains(text, "certificate required"):
 		return "o alvo exigiu certificado de cliente — declare tls: { certificado: /caminho/cliente.pem, chave: /caminho/cliente.key }"
 	}

@@ -19,7 +19,7 @@ func TestReadThatIsRefusedRightAfterCreationIsRetriedUntilTheBrokerSettles(t *te
 	refusals := 3
 	attempts := 0
 
-	err := untilReadyWithin(time.Second, time.Millisecond, "a particao 0", func() error {
+	err := untilReadyWithin(time.Second, time.Millisecond, "a partição 0", func() error {
 		attempts++
 		if attempts <= refusals {
 			return errNotLeader
@@ -38,7 +38,7 @@ func TestReadThatIsRefusedRightAfterCreationIsRetriedUntilTheBrokerSettles(t *te
 // A broker that never settles is broken. Turning that into a slow start would
 // hide it, so the wait is bounded and the last error goes up whole.
 func TestBrokerThatNeverSettlesFailsWithTheReasonAndNotWithSilence(t *testing.T) {
-	err := untilReadyWithin(30*time.Millisecond, time.Millisecond, "a particao 0 de \"pedidos\"", func() error {
+	err := untilReadyWithin(30*time.Millisecond, time.Millisecond, "a partição 0 de \"pedidos\"", func() error {
 		return errNotLeader
 	})
 
@@ -48,8 +48,8 @@ func TestBrokerThatNeverSettlesFailsWithTheReasonAndNotWithSilence(t *testing.T)
 	if !strings.Contains(err.Error(), "Not Leader For Partition") {
 		t.Fatalf("a causa do broker se perdeu no caminho: %v", err)
 	}
-	if !strings.Contains(err.Error(), "a particao 0 de \"pedidos\"") {
-		t.Fatalf("o erro nao diz o que nao ficou pronto: %v", err)
+	if !strings.Contains(err.Error(), "a partição 0 de \"pedidos\"") {
+		t.Fatalf("o erro não diz o que não ficou pronto: %v", err)
 	}
 }
 
@@ -72,7 +72,7 @@ func TestProcessorStartsOnTopicsCreatedMomentsBefore(t *testing.T) {
 				Delay:   time.Millisecond,
 			})
 			if err := processor.Start(); err != nil {
-				t.Fatalf("o processador nao subiu em topico recem-criado: %v", err)
+				t.Fatalf("o processador não subiu em tópico recem-criado: %v", err)
 			}
 			_ = processor.Close()
 		})

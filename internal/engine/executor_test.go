@@ -81,7 +81,7 @@ func TestDispatchFollowsScheduledInstantWithInjectedClock(t *testing.T) {
 
 	m, err := engine.New(fakeScenario("falso-pontual", 100, time.Second), options)
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	document := m.Execute(context.Background())
 
@@ -95,7 +95,7 @@ func TestDispatchFollowsScheduledInstantWithInjectedClock(t *testing.T) {
 		t.Errorf("contagem = %d, esperado 100", document.Overall.Count)
 	}
 	if !document.Valid() {
-		t.Errorf("resultado deveria ser valido, avisos: %+v", document.Warnings)
+		t.Errorf("resultado deveria ser válido, avisos: %+v", document.Warnings)
 	}
 }
 
@@ -127,7 +127,7 @@ func TestInflightLimitDropsAndInvalidatesResult(t *testing.T) {
 	})
 
 	if result.Valid() {
-		t.Fatal("resultado com descarte por limite de voo nao pode ser valido")
+		t.Fatal("resultado com descarte por limite de voo não pode ser válido")
 	}
 }
 
@@ -141,15 +141,15 @@ func TestStatusCheckClassifiesError(t *testing.T) {
 
 	m, err := engine.New(c, options)
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	document := m.Execute(context.Background())
 
 	if document.Overall.Errors != document.Overall.Count {
-		t.Fatalf("esperava todas as requisicoes como erro de status, obtido %d de %d",
+		t.Fatalf("esperava todas as requisições como erro de status, obtido %d de %d",
 			document.Overall.Errors, document.Overall.Count)
 	}
 	if document.Steps[0].ErrorsByClass["status"] == 0 {
-		t.Errorf("erro nao foi classificado como status: %+v", document.Steps[0].ErrorsByClass)
+		t.Errorf("erro não foi classificado como status: %+v", document.Steps[0].ErrorsByClass)
 	}
 }

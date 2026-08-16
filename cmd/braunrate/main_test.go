@@ -26,10 +26,10 @@ func TestFlagWorksBeforeAndAfterFile(t *testing.T) {
 		positional := parseArguments(set, args)
 
 		if len(positional) != 1 || positional[0] != "cenario.yaml" {
-			t.Fatalf("%v: o arquivo de cenario nao foi lido: %v", args, positional)
+			t.Fatalf("%v: o arquivo de cenário não foi lido: %v", args, positional)
 		}
 		if *html != "relatorio.html" {
-			t.Errorf("%v: a opcao foi ignorada", args)
+			t.Errorf("%v: a opção foi ignorada", args)
 		}
 	}
 }
@@ -45,20 +45,20 @@ func TestNewCommandWritesValidScenarioAndNeverOverwrites(t *testing.T) {
 	}
 	content, err := os.ReadFile(destination)
 	if err != nil {
-		t.Fatalf("o arquivo nao foi criado: %v", err)
+		t.Fatalf("o arquivo não foi criado: %v", err)
 	}
 	c, err := scenario.Parse(content)
 	if err != nil {
-		t.Fatalf("o cenario de partida nao carrega:\n%v", err)
+		t.Fatalf("o cenário de partida não carrega:\n%v", err)
 	}
 	if err := c.Validate(); err != nil {
-		t.Fatalf("o cenario de partida nao e valido: %v", err)
+		t.Fatalf("o cenário de partida não e válido: %v", err)
 	}
 	if len(c.SLO) == 0 {
-		t.Error("o cenario de partida precisa mostrar como se declara slo")
+		t.Error("o cenário de partida precisa mostrar como se declara slo")
 	}
 	if code := newOne([]string{destination}); code == 0 {
-		t.Error("novo sobre arquivo existente nao pode sobrescrever em silencio")
+		t.Error("novo sobre arquivo existente não pode sobrescrever em silencio")
 	}
 }
 
@@ -67,19 +67,19 @@ func TestNewCommandWritesValidScenarioAndNeverOverwrites(t *testing.T) {
 // sugestao por semelhanca existia desde a validacao de cenario.
 func TestUnknownFlagSuggestsTheRightOneAndRebuildsTheCommand(t *testing.T) {
 	set := newFlagSet("target")
-	set.String("address", "127.0.0.1:8080", "endereco de escuta")
+	set.String("address", "127.0.0.1:8080", "endereço de escuta")
 	args := []string{"-addr", ":8080"}
 
 	message := unknownFlagMessage(set, args, errors.New(notDefined+"addr"))
 
 	for _, expected := range []string{
-		`"-addr" nao existe`,
-		`Voce quis dizer "-address"?`,
+		`"-addr" não existe`,
+		`Você quis dizer "-address"?`,
 		"braunrate target -address :8080",
-		"Todas as opcoes: braunrate target -h",
+		"Todas as opções: braunrate target -h",
 	} {
 		if !strings.Contains(message, expected) {
-			t.Errorf("a mensagem nao traz %q:\n%s", expected, message)
+			t.Errorf("a mensagem não traz %q:\n%s", expected, message)
 		}
 	}
 }

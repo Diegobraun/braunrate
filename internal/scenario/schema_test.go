@@ -28,11 +28,11 @@ func readSchema(t *testing.T) schema {
 	t.Helper()
 	content, err := os.ReadFile(filepath.Join("..", "..", "docs", "braunrate.schema.json"))
 	if err != nil {
-		t.Fatalf("nao consegui ler o schema publicado: %v", err)
+		t.Fatalf("não consegui ler o schema publicado: %v", err)
 	}
 	var read schema
 	if err := json.Unmarshal(content, &read); err != nil {
-		t.Fatalf("o schema publicado nao e JSON valido: %v", err)
+		t.Fatalf("o schema publicado não e JSON válido: %v", err)
 	}
 	return read
 }
@@ -60,7 +60,7 @@ func TestPublishedSchemaAcceptsEnvironmentReferencesWhereTheParserDoes(t *testin
 	for name, values := range accepted {
 		pattern, err := regexp.Compile(read.Definitions[name].Pattern)
 		if err != nil {
-			t.Fatalf("o padrao de %q nao compila: %v", name, err)
+			t.Fatalf("o padrão de %q não compila: %v", name, err)
 		}
 		for _, value := range values {
 			if !pattern.MatchString(value) {
@@ -71,7 +71,7 @@ func TestPublishedSchemaAcceptsEnvironmentReferencesWhereTheParserDoes(t *testin
 	for name, refused := range map[string]string{"taxa": "300", "duracao": "30"} {
 		pattern := regexp.MustCompile(read.Definitions[name].Pattern)
 		if pattern.MatchString(refused) {
-			t.Errorf("o schema de %s passou a aceitar %q, que nao tem unidade", name, refused)
+			t.Errorf("o schema de %s passou a aceitar %q, que não tem unidade", name, refused)
 		}
 	}
 }
@@ -87,7 +87,7 @@ func compareKeys(t *testing.T, where string, parser, schema []string) {
 	}
 	for _, key := range parser {
 		if !schemaNode[key] {
-			t.Errorf("o parser aceita %q no %s e o schema nao documenta: o editor vai marcar erro em cenario valido", key, where)
+			t.Errorf("o parser aceita %q no %s e o schema não documenta: o editor vai marcar erro em cenário válido", key, where)
 		}
 	}
 
@@ -97,7 +97,7 @@ func compareKeys(t *testing.T, where string, parser, schema []string) {
 	}
 	for _, key := range schema {
 		if !parserNode[key] {
-			t.Errorf("o schema oferece %q no %s e o parser recusa: o editor vai completar chave que nao roda", key, where)
+			t.Errorf("o schema oferece %q no %s e o parser recusa: o editor vai completar chave que não roda", key, where)
 		}
 	}
 }
@@ -113,7 +113,7 @@ func keysOf(properties map[string]json.RawMessage) []string {
 func TestExampleScenariosPointToSchema(t *testing.T) {
 	files, err := filepath.Glob(filepath.Join("..", "..", "examples", "*.yaml"))
 	if err != nil || len(files) == 0 {
-		t.Fatalf("nao encontrei cenarios de exemplo em examples/: %v", err)
+		t.Fatalf("não encontrei cenários de exemplo em examples/: %v", err)
 	}
 	for _, file := range files {
 		content, err := os.ReadFile(file)
@@ -121,10 +121,10 @@ func TestExampleScenariosPointToSchema(t *testing.T) {
 			t.Fatalf("%s: %v", file, err)
 		}
 		if len(content) < 20 || string(content[:19]) != "# yaml-language-ser" {
-			t.Errorf("%s nao comeca com a linha de yaml-language-server: quem abrir no editor nao ganha autocompletar", file)
+			t.Errorf("%s não começa com a linha de yaml-language-server: quem abrir no editor não ganha autocompletar", file)
 		}
 		if _, err := Parse(content); err != nil {
-			t.Errorf("%s nao carrega: %v", file, err)
+			t.Errorf("%s não carrega: %v", file, err)
 		}
 	}
 }

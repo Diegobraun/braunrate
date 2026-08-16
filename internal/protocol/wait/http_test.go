@@ -18,7 +18,7 @@ func configuracaoHTTP(t *testing.T, body string) protocol.Config {
 	t.Helper()
 	config, err := decode(t, body)
 	if err != nil {
-		t.Fatalf("cenario nao decodificou: %v", err)
+		t.Fatalf("cenário não decodificou: %v", err)
 	}
 	return config
 }
@@ -57,7 +57,7 @@ timeout: 2s
 		t.Errorf("sondou %d vezes; a espera terminou antes do efeito", calls.Load())
 	}
 	if elapsed < 40*time.Millisecond {
-		t.Errorf("a espera levou %s: o tempo ate o efeito precisa entrar na medicao", elapsed)
+		t.Errorf("a espera levou %s: o tempo até o efeito precisa entrar na medição", elapsed)
 	}
 }
 

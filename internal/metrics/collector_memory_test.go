@@ -62,7 +62,7 @@ func TestTimeSeriesMemoryDoesNotGrowWithTheLengthOfTheRun(t *testing.T) {
 	// margin is generous on purpose: what fails here is linear growth, not the
 	// noise of a few buckets still open inside the window.
 	if secondStretch > firstStretch/2 && secondStretch > 8<<20 {
-		t.Fatalf("a memoria continua crescendo com o tempo de execucao: 1min=%d KB, 5min=%d KB, 10min=%d KB",
+		t.Fatalf("a memória continua crescendo com o tempo de execução: 1min=%d KB, 5min=%d KB, 10min=%d KB",
 			atOneMinute/1024, atFiveMinutes/1024, atTenMinutes/1024)
 	}
 	if atTenMinutes > 64<<20 {
@@ -130,7 +130,7 @@ func TestSampleOutsideTheWindowIsCountedAndDeclared(t *testing.T) {
 	collector.mu.Unlock()
 
 	if first.LateSamples != 1 {
-		t.Fatalf("a amostra fora da janela nao foi declarada: %+v", first)
+		t.Fatalf("a amostra fora da janela não foi declarada: %+v", first)
 	}
 	if first.Completed != 2 {
 		t.Fatalf("a amostra fora da janela deixou de ser contada: %d concluidas", first.Completed)

@@ -47,8 +47,8 @@ func Run(runContext context.Context, options Options) error {
 
 func runHealthy(runContext context.Context, options Options) error {
 	say(options, `
-Esta demonstracao roda contra um servico de mentira que sobe aqui mesmo, entao
-voce pode experimentar sem afetar nada.
+Esta demonstração roda contra um serviço de mentira que sobe aqui mesmo, então
+você pode experimentar sem afetar nada.
 
 `)
 
@@ -58,8 +58,8 @@ voce pode experimentar sem afetar nada.
 	}
 	defer stop()
 
-	say(options, `[1/3] Subindo um servico de exemplo em %s
-      Ele responde em ~%d ms, como uma API saudavel responderia.
+	say(options, `[1/3] Subindo um serviço de exemplo em %s
+      Ele responde em ~%d ms, como uma API saudável responderia.
 
 `, address(target), targetLatency.Milliseconds())
 
@@ -68,14 +68,14 @@ voce pode experimentar sem afetar nada.
 		return err
 	}
 
-	say(options, `[2/3] Rodando: %s requisicoes por segundo, durante %s.
+	say(options, `[2/3] Rodando: %s requisições por segundo, durante %s.
 
-      Essa e a taxa: o braunrate dispara nesse ritmo esteja o servico rapido ou
-      lento — como usuarios de verdade fazem. Ferramentas que esperam a
-      resposta anterior antes de mandar a proxima aliviam o sistema justamente
-      quando ele esta sofrendo.
+      Essa é a taxa: o braunrate dispara nesse ritmo esteja o serviço rápido ou
+      lento — como usuários de verdade fazem. Ferramentas que esperam a
+      resposta anterior antes de mandar a próxima aliviam o sistema justamente
+      quando ele está sofrendo.
 
-      O cenario que esta rodando ficou em %s, comentado.
+      O cenário que está rodando ficou em %s, comentado.
 
 `, strings.TrimSuffix(rate, "/s"), duration, scenarioPath)
 
@@ -85,7 +85,7 @@ voce pode experimentar sem afetar nada.
 	}
 	document := result.Document
 
-	say(options, "[3/3] Pronto. O que os numeros dizem:\n\n")
+	say(options, "[3/3] Pronto. O que os números dizem:\n\n")
 	sayMeasurement(options, document)
 	sayVerdict(options, document)
 	sayFixedDataCaveat(options, document, scenarioPath)
@@ -95,8 +95,8 @@ voce pode experimentar sem afetar nada.
 		return err
 	}
 
-	say(options, `Relatorio completo: %s
-Os dois arquivos ficaram aqui no diretorio atual; apague quando quiser.
+	say(options, `Relatório completo: %s
+Os dois arquivos ficaram aqui no diretório atual; apague quando quiser.
 
 Quer ver a ferramenta pegando um problema de verdade?
 
@@ -108,7 +108,7 @@ Quer ver a ferramenta pegando um problema de verdade?
 
 func runFreezing(runContext context.Context, options Options) error {
 	say(options, `
-Esta demonstracao mede o mesmo servico travado de duas formas, e mostra o que
+Esta demonstração mede o mesmo serviço travado de duas formas, e mostra o que
 cada uma reporta.
 
 `)
@@ -124,9 +124,9 @@ cada uma reporta.
 	}
 	defer stop()
 
-	say(options, `[1/4] Subindo um servico de exemplo em %s, com uma diferenca: ele
-      trava por %d segundos no meio da execucao. E o que um GC longo, um lock
-      ou um failover fazem com um servico de verdade.
+	say(options, `[1/4] Subindo um serviço de exemplo em %s, com uma diferença: ele
+      trava por %d segundos no meio da execução. É o que um GC longo, um lock
+      ou um failover fazem com um serviço de verdade.
 
 `, address(target), int(freezeDuration.Seconds()))
 
@@ -144,8 +144,8 @@ cada uma reporta.
 	}
 	document := result.Document
 
-	say(options, `[3/4] Agora um laco fechado, contra um servico identico que trava igual.
-      Laco fechado e como JMeter e Locust medem: a proxima requisicao so sai
+	say(options, `[3/4] Agora um laço fechado, contra um serviço idêntico que trava igual.
+      Laço fechado é como JMeter e Locust medem: a próxima requisição só sai
       depois que a anterior responde.
 
 `)
@@ -158,17 +158,17 @@ cada uma reporta.
 	closed := selfcheck.RunClosedLoop(runContext, closedTarget, closedLoopPath, runDuration)
 
 	open := document.Overall.Reported()
-	say(options, `[4/4] Mesma pausa, mesmo tipo de alvo, mesma requisicao, duas medicoes:
+	say(options, `[4/4] Mesma pausa, mesmo tipo de alvo, mesma requisição, duas medições:
 
-      laco fechado (JMeter, Locust):  99%% em ate %.1f ms sobre %d requisicoes
-      braunrate (modelo aberto):      99%% em ate %.1f ms sobre %d requisicoes
+      laço fechado (JMeter, Locust):  99%% em até %.1f ms sobre %d requisições
+      braunrate (modelo aberto):      99%% em até %.1f ms sobre %d requisições
 
-      %.1f ms escondidos pelo laco fechado.
+      %.1f ms escondidos pelo laço fechado.
 
-      O laco fechado nao mente por bug. Quando o alvo trava, ele para de
-      enviar, e as requisicoes que deveriam ter partido nunca entram na conta —
-      inclusive as que um usuario de verdade teria mandado. O braunrate conta
-      do instante em que a requisicao deveria ter partido, entao a pausa
+      O laço fechado não mente por bug. Quando o alvo trava, ele para de
+      enviar, e as requisições que deveriam ter partido nunca entram na conta —
+      inclusive as que um usuário de verdade teria mandado. O braunrate conta
+      do instante em que a requisição deveria ter partido, então a pausa
       aparece.
 
 `, closed.P99, closed.Samples, open.P99, document.Overall.Count, open.P99-closed.P99)
@@ -176,8 +176,8 @@ cada uma reporta.
 	sayMeasurement(options, document)
 	sayVerdict(options, document)
 	if result.Exit == runner.ExitSLO {
-		say(options, `      Se isto fosse o seu CI, o braunrate teria saido com codigo 1 e a esteira
-      reprovaria. Com a medicao de laco fechado, o mesmo criterio passaria.
+		say(options, `      Se isto fosse o seu CI, o braunrate teria saído com código 1 e a esteira
+      reprovaria. Com a medição de laço fechado, o mesmo critério passaria.
 
 `)
 	}
@@ -186,7 +186,7 @@ cada uma reporta.
 	if err := runner.WriteHTML(htmlPath, document); err != nil {
 		return err
 	}
-	say(options, "Relatorio completo: %s\n\n", htmlPath)
+	say(options, "Relatório completo: %s\n\n", htmlPath)
 	return nil
 }
 
@@ -194,12 +194,12 @@ func sayMeasurement(options Options, document metrics.Document) {
 	overall := document.Overall
 	latency := overall.Reported()
 	elapsed := (time.Duration(document.Run.DurationMs) * time.Millisecond).Round(100 * time.Millisecond)
-	say(options, `  %d requisicoes em %s, %.0f por segundo, %.2f%% de erro
-  Metade das respostas em ate %.1f ms; 95%% em ate %.1f ms; a pior levou %.0f ms
+	say(options, `  %d requisições em %s, %.0f por segundo, %.2f%% de erro
+  Metade das respostas em até %.1f ms; 95%% em até %.1f ms; a pior levou %.0f ms
 
-      Repare que nao existe media nessa linha. Media esconde: se 95 respostas
-      levam 5 ms e 5 levam 2 segundos, a media da 105 ms e ninguem percebe as
-      cinco lentas. "95%% em ate %.1f ms" quer dizer que 5%% das pessoas
+      Repare que não existe média nessa linha. Média esconde: se 95 respostas
+      levam 5 ms e 5 levam 2 segundos, a média dá 105 ms e ninguém percebe as
+      cinco lentas. "95%% em até %.1f ms" quer dizer que 5%% das pessoas
       esperaram mais que isso.
 
 `, overall.Count, elapsed, overall.EffectiveRate, overall.ErrorRate*100,
@@ -213,8 +213,8 @@ func sayVerdict(options Options, document metrics.Document) {
 			say(options, "      %s\n", finding.Message)
 		}
 		say(options, `
-      Resultado invalido nao e o mesmo que resultado ruim: quer dizer que a
-      execucao nao mediu o que se propos, e nenhum numero acima vale como
+      Resultado inválido não e o mesmo que resultado ruim: quer dizer que a
+      execução não mediu o que se propôs, e nenhum número acima vale como
       resposta.
 
 `)
@@ -229,8 +229,8 @@ func sayVerdict(options Options, document metrics.Document) {
 	}
 	if len(document.SLO.Evaluations) > 0 {
 		say(options, `
-      Isso e um criterio de aceite: um limite que voce declara no arquivo. Se
-      estourar, o braunrate sai com codigo 1 — da para usar direto no seu CI.
+      Isso é um critério de aceite: um limite que você declara no arquivo. Se
+      estourar, o braunrate sai com código 1 — dá para usar direto no seu CI.
 
 `)
 	}
@@ -244,9 +244,9 @@ func sayFixedDataCaveat(options Options, document metrics.Document, scenarioPath
 		if warning.Kind != "passo_sem_variacao" && warning.Kind != "valor_fixo" && warning.Kind != "variedade_ausente" {
 			continue
 		}
-		say(options, `  Uma ressalva que o proprio relatorio levanta:
+		say(options, `  Uma ressalva que o próprio relatório levanta:
       %s
-      Requisicao sempre igual mede o cache do alvo, nao o alvo. Em %s, troque
+      Requisição sempre igual mede o cache do alvo, não o alvo. Em %s, troque
       /pedidos/1 por /pedidos/${id} e declare de onde ${id} vem.
 
 `, warning.Message, scenarioPath)
@@ -262,9 +262,9 @@ func startTarget(options Options, targetOptions testsupport.Options) (string, fu
 	server := testsupport.New(targetOptions)
 	if err := server.Start(preferredPort); err != nil {
 		if err := server.Start(anyFreePort); err != nil {
-			return "", nil, fmt.Errorf("nao consegui subir o alvo de exemplo: %w", err)
+			return "", nil, fmt.Errorf("não consegui subir o alvo de exemplo: %w", err)
 		}
-		say(options, "      (%s esta ocupado, entao o alvo subiu em %s)\n\n",
+		say(options, "      (%s está ocupado, então o alvo subiu em %s)\n\n",
 			preferredPort, address(server.Address()))
 	}
 	return server.Address(), func() { _ = server.Close() }, nil
@@ -276,7 +276,7 @@ func startTarget(options Options, targetOptions testsupport.Options) (string, fu
 func startTwinTarget(targetOptions testsupport.Options) (string, func(), error) {
 	server := testsupport.New(targetOptions)
 	if err := server.Start(anyFreePort); err != nil {
-		return "", nil, fmt.Errorf("nao consegui subir o segundo alvo de exemplo: %w", err)
+		return "", nil, fmt.Errorf("não consegui subir o segundo alvo de exemplo: %w", err)
 	}
 	return server.Address(), func() { _ = server.Close() }, nil
 }
@@ -285,7 +285,7 @@ func address(target string) string { return strings.TrimPrefix(target, "http://"
 
 func write(path, content string) error {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return fmt.Errorf("nao consegui gravar %s: %w", path, err)
+		return fmt.Errorf("não consegui gravar %s: %w", path, err)
 	}
 	return nil
 }

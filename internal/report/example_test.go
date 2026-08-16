@@ -17,22 +17,22 @@ import (
 func TestPublishedExampleIsUpToDate(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("..", "..", "docs", "exemplo-resultado.json"))
 	if err != nil {
-		t.Fatalf("nao consegui ler o resultado de exemplo: %v", err)
+		t.Fatalf("não consegui ler o resultado de exemplo: %v", err)
 	}
 	var document metrics.Document
 	if err := json.Unmarshal(content, &document); err != nil {
-		t.Fatalf("o resultado de exemplo nao carrega: %v", err)
+		t.Fatalf("o resultado de exemplo não carrega: %v", err)
 	}
 
 	var generated strings.Builder
 	if err := report.HTML(&generated, document); err != nil {
-		t.Fatalf("nao gerou o HTML: %v", err)
+		t.Fatalf("não gerou o HTML: %v", err)
 	}
 
 	path := filepath.Join("..", "..", "docs", "exemplo-relatorio.html")
 	committed, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("nao consegui ler o exemplo publicado: %v", err)
+		t.Fatalf("não consegui ler o exemplo publicado: %v", err)
 	}
 
 	if string(committed) != generated.String() {
@@ -45,17 +45,17 @@ Regenere com:
 func TestPublishedExampleStaysARealRun(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("..", "..", "docs", "exemplo-resultado.json"))
 	if err != nil {
-		t.Fatalf("nao consegui ler o resultado de exemplo: %v", err)
+		t.Fatalf("não consegui ler o resultado de exemplo: %v", err)
 	}
 	var document metrics.Document
 	if err := json.Unmarshal(content, &document); err != nil {
-		t.Fatalf("o resultado de exemplo nao carrega: %v", err)
+		t.Fatalf("o resultado de exemplo não carrega: %v", err)
 	}
 	if document.Overall.Count == 0 || len(document.Series) == 0 {
-		t.Error("o exemplo precisa vir de uma execucao com carga, nao de um documento montado a mao")
+		t.Error("o exemplo precisa vir de uma execução com carga, não de um documento montado a mao")
 	}
 	if document.FormatVersion != metrics.ResultFormatVersion {
-		t.Errorf("o exemplo esta no formato %q e o atual e %q: regenere a execucao",
+		t.Errorf("o exemplo esta no formato %q e o atual e %q: regenere a execução",
 			document.FormatVersion, metrics.ResultFormatVersion)
 	}
 }

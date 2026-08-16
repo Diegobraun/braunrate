@@ -49,26 +49,26 @@ func createTopic(t *testing.T, broker credential, name string) {
 	}
 	dialer, err := settings.Dialer()
 	if err != nil {
-		t.Fatalf("dialer nao montou: %v", err)
+		t.Fatalf("dialer não montou: %v", err)
 	}
 	conn, err := dialer.Dial("tcp", broker.address)
 	if err != nil {
-		t.Fatalf("nao consegui falar com o broker autenticado: %v", err)
+		t.Fatalf("não consegui falar com o broker autenticado: %v", err)
 	}
 	defer func() { _ = conn.Close() }()
 
 	controller, err := conn.Controller()
 	if err != nil {
-		t.Fatalf("nao achei o controlador: %v", err)
+		t.Fatalf("não achei o controlador: %v", err)
 	}
 	leader, err := dialer.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
 	if err != nil {
-		t.Fatalf("nao consegui falar com o controlador: %v", err)
+		t.Fatalf("não consegui falar com o controlador: %v", err)
 	}
 	defer func() { _ = leader.Close() }()
 
 	if err := leader.CreateTopics(kafka.TopicConfig{Topic: name, NumPartitions: 1, ReplicationFactor: 1}); err != nil {
-		t.Fatalf("nao consegui criar o topico %q: %v", name, err)
+		t.Fatalf("não consegui criar o tópico %q: %v", name, err)
 	}
 	for attempt := 0; attempt < 50; attempt++ {
 		partitions, err := conn.ReadPartitions(name)
@@ -77,21 +77,21 @@ func createTopic(t *testing.T, broker credential, name string) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	t.Fatalf("o topico %q nao ficou pronto", name)
+	t.Fatalf("o tópico %q não ficou pronto", name)
 }
 
 func runScenario(t *testing.T, content string) metrics.Document {
 	t.Helper()
 	spec, err := scenario.Parse([]byte(content))
 	if err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 	if err := spec.Validate(); err != nil {
-		t.Fatalf("cenario nao validou: %v", err)
+		t.Fatalf("cenário não validou: %v", err)
 	}
 	executor, err := engine.New(spec, engine.DefaultOptions())
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	document := executor.Execute(context.Background())
 	protocol.CloseAll()
@@ -136,13 +136,13 @@ func TestProducesThroughSCRAMOverTLS(t *testing.T) {
 	document := runScenario(t, authenticatedScenario(t, broker, topic, broker.password))
 
 	if !document.Valid() {
-		t.Fatalf("resultado invalido: %+v", document.Sanity.Findings)
+		t.Fatalf("resultado inválido: %+v", document.Sanity.Findings)
 	}
 	if document.Overall.Errors > 0 {
 		t.Fatalf("%d erro(s) contra o broker autenticado: %+v", document.Overall.Errors, document.Steps[0].Details)
 	}
 	if document.Overall.Count == 0 {
-		t.Fatal("nenhuma mensagem entrou na medicao")
+		t.Fatal("nenhuma mensagem entrou na medição")
 	}
 }
 
@@ -159,7 +159,7 @@ func TestWrongPasswordIsReportedAsAuthenticationNeverAsNetwork(t *testing.T) {
 	}
 	classes := document.Steps[0].ErrorsByClass
 	if classes[string(protocol.ErrAuth)] == 0 {
-		t.Fatalf("a senha errada nao foi classificada como autenticacao: %+v", classes)
+		t.Fatalf("a senha errada não foi classificada como autenticação: %+v", classes)
 	}
 	if classes[string(protocol.ErrNetwork)] > 0 {
 		t.Fatalf("credencial errada virou falha de rede: %+v", classes)
@@ -170,11 +170,11 @@ func TestWrongPasswordIsReportedAsAuthenticationNeverAsNetwork(t *testing.T) {
 			explained = true
 		}
 		if strings.Contains(detail, "senha-errada-de-proposito") {
-			t.Fatalf("a senha apareceu no relatorio: %q", detail)
+			t.Fatalf("a senha apareceu no relatório: %q", detail)
 		}
 	}
 	if !explained {
-		t.Fatalf("o erro nao explica o que fazer: %+v", document.Steps[0].Details)
+		t.Fatalf("o erro não explica o que fazer: %+v", document.Steps[0].Details)
 	}
 }
 
@@ -189,11 +189,11 @@ func TestHandshakeDoesNotLandInTheLatencyOfTheFirstMessage(t *testing.T) {
 	document := runScenario(t, authenticatedScenario(t, broker, topic, broker.password))
 
 	if document.Overall.Errors > 0 {
-		t.Fatalf("erro na execucao: %+v", document.Steps[0].Details)
+		t.Fatalf("erro na execução: %+v", document.Steps[0].Details)
 	}
 	latency := document.Steps[0].Reported()
 	if latency.Max > 10*latency.P50+500 {
-		t.Fatalf("a pior mensagem levou %.1f ms contra %.1f ms na metade: o handshake caiu dentro da medicao",
+		t.Fatalf("a pior mensagem levou %.1f ms contra %.1f ms na metade: o handshake caiu dentro da medição",
 			latency.Max, latency.P50)
 	}
 }
@@ -206,13 +206,13 @@ func TestBrokerIsDescribedInTheReportWithoutTheSecret(t *testing.T) {
 	document := runScenario(t, authenticatedScenario(t, broker, topic, broker.password))
 
 	if len(document.Run.Brokers) == 0 {
-		t.Fatal("o relatorio nao diz contra que broker a medicao foi feita")
+		t.Fatal("o relatório não diz contra que broker a medição foi feita")
 	}
 	printed := strings.Join(document.Run.Brokers, "\n")
 	if strings.Contains(printed, broker.password) {
 		t.Fatalf("a senha apareceu no documento: %s", printed)
 	}
-	if !strings.Contains(printed, "scram_sha512") || !strings.Contains(printed, "TLS com CA propria") {
-		t.Fatalf("o relatorio nao descreve a conexao: %s", printed)
+	if !strings.Contains(printed, "scram_sha512") || !strings.Contains(printed, "TLS com CA própria") {
+		t.Fatalf("o relatório não descreve a conexão: %s", printed)
 	}
 }

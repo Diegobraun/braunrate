@@ -93,12 +93,12 @@ func missingEnvironmentHint(node *yaml.Node) string {
 		return ""
 	}
 	if len(missing) == 1 {
-		return fmt.Sprintf("\n    a variavel de ambiente %s nao esta definida, entao este campo ficou com a referencia crua.\n"+
-			"    rode com %s=... , ou declare um padrao no arquivo: ${%s:-valor}",
+		return fmt.Sprintf("\n    a variável de ambiente %s não está definida, então este campo ficou com a referência crua.\n"+
+			"    rode com %s=... , ou declare um padrão no arquivo: ${%s:-valor}",
 			missing[0], missing[0], missing[0])
 	}
-	return fmt.Sprintf("\n    estas variaveis de ambiente nao estao definidas: %s.\n"+
-		"    rode com elas no ambiente, ou declare um padrao no arquivo: ${NOME:-valor}",
+	return fmt.Sprintf("\n    estas variáveis de ambiente não estão definidas: %s.\n"+
+		"    rode com elas no ambiente, ou declare um padrão no arquivo: ${NOME:-valor}",
 		strings.Join(missing, ", "))
 }
 

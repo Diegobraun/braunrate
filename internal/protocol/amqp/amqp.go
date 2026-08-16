@@ -151,7 +151,7 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 		case "timeout":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout invalido: %q (use 5s, 30s)", value.Value)
+				return nil, fmt.Errorf("timeout inválido: %q (use 5s, 30s)", value.Value)
 			}
 			config.Timeout = duration
 		default:
@@ -175,7 +175,7 @@ func Validate(config *Config) error {
   - amqp: { fila: pedidos, corpo: { id: "${assinantes.id}" } }`)
 	}
 	if len(config.Body) == 0 {
-		return errors.New(`passo amqp sem corpo: uma mensagem vazia nao exercita o consumidor.
+		return errors.New(`passo amqp sem corpo: uma mensagem vazia não exercita o consumidor.
   - amqp: { fila: pedidos, corpo: { id: "${assinantes.id}" } }`)
 	}
 	return nil
@@ -187,11 +187,11 @@ func readBody(node *yaml.Node) ([]byte, error) {
 	}
 	var structure any
 	if err := node.Decode(&structure); err != nil {
-		return nil, fmt.Errorf("corpo invalido: %v", err)
+		return nil, fmt.Errorf("corpo inválido: %v", err)
 	}
 	body, err := json.Marshal(structure)
 	if err != nil {
-		return nil, fmt.Errorf("corpo nao serializa para JSON: %v", err)
+		return nil, fmt.Errorf("corpo não serializa para JSON: %v", err)
 	}
 	return body, nil
 }
@@ -199,7 +199,7 @@ func readBody(node *yaml.Node) ([]byte, error) {
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de amqp"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não e de amqp"}
 	}
 
 	broker := request.Messaging.BrokerFor("amqp")
@@ -214,7 +214,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 	if address == "" || strings.HasPrefix(address, "http") {
 		return protocol.Response{
 			Class:  protocol.ErrConfig,
-			Detail: "sem endereco: declare 'url' no passo ou aponte o alvo do cenario para amqp://usuario:senha@host:5672/",
+			Detail: "sem endereço: declare 'url' no passo ou aponte o alvo do cenário para amqp://usuario:senha@host:5672/",
 		}
 	}
 
@@ -305,7 +305,7 @@ func (implementation *Protocol) conexaoDe(address string, config *Config, broker
 		if _, err := channel.QueueDeclare(config.Queue, true, false, false, false, nil); err != nil {
 			_ = channel.Close()
 			_ = link.Close()
-			return nil, fmt.Errorf("nao consegui declarar a fila %q: %v", config.Queue, err)
+			return nil, fmt.Errorf("não consegui declarar a fila %q: %v", config.Queue, err)
 		}
 		_ = channel.Close()
 	}

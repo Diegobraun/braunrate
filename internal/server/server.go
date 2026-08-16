@@ -94,7 +94,7 @@ func (server *Server) readScenario(writer http.ResponseWriter, request *http.Req
 	}
 	content, err := os.ReadFile(path)
 	if err != nil {
-		writeProblem(writer, http.StatusNotFound, fmt.Sprintf("nao consegui ler %s: %v", path, err))
+		writeProblem(writer, http.StatusNotFound, fmt.Sprintf("não consegui ler %s: %v", path, err))
 		return
 	}
 	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -111,16 +111,16 @@ func (server *Server) writeScenario(writer http.ResponseWriter, request *http.Re
 		return
 	}
 	if !strings.HasSuffix(path, ".yaml") && !strings.HasSuffix(path, ".yml") {
-		writeProblem(writer, http.StatusBadRequest, "so gravo cenario: o nome precisa terminar em .yaml")
+		writeProblem(writer, http.StatusBadRequest, "só gravo cenário: o nome precisa terminar em .yaml")
 		return
 	}
 	content, err := io.ReadAll(io.LimitReader(request.Body, maxScenarioBytes))
 	if err != nil {
-		writeProblem(writer, http.StatusBadRequest, fmt.Sprintf("nao consegui ler o corpo: %v", err))
+		writeProblem(writer, http.StatusBadRequest, fmt.Sprintf("não consegui ler o corpo: %v", err))
 		return
 	}
 	if err := os.WriteFile(path, content, 0o644); err != nil {
-		writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("nao consegui gravar %s: %v", path, err))
+		writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("não consegui gravar %s: %v", path, err))
 		return
 	}
 	writeJSON(writer, http.StatusOK, map[string]any{"name": request.PathValue("name"), "bytes": len(content)})
@@ -134,17 +134,17 @@ const maxScenarioBytes = 1 << 20
 // that the port has no authentication before pointing anyone at it.
 func (server *Server) StartupWarning() []string {
 	lines := []string{
-		fmt.Sprintf("braunrate serve em http://%s, servindo cenarios de %s", server.options.Address, server.options.Directory),
-		"Sem autenticacao e sem TLS: qualquer um que alcance esta porta pode disparar carga contra os alvos dos cenarios.",
-		"Foi feito para rodar em 127.0.0.1. Expor em outra interface e outra decisao, e ela ainda nao foi tomada.",
+		fmt.Sprintf("braunrate serve em http://%s, servindo cenários de %s", server.options.Address, server.options.Directory),
+		"Sem autenticação e sem TLS: qualquer um que alcance esta porta pode disparar carga contra os alvos dos cenários.",
+		"Foi feito para rodar em 127.0.0.1. Expor em outra interface é outra decisão, e ela ainda não foi tomada.",
 	}
 	if server.options.Writable {
-		lines = append(lines, "Gravacao ligada: quem alcancar esta porta pode alterar os arquivos de cenario de "+server.options.Directory+".")
+		lines = append(lines, "Gravação ligada: quem alcançar esta porta pode alterar os arquivos de cenário de "+server.options.Directory+".")
 	}
 	if server.options.Concurrent {
-		lines = append(lines, "Execucao concorrente ligada: duas execucoes ao mesmo tempo disputam a CPU que precisa despachar no instante agendado, e nenhuma das duas mede o que se propos a medir.")
+		lines = append(lines, "Execução concorrente ligada: duas execuções ao mesmo tempo disputam a CPU que precisa despachar no instante agendado, e nenhuma das duas mede o que se propôs a medir.")
 	}
-	return append(lines, fmt.Sprintf("\nPara ver o que ele esta servindo:\n  curl http://%s/scenarios", server.options.Address))
+	return append(lines, fmt.Sprintf("\nPara ver o que ele está servindo:\n  curl http://%s/scenarios", server.options.Address))
 }
 
 func (server *Server) Listen() error {
@@ -168,7 +168,7 @@ type scenarioLine struct {
 func (server *Server) listScenarios(writer http.ResponseWriter, _ *http.Request) {
 	entries, err := os.ReadDir(server.options.Directory)
 	if err != nil {
-		writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("nao consegui ler %s: %v", server.options.Directory, err))
+		writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("não consegui ler %s: %v", server.options.Directory, err))
 		return
 	}
 	found := []scenarioLine{}
@@ -186,7 +186,7 @@ func (server *Server) listScenarios(writer http.ResponseWriter, _ *http.Request)
 // a request could read any file the process can reach.
 func (server *Server) pathOf(name string) (string, error) {
 	if name == "" || name != filepath.Base(name) || strings.HasPrefix(name, ".") {
-		return "", fmt.Errorf("nome de cenario invalido: %q. Use o nome do arquivo dentro do diretorio servido, sem caminho", name)
+		return "", fmt.Errorf("nome de cenário inválido: %q. Use o nome do arquivo dentro do diretorio servido, sem caminho", name)
 	}
 	return filepath.Join(server.options.Directory, name), nil
 }
@@ -211,7 +211,7 @@ func (server *Server) validate(writer http.ResponseWriter, request *http.Request
 	// editor nunca aprova o que o terminal reprovaria.
 	draft, err := io.ReadAll(io.LimitReader(request.Body, maxScenarioBytes))
 	if err != nil {
-		writeProblem(writer, http.StatusBadRequest, fmt.Sprintf("nao consegui ler o corpo: %v", err))
+		writeProblem(writer, http.StatusBadRequest, fmt.Sprintf("não consegui ler o corpo: %v", err))
 		return
 	}
 	var spec scenario.Spec
@@ -304,7 +304,7 @@ func (server *Server) debug(writer http.ResponseWriter, request *http.Request) {
 	answer := debugAnswer{Complete: iteration.Complete(), Vars: iteration.Vars}
 	for index, observation := range iteration.Observations {
 		if err := report.Debug(&text, index+1, observation, true); err != nil {
-			writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("nao consegui escrever a depuracao: %v", err))
+			writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("não consegui escrever a depuracao: %v", err))
 			return
 		}
 		answer.Observations = append(answer.Observations, observationAnswer{
@@ -319,7 +319,7 @@ func (server *Server) debug(writer http.ResponseWriter, request *http.Request) {
 	writeJSON(writer, http.StatusOK, answer)
 }
 
-const busyMessage = "ja existe uma execucao em andamento. Duas execucoes na mesma maquina disputam a CPU que precisa despachar no instante agendado, e nenhuma das duas mede o que se propos a medir. Espere a atual terminar, ou suba o servidor com -concurrent se a contaminacao for aceitavel neste caso."
+const busyMessage = "já existe uma execução em andamento. Duas execuções na mesma máquina disputam a CPU que precisa despachar no instante agendado, e nenhuma das duas mede o que se propôs a medir. Espere a atual terminar, ou suba o servidor com -concurrent se a contaminação for aceitável neste caso."
 
 func (server *Server) take() (func(), bool) {
 	if server.options.Concurrent {
@@ -388,7 +388,7 @@ func (server *Server) getRun(writer http.ResponseWriter, request *http.Request) 
 	}
 	if run.Status == statusRunning {
 		writeJSON(writer, http.StatusOK, map[string]any{"id": run.ID, "status": run.Status,
-			"message": "a execucao ainda esta em andamento; acompanhe em /runs/" + run.ID + "/stream"})
+			"message": "a execução ainda está em andamento; acompanhe em /runs/" + run.ID + "/stream"})
 		return
 	}
 	if run.Status == statusFailed {
@@ -405,14 +405,14 @@ func (server *Server) getReport(writer http.ResponseWriter, request *http.Reques
 		return
 	}
 	if run.Status != statusDone {
-		writeProblem(writer, http.StatusConflict, "o relatorio so existe depois que a execucao termina; o estado agora e "+run.Status)
+		writeProblem(writer, http.StatusConflict, "o relatório só existe depois que a execução termina; o estado agora é "+run.Status)
 		return
 	}
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := report.HTML(writer, run.Document); err != nil {
 		// The status line is already on the wire, so there is no error to send:
 		// what is left is not pretending the report was complete.
-		_, _ = fmt.Fprintf(writer, "\n<!-- relatorio interrompido: %v -->\n", err)
+		_, _ = fmt.Fprintf(writer, "\n<!-- relatório interrompido: %v -->\n", err)
 	}
 }
 
@@ -459,7 +459,7 @@ func (server *Server) compareReport(writer http.ResponseWriter, request *http.Re
 	if err := report.ComparisonHTML(writer, result, after.Document.Version); err != nil {
 		// The status line is already on the wire, so there is no error to send:
 		// what is left is not pretending the page was complete.
-		_, _ = fmt.Fprintf(writer, "\n<!-- comparacao interrompida: %v -->\n", err)
+		_, _ = fmt.Fprintf(writer, "\n<!-- comparação interrompida: %v -->\n", err)
 	}
 }
 
@@ -473,14 +473,14 @@ func (server *Server) pairToCompare(writer http.ResponseWriter, request *http.Re
 		}
 	}
 	if before.Status != statusDone || after.Status != statusDone {
-		writeProblem(writer, http.StatusConflict, "so da para comparar execucao terminada; uma das duas ainda nao terminou")
+		writeProblem(writer, http.StatusConflict, "só da para comparar execução terminada; uma das duas ainda não terminou")
 		return nil, nil, false
 	}
 	return before, after, true
 }
 
 func unknownRun(id string) string {
-	return fmt.Sprintf("nao conheco a execucao %q. As execucoes vivem na memoria deste processo e somem quando ele reinicia; /runs lista as que existem agora", id)
+	return fmt.Sprintf("não conheço a execução %q. As execuções vivem na memória deste processo e somem quando ele reinicia; /runs lista as que existem agora", id)
 }
 
 func writeJSON(writer http.ResponseWriter, status int, body any) {

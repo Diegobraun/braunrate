@@ -113,7 +113,7 @@ func (server *Server) waitForResume() {
 func (server *Server) handleFreeze(w http.ResponseWriter, r *http.Request) {
 	duration, err := time.ParseDuration(r.URL.Query().Get("por"))
 	if err != nil {
-		http.Error(w, "parametro 'por' invalido", http.StatusBadRequest)
+		http.Error(w, "parâmetro 'por' inválido", http.StatusBadRequest)
 		return
 	}
 	server.Freeze(duration)
@@ -168,7 +168,7 @@ func (server *Server) requireToken(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer "+server.token() {
 			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = fmt.Fprint(w, `{"erro":"token ausente ou invalido"}`)
+			_, _ = fmt.Fprint(w, `{"erro":"token ausente ou inválido"}`)
 			return
 		}
 		handler(w, r)

@@ -26,10 +26,10 @@ func TestLiteralPasswordIsRefusedInTheDSLToo(t *testing.T) {
 	for _, password := range []string{"p4ssw0rd", "${KAFKA_SENHA:-p4ssw0rd}", ""} {
 		err := brokerScenario(t, dsl.BrokerAt("kafka.homolog:9093").SCRAM512("ana", password))
 		if err == nil {
-			t.Fatalf("a senha %q foi aceita no codigo", password)
+			t.Fatalf("a senha %q foi aceita no código", password)
 		}
-		if !strings.Contains(err.Error(), "variavel de ambiente") {
-			t.Fatalf("o erro nao ensina a forma certa para %q: %v", password, err)
+		if !strings.Contains(err.Error(), "variável de ambiente") {
+			t.Fatalf("o erro não ensina a forma certa para %q: %v", password, err)
 		}
 	}
 }
@@ -44,7 +44,7 @@ func TestEnvironmentReferenceIsAcceptedInTheDSL(t *testing.T) {
 		Step(dsl.Kafka("pedidos").Value("{}"), dsl.Name("publicar pedido")).
 		Build()
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 
 	broker := spec.Messaging.Kafka
@@ -52,7 +52,7 @@ func TestEnvironmentReferenceIsAcceptedInTheDSL(t *testing.T) {
 		t.Fatalf("credencial lida errada: %+v", broker.Auth)
 	}
 	if broker.Auth.Password != "segredo-do-ambiente" {
-		t.Fatalf("a senha nao veio do ambiente: %+v", broker.Auth)
+		t.Fatalf("a senha não veio do ambiente: %+v", broker.Auth)
 	}
 	if !broker.TLS.Enabled || broker.TLS.CA != "/etc/ssl/ca.pem" {
 		t.Fatalf("tls lido errado: %+v", broker.TLS)
@@ -68,14 +68,14 @@ func TestMSKIAMTakesRegionAndNoCredentialInTheDSL(t *testing.T) {
 		Step(dsl.Kafka("pedidos").Value("{}"), dsl.Name("publicar pedido")).
 		Build()
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 
 	broker := spec.Messaging.Kafka
 	if broker.Auth.Region != "us-east-1" || broker.Auth.Password != "" || broker.Auth.PasswordVar != "" {
-		t.Fatalf("msk_iam guardou credencial ou perdeu a regiao: %+v", broker.Auth)
+		t.Fatalf("msk_iam guardou credencial ou perdeu a região: %+v", broker.Auth)
 	}
 	if !broker.TLS.Enabled {
-		t.Fatal("msk_iam sem TLS: a porta 9098 nao aceita outra coisa")
+		t.Fatal("msk_iam sem TLS: a porta 9098 não aceita outra coisa")
 	}
 }

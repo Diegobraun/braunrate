@@ -23,7 +23,7 @@ func (testClock *testClock) Advance(duration time.Duration) {
 func tokenConfig(refreshAfter time.Duration) scenario.Auth {
 	return scenario.Auth{
 		Kind:         scenario.AuthToken,
-		Obtain:       &scenario.Step{Name: "obter autenticacao", Protocol: "http"},
+		Obtain:       &scenario.Step{Name: "obter autenticação", Protocol: "http"},
 		RefreshAfter: refreshAfter,
 		Header:       "Authorization: Bearer ${token}",
 	}
@@ -43,14 +43,14 @@ func TestTokenIsObtainedOnceAndReused(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		name, value, err := manager.Header(context.Background(), runtime.New(int64(i), 0, nil))
 		if err != nil {
-			t.Fatalf("iteracao %d: %v", i, err)
+			t.Fatalf("iteração %d: %v", i, err)
 		}
 		if name != "Authorization" || value != "Bearer token-de-teste" {
 			t.Fatalf("cabecalho = %q: %q", name, value)
 		}
 	}
 	if obtains != 1 {
-		t.Errorf("obtencoes = %d, esperado 1: o token e obtido uma vez, nao por requisicao", obtains)
+		t.Errorf("obtencoes = %d, esperado 1: o token e obtido uma vez, não por requisição", obtains)
 	}
 }
 
@@ -78,10 +78,10 @@ func TestTokenIsRefreshedWhenItExpires(t *testing.T) {
 
 	clock.Advance(2 * time.Minute)
 	if _, _, err := manager.Header(context.Background(), runtime.New(2, 0, nil)); err != nil {
-		t.Fatalf("apos vencer: %v", err)
+		t.Fatalf("após vencer: %v", err)
 	}
 	if obtains != 2 {
-		t.Errorf("obtencoes = %d apos vencer, esperado 2", obtains)
+		t.Errorf("obtencoes = %d após vencer, esperado 2", obtains)
 	}
 }
 
@@ -96,9 +96,9 @@ func TestAuthFailureExplainsWhatToCheck(t *testing.T) {
 	if err == nil {
 		t.Fatal("esperava erro")
 	}
-	for _, fragment := range []string{"401", "usuario", "senha", "autenticacao.obter"} {
+	for _, fragment := range []string{"401", "usuário", "senha", "autenticacao.obter"} {
 		if !strings.Contains(err.Error(), fragment) {
-			t.Errorf("mensagem %q nao menciona %q", err.Error(), fragment)
+			t.Errorf("mensagem %q não menciona %q", err.Error(), fragment)
 		}
 	}
 }
@@ -106,7 +106,7 @@ func TestAuthFailureExplainsWhatToCheck(t *testing.T) {
 func TestBasicAuthMakesNoRequest(t *testing.T) {
 	clock := &testClock{now: time.Unix(1_700_000_000, 0)}
 	execute := func(context.Context, scenario.Step, *runtime.Values) (protocol.Response, error) {
-		t.Fatal("autenticacao basica nao deveria fazer requisicao")
+		t.Fatal("autenticação básica não deveria fazer requisição")
 		return protocol.Response{}, nil
 	}
 

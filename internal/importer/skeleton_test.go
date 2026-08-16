@@ -23,7 +23,7 @@ func TestSkeletonShowsEveryProtocolThatIsCompiledIn(t *testing.T) {
 
 	for _, protocol := range []string{"http", "graphql", "kafka", "amqp", "aguardar"} {
 		if !strings.Contains(skeleton, protocol) {
-			t.Errorf("o esqueleto nao mostra a forma do passo %q", protocol)
+			t.Errorf("o esqueleto não mostra a forma do passo %q", protocol)
 		}
 	}
 }
@@ -32,7 +32,7 @@ func TestSkeletonShowsEveryProtocolThatIsCompiledIn(t *testing.T) {
 // roda: ele e a primeira coisa que a pessoa executa.
 func TestSkeletonIsAValidScenario(t *testing.T) {
 	if _, err := scenario.Parse([]byte(importer.Skeleton())); err != nil {
-		t.Fatalf("o esqueleto que a ferramenta escreve nao passa no proprio parser: %v", err)
+		t.Fatalf("o esqueleto que a ferramenta escreve não passa no próprio parser: %v", err)
 	}
 }
 
@@ -50,6 +50,6 @@ carga:
 ` + importer.ProtocolShapes()
 
 	if _, err := scenario.Parse([]byte(document)); err != nil {
-		t.Fatalf("a forma que o esqueleto ensina nao passa no parser: %v", err)
+		t.Fatalf("a forma que o esqueleto ensina não passa no parser: %v", err)
 	}
 }

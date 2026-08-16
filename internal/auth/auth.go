@@ -60,7 +60,7 @@ func (manager *Manager) Header(runContext context.Context, values *runtime.Value
 
 	name, model, found := strings.Cut(manager.config.Header, ":")
 	if !found {
-		return "", "", fmt.Errorf("o cabecalho de autenticacao precisa ser \"Nome: valor\", recebido %q", manager.config.Header)
+		return "", "", fmt.Errorf("o cabecalho de autenticação precisa ser \"Nome: valor\", recebido %q", manager.config.Header)
 	}
 	return strings.TrimSpace(name), strings.TrimSpace(values.Resolve(model)), nil
 }
@@ -77,10 +77,10 @@ func (manager *Manager) ensureToken(runContext context.Context, values *runtime.
 	obtainValues := runtime.New(0, 0, input)
 	response, err := manager.execute(runContext, *manager.config.Obtain, obtainValues)
 	if err != nil {
-		return fmt.Errorf("nao consegui obter a autenticacao (%s): %w", manager.config.Obtain.AggregationKey(), err)
+		return fmt.Errorf("não consegui obter a autenticação (%s): %w", manager.config.Obtain.AggregationKey(), err)
 	}
 	if response.Status >= 400 {
-		return fmt.Errorf("a requisicao de autenticacao respondeu %d; confira usuario, senha e caminho em 'autenticacao.obter'", response.Status)
+		return fmt.Errorf("a requisição de autenticação respondeu %d; confira usuário, senha e caminho em 'autenticacao.obter'", response.Status)
 	}
 
 	// Only what the auth request produced is kept. Keeping the whole context

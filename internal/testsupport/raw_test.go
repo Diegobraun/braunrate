@@ -17,7 +17,7 @@ import (
 func TestRawTargetAnswersHTTPAndKeepsTheConnection(t *testing.T) {
 	server := testsupport.NewRaw()
 	if err := server.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("alvo minimo nao subiu: %v", err)
+		t.Fatalf("alvo mínimo não subiu: %v", err)
 	}
 	t.Cleanup(func() { _ = server.Close() })
 
@@ -32,7 +32,7 @@ func TestRawTargetAnswersHTTPAndKeepsTheConnection(t *testing.T) {
 		body, err := io.ReadAll(response.Body)
 		_ = response.Body.Close()
 		if err != nil {
-			t.Fatalf("nao consegui ler o corpo: %v", err)
+			t.Fatalf("não consegui ler o corpo: %v", err)
 		}
 		if response.StatusCode != http.StatusOK {
 			t.Fatalf("chamada %d veio com status %d", attempt, response.StatusCode)
@@ -53,7 +53,7 @@ func TestRawTargetAnswersHTTPAndKeepsTheConnection(t *testing.T) {
 func TestRawTargetAnswersOncePerRequestEvenWhenTheyArriveTogether(t *testing.T) {
 	server := testsupport.NewRaw()
 	if err := server.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("alvo minimo nao subiu: %v", err)
+		t.Fatalf("alvo mínimo não subiu: %v", err)
 	}
 	t.Cleanup(func() { _ = server.Close() })
 
@@ -70,6 +70,6 @@ func TestRawTargetAnswersOncePerRequestEvenWhenTheyArriveTogether(t *testing.T) 
 		_ = response.Body.Close()
 	}
 	if served := server.Served(); served != 5 {
-		t.Fatalf("o alvo respondeu %d vezes para 5 requisicoes", served)
+		t.Fatalf("o alvo respondeu %d vezes para 5 requisições", served)
 	}
 }

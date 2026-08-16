@@ -71,21 +71,21 @@ func prepareScenario(t *testing.T, address string) (scenario.Spec, string) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "assinantes.csv"),
 		[]byte("id,nome\n1001,ana\n1002,bruno\n1003,carla\n"), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o csv: %v", err)
+		t.Fatalf("não consegui escrever o csv: %v", err)
 	}
 
 	content := fmt.Sprintf(scenarioModel, address)
 	path := filepath.Join(root, "jornada.yaml")
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o cenario: %v", err)
+		t.Fatalf("não consegui escrever o cenário: %v", err)
 	}
 
 	c, err := scenario.ParseFile(path)
 	if err != nil {
-		t.Fatalf("cenario nao carregou: %v", err)
+		t.Fatalf("cenário não carregou: %v", err)
 	}
 	if err := c.Validate(); err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 	return c, root
 }
@@ -94,7 +94,7 @@ func execute(t *testing.T) (metrics.Document, slo.Verdict) {
 	t.Helper()
 	server := testsupport.New(testsupport.Options{Latency: time.Millisecond})
 	if err := server.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("alvo nao subiu: %v", err)
+		t.Fatalf("alvo não subiu: %v", err)
 	}
 	t.Cleanup(func() { _ = server.Close() })
 
@@ -105,7 +105,7 @@ func execute(t *testing.T) (metrics.Document, slo.Verdict) {
 
 	m, err := engine.New(c, options)
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	document := m.Execute(context.Background())
 	return document, slo.Evaluate(c.SLO, document, nil)
@@ -118,25 +118,25 @@ func TestJourneyWithAuthCorrelationAndDataWorksEndToEnd(t *testing.T) {
 		t.Fatalf("esperava zero erro, obtive %d: %+v", document.Overall.Errors, document.Steps)
 	}
 	if len(document.Steps) != 2 {
-		t.Fatalf("esperava dois passos no relatorio, obtive %d", len(document.Steps))
+		t.Fatalf("esperava dois passos no relatório, obtive %d", len(document.Steps))
 	}
 	for _, step := range document.Steps {
 		if step.Count != 200 {
-			t.Errorf("passo %q com %d requisicoes, esperado 200", step.Name, step.Count)
+			t.Errorf("passo %q com %d requisições, esperado 200", step.Name, step.Count)
 		}
 	}
 	if !verdict.Passed {
 		t.Errorf("SLO deveria passar: %s", verdict.Sentence)
 	}
 	if document.Run.AuthObtains != 1 {
-		t.Errorf("autenticacoes = %d, esperado 1 para a execucao inteira", document.Run.AuthObtains)
+		t.Errorf("autenticacoes = %d, esperado 1 para a execução inteira", document.Run.AuthObtains)
 	}
 }
 
 func TestBrokenCorrelationIsCorrelationErrorNotNetworkError(t *testing.T) {
 	server := testsupport.New(testsupport.Options{Latency: time.Millisecond})
 	if err := server.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("alvo nao subiu: %v", err)
+		t.Fatalf("alvo não subiu: %v", err)
 	}
 	t.Cleanup(func() { _ = server.Close() })
 
@@ -147,16 +147,16 @@ func TestBrokenCorrelationIsCorrelationErrorNotNetworkError(t *testing.T) {
 	options.DataRoot = root
 	m, err := engine.New(c, options)
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	document := m.Execute(context.Background())
 
 	first := document.Steps[0]
 	if first.ErrorsByClass["correlacao"] == 0 {
-		t.Fatalf("esperava erro de correlacao, obtive %+v", first.ErrorsByClass)
+		t.Fatalf("esperava erro de correlação, obtive %+v", first.ErrorsByClass)
 	}
 	if len(document.Steps) != 1 {
-		t.Errorf("o passo seguinte nao deveria ter rodado sem a captura; passos: %d", len(document.Steps))
+		t.Errorf("o passo seguinte não deveria ter rodado sem a captura; passos: %d", len(document.Steps))
 	}
 	foundExplanation := false
 	for detail := range first.Details {
@@ -165,14 +165,14 @@ func TestBrokenCorrelationIsCorrelationErrorNotNetworkError(t *testing.T) {
 		}
 	}
 	if !foundExplanation {
-		t.Errorf("o relatorio precisa dizer qual captura falhou: %+v", first.Details)
+		t.Errorf("o relatório precisa dizer qual captura falhou: %+v", first.Details)
 	}
 }
 
 func TestFailedAssertionSeparatesFunctionalFromSLOFailure(t *testing.T) {
 	server := testsupport.New(testsupport.Options{Latency: time.Millisecond})
 	if err := server.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("alvo nao subiu: %v", err)
+		t.Fatalf("alvo não subiu: %v", err)
 	}
 	t.Cleanup(func() { _ = server.Close() })
 

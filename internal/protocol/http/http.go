@@ -110,7 +110,7 @@ func (implementation *Protocol) Close() error {
 
 func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
 	if node == nil {
-		return nil, errors.New("passo http sem configuracao")
+		return nil, errors.New("passo http sem configuração")
 	}
 	config := Default()
 
@@ -157,7 +157,7 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 		case "timeout":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout invalido: %q", value.Value)
+				return nil, fmt.Errorf("timeout inválido: %q", value.Value)
 			}
 			config.Timeout = duration
 		case "seguir_redirect":
@@ -194,11 +194,11 @@ func readBody(node *yaml.Node) ([]byte, string, error) {
 	}
 	var structure any
 	if err := node.Decode(&structure); err != nil {
-		return nil, "", fmt.Errorf("corpo invalido: %v", err)
+		return nil, "", fmt.Errorf("corpo inválido: %v", err)
 	}
 	body, err := json.Marshal(structure)
 	if err != nil {
-		return nil, "", fmt.Errorf("corpo nao serializa para JSON: %v", err)
+		return nil, "", fmt.Errorf("corpo não serializa para JSON: %v", err)
 	}
 	return body, "application/json", nil
 }
@@ -206,7 +206,7 @@ func readBody(node *yaml.Node) ([]byte, string, error) {
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de http"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não e de http"}
 	}
 
 	address, err := transport.BuildURL(request.URLBase, config.Path)

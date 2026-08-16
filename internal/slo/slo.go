@@ -75,7 +75,7 @@ func evaluateRule(rule scenario.SLORule, document metrics.Document, byStep map[s
 		if !exists {
 			evaluation.NoData = true
 			evaluation.Passed = false
-			evaluation.Sentence = fmt.Sprintf("Sem dados: o passo %q nao produziu nenhuma requisicao, entao a regra %q nao pode ser verificada.", rule.Step, rule.Text)
+			evaluation.Sentence = fmt.Sprintf("Sem dados: o passo %q não produziu nenhuma requisição, então a regra %q não pode ser verificada.", rule.Step, rule.Text)
 			return evaluation
 		}
 		distribution = step.Latency
@@ -126,7 +126,7 @@ func evaluateRegression(rule scenario.SLORule, evaluation Evaluation, baseline *
 	if baseline == nil {
 		evaluation.NoData = true
 		evaluation.Passed = true
-		evaluation.Sentence = fmt.Sprintf("Sem base: a regra %q precisa de uma execucao anterior. Rode com -baseline=execucao-anterior.json.", rule.Text)
+		evaluation.Sentence = fmt.Sprintf("Sem base: a regra %q precisa de uma execução anterior. Rode com -baseline=execucao-anterior.json.", rule.Text)
 		return evaluation
 	}
 
@@ -134,7 +134,7 @@ func evaluateRegression(rule scenario.SLORule, evaluation Evaluation, baseline *
 	if !found {
 		evaluation.NoData = true
 		evaluation.Passed = true
-		evaluation.Sentence = fmt.Sprintf("Sem base: %q nao existe nas duas execucoes, entao a regra %q nao pode ser verificada.", rule.Metrica, rule.Text)
+		evaluation.Sentence = fmt.Sprintf("Sem base: %q não existe nas duas execuções, então a regra %q não pode ser verificada.", rule.Metrica, rule.Text)
 		return evaluation
 	}
 
@@ -144,14 +144,14 @@ func evaluateRegression(rule scenario.SLORule, evaluation Evaluation, baseline *
 	if blocking := blockingCaveats(baseline.Comparison); len(blocking) > 0 {
 		evaluation.Untrustworthy = true
 		evaluation.Passed = true
-		evaluation.Sentence = fmt.Sprintf("Sem veredito: %s esta %s que a base, mas a comparacao com %s nao e confiavel (%s), entao a regra %q nao reprova.",
+		evaluation.Sentence = fmt.Sprintf("Sem veredito: %s está %s que a base, mas a comparação com %s não é confiável (%s), então a regra %q não reprova.",
 			readableName(rule.Metrica), changeText(evaluation.Obtained), baseline.Path, strings.Join(blocking, "; "), rule.Text)
 		return evaluation
 	}
 
 	if difference.Direction == comparison.DirectionSame {
 		evaluation.Passed = true
-		evaluation.Sentence = fmt.Sprintf("Passou: %s ficou dentro do ruido em relacao a base (variacao abaixo de %.0f%% nao e lida como regressao).",
+		evaluation.Sentence = fmt.Sprintf("Passou: %s ficou dentro do ruído em relação à base (variação abaixo de %.0f%% não é lida como regressão).",
 			readableName(rule.Metrica), comparison.AcceptedNoise*100)
 		return evaluation
 	}
@@ -281,7 +281,7 @@ func phraseEvaluation(evaluation Evaluation, rule scenario.SLORule) string {
 	var target string
 	switch rule.Scope {
 	case scenario.ScopeOverall:
-		target = "o cenario inteiro"
+		target = "o cenário inteiro"
 	case scenario.ScopeJourney:
 		target = "a jornada inteira"
 	default:
@@ -289,13 +289,13 @@ func phraseEvaluation(evaluation Evaluation, rule scenario.SLORule) string {
 	}
 	comparison := "acima do limite de"
 	if rule.Operator == scenario.OpGreater || rule.Operator == scenario.OpGreaterOrEqual {
-		comparison = "abaixo do minimo de"
+		comparison = "abaixo do mínimo de"
 	}
 	observed := observedPhrase(evaluation)
 	if evaluation.Passed {
 		within := "dentro do limite de"
 		if rule.Operator == scenario.OpGreater || rule.Operator == scenario.OpGreaterOrEqual {
-			within = "no minimo de"
+			within = "no mínimo de"
 		}
 		return fmt.Sprintf("Passou: %s %s, %s %s.",
 			target, observed, within, format(evaluation.Limit, evaluation.Unit))
@@ -310,7 +310,7 @@ func phraseEvaluation(evaluation Evaluation, rule scenario.SLORule) string {
 func observedPhrase(evaluation Evaluation) string {
 	value := format(evaluation.Obtained, evaluation.Unit)
 	if evaluation.Unit == "ms" && strings.HasPrefix(evaluation.Metrica, "p") {
-		return fmt.Sprintf("respondeu %s em ate %s", share(evaluation.Metrica), value)
+		return fmt.Sprintf("respondeu %s em até %s", share(evaluation.Metrica), value)
 	}
 	return fmt.Sprintf("teve %s de %s", readableName(evaluation.Metrica), value)
 }
@@ -339,7 +339,7 @@ func baseName(path string) string {
 // because a line per step would turn the useful part into noise.
 func undeclared(rules []scenario.SLORule, document metrics.Document, baseline *Baseline) []string {
 	if len(rules) == 0 {
-		return []string{"nenhum criterio declarado — o cenario roda e reporta, mas nao serve de gate"}
+		return []string{"nenhum critério declarado — o cenário roda e reporta, mas não serve de gate"}
 	}
 	declared := map[scenario.SLOScope]bool{}
 	declaredStep := map[string]bool{}
@@ -352,17 +352,17 @@ func undeclared(rules []scenario.SLORule, document metrics.Document, baseline *B
 
 	var missing []string
 	if !declared[scenario.ScopeJourney] && document.Journey.Started > 0 && len(document.Steps) > 1 {
-		missing = append(missing, "jornada: sem criterio declarado — o gate mede passo isolado e deixa de fora o tempo que o usuario espera")
+		missing = append(missing, "jornada: sem critério declarado — o gate mede passo isolado e deixa de fora o tempo que o usuário espera")
 	}
 	if !declared[scenario.ScopeOverall] {
-		missing = append(missing, "global: sem criterio declarado — taxa de erro, taxa de sucesso e taxa efetiva nao entram no gate")
+		missing = append(missing, "global: sem critério declarado — taxa de erro, taxa de sucesso e taxa efetiva não entram no gate")
 	}
 	if line, had := stepsWithoutRule(document, declaredStep); had {
 		missing = append(missing, line)
 	}
 	switch {
 	case !declared[scenario.ScopeRegression]:
-		missing = append(missing, "regressao: sem criterio declarado — o gate aprova sem comparar com a execucao anterior")
+		missing = append(missing, "regressao: sem critério declarado — o gate aprova sem comparar com a execução anterior")
 	case baseline == nil:
 		missing = append(missing, "regressao: declarada, mas nenhuma base foi passada em -baseline")
 	}
@@ -379,7 +379,7 @@ func stepsWithoutRule(document metrics.Document, declaredStep map[string]bool) (
 	if len(without) == 0 {
 		return "", false
 	}
-	return fmt.Sprintf("passos sem criterio declarado (%d de %d): %s",
+	return fmt.Sprintf("passos sem critério declarado (%d de %d): %s",
 		len(without), len(document.Steps), shortList(without)), true
 }
 
@@ -403,7 +403,7 @@ func phrase(verdict Verdict) string {
 	}
 	if len(failures) == 0 {
 		if len(verdict.Evaluations) == 1 {
-			return "Passou: a unica regra de SLO foi atendida."
+			return "Passou: a única regra de SLO foi atendida."
 		}
 		return fmt.Sprintf("Passou: as %d regras de SLO foram atendidas.", len(verdict.Evaluations))
 	}
@@ -430,7 +430,7 @@ func refuseLatencyOverFailures(rule scenario.SLORule, evaluation Evaluation, sam
 	evaluation.NoData = true
 	evaluation.Passed = false
 	evaluation.Sentence = fmt.Sprintf(
-		"Nao avaliada: %s teve %.0f%% de falha, entao a %s acima e sobretudo o tempo de falhar, nao o tempo do trabalho. A regra %q nao pode ser verificada sobre esta amostra, e sem verificacao o gate nao aprova.",
+		"Não avaliada: %s teve %.0f%% de falha, então a %s acima é sobretudo o tempo de falhar, não o tempo do trabalho. A regra %q não pode ser verificada sobre esta amostra, e sem verificação o gate não aprova.",
 		targetName(rule), float64(sampled-worked)/float64(sampled)*100, readableName(rule.Metrica), rule.Text)
 	return evaluation, true
 }

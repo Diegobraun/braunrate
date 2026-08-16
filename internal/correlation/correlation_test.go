@@ -64,9 +64,9 @@ func TestFailedCaptureExplainsWhy(t *testing.T) {
 	if err == nil {
 		t.Fatal("esperava erro")
 	}
-	for _, fragment := range []string{"faturaId", "$.nao.existe", "nao encontrado"} {
+	for _, fragment := range []string{"faturaId", "$.nao.existe", "não encontrado"} {
 		if !strings.Contains(err.Error(), fragment) {
-			t.Errorf("mensagem %q nao menciona %q", err.Error(), fragment)
+			t.Errorf("mensagem %q não menciona %q", err.Error(), fragment)
 		}
 	}
 }
@@ -74,7 +74,7 @@ func TestFailedCaptureExplainsWhy(t *testing.T) {
 func TestCaptureOnNonJSONResponseSaysSo(t *testing.T) {
 	capture := scenario.Capture{Variable: "id", Origin: scenario.CaptureJSON, Expression: "$.id"}
 	_, err := correlation.Extract(capture, protocol.Response{Body: []byte("<html>erro</html>")})
-	if err == nil || !strings.Contains(err.Error(), "nao e JSON valido") {
+	if err == nil || !strings.Contains(err.Error(), "não e JSON válido") {
 		t.Fatalf("esperava aviso de corpo nao-JSON, recebeu %v", err)
 	}
 }
@@ -113,7 +113,7 @@ func TestAssertionFailureSaysExpectedAndObtained(t *testing.T) {
 	}
 	for _, fragment := range []string{"ABERTA", "PAGA", "esperava"} {
 		if !strings.Contains(err.Error(), fragment) {
-			t.Errorf("mensagem %q nao menciona %q", err.Error(), fragment)
+			t.Errorf("mensagem %q não menciona %q", err.Error(), fragment)
 		}
 	}
 }
@@ -143,7 +143,7 @@ func TestAssertionUsesResolvedVariable(t *testing.T) {
 	assertion := scenario.Assertion{Kind: scenario.AssertJSON, Target: "$.ultimaFatura.status",
 		Operator: scenario.OpEqual, Value: "${statusEsperado}"}
 	if err := correlation.Evaluate(assertion, sampleResponse, resolve); err != nil {
-		t.Errorf("assercao com variavel deveria passar: %v", err)
+		t.Errorf("assercao com variável deveria passar: %v", err)
 	}
 }
 
@@ -152,7 +152,7 @@ func TestAssertionUsesResolvedVariable(t *testing.T) {
 func TestCookieCaptureTakesOnlyThePairValue(t *testing.T) {
 	capture, err := scenario.ParseCapture("sessao", "cookie:sessao")
 	if err != nil {
-		t.Fatalf("nao entendeu a expressao de cookie: %v", err)
+		t.Fatalf("não entendeu a expressao de cookie: %v", err)
 	}
 	response := protocol.Response{Headers: map[string][]string{
 		"Set-Cookie": {"rastreio=zzz; Path=/", "sessao=8f3a1c2b4d; Path=/; HttpOnly; Max-Age=600"},
@@ -160,7 +160,7 @@ func TestCookieCaptureTakesOnlyThePairValue(t *testing.T) {
 
 	value, err := correlation.Extract(capture, response)
 	if err != nil {
-		t.Fatalf("nao capturou o cookie: %v", err)
+		t.Fatalf("não capturou o cookie: %v", err)
 	}
 	if value != "8f3a1c2b4d" {
 		t.Fatalf("capturou %q, e o valor do cookie e 8f3a1c2b4d", value)
@@ -171,9 +171,9 @@ func TestCookieThatDidNotComeBackSaysSo(t *testing.T) {
 	capture, _ := scenario.ParseCapture("sessao", "cookie:sessao")
 	_, err := correlation.Extract(capture, protocol.Response{Headers: map[string][]string{}})
 	if err == nil {
-		t.Fatal("capturou um cookie que a resposta nao trouxe")
+		t.Fatal("capturou um cookie que a resposta não trouxe")
 	}
 	if !strings.Contains(err.Error(), "Set-Cookie") {
-		t.Fatalf("a mensagem nao diz onde ele deveria estar: %v", err)
+		t.Fatalf("a mensagem não diz onde ele deveria estar: %v", err)
 	}
 }

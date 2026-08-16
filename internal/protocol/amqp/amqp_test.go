@@ -13,7 +13,7 @@ func decode(t *testing.T, text string) (protocol.Config, error) {
 	t.Helper()
 	var document yaml.Node
 	if err := yaml.Unmarshal([]byte(text), &document); err != nil {
-		t.Fatalf("yaml invalido no teste: %v", err)
+		t.Fatalf("yaml inválido no teste: %v", err)
 	}
 	return amqp.New(protocol.DefaultOptions()).Decode(document.Content[0])
 }
@@ -21,7 +21,7 @@ func decode(t *testing.T, text string) (protocol.Config, error) {
 func TestQueueAloneIsEnoughAndBecomesRoute(t *testing.T) {
 	config, err := decode(t, "fila: pedidos\ncorpo: { id: 1 }\n")
 	if err != nil {
-		t.Fatalf("nao decodificou: %v", err)
+		t.Fatalf("não decodificou: %v", err)
 	}
 	if config.AggregationKey() != "amqp publicar pedidos" {
 		t.Errorf("chave = %q", config.AggregationKey())
@@ -31,7 +31,7 @@ func TestQueueAloneIsEnoughAndBecomesRoute(t *testing.T) {
 func TestExchangeWithRouteAppearsInKey(t *testing.T) {
 	config, err := decode(t, "troca: cobranca\nrota: pedido.criado\ncorpo: { id: 1 }\n")
 	if err != nil {
-		t.Fatalf("nao decodificou: %v", err)
+		t.Fatalf("não decodificou: %v", err)
 	}
 	if config.AggregationKey() != "amqp publicar cobranca/pedido.criado" {
 		t.Errorf("chave = %q", config.AggregationKey())
@@ -43,7 +43,7 @@ func TestExchangeWithRouteAppearsInKey(t *testing.T) {
 func TestConfirmationIsDefault(t *testing.T) {
 	config, err := decode(t, "fila: pedidos\ncorpo: { id: 1 }\n")
 	if err != nil {
-		t.Fatalf("nao decodificou: %v", err)
+		t.Fatalf("não decodificou: %v", err)
 	}
 	description := strings.Join(config.(protocol.Describable).Describe(), " ")
 	if !strings.Contains(description, "espera confirmacao do broker") {

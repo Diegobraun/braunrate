@@ -23,18 +23,18 @@ cenario:
   - http: GET /pessoas/${clientes.identificador}/limite
 `))
 	if err != nil {
-		t.Fatalf("o cenario nao deveria falhar na leitura: %v", err)
+		t.Fatalf("o cenário não deveria falhar na leitura: %v", err)
 	}
 
 	options := engine.DefaultOptions()
 	options.DataRoot = "testdata"
 	_, err = engine.New(spec, options)
 	if err == nil {
-		t.Fatal("coluna inexistente foi aceita: a requisicao sai com um vazio no meio do caminho")
+		t.Fatal("coluna inexistente foi aceita: a requisição sai com um vazio no meio do caminho")
 	}
-	for _, expected := range []string{"identificador", "campos disponiveis", "id"} {
+	for _, expected := range []string{"identificador", "campos disponíveis", "id"} {
 		if !strings.Contains(err.Error(), expected) {
-			t.Errorf("a mensagem nao diz o que existe: falta %q em\n%v", expected, err)
+			t.Errorf("a mensagem não diz o que existe: falta %q em\n%v", expected, err)
 		}
 	}
 }
@@ -52,7 +52,7 @@ cenario:
   - http: GET /pessoas/${clientes.id}/limite
 `))
 	if err != nil {
-		t.Fatalf("o cenario nao deveria falhar na leitura: %v", err)
+		t.Fatalf("o cenário não deveria falhar na leitura: %v", err)
 	}
 	options := engine.DefaultOptions()
 	options.DataRoot = "testdata"

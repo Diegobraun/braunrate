@@ -34,7 +34,7 @@ func TestSeedComesFromTheEnvironmentWhenTheVariableIsSet(t *testing.T) {
 
 	spec, err := seedSpec(t, "${SEMENTE:-42}")
 	if err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 	if spec.Data[0].Seed != 8817 {
 		t.Fatalf("a semente saiu %d e o ambiente dizia 8817", spec.Data[0].Seed)
@@ -43,7 +43,7 @@ func TestSeedComesFromTheEnvironmentWhenTheVariableIsSet(t *testing.T) {
 		t.Fatalf("a origem da semente saiu %q e devia ser SEMENTE", spec.Data[0].SeedFrom)
 	}
 	if origins := scenario.SeedsFromEnvironment(spec); origins["pedidos"] != "SEMENTE" {
-		t.Fatalf("a origem nao chegou ao que o relatorio publica: %+v", origins)
+		t.Fatalf("a origem não chegou ao que o relatório publica: %+v", origins)
 	}
 }
 
@@ -52,23 +52,23 @@ func TestSeedComesFromTheEnvironmentWhenTheVariableIsSet(t *testing.T) {
 func TestWithoutTheVariableTheDefaultIsUsedAndNothingIsAnnounced(t *testing.T) {
 	spec, err := seedSpec(t, "${SEMENTE_QUE_NINGUEM_DEFINIU:-42}")
 	if err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 	if spec.Data[0].Seed != 42 {
-		t.Fatalf("a semente saiu %d e o padrao do arquivo era 42", spec.Data[0].Seed)
+		t.Fatalf("a semente saiu %d e o padrão do arquivo era 42", spec.Data[0].Seed)
 	}
 	if spec.Data[0].SeedFrom != "" {
 		t.Fatalf("declarou origem de ambiente para uma semente que veio do arquivo: %q", spec.Data[0].SeedFrom)
 	}
 	if scenario.SeedsFromEnvironment(spec) != nil {
-		t.Fatal("o relatorio ganharia uma linha de reproducao que nao tem o que reproduzir")
+		t.Fatal("o relatório ganharia uma linha de reproducao que não tem o que reproduzir")
 	}
 }
 
 func TestLiteralSeedKeepsWorking(t *testing.T) {
 	spec, err := seedSpec(t, "7")
 	if err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 	if spec.Data[0].Seed != 7 || spec.Data[0].SeedFrom != "" {
 		t.Fatalf("a semente literal mudou de significado: %+v", spec.Data[0])
@@ -82,10 +82,10 @@ func TestSeedFromTheEnvironmentThatIsNotANumberIsRefusedNamingTheVariable(t *tes
 
 	_, err := seedSpec(t, "${SEMENTE:-42}")
 	if err == nil {
-		t.Fatal("aceitou uma semente que nao e numero")
+		t.Fatal("aceitou uma semente que não e número")
 	}
 	if !strings.Contains(err.Error(), "$SEMENTE") || !strings.Contains(err.Error(), `"hoje"`) {
-		t.Fatalf("a mensagem nao diz qual variavel esta errada nem com que valor: %v", err)
+		t.Fatalf("a mensagem não diz qual variável esta errada nem com que valor: %v", err)
 	}
 }
 
@@ -98,7 +98,7 @@ func TestOnlySourcesThatUseTheSeedReportIt(t *testing.T) {
 		uses   bool
 	}{
 		{"sintetica", scenario.DataSource{Fields: map[string]scenario.Generator{"id": {Recipe: "uuid"}}}, true},
-		{"csv aleatorio", scenario.DataSource{File: "x.csv", Consume: scenario.ConsumeRandom}, true},
+		{"csv aleatório", scenario.DataSource{File: "x.csv", Consume: scenario.ConsumeRandom}, true},
 		{"csv circular", scenario.DataSource{File: "x.csv", Consume: scenario.ConsumeCircular}, false},
 	}
 	for _, testCase := range cases {

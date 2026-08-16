@@ -18,7 +18,7 @@ func TestYAMLSyntaxErrorAnswersInPortugueseWithThePositionAndTheFix(t *testing.T
 		line     int
 	}{
 		{
-			name: "variavel sem aspas dentro de mapa em linha",
+			name: "variável sem aspas dentro de mapa em linha",
 			content: "nome: x\nalvo: 127.0.0.1:9092\ncarga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\ncenario:\n" +
 				"  - kafka: { topico: pedidos, chave: ${pedidos.id} }\n",
 			fragment: `chave: "${pedidos.id}"`,
@@ -32,7 +32,7 @@ func TestYAMLSyntaxErrorAnswersInPortugueseWithThePositionAndTheFix(t *testing.T
 			line:     8,
 		},
 		{
-			name:     "tabulacao no lugar de espaco",
+			name:     "tabulacao no lugar de espaço",
 			content:  "nome: x\nalvo: http://a\ncarga:\n\tperfis: []\n",
 			fragment: "tabulacao",
 			line:     4,
@@ -49,11 +49,11 @@ func TestYAMLSyntaxErrorAnswersInPortugueseWithThePositionAndTheFix(t *testing.T
 				t.Fatalf("o erro saiu cru, em ingles: %v", err)
 			}
 			if !strings.Contains(err.Error(), testCase.fragment) {
-				t.Fatalf("a mensagem nao mostra a forma certa (%q): %v", testCase.fragment, err)
+				t.Fatalf("a mensagem não mostra a forma certa (%q): %v", testCase.fragment, err)
 			}
 			position, is := err.(scenario.ScenarioError)
 			if !is {
-				t.Fatalf("o erro nao carrega posicao: %#v", err)
+				t.Fatalf("o erro não carrega posição: %#v", err)
 			}
 			if position.Line != testCase.line {
 				t.Fatalf("apontou a linha %d, o problema esta na %d: %v", position.Line, testCase.line, err)
@@ -107,11 +107,11 @@ func TestUnknownKeyShowsTheShapeAndNotOnlyTheNames(t *testing.T) {
 			if err == nil {
 				t.Fatal("a chave desconhecida foi aceita")
 			}
-			if !strings.Contains(err.Error(), "disponiveis:") {
-				t.Fatalf("a mensagem nao lista as chaves validas: %v", err)
+			if !strings.Contains(err.Error(), "disponíveis:") {
+				t.Fatalf("a mensagem não lista as chaves validas: %v", err)
 			}
 			if !strings.Contains(err.Error(), testCase.shape) {
-				t.Fatalf("a mensagem nao mostra a forma (%q): %v", testCase.shape, err)
+				t.Fatalf("a mensagem não mostra a forma (%q): %v", testCase.shape, err)
 			}
 		})
 	}
@@ -128,9 +128,9 @@ func TestMissingFileAnswersInPortugueseAndPointsAtTheNextStep(t *testing.T) {
 	if strings.Contains(message, "no such file") {
 		t.Fatalf("o erro do sistema operacional saiu cru: %v", err)
 	}
-	for _, fragment := range []string{"nao encontrei o arquivo", "braunrate new"} {
+	for _, fragment := range []string{"não encontrei o arquivo", "braunrate new"} {
 		if !strings.Contains(message, fragment) {
-			t.Fatalf("a mensagem nao traz %q: %v", fragment, err)
+			t.Fatalf("a mensagem não traz %q: %v", fragment, err)
 		}
 	}
 }
@@ -142,12 +142,12 @@ func TestSuggestionOnlyFiresForAPlausibleTypo(t *testing.T) {
 	if err == nil {
 		t.Fatal("o perfil desconhecido foi aceito")
 	}
-	if strings.Contains(err.Error(), "voce quis dizer") {
-		t.Fatalf("sugeriu para palavra sem relacao: %v", err)
+	if strings.Contains(err.Error(), "você quis dizer") {
+		t.Fatalf("sugeriu para palavra sem relação: %v", err)
 	}
 
 	_, err = scenario.Parse([]byte("nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamer: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n"))
-	if err == nil || !strings.Contains(err.Error(), `voce quis dizer "patamar"?`) {
+	if err == nil || !strings.Contains(err.Error(), `você quis dizer "patamar"?`) {
 		t.Fatalf("erro de digitacao de verdade deixou de ser sugerido: %v", err)
 	}
 }

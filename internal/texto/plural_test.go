@@ -20,10 +20,10 @@ func TestCountAgreesWithTheNumber(t *testing.T) {
 }
 
 func TestPickChoosesTheWholePhrase(t *testing.T) {
-	if got := texto.Pick(1, "a unica regra foi atendida", "as regras foram atendidas"); got != "a unica regra foi atendida" {
+	if got := texto.Pick(1, "a única regra foi atendida", "as regras foram atendidas"); got != "a única regra foi atendida" {
 		t.Errorf("Pick(1) = %q", got)
 	}
-	if got := texto.Pick(3, "a unica regra foi atendida", "as regras foram atendidas"); got != "as regras foram atendidas" {
+	if got := texto.Pick(3, "a única regra foi atendida", "as regras foram atendidas"); got != "as regras foram atendidas" {
 		t.Errorf("Pick(3) = %q", got)
 	}
 }

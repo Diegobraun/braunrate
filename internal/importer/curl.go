@@ -92,13 +92,13 @@ func split(command string) ([]string, error) {
 		}
 	}
 	if quote != 0 {
-		return nil, fmt.Errorf("o comando tem aspas abertas que nunca fecham; cole o curl inteiro, inclusive a ultima linha")
+		return nil, fmt.Errorf("o comando tem aspas abertas que nunca fecham; cole o curl inteiro, inclusive a última linha")
 	}
 	if has {
 		fields = append(fields, current.String())
 	}
 	if len(fields) == 0 {
-		return nil, fmt.Errorf("nao recebi nenhum comando; use:\n  braunrate import curl \"curl -X POST https://exemplo/pedidos -d '{}'\"\nou passe o comando pela entrada padrao")
+		return nil, fmt.Errorf("não recebi nenhum comando; use:\n  braunrate import curl \"curl -X POST https://exemplo/pedidos -d '{}'\"\nou passe o comando pela entrada padrão")
 	}
 	return fields, nil
 }
@@ -111,7 +111,7 @@ func interpretar(fields []string) (Request, error) {
 
 	next := func(index *int, flag string) (string, error) {
 		if *index+1 >= len(fields) {
-			return "", fmt.Errorf("a opcao %s ficou sem valor no fim do comando", flag)
+			return "", fmt.Errorf("a opção %s ficou sem valor no fim do comando", flag)
 		}
 		*index++
 		return fields[*index], nil
@@ -136,7 +136,7 @@ func interpretar(fields []string) (Request, error) {
 			}
 			key, content, has := strings.Cut(value, ":")
 			if !has {
-				return request, fmt.Errorf("o cabecalho %q nao tem dois-pontos; a forma e -H \"Nome: valor\"", value)
+				return request, fmt.Errorf("o cabecalho %q não tem dois-pontos; a forma é -H \"Nome: valor\"", value)
 			}
 			request.Headers[strings.TrimSpace(key)] = strings.TrimSpace(content)
 		case field == "-d" || field == "--data" || field == "--data-raw" || field == "--data-binary" || field == "--data-ascii":
@@ -182,14 +182,14 @@ func interpretar(fields []string) (Request, error) {
 	}
 
 	if address == "" {
-		return request, fmt.Errorf("nao achei a URL no comando; o curl precisa ter o endereco, como em:\n  curl https://exemplo/pedidos")
+		return request, fmt.Errorf("não achei a URL no comando; o curl precisa ter o endereço, como em:\n  curl https://exemplo/pedidos")
 	}
 	if !strings.Contains(address, "://") {
 		address = "https://" + address
 	}
 	parts, err := url.Parse(address)
 	if err != nil {
-		return request, fmt.Errorf("nao consegui entender a URL %q: %v", address, err)
+		return request, fmt.Errorf("não consegui entender a URL %q: %v", address, err)
 	}
 
 	request.Target = parts.Scheme + "://" + parts.Host
@@ -219,11 +219,11 @@ func build(request Request) Import {
 
 	if request.User != "" {
 		script.Warnings = append(script.Warnings,
-			fmt.Sprintf("o comando usava -u %s:...; declare isso no bloco 'autenticacao' com tipo: basica, e deixe a senha em variavel de ambiente", request.User))
+			fmt.Sprintf("o comando usava -u %s:...; declare isso no bloco 'autenticacao' com tipo: basica, e deixe a senha em variável de ambiente", request.User))
 	}
 	if strings.Contains(request.Path, "?") || hasIdentifier(request.Path) {
 		script.Warnings = append(script.Warnings,
-			"o caminho tem valor fixo: com um valor so, o alvo responde de cache e o numero fica otimista. Troque por ${dados.coluna} e declare um bloco 'dados'")
+			"o caminho tem valor fixo: com um valor só, o alvo responde de cache e o número fica otimista. Troque por ${dados.coluna} e declare um bloco 'dados'")
 	}
 	return RenderYAML(script)
 }

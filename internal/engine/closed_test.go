@@ -41,12 +41,12 @@ cenario:
     nome: consultar
 `, server.URL, users)))
 	if err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 
 	executor, err := engine.New(spec, engine.DefaultOptions())
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	return executor.Execute(context.Background())
 }
@@ -59,20 +59,20 @@ func TestClosedLoopDocumentHasNoCorrectedLatencyAnywhere(t *testing.T) {
 	document := closedRun(t, 4, 5*time.Millisecond)
 
 	if document.Overall.Count == 0 {
-		t.Fatal("a execucao em laco fechado nao produziu amostra nenhuma")
+		t.Fatal("a execução em laço fechado não produziu amostra nenhuma")
 	}
 	if document.Overall.Latency != (metrics.Distribution{}) {
-		t.Fatalf("o global veio com latencia corrigida: %+v", document.Overall.Latency)
+		t.Fatalf("o global veio com latência corrigida: %+v", document.Overall.Latency)
 	}
 	if document.Journey.Latency != (metrics.Distribution{}) {
-		t.Fatalf("a jornada veio com latencia corrigida: %+v", document.Journey.Latency)
+		t.Fatalf("a jornada veio com latência corrigida: %+v", document.Journey.Latency)
 	}
 	for _, step := range document.Steps {
 		if step.Latency != (metrics.Distribution{}) {
-			t.Fatalf("o passo %q veio com latencia corrigida: %+v", step.Name, step.Latency)
+			t.Fatalf("o passo %q veio com latência corrigida: %+v", step.Name, step.Latency)
 		}
 		if step.LatencyKind != string(metrics.ServiceLatency) {
-			t.Fatalf("o passo %q se declarou %q em laco fechado", step.Name, step.LatencyKind)
+			t.Fatalf("o passo %q se declarou %q em laço fechado", step.Name, step.LatencyKind)
 		}
 	}
 
@@ -81,10 +81,10 @@ func TestClosedLoopDocumentHasNoCorrectedLatencyAnywhere(t *testing.T) {
 		t.Fatalf("serializar falhou: %v", err)
 	}
 	if bytes.Contains(encoded, []byte("latencia_corrigida")) {
-		t.Fatal("o JSON de uma execucao em laco fechado ainda tem o campo latencia_corrigida")
+		t.Fatal("o JSON de uma execução em laço fechado ainda tem o campo latencia_corrigida")
 	}
 	if document.Journey.ServiceLatency.Samples == 0 {
-		t.Fatal("sem latencia corrigida e sem latencia de servico, a jornada ficou sem numero nenhum")
+		t.Fatal("sem latência corrigida e sem latência de serviço, a jornada ficou sem número nenhum")
 	}
 }
 
@@ -95,10 +95,10 @@ func TestClosedLoopWarningIsInEveryOutput(t *testing.T) {
 
 	warning, closed := metrics.ClosedLoopWarning(document)
 	if !closed {
-		t.Fatal("o documento nao se reconheceu como laco fechado")
+		t.Fatal("o documento não se reconheceu como laço fechado")
 	}
-	if !strings.Contains(warning, "3 usuarios") {
-		t.Fatalf("o aviso nao diz quantos usuarios: %q", warning)
+	if !strings.Contains(warning, "3 usuários") {
+		t.Fatalf("o aviso não diz quantos usuários: %q", warning)
 	}
 
 	var terminal bytes.Buffer
@@ -106,7 +106,7 @@ func TestClosedLoopWarningIsInEveryOutput(t *testing.T) {
 		t.Fatalf("resumo falhou: %v", err)
 	}
 	if !strings.Contains(terminal.String(), warning) {
-		t.Fatalf("o terminal nao trouxe o aviso de laco fechado:\n%s", terminal.String())
+		t.Fatalf("o terminal não trouxe o aviso de laço fechado:\n%s", terminal.String())
 	}
 
 	var page bytes.Buffer
@@ -114,7 +114,7 @@ func TestClosedLoopWarningIsInEveryOutput(t *testing.T) {
 		t.Fatalf("html falhou: %v", err)
 	}
 	if !strings.Contains(page.String(), warning) {
-		t.Fatal("o HTML nao trouxe o aviso de laco fechado")
+		t.Fatal("o HTML não trouxe o aviso de laço fechado")
 	}
 }
 
@@ -138,16 +138,16 @@ cenario:
     nome: consultar
 `, server.URL)))
 	if err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 	executor, err := engine.New(spec, engine.DefaultOptions())
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	document := executor.Execute(context.Background())
 
 	if document.Overall.Latency == (metrics.Distribution{}) {
-		t.Fatal("o modelo aberto perdeu a latencia corrigida junto com o fechado")
+		t.Fatal("o modelo aberto perdeu a latência corrigida junto com o fechado")
 	}
 	if document.Steps[0].LatencyKind != string(metrics.CorrectedLatency) {
 		t.Fatalf("o primeiro passo do modelo aberto veio como %q", document.Steps[0].LatencyKind)

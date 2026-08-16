@@ -25,7 +25,7 @@ type SanityFinding struct {
 
 // Says nothing about the target: a run where everything failed may well be the
 // target falling over, and claiming otherwise would be a second wrong claim.
-const invalidSentence = "Resultado invalido: a execucao nao mediu o que se propos a medir. Isto nao e veredito sobre o alvo — e a medicao que nao vale, e por isso nenhuma regra de SLO foi avaliada."
+const invalidSentence = "Resultado inválido: a execução não mediu o que se propôs a medir. Isto não é veredito sobre o alvo — é a medição que não vale, e por isso nenhuma regra de SLO foi avaliada."
 
 // What counts as the declared load having been applied. Below it the run
 // measured a piece of the profile and says so.
@@ -66,7 +66,7 @@ func noJourneyCompleted(document Document, _ DocumentInput) []SanityFinding {
 	}
 	return []SanityFinding{{
 		Kind:     "jornada_incompleta",
-		Message:  "nenhuma jornada chegou ao fim, entao o cenario nao exercitou a sequencia que declarou. Rode 'braunrate debug' para ver onde a iteracao para",
+		Message:  "nenhuma jornada chegou ao fim, então o cenário não exercitou a sequência que declarou. Rode 'braunrate debug' para ver onde a iteração para",
 		Evidence: fmt.Sprintf("%s jornadas iniciadas, 0 completas", thousands(document.Journey.Started)),
 	}}
 }
@@ -88,7 +88,7 @@ func declaredStepWithoutSamples(document Document, input DocumentInput) []Sanity
 		}
 		findings = append(findings, SanityFinding{
 			Kind:     "passo_sem_amostra",
-			Message:  fmt.Sprintf("o passo %q foi declarado e nao registrou nenhuma amostra; ele ficou de fora da medicao", declared),
+			Message:  fmt.Sprintf("o passo %q foi declarado e não registrou nenhuma amostra; ele ficou de fora da medição", declared),
 			Evidence: fmt.Sprintf("passos com amostra: %s", listOrNone(sortedNames(withSamples))),
 		})
 	}
@@ -115,8 +115,8 @@ func everythingFailed(document Document, _ DocumentInput) []SanityFinding {
 	if len(failed) == ran && ran > 1 {
 		return []SanityFinding{{
 			Kind:    "tudo_falhou",
-			Message: fmt.Sprintf("todos os %d passos falharam em 100%% das requisicoes; o tempo de resposta acima e o tempo que o alvo levou para recusar, nao o tempo do trabalho que o cenario queria medir", ran),
-			Evidence: fmt.Sprintf("%s requisicoes, %s erros (%s)",
+			Message: fmt.Sprintf("todos os %d passos falharam em 100%% das requisições; o tempo de resposta acima é o tempo que o alvo levou para recusar, não o tempo do trabalho que o cenário queria medir", ran),
+			Evidence: fmt.Sprintf("%s requisições, %s erros (%s)",
 				thousands(document.Overall.Count), thousands(document.Overall.Errors), dominantClasses(document.Steps)),
 		}}
 	}
@@ -124,8 +124,8 @@ func everythingFailed(document Document, _ DocumentInput) []SanityFinding {
 	for _, step := range failed {
 		findings = append(findings, SanityFinding{
 			Kind:     "passo_totalmente_falho",
-			Message:  fmt.Sprintf("o passo %q falhou em 100%% das requisicoes; nenhuma resposta bem-sucedida entrou na medicao dele", step.Name),
-			Evidence: fmt.Sprintf("%s requisicoes, %s erros (%s)", thousands(step.Count), thousands(step.Errors), dominantClasses([]StepResult{step})),
+			Message:  fmt.Sprintf("o passo %q falhou em 100%% das requisições; nenhuma resposta bem-sucedida entrou na medição dele", step.Name),
+			Evidence: fmt.Sprintf("%s requisições, %s erros (%s)", thousands(step.Count), thousands(step.Errors), dominantClasses([]StepResult{step})),
 		})
 	}
 	return findings
@@ -150,9 +150,9 @@ func runShorterThanPlan(document Document, input DocumentInput) []SanityFinding 
 	actual := time.Duration(document.Run.DurationMs) * time.Millisecond
 	return []SanityFinding{{
 		Kind: "execucao_curta",
-		Message: fmt.Sprintf("a execucao parou em %s com %s de %s requisicoes do perfil declarado; a carga declarada nao chegou a ser aplicada inteira, e o que ficou medido e so o pedaco que rodou",
+		Message: fmt.Sprintf("a execução parou em %s com %s de %s requisições do perfil declarado; a carga declarada não chegou a ser aplicada inteira, e o que ficou medido é só o pedaço que rodou",
 			readableDuration(actual), thousands(applied), thousands(input.PlannedRequests)),
-		Evidence: fmt.Sprintf("perfil declarado: %s requisicoes em %s; execucao: %s requisicoes em %s",
+		Evidence: fmt.Sprintf("perfil declarado: %s requisições em %s; execução: %s requisições em %s",
 			thousands(input.PlannedRequests), readableDuration(input.PlannedDuration), thousands(applied), readableDuration(actual)),
 	}}
 }
@@ -169,9 +169,9 @@ func runShorterThanWindow(document Document, input DocumentInput) []SanityFindin
 	}
 	return []SanityFinding{{
 		Kind: "execucao_curta",
-		Message: fmt.Sprintf("a execucao parou em %s da janela de %s declarada; a carga declarada nao chegou a ser aplicada inteira, e o que ficou medido e so o pedaco que rodou",
+		Message: fmt.Sprintf("a execução parou em %s da janela de %s declarada; a carga declarada não chegou a ser aplicada inteira, e o que ficou medido é só o pedaço que rodou",
 			readableDuration(actual), readableDuration(input.PlannedDuration)),
-		Evidence: fmt.Sprintf("%d usuarios em laco fechado, %s jornadas iniciadas", document.Run.Users, thousands(document.Journey.Started)),
+		Evidence: fmt.Sprintf("%d usuários em laço fechado, %s jornadas iniciadas", document.Run.Users, thousands(document.Journey.Started)),
 	}}
 }
 

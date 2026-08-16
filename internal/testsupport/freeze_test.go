@@ -12,7 +12,7 @@ func get(t *testing.T, address string) time.Duration {
 	start := time.Now()
 	response, err := http.Get(address + "/pedido")
 	if err != nil {
-		t.Fatalf("o alvo nao respondeu: %v", err)
+		t.Fatalf("o alvo não respondeu: %v", err)
 	}
 	_, _ = io.Copy(io.Discard, response.Body)
 	_ = response.Body.Close()
@@ -27,7 +27,7 @@ func get(t *testing.T, address string) time.Duration {
 func TestFreezeIsCountedFromTheFirstRequestNotFromStart(t *testing.T) {
 	server := New(Options{FreezeAfter: 300 * time.Millisecond, FreezeFor: 400 * time.Millisecond})
 	if err := server.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("o alvo nao subiu: %v", err)
+		t.Fatalf("o alvo não subiu: %v", err)
 	}
 	defer func() { _ = server.Close() }()
 
@@ -35,11 +35,11 @@ func TestFreezeIsCountedFromTheFirstRequestNotFromStart(t *testing.T) {
 	time.Sleep(800 * time.Millisecond)
 
 	if first := get(t, server.Address()); first > 100*time.Millisecond {
-		t.Fatalf("a primeira requisicao levou %s: a pausa ja tinha comecado antes de alguem pedir", first)
+		t.Fatalf("a primeira requisição levou %s: a pausa já tinha comecado antes de alguém pedir", first)
 	}
 	time.Sleep(400 * time.Millisecond)
 
 	if during := get(t, server.Address()); during < 100*time.Millisecond {
-		t.Fatalf("a requisicao no meio da pausa levou %s: a pausa nao aconteceu", during)
+		t.Fatalf("a requisição no meio da pausa levou %s: a pausa não aconteceu", during)
 	}
 }

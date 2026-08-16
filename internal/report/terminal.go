@@ -17,10 +17,10 @@ func ProgressLine(snapshot metrics.Snapshot, targetRate float64, remaining time.
 	if snapshot.Sent > 0 {
 		proportion := float64(snapshot.LateDispatches) / float64(snapshot.Sent)
 		if proportion >= 0.01 {
-			alert = fmt.Sprintf("  ATENCAO: o gerador nao esta conseguindo manter a carga (%.1f%% em atraso)", proportion*100)
+			alert = fmt.Sprintf("  ATENÇÃO: o gerador não está conseguindo manter a carga (%.1f%% em atraso)", proportion*100)
 		}
 	}
-	return fmt.Sprintf("carga %.0f/s | enviadas %d | concluidas %d | erros %d | metade em %.1f ms | 99%% em %.1f ms | faltam %s%s",
+	return fmt.Sprintf("carga %.0f/s | enviadas %d | concluídas %d | erros %d | metade em %.1f ms | 99%% em %.1f ms | faltam %s%s",
 		targetRate, snapshot.Sent, snapshot.Completed, snapshot.Errors,
 		snapshot.LatencyP50Ms, snapshot.LatencyP99Ms, remaining.Round(time.Second), alert)
 }
@@ -28,7 +28,7 @@ func ProgressLine(snapshot metrics.Snapshot, targetRate float64, remaining time.
 // No target rate to show: in the closed loop the rate is a result, so what goes
 // on screen is what the users are getting, never what they were asked for.
 func ClosedProgressLine(snapshot metrics.Snapshot, users int, remaining time.Duration) string {
-	return fmt.Sprintf("%d usuarios em laco | concluidas %d | erros %d | metade em %.1f ms | 99%% em %.1f ms | faltam %s",
+	return fmt.Sprintf("%d usuários em laço | concluídas %d | erros %d | metade em %.1f ms | 99%% em %.1f ms | faltam %s",
 		users, snapshot.Completed, snapshot.Errors,
 		snapshot.LatencyP50Ms, snapshot.LatencyP99Ms, remaining.Round(time.Second))
 }
@@ -44,7 +44,7 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 	write("")
 
 	if warning, closed := metrics.ClosedLoopWarning(document); closed {
-		write("ATENCAO: %s", warning)
+		write("ATENÇÃO: %s", warning)
 		write("")
 	}
 
@@ -68,9 +68,9 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 	journey := document.Journey.Reported()
 	duration := (time.Duration(document.Run.DurationMs) * time.Millisecond).Round(100 * time.Millisecond)
 	write("O que aconteceu")
-	write("  %s requisicoes em %s, %.0f por segundo, %s de erro",
+	write("  %s requisições em %s, %.0f por segundo, %s de erro",
 		thousands(overall.Count), duration, overall.EffectiveRate, percentage(overall.ErrorRate*100))
-	write("  Metade das respostas em ate %s; 95%% em ate %s; 99%% em ate %s; a pior levou %s",
+	write("  Metade das respostas em até %s; 95%% em até %s; 99%% em até %s; a pior levou %s",
 		milliseconds(overallLatency.P50), milliseconds(overallLatency.P95),
 		milliseconds(overallLatency.P99), milliseconds(overallLatency.Max))
 	write("")
@@ -85,7 +85,7 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 		// juntar populacoes de custo diferente, e quem le procura cauda onde ha
 		// mistura. A ferramenta sabe disso e diz, em vez de deixar descobrir.
 		if alternatives := mixedAlternatives(document); alternatives > 1 {
-			write("  Cada jornada aqui e uma das %d alternativas do mix, entao estes percentis juntam", alternatives)
+			write("  Cada jornada aqui é uma das %d alternativas do mix, então estes percentis juntam", alternatives)
 			write("  populacoes de custo diferente. Para ler cada uma, use a tabela por passo.")
 		}
 		write("")
@@ -131,37 +131,37 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 
 	writeConsumerLag(lines, document)
 
-	write("Confiabilidade da medicao")
+	write("Confiabilidade da medição")
 	for _, warning := range document.Warnings {
 		if warning.Severity == metrics.SeverityHigh {
 			// Already reported at the top, as a sanity finding.
 			if document.Sanity.Checked {
 				continue
 			}
-			write("  RESULTADO INVALIDO: %s", warning.Message)
+			write("  RESULTADO INVÁLIDO: %s", warning.Message)
 		} else {
-			write("  Atencao: %s", warning.Message)
+			write("  Atenção: %s", warning.Message)
 		}
 		write("            %s", warning.Evidence)
 	}
 	if document.Closed() {
-		write("  Nao ha agendamento para comparar: a taxa efetiva de %.0f/s foi consequencia do tempo", document.Overall.EffectiveRate)
-		write("  de resposta do alvo, nao uma carga declarada. Se o alvo ficar mais lento, a carga cai junto.")
+		write("  Não há agendamento para comparar: a taxa efetiva de %.0f/s foi consequência do tempo", document.Overall.EffectiveRate)
+		write("  de resposta do alvo, não uma carga declarada. Se o alvo ficar mais lento, a carga cai junto.")
 	} else {
 		if document.Scheduling.LateDispatches == 0 && document.Scheduling.DroppedByInflightLimit == 0 {
-			write("  O gerador disparou todas as requisicoes na hora certa, entao os numeros acima valem.")
+			write("  O gerador disparou todas as requisições na hora certa, então os números acima valem.")
 		}
-		write("  Atraso tipico para disparar: %s; pior caso: %s (o tempo de resposta ja desconta isso)",
+		write("  Atraso típico para disparar: %s; pior caso: %s (o tempo de resposta já desconta isso)",
 			milliseconds(document.Scheduling.Skew.P50), milliseconds(document.Scheduling.Skew.Max))
 		hidden := document.Overall.Latency.P99 - document.Overall.ServiceLatency.P99
 		if hidden >= 1 {
-			write("  Uma ferramenta de laco fechado teria reportado %s a menos no 99%%.", milliseconds(hidden))
+			write("  Uma ferramenta de laço fechado teria reportado %s a menos no 99%%.", milliseconds(hidden))
 		}
 	}
 	write("")
 
 	write("Ambiente")
-	write("  %s %s/%s, %d nucleos | braunrate %s | %s",
+	write("  %s %s/%s, %d núcleos | braunrate %s | %s",
 		document.Environment.Host, document.Environment.OS, document.Environment.Arch,
 		document.Environment.Cores, document.Version, document.Run.Start.Format("2006-01-02 15:04:05"))
 	if len(document.Environment.Protocols) > 0 {
@@ -187,9 +187,9 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 		}
 	}
 	if document.Run.AuthObtains > 0 {
-		write("  Autenticacao obtida %s e reaproveitada por todas as jornadas.",
+		write("  Autenticação obtida %s e reaproveitada por todas as jornadas.",
 			texto.Times(document.Run.AuthObtains))
-		write("  Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.")
+		write("  Se o alvo tiver cache, rate limit ou sharding por token, este número fica otimista.")
 	}
 	write("")
 	return lines.err
@@ -242,13 +242,13 @@ var classNames = map[string]string{
 	"rede":         "falha de rede",
 	"timeout":      "tempo esgotado",
 	"status":       "status HTTP inesperado",
-	"assercao":     "conteudo fora do esperado",
-	"correlacao":   "nao consegui capturar um valor",
-	"configuracao": "erro de configuracao do cenario",
-	"autenticacao": "nao consegui autenticar",
-	"autorizacao":  "credencial aceita, sem permissao nesse recurso",
+	"assercao":     "conteúdo fora do esperado",
+	"correlacao":   "não consegui capturar um valor",
+	"configuracao": "erro de configuração do cenário",
+	"autenticacao": "não consegui autenticar",
+	"autorizacao":  "credencial aceita, sem permissão nesse recurso",
 	"mensageria":   "o broker recusou a mensagem",
-	"saturacao":    "o gerador nao sustentou a taxa",
+	"saturacao":    "o gerador não sustentou a taxa",
 	"graphql":      "erro no corpo da resposta GraphQL (com status 200)",
 }
 
@@ -354,13 +354,13 @@ func writeStepTable(output *lineWriter, document metrics.Document) {
 
 	write("Por passo")
 	if len(document.Steps) == 0 && len(never) == 0 {
-		write("  Nenhum passo registrou amostra: a execucao nao chegou a medir nada.")
-		write("  Rode 'braunrate debug' para ver onde a iteracao para.")
+		write("  Nenhum passo registrou amostra: a execução não chegou a medir nada.")
+		write("  Rode 'braunrate debug' para ver onde a iteração para.")
 		write("")
 		return
 	}
 
-	write("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7s", "passo", "", "requisicoes", "metade", "95%", "99%", "99,9%", "pior", "erros")
+	write("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7s", "passo", "", "requisições", "metade", "95%", "99%", "99,9%", "pior", "erros")
 	hasServiceStep := false
 	for _, step := range document.Steps {
 		mark := "(1)"
@@ -382,22 +382,22 @@ func writeStepTable(output *lineWriter, document metrics.Document) {
 	}
 	if len(never) > 0 {
 		write("")
-		write("  Passo com traco nunca chegou a executar: a iteracao parou antes dele. O motivo")
-		write("  esta em \"Erros\", no passo que falhou primeiro.")
+		write("  Passo com traço nunca chegou a executar: a iteração parou antes dele. O motivo")
+		write("  está em \"Erros\", no passo que falhou primeiro.")
 	}
 	write("")
 
 	if document.Closed() {
-		write("  (2) tempo de resposta puro. No laco fechado nao existe instante agendado: o")
-		write("      usuario virtual so pede de novo depois da resposta anterior, entao nenhum")
-		write("      atraso de fila aparece nestes numeros.")
+		write("  (2) tempo de resposta puro. No laço fechado não existe instante agendado: o")
+		write("      usuário virtual só pede de novo depois da resposta anterior, então nenhum")
+		write("      atraso de fila aparece nestes números.")
 	} else {
-		write("  (1) tempo contado do instante em que a requisicao deveria ter partido \u2014 inclui")
-		write("      qualquer atraso e por isso nao esconde travada do alvo.")
+		write("  (1) tempo contado do instante em que a requisição deveria ter partido \u2014 inclui")
+		write("      qualquer atraso e por isso não esconde travada do alvo.")
 		if hasServiceStep {
 			write("  (2) tempo de resposta puro, contado de quando o passo anterior terminou. Como")
-			write("      esse passo depende do valor capturado antes dele, nao existe instante")
-			write("      agendado proprio. Para a leitura honesta da jornada, use \"A jornada inteira\".")
+			write("      esse passo depende do valor capturado antes dele, não existe instante")
+			write("      agendado próprio. Para a leitura honesta da jornada, use \"A jornada inteira\".")
 		}
 	}
 	write("")

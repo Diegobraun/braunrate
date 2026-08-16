@@ -180,7 +180,7 @@ var record = map[string]Protocol{}
 
 func Register(implementation Protocol) {
 	if _, exists := record[implementation.Name()]; exists {
-		panic(fmt.Sprintf("protocolo ja registrado: %s", implementation.Name()))
+		panic(fmt.Sprintf("protocolo já registrado: %s", implementation.Name()))
 	}
 	record[implementation.Name()] = implementation
 }

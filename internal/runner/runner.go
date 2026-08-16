@@ -81,7 +81,7 @@ func Load(path string) (scenario.Spec, engine.Plan, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		spec, parseErr := scenario.ParseFile(path)
-		return spec, engine.Plan{}, badFile(parseErr, "erro no cenario: %v", parseErr)
+		return spec, engine.Plan{}, badFile(parseErr, "erro no cenário: %v", parseErr)
 	}
 	return Check(content, path)
 }
@@ -96,7 +96,7 @@ func Check(content []byte, name string) (scenario.Spec, engine.Plan, error) {
 			positioned.File = name
 			err = positioned
 		}
-		return spec, engine.Plan{}, badFile(err, "erro no cenario: %v", err)
+		return spec, engine.Plan{}, badFile(err, "erro no cenário: %v", err)
 	}
 	if err := spec.Validate(); err != nil {
 		return spec, engine.Plan{}, badFile(err, "%v", err)
@@ -194,7 +194,7 @@ func Debug(runContext context.Context, path string, version string) (Iteration, 
 	observations, vars, err := executor.Debug(runContext)
 	protocol.CloseAll()
 	if err != nil {
-		return Iteration{Spec: spec}, Fault{Exit: ExitSLO, Message: fmt.Sprintf("nao consegui chegar ao primeiro passo: %v", err)}
+		return Iteration{Spec: spec}, Fault{Exit: ExitSLO, Message: fmt.Sprintf("não consegui chegar ao primeiro passo: %v", err)}
 	}
 	return Iteration{Observations: observations, Vars: vars, Spec: spec}, nil
 }
@@ -229,13 +229,13 @@ func WriteHTML(path string, document metrics.Document) error {
 	}
 	if err := report.HTML(file, document); err != nil {
 		_ = file.Close()
-		return fmt.Errorf("erro ao gerar o relatorio HTML: %v", err)
+		return fmt.Errorf("erro ao gerar o relatório HTML: %v", err)
 	}
 	// Close reports the write the operating system had not flushed yet. Deferred
 	// and discarded, a full disk produced a truncated file and a message saying
 	// the report was ready.
 	if err := file.Close(); err != nil {
-		return fmt.Errorf("erro ao fechar %s, o relatorio pode estar incompleto: %v", path, err)
+		return fmt.Errorf("erro ao fechar %s, o relatório pode estar incompleto: %v", path, err)
 	}
 	return nil
 }
@@ -247,10 +247,10 @@ func WriteComparisonHTML(path string, result comparison.Comparison, version stri
 	}
 	if err := report.ComparisonHTML(file, result, version); err != nil {
 		_ = file.Close()
-		return fmt.Errorf("erro ao gerar a comparacao em HTML: %v", err)
+		return fmt.Errorf("erro ao gerar a comparação em HTML: %v", err)
 	}
 	if err := file.Close(); err != nil {
-		return fmt.Errorf("erro ao fechar %s, a comparacao pode estar incompleta: %v", path, err)
+		return fmt.Errorf("erro ao fechar %s, a comparação pode estar incompleta: %v", path, err)
 	}
 	return nil
 }
@@ -276,16 +276,16 @@ func ReadDocument(path string) (metrics.Document, error) {
 	var document metrics.Document
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return document, fmt.Errorf("nao consegui ler %s: %v", path, err)
+		return document, fmt.Errorf("não consegui ler %s: %v", path, err)
 	}
 	if err := json.Unmarshal(content, &document); err != nil {
-		return document, fmt.Errorf("%s nao e um resultado do braunrate: %v", path, err)
+		return document, fmt.Errorf("%s não é um resultado do braunrate: %v", path, err)
 	}
 	if document.Tool != "braunrate" {
-		return document, fmt.Errorf("%s nao foi gerado pelo braunrate; use o arquivo de -result", path)
+		return document, fmt.Errorf("%s não foi gerado pelo braunrate; use o arquivo de -result", path)
 	}
 	if !slices.Contains(metrics.ReadableResultFormats, document.FormatVersion) {
-		return document, fmt.Errorf("%s esta no formato de resultado %q e esta versao le os formatos %s",
+		return document, fmt.Errorf("%s está no formato de resultado %q e esta versão lê os formatos %s",
 			path, document.FormatVersion, strings.Join(metrics.ReadableResultFormats, ", "))
 	}
 	return document, nil
@@ -307,10 +307,10 @@ func (iteration Iteration) Failed() bool {
 func Describe(spec scenario.Spec, plan engine.Plan) []string {
 	var lines []string
 	if spec.Load.Closed() {
-		lines = append(lines, fmt.Sprintf("Cenario valido: %q, %s, %d usuarios em laco fechado durante %s.",
+		lines = append(lines, fmt.Sprintf("Cenário válido: %q, %s, %d usuários em laço fechado durante %s.",
 			spec.Name, texto.Count(int64(len(spec.Steps)), "passo", "passos"), spec.Load.Users, plan.Duration()))
 	} else {
-		lines = append(lines, fmt.Sprintf("Cenario valido: %q, %s, %s em %s.",
+		lines = append(lines, fmt.Sprintf("Cenário válido: %q, %s, %s em %s.",
 			spec.Name, texto.Count(int64(len(spec.Steps)), "passo", "passos"),
 			texto.Count(plan.TotalRequests(), "iteracao", "iteracoes"), plan.Duration()))
 	}
@@ -318,13 +318,13 @@ func Describe(spec scenario.Spec, plan engine.Plan) []string {
 		lines = append(lines, warning)
 	}
 	if len(spec.SLO) == 0 {
-		lines = append(lines, "Sem slo declarado: a execucao nunca vai falhar por lentidao. Adicione um bloco 'slo' para virar gate de CI.")
+		lines = append(lines, "Sem slo declarado: a execução nunca vai falhar por lentidao. Adicione um bloco 'slo' para virar gate de CI.")
 	}
 	for _, broker := range scenario.DescribeMessaging(spec.Messaging) {
 		lines = append(lines, "Mensageria: "+broker)
 	}
 	if len(spec.Requires) > 0 {
-		lines = append(lines, fmt.Sprintf("Depende de infraestrutura externa: %s. Sem isso a execucao nao roda.",
+		lines = append(lines, fmt.Sprintf("Depende de infraestrutura externa: %s. Sem isso a execução não roda.",
 			strings.Join(spec.Requires, ", ")))
 	}
 	if len(spec.MissingEnvironment) > 0 {
@@ -338,7 +338,7 @@ func Describe(spec scenario.Spec, plan engine.Plan) []string {
 // Execution is what sends the request, and a request with an empty credential
 // comes back 401 with nothing in the output connecting the two, so it refuses.
 func missingEnvironmentWarning(spec scenario.Spec) string {
-	return fmt.Sprintf("Variavel de ambiente nao definida: %s. Aqui isso e so aviso; na execucao o campo sairia vazio, entao 'braunrate execute' recusa ate a variavel existir.",
+	return fmt.Sprintf("Variável de ambiente não definida: %s. Aqui isso é só aviso; na execução o campo sairia vazio, então 'braunrate execute' recusa até a variável existir.",
 		strings.Join(spec.MissingEnvironment, ", "))
 }
 
@@ -350,8 +350,8 @@ func RequireEnvironment(spec scenario.Spec) error {
 	}
 	first := spec.MissingEnvironment[0]
 	return Fault{Exit: ExitBadFile, Message: fmt.Sprintf(
-		"o cenario usa %s, e essa variavel nao esta no ambiente: o campo sairia vazio e o alvo responderia com erro que nao explica nada.\n"+
+		"o cenário usa %s, e essa variável não está no ambiente: o campo sairia vazio e o alvo responderia com erro que não explica nada.\n"+
 			"    rode com:  %s=... braunrate execute cenario.yaml\n"+
-			"    ou declare uma reserva no proprio cenario:  variaveis: { %s: \"${%s:-valor}\" }",
+			"    ou declare uma reserva no próprio cenário:  variáveis: { %s: \"${%s:-valor}\" }",
 		strings.Join(spec.MissingEnvironment, ", "), first, strings.ToLower(first), first)}
 }

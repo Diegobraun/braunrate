@@ -17,11 +17,11 @@ func decode(t *testing.T, text string) protocol.Config {
 	t.Helper()
 	var document yaml.Node
 	if err := yaml.Unmarshal([]byte(text), &document); err != nil {
-		t.Fatalf("yaml invalido no teste: %v", err)
+		t.Fatalf("yaml inválido no teste: %v", err)
 	}
 	config, err := graphql.New(protocol.DefaultOptions()).Decode(document.Content[0])
 	if err != nil {
-		t.Fatalf("nao decodificou: %v", err)
+		t.Fatalf("não decodificou: %v", err)
 	}
 	return config
 }
@@ -30,7 +30,7 @@ func decodeErr(t *testing.T, text string) error {
 	t.Helper()
 	var document yaml.Node
 	if err := yaml.Unmarshal([]byte(text), &document); err != nil {
-		t.Fatalf("yaml invalido no teste: %v", err)
+		t.Fatalf("yaml inválido no teste: %v", err)
 	}
 	_, err := graphql.New(protocol.DefaultOptions()).Decode(document.Content[0])
 	if err == nil {
@@ -54,7 +54,7 @@ func TestAggregationKeyIsOperationNotURL(t *testing.T) {
 func TestOperationNameComesFromQuery(t *testing.T) {
 	config := decode(t, "consulta: |\n  mutation PagarFatura($f: ID!) { pagarFatura(id: $f) { status } }\n")
 	if config.AggregationKey() != "graphql PagarFatura" {
-		t.Errorf("chave = %q: o nome da operacao deveria vir da consulta", config.AggregationKey())
+		t.Errorf("chave = %q: o nome da operação deveria vir da consulta", config.AggregationKey())
 	}
 }
 
@@ -75,10 +75,10 @@ func TestVarsAreResolvedEachIteration(t *testing.T) {
 	})
 	describable, knows := resolvida.(protocol.Describable)
 	if !knows {
-		t.Fatal("a configuracao de graphql precisa saber se descrever para o modo de depuracao")
+		t.Fatal("a configuração de graphql precisa saber se descrever para o modo de depuracao")
 	}
 	if !strings.Contains(strings.Join(describable.Describe(), " "), `{"id":"1002"}`) {
-		t.Errorf("variaveis nao resolvidas: %v", describable.Describe())
+		t.Errorf("variáveis não resolvidas: %v", describable.Describe())
 	}
 }
 
@@ -111,17 +111,17 @@ func runAgainst(t *testing.T, body string, status int) protocol.Response {
 // A GraphQL error arrives with status 200: counting that as success approves a
 // service that is answering an error to every request.
 func TestBodyErrorWithStatus200CountsAsError(t *testing.T) {
-	response := runAgainst(t, `{"errors":[{"message":"pedido nao encontrado","path":["pedido"],"extensions":{"code":"NOT_FOUND"}}]}`, 200)
+	response := runAgainst(t, `{"errors":[{"message":"pedido não encontrado","path":["pedido"],"extensions":{"code":"NOT_FOUND"}}]}`, 200)
 	if response.Class != protocol.ErrGraphQL {
 		t.Fatalf("classe = %q, esperava erro de graphql", response.Class)
 	}
 	if !strings.Contains(response.Detail, "NOT_FOUND") || !strings.Contains(response.Detail, "em pedido") {
-		t.Errorf("o detalhe precisa dizer o codigo e onde falhou: %q", response.Detail)
+		t.Errorf("o detalhe precisa dizer o código e onde falhou: %q", response.Detail)
 	}
 }
 
 func TestPartialResponseIsErrorAndDeclaredPartial(t *testing.T) {
-	response := runAgainst(t, `{"data":{"pedido":null},"errors":[{"message":"sem permissao"}]}`, 200)
+	response := runAgainst(t, `{"data":{"pedido":null},"errors":[{"message":"sem permissão"}]}`, 200)
 	if response.Class != protocol.ErrGraphQL {
 		t.Fatalf("classe = %q", response.Class)
 	}
@@ -138,7 +138,7 @@ func TestResponseWithoutErrorsIsSuccess(t *testing.T) {
 }
 
 func TestErrorStatusStaysStatusError(t *testing.T) {
-	response := runAgainst(t, `{"errors":[{"message":"nao autorizado"}]}`, 401)
+	response := runAgainst(t, `{"errors":[{"message":"não autorizado"}]}`, 401)
 	if response.Class != protocol.ErrStatus {
 		t.Errorf("classe = %q: erro de transporte continua sendo erro de status", response.Class)
 	}
@@ -147,6 +147,6 @@ func TestErrorStatusStaysStatusError(t *testing.T) {
 func TestNonGraphQLBodyIsNotSuccess(t *testing.T) {
 	response := runAgainst(t, `<html>gateway</html>`, 200)
 	if response.Class != protocol.ErrGraphQL {
-		t.Errorf("classe = %q: pagina HTML com status 200 nao e resposta de GraphQL", response.Class)
+		t.Errorf("classe = %q: página HTML com status 200 não e resposta de GraphQL", response.Class)
 	}
 }

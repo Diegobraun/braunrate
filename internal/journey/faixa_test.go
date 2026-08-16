@@ -51,13 +51,13 @@ func TestRangeSaysWhereTheValuesLanded(t *testing.T) {
 
 	ids := byName["pedidos.id"]
 	if ids.Range == nil || ids.Range.Kind != metrics.PrefixRange {
-		t.Fatalf("tres ids diferentes do mesmo cliente precisavam declarar o prefixo comum: %+v", ids.Range)
+		t.Fatalf("três ids diferentes do mesmo cliente precisavam declarar o prefixo comum: %+v", ids.Range)
 	}
 	if ids.Range.Prefix != "CLI-A-00" {
 		t.Fatalf("prefixo comum saiu %q", ids.Range.Prefix)
 	}
 	if !strings.Contains(ids.Sentence, "CLI-A-00") {
-		t.Fatalf("a frase nao contou onde os valores caem: %q", ids.Sentence)
+		t.Fatalf("a frase não contou onde os valores caem: %q", ids.Sentence)
 	}
 
 	totals := byName["pedidos.total"]
@@ -85,15 +85,15 @@ func TestEmptyFieldInTheBodyIsSaidOutLoud(t *testing.T) {
 				t.Fatalf("esperava uma forma de corpo, obtive %v", variety.Shapes)
 			}
 			if !variety.Notable() {
-				t.Fatalf("forma com campo vazio precisa aparecer no relatorio: %q", shape)
+				t.Fatalf("forma com campo vazio precisa aparecer no relatório: %q", shape)
 			}
 		}
 	}
 	if !found {
-		t.Fatalf("a forma do corpo nao foi medida: %+v", document.Variety)
+		t.Fatalf("a forma do corpo não foi medida: %+v", document.Variety)
 	}
 	if !strings.Contains(shape, "cupom: vazio") {
-		t.Fatalf("a forma nao disse qual campo saiu vazio: %q", shape)
+		t.Fatalf("a forma não disse qual campo saiu vazio: %q", shape)
 	}
 
 	warned := false
@@ -119,7 +119,7 @@ func TestASingleWholeBodyShapeIsNotWorthALine(t *testing.T) {
 
 	for _, variety := range document.Variety {
 		if strings.HasPrefix(variety.Name, metrics.BodyShapeName) && variety.Notable() {
-			t.Fatalf("forma unica e sem campo vazio nao devia render linha: %q", variety.Sentence)
+			t.Fatalf("forma única e sem campo vazio não devia render linha: %q", variety.Sentence)
 		}
 	}
 }
@@ -134,25 +134,25 @@ func runRangeScenario(t *testing.T, csv string) metrics.Document {
 
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "pedidos.csv"), []byte(csv), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o csv: %v", err)
+		t.Fatalf("não consegui escrever o csv: %v", err)
 	}
 	path := filepath.Join(root, "cenario.yaml")
 	if err := os.WriteFile(path, []byte(fmt.Sprintf(scenarioWithinOneRange, server.URL)), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o cenario: %v", err)
+		t.Fatalf("não consegui escrever o cenário: %v", err)
 	}
 
 	specification, err := scenario.ParseFile(path)
 	if err != nil {
-		t.Fatalf("cenario nao carregou: %v", err)
+		t.Fatalf("cenário não carregou: %v", err)
 	}
 	if err := specification.Validate(); err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 	options := engine.DefaultOptions()
 	options.DataRoot = root
 	executor, err := engine.New(specification, options)
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	return executor.Execute(context.Background())
 }

@@ -140,7 +140,7 @@ func TestEveryDeclaredValueReachesTarget(t *testing.T) {
 		}
 	}
 	if got := received.distinct("corpo.regiao"); len(got) != 3 {
-		t.Errorf("regiao recebeu %v, esperava tres valores distintos", got)
+		t.Errorf("região recebeu %v, esperava três valores distintos", got)
 	}
 
 	byName := map[string]metrics.Variety{}
@@ -148,14 +148,14 @@ func TestEveryDeclaredValueReachesTarget(t *testing.T) {
 		byName[variety.Name] = variety
 	}
 	if variety := byName["assinantes.id"]; variety.Distinct != 3 {
-		t.Errorf("o relatorio declarou %d valores distintos de assinantes.id, esperava 3", variety.Distinct)
+		t.Errorf("o relatório declarou %d valores distintos de assinantes.id, esperava 3", variety.Distinct)
 	}
 	if variety := byName["assinantes.regiao"]; variety.Distinct != 3 {
-		t.Errorf("o relatorio declarou %d valores distintos de assinantes.regiao, esperava 3", variety.Distinct)
+		t.Errorf("o relatório declarou %d valores distintos de assinantes.regiao, esperava 3", variety.Distinct)
 	}
 	for _, warning := range document.Warnings {
 		if warning.Kind == "variedade_ausente" {
-			t.Errorf("execucao com variedade nao pode gerar aviso de variedade ausente: %s", warning.Evidence)
+			t.Errorf("execução com variedade não pode gerar aviso de variedade ausente: %s", warning.Evidence)
 		}
 	}
 }
@@ -173,13 +173,13 @@ func TestSingleObservedValueBecomesHighSeverityWarning(t *testing.T) {
 		t.Fatalf("esperava um aviso, obtive %+v", warnings)
 	}
 	if warnings[0].Severity != metrics.SeverityHigh {
-		t.Errorf("gravidade = %q, esperava alta: o resultado nao representa a carga declarada", warnings[0].Severity)
+		t.Errorf("gravidade = %q, esperava alta: o resultado não representa a carga declarada", warnings[0].Severity)
 	}
 	if !strings.Contains(warnings[0].Message, "cache") {
 		t.Errorf("a mensagem precisa dizer por que isso engana: %q", warnings[0].Message)
 	}
-	if !strings.Contains(warnings[0].Evidence, "3 valores disponiveis") {
-		t.Errorf("a evidencia precisa comparar o disponivel com o usado: %q", warnings[0].Evidence)
+	if !strings.Contains(warnings[0].Evidence, "3 valores disponíveis") {
+		t.Errorf("a evidencia precisa comparar o disponível com o usado: %q", warnings[0].Evidence)
 	}
 }
 
@@ -188,7 +188,7 @@ func TestFixedValueDeclaredInScenarioIsReadingWarningNotDefect(t *testing.T) {
 		{Name: "pedidoFixo", Distinct: 1, Uses: 500, Available: 0},
 	})
 	if len(warnings) != 1 || warnings[0].Severity != metrics.SeverityMedium {
-		t.Fatalf("valor fixo declarado e aviso de leitura, nao resultado invalido: %+v", warnings)
+		t.Fatalf("valor fixo declarado e aviso de leitura, não resultado inválido: %+v", warnings)
 	}
 }
 
@@ -197,7 +197,7 @@ func TestSingleValueSourceRaisesNoWarning(t *testing.T) {
 		{Name: "assinantes.id", Distinct: 1, Uses: 500, Available: 1},
 	})
 	if len(warnings) != 0 {
-		t.Errorf("quem declarou um valor so nao precisa ser avisado disso: %+v", warnings)
+		t.Errorf("quem declarou um valor só não precisa ser avisado disso: %+v", warnings)
 	}
 }
 
@@ -205,25 +205,25 @@ func runVarietyScenario(t *testing.T, address, csv string) metrics.Document {
 	t.Helper()
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "assinantes.csv"), []byte(csv), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o csv: %v", err)
+		t.Fatalf("não consegui escrever o csv: %v", err)
 	}
 	path := filepath.Join(root, "cenario.yaml")
 	if err := os.WriteFile(path, []byte(fmt.Sprintf(scenarioWithVariety, address)), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o cenario: %v", err)
+		t.Fatalf("não consegui escrever o cenário: %v", err)
 	}
 
 	c, err := scenario.ParseFile(path)
 	if err != nil {
-		t.Fatalf("cenario nao carregou: %v", err)
+		t.Fatalf("cenário não carregou: %v", err)
 	}
 	if err := c.Validate(); err != nil {
-		t.Fatalf("cenario invalido: %v", err)
+		t.Fatalf("cenário inválido: %v", err)
 	}
 	options := engine.DefaultOptions()
 	options.DataRoot = root
 	m, err := engine.New(c, options)
 	if err != nil {
-		t.Fatalf("motor nao subiu: %v", err)
+		t.Fatalf("motor não subiu: %v", err)
 	}
 	return m.Execute(context.Background())
 }

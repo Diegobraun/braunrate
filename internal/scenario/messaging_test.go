@@ -34,18 +34,18 @@ func TestLiteralSecretIsRefusedAndTheMessageTeachesTheWayOut(t *testing.T) {
 	}{
 		{"valor literal", `senha: p4ssw0rd`},
 		{"literal entre aspas", `senha: "p4ssw0rd"`},
-		{"referencia com valor de reserva", `senha: "${KAFKA_SENHA:-p4ssw0rd}"`},
+		{"referência com valor de reserva", `senha: "${KAFKA_SENHA:-p4ssw0rd}"`},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := parseMessaging(t, "  kafka:\n    autenticacao: { tipo: scram_sha512, usuario: ana, "+c.password+" }\n")
 			if err == nil {
-				t.Fatal("o cenario com segredo no arquivo foi aceito")
+				t.Fatal("o cenário com segredo no arquivo foi aceito")
 			}
 			for _, fragment := range []string{"${BROKER_SENHA}", "vai para o repositorio", "BROKER_SENHA=..."} {
 				if !strings.Contains(err.Error(), fragment) {
-					t.Fatalf("a mensagem nao ensina %q: %v", fragment, err)
+					t.Fatalf("a mensagem não ensina %q: %v", fragment, err)
 				}
 			}
 		})
@@ -58,15 +58,15 @@ func TestEnvironmentReferenceIsAcceptedAndKeepsTheVariableName(t *testing.T) {
 	spec, err := parseMessaging(t, "  kafka:\n    brokers: [kafka.homolog:9093]\n"+
 		"    autenticacao: { tipo: scram_sha512, usuario: ana, senha: \"${KAFKA_SENHA}\" }\n    tls: { ca: /etc/ssl/ca.pem }\n")
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 
 	broker := spec.Messaging.Kafka
 	if broker.Auth.Kind != messaging.SCRAM512 || broker.Auth.User != "ana" {
-		t.Fatalf("autenticacao lida errada: %+v", broker.Auth)
+		t.Fatalf("autenticação lida errada: %+v", broker.Auth)
 	}
 	if broker.Auth.Password != "segredo-do-ambiente" || broker.Auth.PasswordVar != "KAFKA_SENHA" {
-		t.Fatalf("a senha nao veio do ambiente com o nome da variavel: %+v", broker.Auth)
+		t.Fatalf("a senha não veio do ambiente com o nome da variável: %+v", broker.Auth)
 	}
 	if !broker.TLS.Enabled || broker.TLS.CA != "/etc/ssl/ca.pem" {
 		t.Fatalf("tls lido errado: %+v", broker.TLS)
@@ -81,8 +81,8 @@ func TestAccessKeyIsRefusedByNameAndPointsAtTheCredentialChain(t *testing.T) {
 		if err == nil {
 			t.Fatalf("o campo %q foi aceito", field)
 		}
-		if !strings.Contains(err.Error(), "cadeia padrao da AWS") {
-			t.Fatalf("o campo %q nao aponta o caminho certo: %v", field, err)
+		if !strings.Contains(err.Error(), "cadeia padrão da AWS") {
+			t.Fatalf("o campo %q não aponta o caminho certo: %v", field, err)
 		}
 	}
 }
@@ -90,7 +90,7 @@ func TestAccessKeyIsRefusedByNameAndPointsAtTheCredentialChain(t *testing.T) {
 func TestMSKWithoutRegionIsRefusedWithTheExample(t *testing.T) {
 	_, err := parseMessaging(t, "  kafka:\n    autenticacao: { tipo: msk_iam }\n")
 	if err == nil || !strings.Contains(err.Error(), "regiao: us-east-1") {
-		t.Fatalf("esperava erro ensinando a regiao, veio: %v", err)
+		t.Fatalf("esperava erro ensinando a região, veio: %v", err)
 	}
 }
 
@@ -109,16 +109,16 @@ func TestWhatMayBePrintedShowsKindAndUserAndNeverTheSecret(t *testing.T) {
 	spec, err := parseMessaging(t, "  kafka:\n    brokers: [kafka.homolog:9093]\n"+
 		"    autenticacao: { tipo: scram_sha512, usuario: ana, senha: \"${KAFKA_SENHA}\" }\n    tls: { ca: /etc/ssl/ca.pem }\n")
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 
 	printed := strings.Join(scenario.DescribeMessaging(spec.Messaging), "\n")
 	if strings.Contains(printed, "p4ssw0rd-que-nao-pode-vazar") {
-		t.Fatalf("a senha apareceu na saida:\n%s", printed)
+		t.Fatalf("a senha apareceu na saída:\n%s", printed)
 	}
-	for _, fragment := range []string{"scram_sha512", "usuario ana", "TLS com CA propria"} {
+	for _, fragment := range []string{"scram_sha512", "usuário ana", "TLS com CA própria"} {
 		if !strings.Contains(printed, fragment) {
-			t.Fatalf("a saida nao diz %q:\n%s", fragment, printed)
+			t.Fatalf("a saída não diz %q:\n%s", fragment, printed)
 		}
 	}
 }
@@ -126,14 +126,14 @@ func TestWhatMayBePrintedShowsKindAndUserAndNeverTheSecret(t *testing.T) {
 func TestMSKIsDescribedByRegionAndChainNeverByCredential(t *testing.T) {
 	spec, err := parseMessaging(t, "  kafka:\n    autenticacao: { tipo: msk_iam, regiao: us-east-1 }\n")
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 	printed := strings.Join(scenario.DescribeMessaging(spec.Messaging), "\n")
-	if !strings.Contains(printed, "cadeia padrao da AWS") || !strings.Contains(printed, "us-east-1") {
+	if !strings.Contains(printed, "cadeia padrão da AWS") || !strings.Contains(printed, "us-east-1") {
 		t.Fatalf("a descricao do msk_iam saiu incompleta:\n%s", printed)
 	}
 	if !spec.Messaging.Kafka.TLS.Enabled {
-		t.Fatal("msk_iam sem TLS: a AWS so aceita a porta 9098 com TLS")
+		t.Fatal("msk_iam sem TLS: a AWS só aceita a porta 9098 com TLS")
 	}
 }
 
@@ -154,15 +154,15 @@ cenario:
     kafka: { topico: pedidos, valor: "{}" }
 `))
 	if err != nil {
-		t.Fatalf("o cenario nao deveria falhar na leitura: %v", err)
+		t.Fatalf("o cenário não deveria falhar na leitura: %v", err)
 	}
 	problem := spec.Validate()
 	if problem == nil {
-		t.Fatal("validacao aprovou um passo kafka sem endereco de broker em lugar nenhum")
+		t.Fatal("validação aprovou um passo kafka sem endereço de broker em lugar nenhum")
 	}
 	for _, expected := range []string{"publicar evento", "mensageria", "brokers"} {
 		if !strings.Contains(problem.Error(), expected) {
-			t.Errorf("a mensagem nao ensina o caminho: falta %q em\n%s", expected, problem)
+			t.Errorf("a mensagem não ensina o caminho: falta %q em\n%s", expected, problem)
 		}
 	}
 }
@@ -186,7 +186,7 @@ cenario:
 			t.Fatalf("alvo %q: %v", target, err)
 		}
 		if problem := spec.Validate(); problem != nil {
-			t.Errorf("alvo %q e endereco de broker e foi recusado: %v", target, problem)
+			t.Errorf("alvo %q e endereço de broker e foi recusado: %v", target, problem)
 		}
 	}
 }
@@ -209,10 +209,10 @@ cenario:
       ate: { $.status: PROCESSADO }
 `))
 	if err != nil {
-		t.Fatalf("o cenario nao deveria falhar na leitura: %v", err)
+		t.Fatalf("o cenário não deveria falhar na leitura: %v", err)
 	}
 	if problem := spec.Validate(); problem != nil {
-		t.Errorf("aguardar por http foi cobrado por um broker que nao usa: %v", problem)
+		t.Errorf("aguardar por http foi cobrado por um broker que não usa: %v", problem)
 	}
 }
 
@@ -232,14 +232,14 @@ slo:
   - consultar: { p95: < 200ms }
 `))
 	if err != nil {
-		t.Fatalf("o cenario nao deveria falhar na leitura: %v", err)
+		t.Fatalf("o cenário não deveria falhar na leitura: %v", err)
 	}
 	problem := spec.Validate()
 	if problem == nil {
 		t.Fatal("slo apontando para passo inexistente foi aprovado")
 	}
 	if !strings.Contains(problem.Error(), "consultar produtos") {
-		t.Errorf("a mensagem nao diz qual passo existe: %v", problem)
+		t.Errorf("a mensagem não diz qual passo existe: %v", problem)
 	}
 }
 
@@ -258,9 +258,9 @@ slo:
   - GET /produtos: { p95: < 200ms }
 `))
 	if err != nil {
-		t.Fatalf("o cenario nao deveria falhar na leitura: %v", err)
+		t.Fatalf("o cenário não deveria falhar na leitura: %v", err)
 	}
 	if problem := spec.Validate(); problem != nil {
-		t.Fatalf("slo pela chave de agregacao foi recusado: %v", problem)
+		t.Fatalf("slo pela chave de agregação foi recusado: %v", problem)
 	}
 }

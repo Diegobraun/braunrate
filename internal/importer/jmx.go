@@ -63,14 +63,14 @@ var translatedElements = map[string]bool{
 func FromJMX(content []byte) (Import, error) {
 	var root element
 	if err := xml.Unmarshal(content, &root); err != nil {
-		return Import{}, fmt.Errorf("nao consegui ler o arquivo como .jmx: %v", err)
+		return Import{}, fmt.Errorf("não consegui ler o arquivo como .jmx: %v", err)
 	}
 
 	samplers := root.findAll("HTTPSamplerProxy")
 	if len(samplers) == 0 {
-		return Import{}, fmt.Errorf(`nao achei nenhuma requisicao HTTP no .jmx.
-Hoje o importador traduz HTTPSamplerProxy (requisicao HTTP), HeaderManager, CSVDataSet,
-extratores JSON e regex, e assercao de resposta. Sampler de JDBC, JMS ou script nao entra`)
+		return Import{}, fmt.Errorf(`não achei nenhuma requisição HTTP no .jmx.
+Hoje o importador traduz HTTPSamplerProxy (requisição HTTP), HeaderManager, CSVDataSet,
+extratores JSON e regex, e assercao de resposta. Sampler de JDBC, JMS ou script não entra`)
 	}
 
 	script := Script{Name: planName(&root), Steps: nil}
@@ -100,11 +100,11 @@ extratores JSON e regex, e assercao de resposta. Sampler de JDBC, JMS ou script 
 	if script.Target == "" {
 		script.Target = "http://127.0.0.1:8080"
 		script.Warnings = append(script.Warnings,
-			"o .jmx nao declara dominio nas requisicoes (provavelmente usa variavel de plano): troque o alvo antes de rodar")
+			"o .jmx não declara dominio nas requisições (provavelmente usa variável de plano): troque o alvo antes de rodar")
 	}
 	if len(targets) > 1 {
 		script.Warnings = append(script.Warnings,
-			fmt.Sprintf("o .jmx aponta para %d dominios diferentes; ficou o mais frequente e os outros viraram caminho fixo", len(targets)))
+			fmt.Sprintf("o .jmx aponta para %d domínios diferentes; ficou o mais frequente e os outros viraram caminho fixo", len(targets)))
 	}
 
 	for _, set := range root.findAll("CSVDataSet") {
@@ -114,7 +114,7 @@ extratores JSON e regex, e assercao de resposta. Sampler de JDBC, JMS ou script 
 	for _, step := range script.Steps {
 		if hasIdentifier(step.Path) {
 			script.Warnings = append(script.Warnings, fmt.Sprintf(
-				"o passo %q tem valor fixo no caminho (%s): com um valor so, o alvo responde de cache e o numero fica otimista. "+
+				"o passo %q tem valor fixo no caminho (%s): com um valor só, o alvo responde de cache e o número fica otimista. "+
 					"Troque por ${dados.coluna} e aponte para o CSV", step.Name, step.Path))
 		}
 	}
@@ -233,11 +233,11 @@ func loadWarnings(root *element) []string {
 			description += ", rampa de " + ramp + "s"
 		}
 		if duration != "" && duration != "0" {
-			description += ", " + duration + "s de duracao"
+			description += ", " + duration + "s de duração"
 		}
 		warnings = append(warnings, fmt.Sprintf(
-			"o grupo %q declara %s: numero de thread nao vira taxa de chegada, porque thread so envia depois da resposta anterior. "+
-				"O bloco 'carga' ficou com um chute; troque pela taxa que voce quer sustentar (requisicoes por segundo)",
+			"o grupo %q declara %s: número de thread não vira taxa de chegada, porque thread só envia depois da resposta anterior. "+
+				"O bloco 'carga' ficou com um chute; troque pela taxa que você quer sustentar (requisições por segundo)",
 			group.attribute("testname"), description))
 	}
 	return warnings
@@ -268,7 +268,7 @@ func correlationWarnings(root *element) []string {
 	for _, assertion := range root.findAll("ResponseAssertion") {
 		name := assertion.attribute("testname")
 		warnings = append(warnings, fmt.Sprintf(
-			"a assercao %q nao foi traduzida: todo passo saiu com 'verificar: { status: 200 }', ajuste o que era diferente disso", name))
+			"a assercao %q não foi traduzida: todo passo saiu com 'verificar: { status: 200 }', ajuste o que era diferente disso", name))
 	}
 	return warnings
 }
@@ -299,7 +299,7 @@ func untranslatedWarnings(root *element) []string {
 	}
 	sort.Strings(names)
 	return []string{fmt.Sprintf(
-		"%d elemento(s) do .jmx nao foram traduzidos e ficaram de fora do cenario: %s. "+
+		"%d elemento(s) do .jmx não foram traduzidos e ficaram de fora do cenário: %s. "+
 			"Confira se algum deles mudava o que era medido", total, strings.Join(names, ", "))}
 }
 

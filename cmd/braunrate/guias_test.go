@@ -18,13 +18,13 @@ func TestEveryPublishedCommandExists(t *testing.T) {
 	binary := compile(t)
 	lines := commandLines(t)
 	if len(lines) == 0 {
-		t.Fatal("nenhuma linha de comando encontrada nos guias: o teste nao estaria provando nada")
+		t.Fatal("nenhuma linha de comando encontrada nos guias: o teste não estaria provando nada")
 	}
 
 	options := map[string][]string{}
 	for _, line := range lines {
 		if !slices.Contains(commands, line.subcommand) {
-			t.Errorf("%s: %q nao e um comando do braunrate; existem: %s",
+			t.Errorf("%s: %q não e um comando do braunrate; existem: %s",
 				line.where, line.subcommand, strings.Join(commands, ", "))
 			continue
 		}
@@ -41,7 +41,7 @@ func TestEveryPublishedCommandExists(t *testing.T) {
 		}
 		for _, option := range line.options {
 			if !slices.Contains(known, option) {
-				t.Errorf("%s: 'braunrate %s' nao tem a opcao -%s; tem: -%s",
+				t.Errorf("%s: 'braunrate %s' não tem a opção -%s; tem: -%s",
 					line.where, line.subcommand, option, strings.Join(known, ", -"))
 			}
 		}
@@ -53,7 +53,7 @@ func compile(t *testing.T) string {
 	binary := filepath.Join(t.TempDir(), "braunrate")
 	command := exec.Command("go", "build", "-o", binary, ".")
 	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("nao consegui compilar o binario: %v\n%s", err, output)
+		t.Fatalf("não consegui compilar o binario: %v\n%s", err, output)
 	}
 	return binary
 }
@@ -63,7 +63,7 @@ var optionLine = regexp.MustCompile(`(?m)^\s+-(\S+)`)
 func declaredOptions(t *testing.T, binary, subcommand string) []string {
 	t.Helper()
 	output, _ := exec.Command(binary, subcommand, "-h").CombinedOutput()
-	if !strings.Contains(string(output), "opcoes de "+subcommand) {
+	if !strings.Contains(string(output), "opções de "+subcommand) {
 		return nil
 	}
 	var names []string
@@ -84,7 +84,7 @@ func commandLines(t *testing.T) []commandLine {
 	directory := filepath.Join("..", "..", "docs", "guias")
 	entries, err := os.ReadDir(directory)
 	if err != nil {
-		t.Fatalf("nao consegui ler %s: %v", directory, err)
+		t.Fatalf("não consegui ler %s: %v", directory, err)
 	}
 	var found []commandLine
 	for _, entry := range entries {
@@ -93,7 +93,7 @@ func commandLines(t *testing.T) []commandLine {
 		}
 		content, err := os.ReadFile(filepath.Join(directory, entry.Name()))
 		if err != nil {
-			t.Fatalf("nao consegui ler %s: %v", entry.Name(), err)
+			t.Fatalf("não consegui ler %s: %v", entry.Name(), err)
 		}
 		for _, shell := range shellBlocks(string(content)) {
 			for _, line := range strings.Split(shell, "\n") {

@@ -61,9 +61,9 @@ func (config *Config) Describe() []string {
 			interval = defaultInterval
 		}
 		return []string{
-			fmt.Sprintf("aguardar em GET %s ate %s", config.Path, config.To.describe()),
+			fmt.Sprintf("aguardar em GET %s até %s", config.Path, config.To.describe()),
 			fmt.Sprintf("sondando a cada %s, desiste depois de %s", interval, config.Timeout),
-			"a latencia medida tem a granularidade da sondagem",
+			"a latência medida tem a granularidade da sondagem",
 		}
 	}
 	where := "chave da mensagem"
@@ -78,9 +78,9 @@ func (config *Config) Describe() []string {
 	// step declares none, the address is the target of the scenario, and saying
 	// so is what the reader needs.
 	if len(config.Addresses) > 0 {
-		lines = append(lines, "enderecos: "+strings.Join(config.Addresses, ", "))
+		lines = append(lines, "endereços: "+strings.Join(config.Addresses, ", "))
 	} else {
-		lines = append(lines, "enderecos: os do alvo do cenario")
+		lines = append(lines, "endereços: os do alvo do cenário")
 	}
 	return lines
 }
@@ -146,7 +146,7 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 			}
 		case "ate":
 			if value.Kind != yaml.MappingNode {
-				return nil, errors.New(`ate precisa ser um mapa, por exemplo:
+				return nil, errors.New(`até precisa ser um mapa, por exemplo:
       ate: { $.status: PROCESSADO }
       ate: { status: 200 }`)
 			}
@@ -162,7 +162,7 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 		case "intervalo":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("intervalo invalido: %q (use 200ms, 1s)", value.Value)
+				return nil, fmt.Errorf("intervalo inválido: %q (use 200ms, 1s)", value.Value)
 			}
 			config.Interval = duration
 		case "chave":
@@ -174,11 +174,11 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 		case "timeout":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout invalido: %q (use 30s, 2m)", value.Value)
+				return nil, fmt.Errorf("timeout inválido: %q (use 30s, 2m)", value.Value)
 			}
 			config.Timeout = duration
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo aguardar: %q (use kafka, amqp, http, chave, campo, igual_a, ate, intervalo ou timeout)", key.Value)
+			return nil, fmt.Errorf("chave desconhecida no passo aguardar: %q (use kafka, amqp, http, chave, campo, igual_a, até, intervalo ou timeout)", key.Value)
 		}
 	}
 
@@ -205,8 +205,8 @@ func Validate(config *Config) error {
       chave: "${pedidoId}"`)
 	}
 	if config.Expected == "" {
-		return errors.New(`o passo aguardar precisa do valor que identifica a mensagem desta iteracao.
-Sem isso, qualquer mensagem serviria e a medicao mediria o consumidor mais rapido, nao a cadeia:
+		return errors.New(`o passo aguardar precisa do valor que identifica a mensagem desta iteração.
+Sem isso, qualquer mensagem serviria e a medição mediria o consumidor mais rápido, não a cadeia:
   - aguardar:
       kafka: { topico: pedidos-processados }
       chave: "${pedidoId}"`)
@@ -224,8 +224,8 @@ func validateHTTP(config *Config) error {
       ate: { $.status: PROCESSADO }`)
 	}
 	if config.To.empty() {
-		return errors.New(`o passo aguardar por http precisa de 'ate': sem condicao, a primeira resposta encerraria a espera
-e a medicao seria do tempo de responder, nao do tempo ate o efeito acontecer:
+		return errors.New(`o passo aguardar por http precisa de 'ate': sem condição, a primeira resposta encerraria a espera
+e a medição seria do tempo de responder, não do tempo até o efeito acontecer:
   - aguardar:
       http: { caminho: "/pedidos/${pedidos.id}" }
       ate: { $.status: PROCESSADO }`)
@@ -260,7 +260,7 @@ func readSource(config *Config, node *yaml.Node) error {
 		return nil
 	}
 	if node.Kind != yaml.MappingNode {
-		return fmt.Errorf("a fonte %q precisa ser o nome do topico ou um mapa", config.Source)
+		return fmt.Errorf("a fonte %q precisa ser o nome do tópico ou um mapa", config.Source)
 	}
 	for index := 0; index+1 < len(node.Content); index += 2 {
 		key := node.Content[index]
@@ -277,11 +277,11 @@ func readSource(config *Config, node *yaml.Node) error {
 				config.Addresses = append(config.Addresses, item.Value)
 			}
 		default:
-			return fmt.Errorf("chave desconhecida em aguardar.%s: %q (use topico ou brokers)", config.Source, key.Value)
+			return fmt.Errorf("chave desconhecida em aguardar.%s: %q (use tópico ou brokers)", config.Source, key.Value)
 		}
 	}
 	if config.Topic == "" {
-		return fmt.Errorf("aguardar.%s sem topico", config.Source)
+		return fmt.Errorf("aguardar.%s sem tópico", config.Source)
 	}
 	return nil
 }
@@ -300,7 +300,7 @@ func (implementation *Protocol) Prepare(_ context.Context, request protocol.Requ
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de aguardar"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não e de aguardar"}
 	}
 
 	if config.Source == "http" {
@@ -323,9 +323,9 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		// arriving has two usual causes, and both are checked somewhere else.
 		return protocol.Response{
 			Class: protocol.ErrTimeout,
-			Detail: fmt.Sprintf("a mensagem com %s=%q nao chegou em %s no topico %s.\n"+
-				"confira se ha consumidor rodando e se ele escreve nesse topico;\n"+
-				"e se os dois lados usam o mesmo valor de correlacao — aqui o esperado e %q",
+			Detail: fmt.Sprintf("a mensagem com %s=%q não chegou em %s no tópico %s.\n"+
+				"confira se há consumidor rodando e se ele escreve nesse tópico;\n"+
+				"e se os dois lados usam o mesmo valor de correlação — aqui o esperado e %q",
 				lookupField(config), config.Expected, timeout, config.Topic, config.Expected),
 		}
 	}
@@ -355,7 +355,7 @@ func (implementation *Protocol) subscribe(config *Config, target string, broker 
 		addresses = targetAddresses(target)
 	}
 	if len(addresses) == 0 {
-		return nil, fmt.Errorf("aguardar em %s sem endereco: declare 'brokers' (kafka) ou 'url' (amqp) no passo, ou aponte o alvo do cenario para o broker", config.Source)
+		return nil, fmt.Errorf("aguardar em %s sem endereço: declare 'brokers' (kafka) ou 'url' (amqp) no passo, ou aponte o alvo do cenário para o broker", config.Source)
 	}
 
 	key := config.Source + "|" + strings.Join(addresses, ",") + "|" + config.Topic + "|" + broker.Describe()

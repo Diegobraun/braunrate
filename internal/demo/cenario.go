@@ -7,34 +7,34 @@ import "fmt"
 // something with no file behind it teaches that a secret path exists — and
 // leaves whoever liked the result with nothing to edit.
 func healthyScenario(target string) string {
-	return fmt.Sprintf(`# Escrito por 'braunrate demo'. E um cenario comum: aponte o alvo para o seu
-# servico, edite os passos e rode com 'braunrate execute'.
-nome: Demonstracao
+	return fmt.Sprintf(`# Escrito por 'braunrate demo'. E um cenário comum: aponte o alvo para o seu
+# serviço, edite os passos e rode com 'braunrate execute'.
+nome: Demonstração
 alvo: %s
 
 # O alvo embutido exige token, como uma API de verdade exigiria. Sem este bloco
-# a execucao inteira toma 401 e sai invalida.
+# a execução inteira toma 401 e sai inválida.
 autenticacao:
   tipo: token
   obter:
     http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana } }
     captura: { token: $.access_token }
 
-# taxa: quantas requisicoes por segundo o braunrate dispara. Ele dispara nesse
-# ritmo esteja o alvo rapido ou lento, que e o que usuarios de verdade fazem.
+# taxa: quantas requisições por segundo o braunrate dispara. Ele dispara nesse
+# ritmo esteja o alvo rápido ou lento, que e o que usuários de verdade fazem.
 carga:
   perfis:
     - patamar: { taxa: %s, durante: %s }
 
 cenario:
-  # Caminho fixo: toda requisicao vai ser identica, e o relatorio avisa que o
-  # numero fica otimista. Para medir o servico, e nao o cache dele, troque por
+  # Caminho fixo: toda requisição vai ser idêntica, e o relatório avisa que o
+  # número fica otimista. Para medir o serviço, e não o cache dele, troque por
   # /pedidos/${id} e declare de onde ${id} vem.
   - http: GET /pedidos/1
     nome: consultar pedido
     verificar: { status: 200 }
 
-# criterio de aceite: se estourar, 'braunrate execute' sai com codigo 1 e o seu
+# critério de aceite: se estourar, 'braunrate execute' sai com código 1 e o seu
 # CI reprova.
 slo:
   - global: { erros: < 0.1 }
@@ -47,8 +47,8 @@ slo:
 // for.
 func freezingScenario(target string) string {
 	return fmt.Sprintf(`# Escrito por 'braunrate demo --com-falha'. O alvo desta demonstracao trava de
-# proposito no meio da execucao, como um GC longo ou um failover fariam.
-nome: Demonstracao com falha
+# proposito no meio da execução, como um GC longo ou um failover fariam.
+nome: Demonstração com falha
 alvo: %s
 
 carga:
@@ -60,8 +60,8 @@ cenario:
     nome: consultar pedido
     verificar: { status: 200 }
 
-# criterio de aceite: este cenario existe para estourar. Numa ferramenta de
-# laco fechado a mesma pausa passaria despercebida e o criterio aprovaria.
+# critério de aceite: este cenário existe para estourar. Numa ferramenta de
+# laço fechado a mesma pausa passaria despercebida e o critério aprovaria.
 slo:
   - global: { erros: < 0.1 }
   - global: { p95: < 100ms }

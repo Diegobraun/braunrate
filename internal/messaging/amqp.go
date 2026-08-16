@@ -51,5 +51,5 @@ func (broker *Broker) SupportsAMQP() error {
 	if broker == nil || broker.Auth.Kind == NoAuth || broker.Auth.Kind == Plain || broker.Auth.Kind == External {
 		return nil
 	}
-	return fmt.Errorf("o RabbitMQ nao usa %q: os tipos disponiveis sao sasl_plain (usuario e senha) e certificado (mTLS)", broker.Auth.Kind)
+	return fmt.Errorf("o RabbitMQ não usa %q: os tipos disponíveis são sasl_plain (usuário e senha) e certificado (mTLS)", broker.Auth.Kind)
 }

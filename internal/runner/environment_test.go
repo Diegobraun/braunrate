@@ -15,7 +15,7 @@ func scenarioFile(t *testing.T, content string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "cenario.yaml")
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o cenario: %v", err)
+		t.Fatalf("não consegui escrever o cenário: %v", err)
 	}
 	return path
 }
@@ -44,20 +44,20 @@ func TestRunningWithoutTheEnvironmentVariableIsRefusedBeforeAnythingIsSent(t *te
 
 	_, err := runner.Execute(context.Background(), path, runner.DefaultOptions("teste"))
 	if err == nil {
-		t.Fatal("a execucao comecou com a credencial vazia")
+		t.Fatal("a execução começou com a credencial vazia")
 	}
 	fault, is := err.(runner.Fault)
 	if !is || fault.Exit != runner.ExitBadFile {
-		t.Fatalf("codigo de saida errado para cenario que nao pode rodar: %#v", err)
+		t.Fatalf("código de saída errado para cenário que não pode rodar: %#v", err)
 	}
 	for _, fragment := range []string{"SENHA_DA_API_QUE_NINGUEM_DEFINIU=...", "reserva"} {
 		if !strings.Contains(err.Error(), fragment) {
-			t.Fatalf("a mensagem nao ensina %q: %v", fragment, err)
+			t.Fatalf("a mensagem não ensina %q: %v", fragment, err)
 		}
 	}
 
 	if _, err := runner.Debug(context.Background(), path, "teste"); err == nil {
-		t.Fatal("a depuracao comecou com a credencial vazia")
+		t.Fatal("a depuracao começou com a credencial vazia")
 	}
 }
 
@@ -66,15 +66,15 @@ func TestRunningWithoutTheEnvironmentVariableIsRefusedBeforeAnythingIsSent(t *te
 func TestValidationOnlyWarnsSoItStillWorksWithoutTheSecret(t *testing.T) {
 	spec, plan, err := runner.Load(scenarioFile(t, needsEnvironment))
 	if err != nil {
-		t.Fatalf("a validacao recusou o cenario: %v", err)
+		t.Fatalf("a validação recusou o cenário: %v", err)
 	}
 
 	lines := strings.Join(runner.Describe(spec, plan), "\n")
 	if !strings.Contains(lines, "SENHA_DA_API_QUE_NINGUEM_DEFINIU") {
-		t.Fatalf("a validacao nao avisou da variavel que falta:\n%s", lines)
+		t.Fatalf("a validação não avisou da variável que falta:\n%s", lines)
 	}
 	if !strings.Contains(lines, "recusa") {
-		t.Fatalf("o aviso nao diz o que vai acontecer na execucao:\n%s", lines)
+		t.Fatalf("o aviso não diz o que vai acontecer na execução:\n%s", lines)
 	}
 }
 
@@ -82,17 +82,17 @@ func TestDefinedVariableAndDeclaredFallbackBothPass(t *testing.T) {
 	t.Setenv("SENHA_DA_API_QUE_NINGUEM_DEFINIU", "segredo")
 	spec, _, err := runner.Load(scenarioFile(t, needsEnvironment))
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 	if err := runner.RequireEnvironment(spec); err != nil {
-		t.Fatalf("variavel definida ainda foi cobrada: %v", err)
+		t.Fatalf("variável definida ainda foi cobrada: %v", err)
 	}
 
 	withFallback := strings.Replace(needsEnvironment,
 		`"${SENHA_DA_API_QUE_NINGUEM_DEFINIU}"`, `"${OUTRA_QUE_NAO_EXISTE:-segredo}"`, 1)
 	spec, _, err = runner.Load(scenarioFile(t, withFallback))
 	if err != nil {
-		t.Fatalf("cenario com reserva recusado: %v", err)
+		t.Fatalf("cenário com reserva recusado: %v", err)
 	}
 	if err := runner.RequireEnvironment(spec); err != nil {
 		t.Fatalf("reserva declarada ainda foi cobrada: %v", err)

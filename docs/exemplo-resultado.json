@@ -88,7 +88,7 @@
       "media_ms": 141.0892934736841,
       "histograma": "HISTFAAAAZ942izRwWoUWRQG4FtfVXVNd+WmqCmaosg0zdBkhmamGTKNaHAhLhLBEEQkhKBrXyALcRFwIa4VF25cuPBNXPgePoG+gdRti7r3nnPuuef//3P+eP2+C8HzsPvyX2c2bqsvp+He913g6/Wdb7O3s1c+Z5+yj9mb7Nnpw///+vf3vf1ZMfttfzIriom9yWQyCQShCApBLZlKuWB0c0tWOrc98UDvR6bz0tIj5yrvMlcuXHqqdy7YulG7sRGtvCj+tHZk7kJ05tKZXOPYhyzVbm0dunascmXwjyNHFjq3DCq1A1sbQa51ojR3wJnegd5Cq1VpLAw21hZKS1EQbXgsWOnVaieGYqz4n17UuitXmxsMtnKDpcFJ0buv8bdGV0wdimrV2IVWTJRyHZYawdRS0AsapZb52LfG3FwpMqSLKiXHpKnd4RYj0do0rUQxppchiTbVaZLqPskZwUtlgqoNphrtODuLlFuZjrFilapHvVzUKZOnTrCVtZgINeIIG1NnYkKYJs0jV0PKr4v16BQJuMjTEMbfZGf/DAAA///waykw"
     },
-    "frase": "Todas as 2375 jornadas chegaram ao fim; metade levou ate 80 ms e 95% ate 666 ms, contados do instante em que deveriam ter comecado."
+    "frase": "Todas as 2375 jornadas chegaram ao fim; metade levou até 80 ms e 95% até 666 ms, contados do instante em que deveriam ter começado."
   },
   "passos": [
     {
@@ -224,7 +224,7 @@
         "limite": 150,
         "unidade": "ms",
         "passou": false,
-        "frase": "Falhou: \"consultar pedido\" respondeu 95% em ate 582 ms, acima do limite de 150 ms.",
+        "frase": "Falhou: \"consultar pedido\" respondeu 95% em até 582 ms, acima do limite de 150 ms.",
         "sem_dados": false,
         "comparacao_nao_confiavel": false
       },
@@ -236,7 +236,7 @@
         "limite": 200,
         "unidade": "ms",
         "passou": true,
-        "frase": "Passou: \"pagar fatura\" respondeu 95% em ate 43 ms, dentro do limite de 200 ms.",
+        "frase": "Passou: \"pagar fatura\" respondeu 95% em até 43 ms, dentro do limite de 200 ms.",
         "sem_dados": false,
         "comparacao_nao_confiavel": false
       },
@@ -248,7 +248,7 @@
         "limite": 2000,
         "unidade": "ms",
         "passou": true,
-        "frase": "Passou: a jornada inteira respondeu 95% em ate 666 ms, dentro do limite de 2000 ms.",
+        "frase": "Passou: a jornada inteira respondeu 95% em até 666 ms, dentro do limite de 2000 ms.",
         "sem_dados": false,
         "comparacao_nao_confiavel": false
       },
@@ -260,7 +260,7 @@
         "limite": 5000,
         "unidade": "ms",
         "passou": true,
-        "frase": "Passou: a jornada inteira respondeu 99% em ate 1027 ms, dentro do limite de 5000 ms.",
+        "frase": "Passou: a jornada inteira respondeu 99% em até 1027 ms, dentro do limite de 5000 ms.",
         "sem_dados": false,
         "comparacao_nao_confiavel": false
       },
@@ -272,15 +272,15 @@
         "limite": 0.1,
         "unidade": "%",
         "passou": true,
-        "frase": "Passou: o cenario inteiro teve taxa de erro de 0.00%, dentro do limite de 0.10%.",
+        "frase": "Passou: o cenário inteiro teve taxa de erro de 0.00%, dentro do limite de 0.10%.",
         "sem_dados": false,
         "comparacao_nao_confiavel": false
       }
     ],
     "criterios_nao_declarados": [
-      "regressao: sem criterio declarado — o gate aprova sem comparar com a execucao anterior"
+      "regressao: sem critério declarado — o gate aprova sem comparar com a execução anterior"
     ],
-    "frase": "Falhou: \"consultar pedido\" respondeu 95% em ate 582 ms, acima do limite de 150 ms."
+    "frase": "Falhou: \"consultar pedido\" respondeu 95% em até 582 ms, acima do limite de 150 ms."
   },
   "variedade_observada": [
     {
@@ -303,9 +303,9 @@
       "valores_disponiveis": 0,
       "limitado_pelo_teto": false,
       "formas_observadas": [
-        "senha: texto, usuario: texto"
+        "senha: texto, usuário: texto"
       ],
-      "frase": "1 forma de corpo em \"obter autenticacao\", em 1 envios: senha: texto, usuario: texto"
+      "frase": "1 forma de corpo em \"obter autenticacao\", em 1 envios: senha: texto, usuário: texto"
     },
     {
       "nome": "corpo.pagar fatura",
@@ -328,7 +328,7 @@
         "tipo": "prefixo",
         "prefixo_comum": "f-100"
       },
-      "frase": "4 valores distintos de faturaId em 2.375 usos, todos comecando com \"f-100\""
+      "frase": "4 valores distintos de faturaId em 2.375 usos, todos começando com \"f-100\""
     },
     {
       "nome": "token",
@@ -336,14 +336,14 @@
       "usos": 2375,
       "valores_disponiveis": 1,
       "limitado_pelo_teto": false,
-      "frase": "1 unico valor de token em 2.375 usos"
+      "frase": "1 único valor de token em 2.375 usos"
     }
   ],
   "avisos": [
     {
       "tipo": "alvo_degradado",
       "gravidade": "media",
-      "mensagem": "o tempo de resposta do alvo cresceu ao longo da execucao enquanto o despacho continuou pontual; a degradacao e do alvo, nao do gerador",
+      "mensagem": "o tempo de resposta do alvo cresceu ao longo da execução enquanto o despacho continuou pontual; a degradação é do alvo, não do gerador",
       "evidencia": "p99 por segundo passou de 82.6 ms para 1033.2 ms"
     }
   ],

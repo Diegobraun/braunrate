@@ -62,7 +62,7 @@ func Debug(out io.Writer, number int, observation engine.Observation, showBody b
 func IterationVars(out io.Writer, vars map[string]string) error {
 	output := &lineWriter{out: out}
 	output.writef("")
-	output.writef("variaveis no fim da iteracao")
+	output.writef("variáveis no fim da iteração")
 	for _, name := range sortNames(vars) {
 		output.writef("  %s = %s", name, shorten(vars[name]))
 	}
@@ -71,7 +71,7 @@ func IterationVars(out io.Writer, vars map[string]string) error {
 
 func describeConfig(config protocol.Config) []string {
 	if config == nil {
-		return []string{"(nao montada)"}
+		return []string{"(não montada)"}
 	}
 	if describable, knows := config.(protocol.Describable); knows {
 		return describable.Describe()

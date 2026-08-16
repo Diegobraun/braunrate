@@ -20,14 +20,14 @@ import (
 func TestAModuleOutsideThisOneCompilesAgainstThePublicSurface(t *testing.T) {
 	root, err := filepath.Abs(".")
 	if err != nil {
-		t.Fatalf("nao consegui achar a raiz do modulo: %v", err)
+		t.Fatalf("não consegui achar a raiz do módulo: %v", err)
 	}
 	outside := t.TempDir()
 
 	write := func(name, content string) {
 		t.Helper()
 		if err := os.WriteFile(filepath.Join(outside, name), []byte(content), 0o600); err != nil {
-			t.Fatalf("nao consegui escrever %s: %v", name, err)
+			t.Fatalf("não consegui escrever %s: %v", name, err)
 		}
 	}
 
@@ -51,7 +51,7 @@ import (
 )
 
 func main() {
-	spec, err := dsl.New("Cenario de fora do modulo").
+	spec, err := dsl.New("Cenário de fora do módulo").
 		Target("http://127.0.0.1:8080").
 		Plateau(dsl.PerSecond(50), 2*time.Second).
 		Step(dsl.GET("/pedidos/1"), dsl.Name("consultar pedido"), dsl.CheckStatus(200)).
@@ -75,7 +75,7 @@ func main() {
 	// copiar evita rede no teste.
 	sum, err := os.ReadFile(filepath.Join(root, "go.sum"))
 	if err != nil {
-		t.Fatalf("nao consegui ler o go.sum: %v", err)
+		t.Fatalf("não consegui ler o go.sum: %v", err)
 	}
 	write("go.sum", string(sum))
 
@@ -83,7 +83,7 @@ func main() {
 	build.Dir = outside
 	build.Env = append(os.Environ(), "GOFLAGS=-mod=mod")
 	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("um modulo de fora nao compila contra a superficie publica: %v\n%s", err, output)
+		t.Fatalf("um módulo de fora não compila contra a superficie publica: %v\n%s", err, output)
 	}
 }
 
@@ -93,7 +93,7 @@ func main() {
 func TestTheInternalPackagesStayOutOfReach(t *testing.T) {
 	root, err := filepath.Abs(".")
 	if err != nil {
-		t.Fatalf("nao consegui achar a raiz do modulo: %v", err)
+		t.Fatalf("não consegui achar a raiz do módulo: %v", err)
 	}
 	outside := t.TempDir()
 
@@ -108,7 +108,7 @@ func main() {}
 	}
 	for name, content := range files {
 		if err := os.WriteFile(filepath.Join(outside, name), []byte(content), 0o600); err != nil {
-			t.Fatalf("nao consegui escrever %s: %v", name, err)
+			t.Fatalf("não consegui escrever %s: %v", name, err)
 		}
 	}
 
@@ -117,7 +117,7 @@ func main() {}
 	build.Env = append(os.Environ(), "GOFLAGS=-mod=mod")
 	output, err := build.CombinedOutput()
 	if err == nil {
-		t.Fatal("um modulo de fora conseguiu importar internal/: a fronteira do contrato publico caiu")
+		t.Fatal("um módulo de fora conseguiu importar internal/: a fronteira do contrato publico caiu")
 	}
 	if !strings.Contains(string(output), "internal") {
 		t.Fatalf("a compilacao falhou por outro motivo:\n%s", output)

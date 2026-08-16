@@ -15,7 +15,7 @@ func writeCSV(t *testing.T) string {
 	root := t.TempDir()
 	content := "id,nome\n1,ana\n2,bruno\n3,carla\n"
 	if err := os.WriteFile(filepath.Join(root, "assinantes.csv"), []byte(content), 0o644); err != nil {
-		t.Fatalf("nao consegui escrever o csv: %v", err)
+		t.Fatalf("não consegui escrever o csv: %v", err)
 	}
 	return root
 }
@@ -32,7 +32,7 @@ func TestCircularConsumeWrapsAround(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		record, err := source.Next(int64(i))
 		if err != nil {
-			t.Fatalf("iteracao %d: %v", i, err)
+			t.Fatalf("iteração %d: %v", i, err)
 		}
 		read = append(read, record["assinantes.id"])
 	}
@@ -48,7 +48,7 @@ func TestSequentialConsumeWarnsWhenDataRunsOut(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		if _, err := source.Next(int64(i)); err != nil {
-			t.Fatalf("iteracao %d deveria funcionar: %v", i, err)
+			t.Fatalf("iteração %d deveria funcionar: %v", i, err)
 		}
 	}
 	_, err := source.Next(3)
@@ -56,7 +56,7 @@ func TestSequentialConsumeWarnsWhenDataRunsOut(t *testing.T) {
 		t.Fatal("a quarta leitura deveria acusar fim dos dados")
 	}
 	if !strings.Contains(err.Error(), "circular") {
-		t.Errorf("a mensagem precisa ensinar a saida: %v", err)
+		t.Errorf("a mensagem precisa ensinar a saída: %v", err)
 	}
 	if !source.Exhausted() {
 		t.Error("a fonte deveria estar marcada como esgotada")
@@ -73,10 +73,10 @@ func TestUniquePerUserConsumeGivesFixedRowPerUser(t *testing.T) {
 	another, _ := source.Next(8)
 
 	if first["assinantes.id"] != second["assinantes.id"] {
-		t.Error("o mesmo usuario virtual precisa receber sempre a mesma linha")
+		t.Error("o mesmo usuário virtual precisa receber sempre a mesma linha")
 	}
 	if first["assinantes.id"] == another["assinantes.id"] {
-		t.Error("usuarios virtuais diferentes deveriam receber linhas diferentes")
+		t.Error("usuários virtuais diferentes deveriam receber linhas diferentes")
 	}
 }
 
@@ -94,7 +94,7 @@ func TestRandomConsumeWithSameSeedRepeatsSequence(t *testing.T) {
 	}
 	first, again := strings.Join(sequence(), ","), strings.Join(sequence(), ",")
 	if first != again {
-		t.Error("mesma semente precisa produzir a mesma sequencia; sem isso a execucao nao e reproduzivel")
+		t.Error("mesma semente precisa produzir a mesma sequência; sem isso a execução não e reproduzivel")
 	}
 }
 
@@ -126,7 +126,7 @@ func TestSyntheticGenerationIsReproducibleBySeed(t *testing.T) {
 
 	first, second := generate(), generate()
 	if strings.Join(first, ";") != strings.Join(second, ";") {
-		t.Fatalf("geracao nao reproduzivel:\n%v\n%v", first, second)
+		t.Fatalf("geracao não reproduzivel:\n%v\n%v", first, second)
 	}
 	if first[0] == first[1] {
 		t.Error("registros diferentes deveriam ter valores diferentes")
@@ -141,7 +141,7 @@ func TestUnknownGeneratorTeachesValidOnes(t *testing.T) {
 	}
 	_, err = open.Next(0)
 	if err == nil || !strings.Contains(err.Error(), "disponiveis: uuid") {
-		t.Fatalf("esperava lista de geradores validos, recebeu %v", err)
+		t.Fatalf("esperava lista de geradores válidos, recebeu %v", err)
 	}
 }
 

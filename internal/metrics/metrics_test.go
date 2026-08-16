@@ -30,10 +30,10 @@ func TestLatencyIsCountedFromScheduledInstant(t *testing.T) {
 	a := sample(inicioFixo, 50*time.Millisecond, 10*time.Millisecond, protocol.Success)
 
 	if obtained := a.CorrectedLatency(); obtained != 60*time.Millisecond {
-		t.Errorf("latencia corrigida = %v, esperado 60ms", obtained)
+		t.Errorf("latência corrigida = %v, esperado 60ms", obtained)
 	}
 	if obtained := a.ServiceLatency(); obtained != 10*time.Millisecond {
-		t.Errorf("latencia de servico = %v, esperado 10ms", obtained)
+		t.Errorf("latência de serviço = %v, esperado 10ms", obtained)
 	}
 }
 
@@ -52,10 +52,10 @@ func TestPercentileComesFromHistogramNotMean(t *testing.T) {
 		t.Errorf("max = %.2f ms, esperado ~5000", distribution.Max)
 	}
 	if distribution.Mean < 40 || distribution.Mean > 70 {
-		t.Errorf("media = %.2f ms, esperado ~59; a media existe mas nao substitui percentil", distribution.Mean)
+		t.Errorf("média = %.2f ms, esperado ~59; a média existe mas não substitui percentil", distribution.Mean)
 	}
 	if distribution.P50 > distribution.Mean {
-		t.Error("p50 acima da media com uma cauda longa indica calculo errado")
+		t.Error("p50 acima da média com uma cauda longa indica calculo errado")
 	}
 }
 
@@ -112,14 +112,14 @@ func TestBackPressureAboveOnePercentInvalidatesResult(t *testing.T) {
 	document := buildDocument(collector, inicioFixo, inicioFixo.Add(time.Second))
 
 	if document.Valid() {
-		t.Fatal("resultado com 5% de despachos atrasados nao pode ser dado como valido")
+		t.Fatal("resultado com 5% de despachos atrasados não pode ser dado como válido")
 	}
 	found := false
 	for _, warning := range document.Warnings {
 		if warning.Kind == "gerador_saturado" && warning.Severity == metrics.SeverityHigh {
 			found = true
 			if !strings.Contains(warning.Evidence, "%") {
-				t.Errorf("evidencia sem proporcao: %q", warning.Evidence)
+				t.Errorf("evidencia sem proporção: %q", warning.Evidence)
 			}
 		}
 	}
@@ -143,7 +143,7 @@ func TestOccasionalDelayDoesNotInvalidateButIsReported(t *testing.T) {
 	document := buildDocument(collector, inicioFixo, inicioFixo.Add(time.Second))
 
 	if !document.Valid() {
-		t.Fatalf("um atraso em mil nao deveria invalidar: %+v", document.Warnings)
+		t.Fatalf("um atraso em mil não deveria invalidar: %+v", document.Warnings)
 	}
 	found := false
 	for _, warning := range document.Warnings {
@@ -152,7 +152,7 @@ func TestOccasionalDelayDoesNotInvalidateButIsReported(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatalf("o atraso pontual precisa aparecer no relatorio: %+v", document.Warnings)
+		t.Fatalf("o atraso pontual precisa aparecer no relatório: %+v", document.Warnings)
 	}
 }
 
@@ -197,7 +197,7 @@ func TestTimeSeriesUseEpochAlignedBuckets(t *testing.T) {
 
 	for _, bucket := range document.Series {
 		if bucket.StartEpochMs%1000 != 0 {
-			t.Errorf("bucket nao alinhado ao epoch: %d", bucket.StartEpochMs)
+			t.Errorf("bucket não alinhado ao epoch: %d", bucket.StartEpochMs)
 		}
 	}
 	if len(document.Series) < 2 {

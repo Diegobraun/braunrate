@@ -44,11 +44,11 @@ func Build(repositoryRoot, destination string, version string) error {
 		return err
 	}
 	if err := os.MkdirAll(destination, 0o755); err != nil {
-		return fmt.Errorf("nao consegui criar %s: %w", destination, err)
+		return fmt.Errorf("não consegui criar %s: %w", destination, err)
 	}
 	for name, content := range map[string]string{"estilo.css": stylesheet, "pagina.js": script} {
 		if err := os.WriteFile(filepath.Join(destination, name), []byte(content), 0o644); err != nil {
-			return fmt.Errorf("nao consegui gravar %s: %w", name, err)
+			return fmt.Errorf("não consegui gravar %s: %w", name, err)
 		}
 	}
 	for index, page := range pages {
@@ -58,7 +58,7 @@ func Build(repositoryRoot, destination string, version string) error {
 		}
 		content := layout(page, pages, index, body, version)
 		if err := os.WriteFile(filepath.Join(destination, fileOf(page, index)), []byte(content), 0o644); err != nil {
-			return fmt.Errorf("nao consegui gravar %s: %w", page.Slug, err)
+			return fmt.Errorf("não consegui gravar %s: %w", page.Slug, err)
 		}
 	}
 	// GitHub Pages serves through Jekyll unless told otherwise, and Jekyll
@@ -96,7 +96,7 @@ func guides(repositoryRoot string) ([]Page, error) {
 	directory := filepath.Join(repositoryRoot, guidesDirectory)
 	entries, err := os.ReadDir(directory)
 	if err != nil {
-		return nil, fmt.Errorf("nao consegui ler %s: %w", directory, err)
+		return nil, fmt.Errorf("não consegui ler %s: %w", directory, err)
 	}
 	var names []string
 	for _, entry := range entries {
@@ -110,12 +110,12 @@ func guides(repositoryRoot string) ([]Page, error) {
 	for _, name := range names {
 		content, err := os.ReadFile(filepath.Join(directory, name))
 		if err != nil {
-			return nil, fmt.Errorf("nao consegui ler %s: %w", name, err)
+			return nil, fmt.Errorf("não consegui ler %s: %w", name, err)
 		}
 		text := string(content)
 		title, found := firstHeading(text)
 		if !found {
-			return nil, fmt.Errorf("%s nao comeca com um titulo '# '", name)
+			return nil, fmt.Errorf("%s não começa com um título '# '", name)
 		}
 		section, slug := sectionAndSlug(name)
 		pages = append(pages, Page{
@@ -198,7 +198,7 @@ var (
 
 func decorate(page string) string {
 	page = headingTag.ReplaceAllString(page,
-		`<$1$2>$4 <a class="ancora" href="#$3" aria-label="link para esta secao">#</a></$1>`)
+		`<$1$2>$4 <a class="ancora" href="#$3" aria-label="link para esta seção">#</a></$1>`)
 	return callout.ReplaceAllString(page,
 		`<aside class="nota nota-$1"><p class="rotulo">$1</p><p>$2</aside>`)
 }
@@ -221,10 +221,10 @@ func layout(page Page, pages []Page, index int, body, version string) string {
 <body>
 <header>
   <a class="marca" href="index.html">braunrate</a>
-  <span class="versao">%s</span>
+  <span class="versão">%s</span>
   <a class="repositorio" href="https://github.com/Diegobraun/braunrate">GitHub</a>
 </header>
-<div class="pagina">
+<div class="página">
   <nav class="secoes" aria-label="Seções">
 %s  </nav>
   <main>
@@ -232,7 +232,7 @@ func layout(page Page, pages []Page, index int, body, version string) string {
 %s    </article>
 %s  </main>
 %s</div>
-<script src="pagina.js"></script>
+<script src="página.js"></script>
 </body>
 </html>
 `, html.EscapeString(title), html.EscapeString(page.Summary), html.EscapeString(version),

@@ -29,7 +29,7 @@ func serialize(body any) ([]byte, string, error) {
 	default:
 		content, err := json.Marshal(value)
 		if err != nil {
-			return nil, "", fmt.Errorf("corpo nao serializa para JSON: %v", err)
+			return nil, "", fmt.Errorf("corpo não serializa para JSON: %v", err)
 		}
 		return content, "application/json", nil
 	}
@@ -108,7 +108,7 @@ func (step *GraphQLStep) Operation(name string) *GraphQLStep {
 func (step *GraphQLStep) Vars(vars any) *GraphQLStep {
 	content, err := json.Marshal(vars)
 	if err != nil {
-		step.err = fmt.Errorf("variaveis de graphql nao serializam para JSON: %v", err)
+		step.err = fmt.Errorf("variáveis de graphql não serializam para JSON: %v", err)
 		return step
 	}
 	step.config.Vars = string(content)
@@ -196,7 +196,7 @@ func (step *KafkaStep) Timeout(timeout time.Duration) *KafkaStep {
 // key. It concentrates on purpose, and the report says so.
 func (step *KafkaStep) Partition(partition int) *KafkaStep {
 	if partition < 0 {
-		step.err = fmt.Errorf("particao invalida: %d (use um numero, como 0 ou 3)", partition)
+		step.err = fmt.Errorf("partição inválida: %d (use um número, como 0 ou 3)", partition)
 		return step
 	}
 	step.config.Partition = &partition

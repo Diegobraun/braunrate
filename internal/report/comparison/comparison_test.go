@@ -33,7 +33,7 @@ func TestRegressionAppearsFirstInPlainLanguage(t *testing.T) {
 		t.Errorf("a primeira frase precisa dizer o que aconteceu: %q", c.Sentence)
 	}
 	if !strings.Contains(c.Sentence, "de 10 ms para 20 ms") {
-		t.Errorf("a frase precisa trazer os dois numeros: %q", c.Sentence)
+		t.Errorf("a frase precisa trazer os dois números: %q", c.Sentence)
 	}
 	if c.Journey.Direction != comparison.DirectionWorse {
 		t.Errorf("sentido veio %q", c.Journey.Direction)
@@ -42,7 +42,7 @@ func TestRegressionAppearsFirstInPlainLanguage(t *testing.T) {
 
 func TestImprovementIsDeclaredToo(t *testing.T) {
 	c := comparison.Compare(document(20, 10), document(10, 5))
-	if !strings.HasPrefix(c.Sentence, "Ficou mais rapido") {
+	if !strings.HasPrefix(c.Sentence, "Ficou mais rápido") {
 		t.Errorf("melhora precisa ser dita com a mesma clareza: %q", c.Sentence)
 	}
 }
@@ -52,9 +52,9 @@ func TestImprovementIsDeclaredToo(t *testing.T) {
 func TestSmallChangeIsTreatedAsNoise(t *testing.T) {
 	c := comparison.Compare(document(10, 5), document(10.3, 5.1))
 	if c.Journey.Direction != comparison.DirectionSame {
-		t.Errorf("3%% de diferenca nao e regressao: %q", c.Journey.Sentence)
+		t.Errorf("3%% de diferença não e regressão: %q", c.Journey.Sentence)
 	}
-	if !strings.Contains(c.Sentence, "Sem mudanca que valha leitura") {
+	if !strings.Contains(c.Sentence, "Sem mudança que valha leitura") {
 		t.Errorf("frase veio: %q", c.Sentence)
 	}
 }
@@ -70,10 +70,10 @@ func TestDifferentEnvironmentBecomesCaveatNotConclusion(t *testing.T) {
 	for _, caveat := range c.Caveats {
 		together += caveat.Text + " | "
 	}
-	if !strings.Contains(together, "maquinas geradoras sao diferentes") {
-		t.Errorf("maquina diferente precisa virar ressalva: %v", c.Caveats)
+	if !strings.Contains(together, "máquinas geradoras são diferentes") {
+		t.Errorf("máquina diferente precisa virar ressalva: %v", c.Caveats)
 	}
-	if !strings.Contains(together, "planos de carga sao diferentes") {
+	if !strings.Contains(together, "planos de carga são diferentes") {
 		t.Errorf("plano diferente precisa virar ressalva: %v", c.Caveats)
 	}
 	if !strings.Contains(c.Sentence, "ressalva") {
@@ -88,9 +88,9 @@ func TestInvalidResultIsNotCompared(t *testing.T) {
 
 	c := comparison.Compare(before, after)
 	if c.Comparable {
-		t.Error("execucao com gerador saturado nao serve de comparacao")
+		t.Error("execução com gerador saturado não serve de comparação")
 	}
-	if !strings.Contains(c.Sentence, "Nao da para comparar") {
+	if !strings.Contains(c.Sentence, "Não da para comparar") {
 		t.Errorf("frase veio: %q", c.Sentence)
 	}
 }
@@ -110,7 +110,7 @@ func TestNewStepIsMarkedInsteadOfCountedAsRegression(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("passo que so existe na execucao nova precisa ser marcado como novo")
+		t.Error("passo que só existe na execução nova precisa ser marcado como novo")
 	}
 }
 
@@ -123,16 +123,16 @@ func TestReasonForNotComparingIsTheOneTheRunReported(t *testing.T) {
 		Checked: true, Valid: false,
 		Findings: []metrics.SanityFinding{{
 			Kind:    "jornada_incompleta",
-			Message: "nenhuma jornada chegou ao fim, entao o cenario nao exercitou a sequencia que declarou",
+			Message: "nenhuma jornada chegou ao fim, então o cenário não exercitou a sequência que declarou",
 		}},
 	}
 
 	c := comparison.Compare(before, after)
 	if strings.Contains(c.Sentence, "saturou") {
-		t.Errorf("a frase inventou saturacao onde a execucao reportou outra coisa: %q", c.Sentence)
+		t.Errorf("a frase inventou saturacao onde a execução reportou outra coisa: %q", c.Sentence)
 	}
 	if !strings.Contains(c.Sentence, "nenhuma jornada chegou ao fim") {
-		t.Errorf("a frase nao disse o motivo que a execucao registrou: %q", c.Sentence)
+		t.Errorf("a frase não disse o motivo que a execução registrou: %q", c.Sentence)
 	}
 }
 
@@ -145,10 +145,10 @@ func TestOnlyBlockingCaveatIsSaidToExplainTheDifferenceAlone(t *testing.T) {
 
 	c := comparison.Compare(before, after)
 	if len(c.Caveats) != 1 || c.Caveats[0].Blocking {
-		t.Fatalf("esperava uma ressalva nao impeditiva: %+v", c.Caveats)
+		t.Fatalf("esperava uma ressalva não impeditiva: %+v", c.Caveats)
 	}
 	if strings.Contains(c.Sentence, "sozinha") {
-		t.Errorf("ressalva que nao impede foi anunciada como suficiente: %q", c.Sentence)
+		t.Errorf("ressalva que não impede foi anunciada como suficiente: %q", c.Sentence)
 	}
 
 	after.Run.Target = "http://outra-maquina:8080"

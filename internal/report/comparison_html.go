@@ -64,7 +64,7 @@ func buildComparisonPage(c comparison.Comparison, version string) comparisonPage
 		After:      c.After,
 		Errors:     c.Error.Sentence,
 		Version:    version,
-		Noise: fmt.Sprintf("Duas execucoes nao dao intervalo de confianca: variacao abaixo de %.0f%% e tratada como ruido.",
+		Noise: fmt.Sprintf("Duas execuções não dão intervalo de confiança: variação abaixo de %.0f%% é tratada como ruído.",
 			comparison.AcceptedNoise*100),
 	}
 
@@ -72,7 +72,7 @@ func buildComparisonPage(c comparison.Comparison, version string) comparisonPage
 	switch {
 	case !c.Comparable:
 		page.Class = "invalido"
-		page.Subtitle = "Nenhum numero abaixo foi comparado: uma das duas execucoes nao vale como medicao."
+		page.Subtitle = "Nenhum número abaixo foi comparado: uma das duas execuções não vale como medição."
 	case c.Journey.Direction == comparison.DirectionWorse || c.Overall.Direction == comparison.DirectionWorse:
 		page.Class = "falhou"
 	case c.Journey.Direction == comparison.DirectionBetter || c.Overall.Direction == comparison.DirectionBetter:
@@ -95,7 +95,7 @@ func buildComparisonPage(c comparison.Comparison, version string) comparisonPage
 		case step.New:
 			line.Note = "passo novo"
 		case step.Vanished:
-			line.Note = "nao existe mais"
+			line.Note = "não existe mais"
 		}
 		page.Steps = append(page.Steps, line)
 	}
@@ -160,14 +160,14 @@ var comparisonTemplate = template.Must(template.Must(template.Must(
 <body>
 <main>
 <header>
-  <div class="cenario">{{.Title}} — antes e depois</div>
+  <div class="cenário">{{.Title}} — antes e depois</div>
   <h1 class="{{.Class}}">{{.Sentence}}</h1>
   {{if .Subtitle}}<p class="subtitulo">{{.Subtitle}}</p>{{end}}
 </header>
 
 <h2>Comparando</h2>
 <table>
-  <tr><th>execucao</th><th>cenario</th><th>alvo</th><th>quando</th><th>versao</th></tr>
+  <tr><th>execução</th><th>cenário</th><th>alvo</th><th>quando</th><th>versão</th></tr>
   <tr><td>antes</td><td>{{.Before.Spec}}</td><td>{{.Before.Target}}</td><td>{{.Before.Start}}</td><td>{{.Before.Version}}</td></tr>
   <tr><td>depois</td><td>{{.After.Spec}}</td><td>{{.After.Target}}</td><td>{{.After.Start}}</td><td>{{.After.Version}}</td></tr>
 </table>
@@ -177,19 +177,19 @@ var comparisonTemplate = template.Must(template.Must(template.Must(
 
 <h2>A jornada inteira</h2>
 <table>
-  <tr><th>percentil</th><th>antes</th><th>depois</th><th>variacao</th></tr>
+  <tr><th>percentil</th><th>antes</th><th>depois</th><th>variação</th></tr>
   {{range .JourneyRows}}<tr><td>{{.Metric}}</td><td>{{.Before}}</td><td>{{.After}}</td><td class="{{.Class}}">{{.Change}}</td></tr>{{end}}
 </table>
 
-<h2>Todas as requisicoes</h2>
+<h2>Todas as requisições</h2>
 <table>
-  <tr><th>percentil</th><th>antes</th><th>depois</th><th>variacao</th></tr>
+  <tr><th>percentil</th><th>antes</th><th>depois</th><th>variação</th></tr>
   {{range .OverallRows}}<tr><td>{{.Metric}}</td><td>{{.Before}}</td><td>{{.After}}</td><td class="{{.Class}}">{{.Change}}</td></tr>{{end}}
 </table>
 
 <h2>Por passo</h2>
 <table>
-  <tr><th>passo</th><th>95% antes</th><th>95% depois</th><th>variacao</th></tr>
+  <tr><th>passo</th><th>95% antes</th><th>95% depois</th><th>variação</th></tr>
   {{range .Steps}}<tr>
     <td>{{.Step}}{{if .Note}} <span class="marca">({{.Note}})</span>{{end}}</td>
     <td>{{.Before}}</td><td>{{.After}}</td><td class="{{.Class}}">{{.Change}}</td>
@@ -200,16 +200,16 @@ var comparisonTemplate = template.Must(template.Must(template.Must(
 <ul class="frases"><li>{{.Errors}}</li></ul>
 {{end}}
 
-<h2>O que pode explicar a diferenca sem ser o servico</h2>
+<h2>O que pode explicar a diferença sem ser o serviço</h2>
 <ul class="frases">
-  {{if not .Caveats}}<li>Nada do que da para comparar: cenario, alvo, maquina, plano de carga e versao sao os mesmos. O conteudo dos arquivos de dados nao entra nesta lista — se ele mudou entre as duas, a diferenca pode ser dele.</li>{{end}}
-  {{range .Caveats}}<li>{{.Text}}{{if .Blocking}} <strong>(isso sozinho explica a diferenca)</strong>{{end}}</li>{{end}}
+  {{if not .Caveats}}<li>Nada do que da para comparar: cenário, alvo, máquina, plano de carga e versão são os mesmos. O conteúdo dos arquivos de dados não entra nesta lista — se ele mudou entre as duas, a diferença pode ser dele.</li>{{end}}
+  {{range .Caveats}}<li>{{.Text}}{{if .Blocking}} <strong>(isso sozinho explica a diferença)</strong>{{end}}</li>{{end}}
   <li>{{.Noise}}</li>
 </ul>
 
 <footer>
-  braunrate {{.Version}} — comparacao de duas execucoes ja gravadas.
-  Este arquivo abre sem rede: nao busca script, fonte nem imagem externa.
+  braunrate {{.Version}} — comparação de duas execuções já gravadas.
+  Este arquivo abre sem rede: não busca script, fonte nem imagem externa.
 </footer>
 </main>
 </body>

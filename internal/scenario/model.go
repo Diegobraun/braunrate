@@ -127,5 +127,5 @@ func (spec Spec) FindStep(name string) (Step, error) {
 			return step, nil
 		}
 	}
-	return Step{}, fmt.Errorf("passo nao encontrado: %q", name)
+	return Step{}, fmt.Errorf("passo não encontrado: %q", name)
 }

@@ -26,19 +26,19 @@ func TestConsumerLagAppearsInTheTerminalAndInTheHTML(t *testing.T) {
 
 	var terminal strings.Builder
 	if err := report.Summary(&terminal, document, slo.Verdict{}); err != nil {
-		t.Fatalf("nao gerou o terminal: %v", err)
+		t.Fatalf("não gerou o terminal: %v", err)
 	}
 	html := generate(t, document)
 
 	for name, output := range map[string]string{"terminal": terminal.String(), "html": html} {
 		if !strings.Contains(output, "cobranca") || !strings.Contains(output, "faturas") {
-			t.Fatalf("o %s nao nomeou o grupo e o topico observados", name)
+			t.Fatalf("o %s não nomeou o grupo e o tópico observados", name)
 		}
 		if !strings.Contains(output, "4.200 mensagens") {
-			t.Fatalf("o %s nao disse quantas mensagens o consumidor ficou para tras", name)
+			t.Fatalf("o %s não disse quantas mensagens o consumidor ficou para trás", name)
 		}
-		if !strings.Contains(output, "terminou a execucao para tras") {
-			t.Fatalf("o %s mostrou o numero e nao disse o que ele significa", name)
+		if !strings.Contains(output, "terminou a execução para trás") {
+			t.Fatalf("o %s mostrou o número e não disse o que ele significa", name)
 		}
 	}
 }
@@ -47,23 +47,23 @@ func TestConsumerLagAppearsInTheTerminalAndInTheHTML(t *testing.T) {
 // kept up, which is the opposite of not knowing.
 func TestLagItCouldNotMeasureIsNotReportedAsZero(t *testing.T) {
 	document := documentWithLag(protocol.ConsumerLag{
-		Group: "cobranca", Topic: "faturas", Problem: "sem permissao para ler o offset do grupo",
+		Group: "cobranca", Topic: "faturas", Problem: "sem permissão para ler o offset do grupo",
 	})
 
 	var terminal strings.Builder
 	if err := report.Summary(&terminal, document, slo.Verdict{}); err != nil {
-		t.Fatalf("nao gerou o terminal: %v", err)
+		t.Fatalf("não gerou o terminal: %v", err)
 	}
 	html := generate(t, document)
 
 	for name, output := range map[string]string{"terminal": terminal.String(), "html": html} {
-		if !strings.Contains(output, "nao consegui medir") {
-			t.Fatalf("o %s escondeu que a medicao falhou", name)
+		if !strings.Contains(output, "não consegui medir") {
+			t.Fatalf("o %s escondeu que a medição falhou", name)
 		}
-		if !strings.Contains(output, "sem permissao para ler o offset do grupo") {
-			t.Fatalf("o %s nao disse por que a medicao falhou", name)
+		if !strings.Contains(output, "sem permissão para ler o offset do grupo") {
+			t.Fatalf("o %s não disse por que a medição falhou", name)
 		}
-		if strings.Contains(output, "terminou a execucao para tras") {
+		if strings.Contains(output, "terminou a execução para trás") {
 			t.Fatalf("o %s concluiu sobre o consumidor sem ter medido", name)
 		}
 	}
@@ -76,7 +76,7 @@ func TestReportWithoutAWatchedGroupHasNoLagSection(t *testing.T) {
 
 	var terminal strings.Builder
 	if err := report.Summary(&terminal, document, slo.Verdict{}); err != nil {
-		t.Fatalf("nao gerou o terminal: %v", err)
+		t.Fatalf("não gerou o terminal: %v", err)
 	}
 	html := generate(t, document)
 
@@ -96,13 +96,13 @@ func TestReportSaysWhichProtocolsTheBinaryCarries(t *testing.T) {
 
 	var terminal strings.Builder
 	if err := report.Summary(&terminal, document, slo.Verdict{}); err != nil {
-		t.Fatalf("nao gerou o terminal: %v", err)
+		t.Fatalf("não gerou o terminal: %v", err)
 	}
 	html := generate(t, document)
 
 	for name, output := range map[string]string{"terminal": terminal.String(), "html": html} {
 		if !strings.Contains(output, "http, kafka") {
-			t.Fatalf("o %s nao disse quais protocolos o binario carrega", name)
+			t.Fatalf("o %s não disse quais protocolos o binario carrega", name)
 		}
 	}
 }
@@ -117,14 +117,14 @@ func TestLagSentenceDoesNotClaimACauseItDidNotCheck(t *testing.T) {
 
 	var terminal strings.Builder
 	if err := report.Summary(&terminal, document, slo.Verdict{}); err != nil {
-		t.Fatalf("nao gerou o terminal: %v", err)
+		t.Fatalf("não gerou o terminal: %v", err)
 	}
 	for name, output := range map[string]string{"terminal": terminal.String(), "html": generate(t, document)} {
-		if strings.Contains(output, "cresceu mais rapido do que ele consumiu") {
+		if strings.Contains(output, "cresceu mais rápido do que ele consumiu") {
 			t.Errorf("o %s afirmou a causa do atraso sem ter apurado qual foi", name)
 		}
-		if !strings.Contains(output, "nao a causa") {
-			t.Errorf("o %s nao avisa que o numero nao diz a causa", name)
+		if !strings.Contains(output, "não a causa") {
+			t.Errorf("o %s não avisa que o número não diz a causa", name)
 		}
 	}
 }

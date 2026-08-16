@@ -34,17 +34,17 @@ cenario:
     nome: ${NOME_DO_PASSO}
 `))
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 	if spec.Target != "http://127.0.0.1:9090" {
 		t.Fatalf("alvo saiu %q", spec.Target)
 	}
 	phase := spec.Load.Phases[0]
 	if phase.To != 120 || phase.For != 3*time.Second {
-		t.Fatalf("taxa e duracao nao vieram do ambiente: %+v", phase)
+		t.Fatalf("taxa e duração não vieram do ambiente: %+v", phase)
 	}
 	if key := spec.Steps[0].Config.AggregationKey(); !strings.Contains(key, "pedidos-homolog") {
-		t.Fatalf("o topico nao veio do ambiente: %q", key)
+		t.Fatalf("o tópico não veio do ambiente: %q", key)
 	}
 	if spec.Steps[0].Name != "produzir pedido" {
 		t.Fatalf("o nome do passo saiu %q", spec.Steps[0].Name)
@@ -64,14 +64,14 @@ cenario:
   - http: GET /pedidos/1
 `))
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 	if spec.Target != "http://127.0.0.1:8080" {
 		t.Fatalf("alvo saiu %q", spec.Target)
 	}
 	phase := spec.Load.Phases[0]
 	if phase.To != 50 || phase.For != 2*time.Second {
-		t.Fatalf("os valores de reserva nao chegaram na carga: %+v", phase)
+		t.Fatalf("os valores de reserva não chegaram na carga: %+v", phase)
 	}
 }
 
@@ -88,15 +88,15 @@ cenario:
   - http: GET /pedidos/1
 `))
 	if err == nil {
-		t.Fatal("a taxa com referencia crua passou")
+		t.Fatal("a taxa com referência crua passou")
 	}
 	for _, fragment := range []string{
-		"TAXA_QUE_NINGUEM_DEFINIU nao esta definida",
+		"TAXA_QUE_NINGUEM_DEFINIU não está definida",
 		"rode com TAXA_QUE_NINGUEM_DEFINIU=...",
 		"${TAXA_QUE_NINGUEM_DEFINIU:-valor}",
 	} {
 		if !strings.Contains(err.Error(), fragment) {
-			t.Fatalf("a mensagem nao ensina %q: %v", fragment, err)
+			t.Fatalf("a mensagem não ensina %q: %v", fragment, err)
 		}
 	}
 }
@@ -115,22 +115,22 @@ cenario:
   - http: GET /pedidos/1
 `))
 	if err != nil {
-		t.Fatalf("o erro do alvo devia sair na validacao, nao na leitura: %v", err)
+		t.Fatalf("o erro do alvo devia sair na validação, não na leitura: %v", err)
 	}
 	invalid := spec.Validate()
 	if invalid == nil {
-		t.Fatal("o cenario com alvo sem variavel foi aceito")
+		t.Fatal("o cenário com alvo sem variável foi aceito")
 	}
 	problems := invalid.Error()
-	if strings.Contains(problems, "o cenario precisa de um alvo") {
-		t.Fatalf("a ferramenta apagou a referencia e pediu um alvo que a pessoa escreveu:\n%s", problems)
+	if strings.Contains(problems, "o cenário precisa de um alvo") {
+		t.Fatalf("a ferramenta apagou a referência e pediu um alvo que a pessoa escreveu:\n%s", problems)
 	}
 	for _, fragment := range []string{
-		"ALVO_QUE_NINGUEM_DEFINIU, que nao esta definida",
+		"ALVO_QUE_NINGUEM_DEFINIU, que não está definida",
 		"rode com ALVO_QUE_NINGUEM_DEFINIU=...",
 	} {
 		if !strings.Contains(problems, fragment) {
-			t.Fatalf("a mensagem nao ensina %q:\n%s", fragment, problems)
+			t.Fatalf("a mensagem não ensina %q:\n%s", fragment, problems)
 		}
 	}
 }
@@ -152,10 +152,10 @@ cenario:
   - http: GET /pedidos/${pedidos.id}
 `))
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 	if key := spec.Steps[0].Config.AggregationKey(); !strings.Contains(key, "${pedidos.id}") {
-		t.Fatalf("a referencia por iteracao foi resolvida na leitura: %q", key)
+		t.Fatalf("a referência por iteração foi resolvida na leitura: %q", key)
 	}
 }
 
@@ -180,7 +180,7 @@ cenario:
   - kafka: { topico: pedidos, valor: "{}" }
 `))
 	if err == nil {
-		t.Fatal("o valor de reserva com segredo literal passou: a recusa leu o texto ja expandido")
+		t.Fatal("o valor de reserva com segredo literal passou: a recusa leu o texto já expandido")
 	}
 	if !strings.Contains(err.Error(), "vai para o repositorio") {
 		t.Fatalf("a recusa mudou de motivo: %v", err)
@@ -200,9 +200,9 @@ cenario:
   - http: GET /pedidos/${pedidos.id}
 `))
 	if err != nil {
-		t.Fatalf("cenario recusado: %v", err)
+		t.Fatalf("cenário recusado: %v", err)
 	}
 	if spec.Data[0].SeedFrom != "SEMENTE" {
-		t.Fatalf("a origem da semente saiu %q: expandir antes apaga de qual variavel ela veio", spec.Data[0].SeedFrom)
+		t.Fatalf("a origem da semente saiu %q: expandir antes apaga de qual variável ela veio", spec.Data[0].SeedFrom)
 	}
 }

@@ -27,7 +27,7 @@ func TestTwoResultFilesAddUpToTheSameNumbersAsOneRun(t *testing.T) {
 
 	merged, err := metrics.Merge(reread(t, partOne), reread(t, partTwo))
 	if err != nil {
-		t.Fatalf("nao consegui somar os dois resultados: %v", err)
+		t.Fatalf("não consegui somar os dois resultados: %v", err)
 	}
 
 	expected := whole.Steps[0].Reported()
@@ -47,22 +47,22 @@ func TestTwoResultFilesAddUpToTheSameNumbersAsOneRun(t *testing.T) {
 		{"min", expected.Minimum, obtained.Minimum},
 	} {
 		if comparison.expected != comparison.obtained {
-			t.Errorf("%s da soma nao bate com o da execucao unica: esperava %g ms, veio %g ms",
+			t.Errorf("%s da soma não bate com o da execução única: esperava %g ms, veio %g ms",
 				comparison.name, comparison.expected, comparison.obtained)
 		}
 	}
 	if expected.Samples != obtained.Samples {
-		t.Errorf("a soma tem %d amostras e a execucao unica tem %d", obtained.Samples, expected.Samples)
+		t.Errorf("a soma tem %d amostras e a execução única tem %d", obtained.Samples, expected.Samples)
 	}
 	if whole.Steps[0].Count != merged.Steps[0].Count {
-		t.Errorf("a soma contou %d requisicoes e a execucao unica %d", merged.Steps[0].Count, whole.Steps[0].Count)
+		t.Errorf("a soma contou %d requisições e a execução única %d", merged.Steps[0].Count, whole.Steps[0].Count)
 	}
 	if whole.Overall.Reported().P99 != merged.Overall.Reported().P99 {
-		t.Errorf("o p99 global da soma (%g) nao bate com o da execucao unica (%g)",
+		t.Errorf("o p99 global da soma (%g) não bate com o da execução única (%g)",
 			merged.Overall.Reported().P99, whole.Overall.Reported().P99)
 	}
 	if whole.Journey.Reported().P95 != merged.Journey.Reported().P95 {
-		t.Errorf("o p95 de jornada da soma (%g) nao bate com o da execucao unica (%g)",
+		t.Errorf("o p95 de jornada da soma (%g) não bate com o da execução única (%g)",
 			merged.Journey.Reported().P95, whole.Journey.Reported().P95)
 	}
 }
@@ -78,14 +78,14 @@ func TestMeanOfTheSumIsNotTheAverageOfTwoMeans(t *testing.T) {
 		reread(t, documentOf(t, "muitas", many)),
 	)
 	if err != nil {
-		t.Fatalf("nao consegui somar: %v", err)
+		t.Fatalf("não consegui somar: %v", err)
 	}
 	whole := documentOf(t, "unica", append(append([]int64{}, few...), many...))
 
 	expected := whole.Steps[0].Reported().Mean
 	obtained := merged.Steps[0].Reported().Mean
 	if difference := expected - obtained; difference > 0.001 || difference < -0.001 {
-		t.Fatalf("a media da soma (%g ms) nao bate com a da execucao unica (%g ms)", obtained, expected)
+		t.Fatalf("a média da soma (%g ms) não bate com a da execução única (%g ms)", obtained, expected)
 	}
 }
 
@@ -98,16 +98,16 @@ func TestOldFormatIsReadableAndRefusedForSummingWithAReason(t *testing.T) {
 	old.FormatVersion = "1"
 
 	if old.Steps[0].Reported().P95 == 0 {
-		t.Fatal("o documento antigo perdeu os percentis que ele ja tinha")
+		t.Fatal("o documento antigo perdeu os percentis que ele já tinha")
 	}
 
 	_, err := metrics.Merge(current, old)
 	if err == nil {
-		t.Fatal("somou um resultado de formato antigo, cujos percentis nao tem histograma por tras")
+		t.Fatal("somou um resultado de formato antigo, cujos percentis não tem histograma por trás")
 	}
-	for _, expected := range []string{`formato "1"`, "histograma", "percentil nao soma"} {
+	for _, expected := range []string{`formato "1"`, "histograma", "percentil não soma"} {
 		if !strings.Contains(err.Error(), expected) {
-			t.Errorf("a mensagem nao explica por que nao soma: falta %q em\n%v", expected, err)
+			t.Errorf("a mensagem não explica por que não soma: falta %q em\n%v", expected, err)
 		}
 	}
 }
@@ -115,10 +115,10 @@ func TestOldFormatIsReadableAndRefusedForSummingWithAReason(t *testing.T) {
 func TestSummingRunsOfDifferentScenariosIsRefused(t *testing.T) {
 	one := reread(t, documentOf(t, "um", latencies(1, 10)))
 	two := reread(t, documentOf(t, "dois", latencies(1, 10)))
-	two.Run.Spec = "Outro cenario"
+	two.Run.Spec = "Outro cenário"
 
 	if _, err := metrics.Merge(one, two); err == nil {
-		t.Fatal("somou execucoes de cenarios diferentes")
+		t.Fatal("somou execuções de cenários diferentes")
 	}
 }
 
@@ -151,7 +151,7 @@ func documentOf(t *testing.T, host string, milliseconds []int64) metrics.Documen
 	collector.Close()
 
 	document := metrics.BuildDocument(collector, metrics.DocumentInput{
-		Spec: "Cenario somavel", Target: "http://alvo", Version: "teste",
+		Spec: "Cenário somavel", Target: "http://alvo", Version: "teste",
 		Start: start, End: start.Add(time.Duration(len(milliseconds)) * time.Millisecond),
 		Model: "aberto",
 	})
@@ -166,18 +166,18 @@ func reread(t *testing.T, document metrics.Document) metrics.Document {
 	path := filepath.Join(t.TempDir(), "resultado.json")
 	content, err := json.Marshal(document)
 	if err != nil {
-		t.Fatalf("nao consegui gravar o resultado: %v", err)
+		t.Fatalf("não consegui gravar o resultado: %v", err)
 	}
 	if err := os.WriteFile(path, content, 0o600); err != nil {
-		t.Fatalf("nao consegui gravar o resultado: %v", err)
+		t.Fatalf("não consegui gravar o resultado: %v", err)
 	}
 	read, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("nao consegui reler o resultado: %v", err)
+		t.Fatalf("não consegui reler o resultado: %v", err)
 	}
 	var back metrics.Document
 	if err := json.Unmarshal(read, &back); err != nil {
-		t.Fatalf("nao consegui reler o resultado: %v", err)
+		t.Fatalf("não consegui reler o resultado: %v", err)
 	}
 	return back
 }

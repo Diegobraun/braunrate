@@ -213,7 +213,7 @@ func (builder *Builder) Step(request Request, options ...StepOption) *Builder {
 
 func buildStep(request Request, options ...StepOption) (scenario.Step, error) {
 	if request == nil {
-		return scenario.Step{}, errors.New("passo sem requisicao")
+		return scenario.Step{}, errors.New("passo sem requisição")
 	}
 	protocolName, config, err := request.build()
 	if err != nil {
@@ -349,7 +349,7 @@ func WithToken(request Request, options ...StepOption) *Authenticator {
 	if err != nil {
 		return &Authenticator{err: err}
 	}
-	step.Name = "obter autenticacao"
+	step.Name = "obter autenticação"
 	return &Authenticator{auth: scenario.Auth{Kind: scenario.AuthToken, Obtain: &step}}
 }
 
@@ -382,11 +382,11 @@ func (builder *Builder) Auth(authenticator *Authenticator) *Builder {
 	}
 	auth := authenticator.auth
 	if auth.Kind == scenario.AuthToken && auth.Obtain == nil {
-		builder.note(errors.New("autenticacao por token precisa da requisicao que devolve o token"))
+		builder.note(errors.New("autenticação por token precisa da requisição que devolve o token"))
 		return builder
 	}
 	if auth.Kind == scenario.AuthBasic && (auth.User == "" || auth.Password == "") {
-		builder.note(errors.New("autenticacao basica precisa de usuario e senha"))
+		builder.note(errors.New("autenticação básica precisa de usuário e senha"))
 		return builder
 	}
 	if auth.Header == "" && auth.Kind != scenario.AuthBasic {
@@ -400,7 +400,7 @@ func (builder *Builder) Build() (scenario.Spec, error) {
 	built := builder.scenario
 	built.Target = scenario.Interpolate(built.Target, built.Vars)
 	if len(builder.errors) > 0 {
-		return built, fmt.Errorf("cenario invalido:\n  - %s", strings.Join(messages(builder.errors), "\n  - "))
+		return built, fmt.Errorf("cenário inválido:\n  - %s", strings.Join(messages(builder.errors), "\n  - "))
 	}
 	if err := built.Validate(); err != nil {
 		return built, err
@@ -437,7 +437,7 @@ func BrokerAt(addresses ...string) *BrokerAuth {
 func (authenticator *BrokerAuth) credential(kind messaging.Kind, user, passwordVar string) *BrokerAuth {
 	name, reference := scenario.EnvironmentVariable(passwordVar)
 	if !reference {
-		authenticator.err = fmt.Errorf("a senha do broker precisa ser referencia a variavel de ambiente, como \"${KAFKA_SENHA}\", e veio %q", passwordVar)
+		authenticator.err = fmt.Errorf("a senha do broker precisa ser referência a variável de ambiente, como \"${KAFKA_SENHA}\", e veio %q", passwordVar)
 		return authenticator
 	}
 	authenticator.broker.Auth = messaging.Auth{

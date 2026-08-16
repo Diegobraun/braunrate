@@ -30,7 +30,7 @@ type equivalence struct {
 // is a position in a file and does not exist in Go code.
 var testCases = []equivalence{
 	{
-		name: "http com variaveis, dados, autenticacao por token, capturas e slo",
+		name: "http com variáveis, dados, autenticação por token, capturas e slo",
 		yaml: `
 nome: Jornada autenticada
 alvo: ${BASE:-http://127.0.0.1:8080}
@@ -155,7 +155,7 @@ slo:
 		},
 	},
 	{
-		name: "graphql por operacao",
+		name: "graphql por operação",
 		yaml: `
 nome: Cobranca em GraphQL
 alvo: http://127.0.0.1:8080
@@ -203,7 +203,7 @@ slo:
 	{
 		name: "kafka com aguardar fechando a cadeia",
 		yaml: `
-nome: Cadeia assincrona
+nome: Cadeia assíncrona
 alvo: 127.0.0.1:9092
 requer: [kafka]
 
@@ -244,7 +244,7 @@ slo:
   - kafka produzir pedidos-cadeia: { p95: < 100ms }
 `,
 		dsl: func() (scenario.Spec, error) {
-			return dsl.New("Cadeia assincrona").
+			return dsl.New("Cadeia assíncrona").
 				Target("127.0.0.1:9092").
 				Requires("kafka").
 				GeneratedData("pedidos", map[string]string{"id": "uuid"}, dsl.Consume(scenario.ConsumeSequential)).
@@ -274,7 +274,7 @@ slo:
 	{
 		name: "amqp em fila e em troca com rota",
 		yaml: `
-nome: Publicacao em RabbitMQ
+nome: Publicação em RabbitMQ
 alvo: amqp://127.0.0.1:5672
 
 dados:
@@ -307,7 +307,7 @@ cenario:
       chave: "${clientes.id}"
 `,
 		dsl: func() (scenario.Spec, error) {
-			return dsl.New("Publicacao em RabbitMQ").
+			return dsl.New("Publicação em RabbitMQ").
 				Target("amqp://127.0.0.1:5672").
 				DataFromFile("clientes", "dados/clientes.csv", dsl.Consume(scenario.ConsumeRandom)).
 				Plateau(dsl.PerSecond(30), 10*time.Second).
@@ -325,7 +325,7 @@ cenario:
 		},
 	},
 	{
-		name: "autenticacao basica e consumo unico por usuario",
+		name: "autenticação básica e consumo único por usuário",
 		yaml: `
 nome: Basica
 alvo: http://127.0.0.1:8080
@@ -358,7 +358,7 @@ cenario:
 		},
 	},
 	{
-		name: "autenticacao por cabecalho fixo",
+		name: "autenticação por cabecalho fixo",
 		yaml: `
 nome: Chave de api
 alvo: http://127.0.0.1:8080
@@ -416,9 +416,9 @@ cenario:
 		},
 	},
 	{
-		name: "mix ponderado de operacoes",
+		name: "mix ponderado de operações",
 		yaml: `
-nome: Mix de operacoes
+nome: Mix de operações
 alvo: http://127.0.0.1:8080
 
 carga:
@@ -437,7 +437,7 @@ cenario:
     peso: 10
 `,
 		dsl: func() (scenario.Spec, error) {
-			return dsl.New("Mix de operacoes").
+			return dsl.New("Mix de operações").
 				Target("http://127.0.0.1:8080").
 				Plateau(dsl.PerSecond(100), 5*time.Second).
 				Step(dsl.GET("/pedidos"), dsl.Name("consulta leve"), dsl.Weight(60)).
@@ -447,9 +447,9 @@ cenario:
 		},
 	},
 	{
-		name: "alvo https com CA propria",
+		name: "alvo https com CA própria",
 		yaml: `
-nome: Homologacao atras de CA propria
+nome: Homologacao atrás de CA própria
 alvo: https://api.homolog.interno
 
 tls: { ca: /etc/ssl/ca-interna.pem, certificado: /etc/ssl/cliente.pem, chave: /etc/ssl/cliente.key }
@@ -463,7 +463,7 @@ cenario:
     nome: consultar pedido
 `,
 		dsl: func() (scenario.Spec, error) {
-			return dsl.New("Homologacao atras de CA propria").
+			return dsl.New("Homologacao atrás de CA própria").
 				Target("https://api.homolog.interno").
 				TargetTLS(messaging.TLS{
 					CA:          "/etc/ssl/ca-interna.pem",
@@ -512,7 +512,7 @@ cenario:
 	{
 		name: "modelo fechado",
 		yaml: `
-nome: Laco fechado
+nome: Laço fechado
 alvo: http://127.0.0.1:8080
 
 carga:
@@ -525,7 +525,7 @@ cenario:
   - http: GET /pedidos
 `,
 		dsl: func() (scenario.Spec, error) {
-			return dsl.New("Laco fechado").
+			return dsl.New("Laço fechado").
 				Target("http://127.0.0.1:8080").
 				ClosedLoop(200, 5*time.Minute, time.Second).
 				Step(dsl.GET("/pedidos")).
@@ -539,14 +539,14 @@ func TestYAMLAndDSLProduceSameScenario(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			doYAML, err := scenario.Parse([]byte(testCase.yaml))
 			if err != nil {
-				t.Fatalf("o YAML do caso nao carregou: %v", err)
+				t.Fatalf("o YAML do caso não carregou: %v", err)
 			}
 			if err := doYAML.Validate(); err != nil {
-				t.Fatalf("o YAML do caso nao e valido: %v", err)
+				t.Fatalf("o YAML do caso não e válido: %v", err)
 			}
 			daDSL, err := testCase.dsl()
 			if err != nil {
-				t.Fatalf("a DSL do caso nao montou: %v", err)
+				t.Fatalf("a DSL do caso não montou: %v", err)
 			}
 
 			expected, obtained := withoutLines(doYAML), withoutLines(daDSL)
@@ -555,7 +555,7 @@ func TestYAMLAndDSLProduceSameScenario(t *testing.T) {
 			}
 			differences := diferencas(expected, obtained)
 			if len(differences) == 0 {
-				t.Fatalf("os dois cenarios diferem e a comparacao campo a campo nao viu onde: "+
+				t.Fatalf("os dois cenários diferem e a comparação campo a campo não viu onde: "+
 					"um campo novo de scenario.Spec entrou sem entrar em diferencas().\n  yaml: %s\n   dsl: %s",
 					format(expected), format(obtained))
 			}
@@ -581,7 +581,7 @@ func TestEveryRegisteredProtocolHasEquivalenceCase(t *testing.T) {
 	}
 	for _, name := range protocol.Registered() {
 		if !exercised[name] {
-			t.Errorf("o protocolo %q nao tem caso de equivalencia YAML x DSL", name)
+			t.Errorf("o protocolo %q não tem caso de equivalencia YAML x DSL", name)
 		}
 	}
 }
@@ -599,7 +599,7 @@ func TestEveryTopKeyHasEquivalenceCase(t *testing.T) {
 	}
 	for _, key := range scenario.TopKeys {
 		if !used[key] {
-			t.Errorf("a chave de topo %q nao aparece em nenhum caso de equivalencia", key)
+			t.Errorf("a chave de topo %q não aparece em nenhum caso de equivalencia", key)
 		}
 	}
 }
@@ -669,18 +669,18 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 	missing(t, "modelo de chegada", []scenario.ArrivalModel{
 		scenario.OpenArrival, scenario.ClosedArrival,
 	}, models)
-	missing(t, "tipo de autenticacao", []scenario.AuthKind{
+	missing(t, "tipo de autenticação", []scenario.AuthKind{
 		scenario.AuthToken, scenario.AuthBasic, scenario.AuthHeader,
 	}, authObtains)
 	missing(t, "politica de consumo", []scenario.ConsumePolicy{
 		scenario.ConsumeCircular, scenario.ConsumeSequential, scenario.ConsumeRandom, scenario.ConsumeUniquePerUser,
 	}, consumePolicies)
-	missing(t, "metrica de slo", []string{"p95", "p99", "max", "erros", "sucesso", "taxa_efetiva", "jornada_p95"}, metrics)
+	missing(t, "métrica de slo", []string{"p95", "p99", "max", "erros", "sucesso", "taxa_efetiva", "jornada_p95"}, metrics)
 	missing(t, "gerador de dados", []string{"uuid", "padrao", "cpf", "novo_a_cada: uso"}, generators)
 	missing(t, "escopo de slo", []scenario.SLOScope{
 		scenario.ScopeStep, scenario.ScopeOverall, scenario.ScopeJourney, scenario.ScopeRegression,
 	}, scopes)
-	missing(t, "operador de comparacao", []scenario.Operator{
+	missing(t, "operador de comparação", []scenario.Operator{
 		scenario.OpEqual, scenario.OpGreater, scenario.OpExists, scenario.OpContains,
 	}, operators)
 }
@@ -689,7 +689,7 @@ func missing[T comparable](t *testing.T, subject string, expected []T, seen map[
 	t.Helper()
 	for _, expected := range expected {
 		if !seen[expected] {
-			t.Errorf("%s %v nao aparece em nenhum caso de equivalencia YAML x DSL", subject, expected)
+			t.Errorf("%s %v não aparece em nenhum caso de equivalencia YAML x DSL", subject, expected)
 		}
 	}
 }
@@ -791,7 +791,7 @@ func diferencas(expected, obtained scenario.Spec) []string {
 func format(value any) string {
 	text, err := yaml.Marshal(value)
 	if err != nil {
-		return "<nao formatavel>"
+		return "<não formatavel>"
 	}
 	return string(text)
 }
@@ -840,7 +840,7 @@ func TestEveryProtocolConfigFieldHasEquivalenceCase(t *testing.T) {
 				continue
 			}
 			if !touched[protocolName][field.Name] {
-				t.Errorf("o campo %s.%s nunca aparece num caso de equivalencia: se a DSL nao souber declarar, o cenario em Go nao consegue dizer o que o YAML diz",
+				t.Errorf("o campo %s.%s nunca aparece num caso de equivalencia: se a DSL não souber declarar, o cenário em Go não consegue dizer o que o YAML diz",
 					protocolName, field.Name)
 			}
 		}
@@ -878,14 +878,14 @@ func TestUndeclaredVariableIsRefusedInTheDSLToo(t *testing.T) {
 	for name, build := range cases {
 		_, err := build()
 		if err == nil {
-			t.Errorf("%s: a DSL aceitou ${nao_declarada}; o mesmo cenario em YAML e recusado", name)
+			t.Errorf("%s: a DSL aceitou ${nao_declarada}; o mesmo cenário em YAML e recusado", name)
 			continue
 		}
-		if !strings.Contains(err.Error(), "nao sei de onde vem ${nao_declarada}") {
-			t.Errorf("%s: a mensagem nao e a mesma do YAML: %v", name, err)
+		if !strings.Contains(err.Error(), "não sei de onde vem ${nao_declarada}") {
+			t.Errorf("%s: a mensagem não e a mesma do YAML: %v", name, err)
 		}
 		if strings.Contains(err.Error(), "linha 0") {
-			t.Errorf("%s: cenario em Go nao tem linha para apontar: %v", name, err)
+			t.Errorf("%s: cenário em Go não tem linha para apontar: %v", name, err)
 		}
 	}
 }
@@ -905,6 +905,6 @@ func TestDeclaredVariablesKeepPassingInTheDSL(t *testing.T) {
 			Body(map[string]any{"chave": "${API_KEY}"}), dsl.Name("pagar")).
 		Build()
 	if err != nil {
-		t.Fatalf("cenario com tudo declarado foi recusado: %v", err)
+		t.Fatalf("cenário com tudo declarado foi recusado: %v", err)
 	}
 }

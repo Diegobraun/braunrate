@@ -50,7 +50,7 @@ func TestListLengthIsNotShapeButBeingEmptyIs(t *testing.T) {
 	none := metrics.BodyShape([]byte(`{"itens":[]}`))
 
 	if one != three {
-		t.Fatalf("lista de 1 e de 3 sao o mesmo caminho:\n  %s\n  %s", one, three)
+		t.Fatalf("lista de 1 e de 3 são o mesmo caminho:\n  %s\n  %s", one, three)
 	}
 	if one == none {
 		t.Fatalf("lista vazia e outro caminho, e saiu igual: %s", none)
@@ -59,7 +59,7 @@ func TestListLengthIsNotShapeButBeingEmptyIs(t *testing.T) {
 
 func TestBodyThatIsNotJSONStillHasAShape(t *testing.T) {
 	if shape := metrics.BodyShape([]byte("id=a1&total=10")); shape == "" {
-		t.Fatal("corpo que nao e JSON ficou sem forma")
+		t.Fatal("corpo que não e JSON ficou sem forma")
 	}
 	if shape := metrics.BodyShape([]byte("   ")); !strings.Contains(shape, "vazio") {
 		t.Fatalf("corpo em branco precisa aparecer como vazio, e saiu %q", shape)
@@ -83,7 +83,7 @@ func TestBodyDeclaredEmptyIsNotAnEmptyField(t *testing.T) {
 		t.Fatalf("corpo declarado como {} virou aviso: %+v", warnings)
 	}
 	if document.Variety[0].Notable() {
-		t.Fatalf("corpo declarado como {} rendeu linha no relatorio: %q", document.Variety[0].Sentence)
+		t.Fatalf("corpo declarado como {} rendeu linha no relatório: %q", document.Variety[0].Sentence)
 	}
 }
 
@@ -99,6 +99,6 @@ func TestFieldThatCameBlankIsStillWarned(t *testing.T) {
 		t.Fatalf("campo vazio deixou de ser avisado: %+v", warnings)
 	}
 	if !strings.Contains(warnings[0].Evidence, "cupom: vazio") {
-		t.Fatalf("o aviso nao nomeou o campo que veio vazio: %s", warnings[0].Evidence)
+		t.Fatalf("o aviso não nomeou o campo que veio vazio: %s", warnings[0].Evidence)
 	}
 }

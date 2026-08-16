@@ -66,11 +66,11 @@ func ParseCapture(name, text string) (Capture, error) {
 		capture.Origin = CaptureRegex
 		capture.Expression = expression[1 : len(expression)-1]
 	default:
-		return capture, fmt.Errorf("nao entendi de onde capturar %q.\n"+
+		return capture, fmt.Errorf("não entendi de onde capturar %q.\n"+
 			"    use uma destas formas:\n"+
 			"      %s: $.caminho.no.json      captura de um campo do corpo JSON\n"+
 			"      %s: cabecalho:X-Request-Id captura de um cabecalho da resposta\n"+
-			"      %s: cookie:sessao         captura o valor de um cookie do Set-Cookie\n"+
+			"      %s: cookie:sessão         captura o valor de um cookie do Set-Cookie\n"+
 			"      %s: /token=([a-z0-9]+)/    captura pelo primeiro grupo da expressao regular",
 			name, name, name, name, name)
 	}
@@ -105,7 +105,7 @@ func readFullCapture(name string, node *yaml.Node) (Capture, error) {
 		case "obrigatoria":
 			capture.Required = value.Value != "false"
 		default:
-			return capture, nodeError(key, "chave desconhecida na captura %q: %q (use de, padrao ou obrigatoria)", name, key.Value)
+			return capture, nodeError(key, "chave desconhecida na captura %q: %q (use de, padrão ou obrigatória)", name, key.Value)
 		}
 	}
 	if capture.Origin == "" {
@@ -128,7 +128,7 @@ func readAssertions(node *yaml.Node) ([]Check, []Assertion, error) {
 		case "status":
 			status, err := strconv.Atoi(strings.TrimSpace(value.Value))
 			if err != nil {
-				return nil, nil, nodeError(value, "status invalido: %q (use um numero, por exemplo 200)", value.Value)
+				return nil, nil, nodeError(value, "status inválido: %q (use um número, por exemplo 200)", value.Value)
 			}
 			checks = append(checks, Check{Kind: CheckStatus, Status: status})
 		case "corpo_contem":
@@ -158,7 +158,7 @@ func readAssertions(node *yaml.Node) ([]Check, []Assertion, error) {
 				})
 			}
 		default:
-			return nil, nil, nodeError(key, "verificacao desconhecida: %q\n"+
+			return nil, nil, nodeError(key, "verificação desconhecida: %q\n"+
 				"    disponiveis: status, corpo_contem, corpo_casa, json, cabecalho", key.Value)
 		}
 	}
@@ -199,7 +199,7 @@ func ParseComparison(target, raw string) Assertion {
 
 func readAuth(node *yaml.Node) (*Auth, error) {
 	if node.Kind != yaml.MappingNode {
-		return nil, nodeError(node, "autenticacao precisa ser um mapa, por exemplo:\n"+
+		return nil, nodeError(node, "autenticação precisa ser um mapa, por exemplo:\n"+
 			"  autenticacao:\n"+
 			"    tipo: token\n"+
 			"    obter:\n"+
@@ -221,19 +221,19 @@ func readAuth(node *yaml.Node) (*Auth, error) {
 			case "cabecalho":
 				auth.Kind = AuthHeader
 			default:
-				return nil, nodeError(value, "tipo de autenticacao desconhecido: %q (use token, basica ou cabecalho)", value.Value)
+				return nil, nodeError(value, "tipo de autenticação desconhecido: %q (use token, basica ou cabecalho)", value.Value)
 			}
 		case "obter":
 			step, err := readStep(value)
 			if err != nil {
 				return nil, err
 			}
-			step.Name = "obter autenticacao"
+			step.Name = "obter autenticação"
 			auth.Obtain = &step
 		case "renovar_apos":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, nodeError(value, "renovar_apos invalido: %q (use por exemplo 25m)", value.Value)
+				return nil, nodeError(value, "renovar_apos inválido: %q (use por exemplo 25m)", value.Value)
 			}
 			auth.RefreshAfter = duration
 		case "cabecalho":
@@ -243,9 +243,9 @@ func readAuth(node *yaml.Node) (*Auth, error) {
 		case "senha":
 			auth.Password = value.Value
 		default:
-			return nil, nodeError(key, "chave desconhecida em autenticacao: %q\n%s", key.Value,
+			return nil, nodeError(key, "chave desconhecida em autenticação: %q\n%s", key.Value,
 				suggestWithExample(key.Value, []string{"tipo", "obter", "renovar_apos", "cabecalho", "usuario", "senha"},
-					"    'obter' carrega uma requisicao inteira mais a captura do token:\n"+
+					"    'obter' carrega uma requisição inteira mais a captura do token:\n"+
 						"      autenticacao:\n"+
 						"        tipo: token\n"+
 						"        obter:\n"+
@@ -256,13 +256,13 @@ func readAuth(node *yaml.Node) (*Auth, error) {
 	}
 
 	if auth.Kind == AuthToken && auth.Obtain == nil {
-		return nil, nodeError(node, "autenticacao por token precisa do bloco 'obter' com a requisicao que devolve o token:\n"+
+		return nil, nodeError(node, "autenticação por token precisa do bloco 'obter' com a requisição que devolve o token:\n"+
 			"    obter:\n"+
 			"      http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: \"${SENHA}\" } }\n"+
 			"      captura: { token: $.access_token }")
 	}
 	if auth.Kind == AuthBasic && (auth.User == "" || auth.Password == "") {
-		return nil, nodeError(node, "autenticacao basica precisa de usuario e senha, por exemplo:\n"+
+		return nil, nodeError(node, "autenticação básica precisa de usuário e senha, por exemplo:\n"+
 			"  autenticacao: { tipo: basica, usuario: ana, senha: \"${SENHA}\" }")
 	}
 	if auth.Header == "" && auth.Kind != AuthBasic {
@@ -357,8 +357,8 @@ func readGenerator(field string, node *yaml.Node) (Generator, error) {
 			case "iteracao":
 				generator.PerUse = false
 			default:
-				return generator, nodeError(value, "novo_a_cada aceita 'iteracao' (padrao) ou 'uso': %q\n"+
-					"    iteracao mantem o mesmo valor nos dois passos da mesma jornada, que e o caso da chave de idempotencia", value.Value)
+				return generator, nodeError(value, "novo_a_cada aceita 'iteracao' (padrão) ou 'uso': %q\n"+
+					"    iteração mantém o mesmo valor nos dois passos da mesma jornada, que é o caso da chave de idempotência", value.Value)
 			}
 		default:
 			return generator, nodeError(key, "chave desconhecida no campo %q: %q\n"+
@@ -367,11 +367,11 @@ func readGenerator(field string, node *yaml.Node) (Generator, error) {
 		}
 	}
 	if generator.Recipe == "" {
-		return generator, nodeError(node, "o campo %q precisa de 'tipo', por exemplo: %s: { tipo: padrao, formato: \"PED-######\" }", field, field)
+		return generator, nodeError(node, "o campo %q precisa de 'tipo', por exemplo: %s: { tipo: padrão, formato: \"PED-######\" }", field, field)
 	}
 	if generator.Recipe == "padrao" && generator.Format == "" {
-		return generator, nodeError(node, "o campo %q e do tipo padrao e precisa de 'formato', por exemplo: { tipo: padrao, formato: \"PED-######\" }\n"+
-			"    # vira digito e @ vira letra; o resto sai literal", field)
+		return generator, nodeError(node, "o campo %q é do tipo padrão e precisa de 'formato', por exemplo: { tipo: padrão, formato: \"PED-######\" }\n"+
+			"    # vira dígito e @ vira letra; o resto sai literal", field)
 	}
 	return generator, nil
 }
@@ -385,7 +385,7 @@ func readSLO(node *yaml.Node) ([]SLORule, error) {
 
 	for _, item := range node.Content {
 		if item.Kind != yaml.MappingNode || len(item.Content) < 2 {
-			return nil, nodeError(item, "cada regra de slo e um mapa com o nome do passo (ou 'global') e os limites, por exemplo:\n"+
+			return nil, nodeError(item, "cada regra de slo é um mapa com o nome do passo (ou 'global') e os limites, por exemplo:\n"+
 				"  - consultar pedido: { p95: < 150ms }")
 		}
 		target := item.Content[0]
@@ -442,7 +442,7 @@ func ParseSLORule(target, metric, rawLimit string) (SLORule, error) {
 
 	limit, err := parseLimit(text, rule.Unit)
 	if err != nil {
-		return rule, fmt.Errorf("limite invalido em %q: %v\n"+
+		return rule, fmt.Errorf("limite inválido em %q: %v\n"+
 			"    exemplos: p95: < 150ms | erros: < 0.1 | sucesso: >= 99.9 | taxa_efetiva: >= 200/s | jornada_p95: <= 10%% pior", rule.Metrica, err)
 	}
 	rule.Limit = limit
@@ -467,7 +467,7 @@ func scopeOf(target string) SLOScope {
 func describeMetric(rule *SLORule) error {
 	if rule.Scope == ScopeRegression {
 		if !isRegressionMetric(rule.Metrica) {
-			return fmt.Errorf("metrica de regressao desconhecida: %q\n"+
+			return fmt.Errorf("métrica de regressão desconhecida: %q\n"+
 				"    disponiveis: jornada_p50, jornada_p95, jornada_p99, global_p95, global_p99\n"+
 				"    exemplo: - regressao: { jornada_p95: <= 10%% pior }", rule.Metrica)
 		}
@@ -485,18 +485,18 @@ func describeMetric(rule *SLORule) error {
 		rule.Operator = OpGreaterOrEqual
 	case "vazao", "taxa_efetiva":
 		if rule.Scope != ScopeOverall {
-			return fmt.Errorf("%q so existe em global, porque e a taxa da execucao inteira\n"+
+			return fmt.Errorf("%q só existe em global, porque é a taxa da execução inteira\n"+
 				"    escreva:  - global: { %s: >= 200/s }", rule.Metrica, rule.Metrica)
 		}
 		rule.Unit = "/s"
 		rule.Operator = OpGreaterOrEqual
 	default:
-		return fmt.Errorf("metrica de slo desconhecida: %q\n"+
+		return fmt.Errorf("métrica de slo desconhecida: %q\n"+
 			"    disponiveis: p50, p75, p90, p95, p99, p99.9, max, erros, sucesso, taxa_efetiva", rule.Metrica)
 	}
 
 	if rule.Scope == ScopeJourney && (rule.Metrica == "erros" || rule.Metrica == "sucesso") {
-		return fmt.Errorf("%q nao existe em jornada: jornada que nao chega ao fim ja invalida a execucao\n"+
+		return fmt.Errorf("%q não existe em jornada: jornada que não chega ao fim já inválida a execução\n"+
 			"    para taxa de erro escreva:  - global: { %s: ... }", rule.Metrica, rule.Metrica)
 	}
 	return nil

@@ -75,7 +75,7 @@ func (config *Config) Describe() []string {
 		lines = append(lines, "brokers: "+strings.Join(config.Brokers, ", "))
 	}
 	if config.Partition != nil {
-		lines = append(lines, "particao declarada: "+strconv.Itoa(*config.Partition))
+		lines = append(lines, "partição declarada: "+strconv.Itoa(*config.Partition))
 	}
 	if config.Group != "" {
 		lines = append(lines, "observando o atraso do grupo "+config.Group)
@@ -241,19 +241,19 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 		case "timeout":
 			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout invalido: %q (use 5s, 30s)", value.Value)
+				return nil, fmt.Errorf("timeout inválido: %q (use 5s, 30s)", value.Value)
 			}
 			config.Timeout = duration
 		case "particao":
 			number, err := strconv.Atoi(value.Value)
 			if err != nil || number < 0 {
-				return nil, fmt.Errorf("particao invalida: %q (use um numero, como 0 ou 3)", value.Value)
+				return nil, fmt.Errorf("partição inválida: %q (use um número, como 0 ou 3)", value.Value)
 			}
 			config.Partition = &number
 		case "grupo":
 			config.Group = value.Value
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo kafka: %q (use topico, chave, valor, cabecalhos, brokers, acks, timeout, particao ou grupo)", key.Value)
+			return nil, fmt.Errorf("chave desconhecida no passo kafka: %q (use tópico, chave, valor, cabecalhos, brokers, acks, timeout, partição ou grupo)", key.Value)
 		}
 	}
 
@@ -271,11 +271,11 @@ func Default() *Config {
 
 func Validate(config *Config) error {
 	if config.Topic == "" {
-		return errors.New(`passo kafka sem topico, por exemplo:
+		return errors.New(`passo kafka sem tópico, por exemplo:
   - kafka: { topico: pedidos, valor: { id: "${assinantes.id}" } }`)
 	}
 	if len(config.Value) == 0 {
-		return errors.New(`passo kafka sem valor: uma mensagem vazia nao exercita o consumidor.
+		return errors.New(`passo kafka sem valor: uma mensagem vazia não exercita o consumidor.
   - kafka: { topico: pedidos, valor: { id: "${assinantes.id}" } }`)
 	}
 	return nil
@@ -287,11 +287,11 @@ func readValue(node *yaml.Node) ([]byte, error) {
 	}
 	var structure any
 	if err := node.Decode(&structure); err != nil {
-		return nil, fmt.Errorf("valor invalido: %v", err)
+		return nil, fmt.Errorf("valor inválido: %v", err)
 	}
 	body, err := json.Marshal(structure)
 	if err != nil {
-		return nil, fmt.Errorf("valor nao serializa para JSON: %v", err)
+		return nil, fmt.Errorf("valor não serializa para JSON: %v", err)
 	}
 	return body, nil
 }
@@ -299,7 +299,7 @@ func readValue(node *yaml.Node) ([]byte, error) {
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de kafka"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não e de kafka"}
 	}
 
 	broker := request.Messaging.BrokerFor("kafka")
@@ -314,7 +314,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 	if len(brokers) == 0 {
 		return protocol.Response{
 			Class:  protocol.ErrConfig,
-			Detail: "sem broker: declare 'brokers' no passo ou aponte o alvo do cenario para kafka://host:9092",
+			Detail: "sem broker: declare 'brokers' no passo ou aponte o alvo do cenário para kafka://host:9092",
 		}
 	}
 
@@ -364,16 +364,16 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 func collapseOf(config *Config) protocol.Collapse {
 	if config.Partition != nil {
 		return protocol.Collapse{
-			Subject:  "a particao declarada de " + config.Topic,
-			Meaning:  "o resto do cluster ficou parado e este numero nao representa producao — e o de uma particao, nao o do topico",
+			Subject:  "a partição declarada de " + config.Topic,
+			Meaning:  "o resto do cluster ficou parado e este número não representa produção — e o de uma partição, não o do tópico",
 			Remedy:   "Tire 'particao' do passo para distribuir",
 			Declared: true,
 		}
 	}
 	return protocol.Collapse{
-		Subject: "uma particao so de " + config.Topic,
-		Meaning: "o resto do cluster ficou parado e o numero nao representa producao",
-		Remedy:  "Faca a chave da mensagem variar por iteracao",
+		Subject: "uma partição só de " + config.Topic,
+		Meaning: "o resto do cluster ficou parado e o número não representa produção",
+		Remedy:  "Faça a chave da mensagem variar por iteração",
 	}
 }
 
@@ -395,7 +395,7 @@ func partitionKey(config *Config) string {
 	if config.Partition == nil {
 		return "chave"
 	}
-	return "particao " + strconv.Itoa(*config.Partition)
+	return "partição " + strconv.Itoa(*config.Partition)
 }
 
 func (implementation *Protocol) writerOf(brokers []string, config *Config, broker *messaging.Broker) (*kafka.Writer, error) {
@@ -520,7 +520,7 @@ func (implementation *Protocol) Prepare(runContext context.Context, request prot
 		if kind, credential := messaging.ClassifyError(err); credential {
 			return fmt.Errorf("%s", messaging.Explain(kind, broker))
 		}
-		return fmt.Errorf("nao consegui abrir conexao com %s (%s): %w", brokers[0], broker.Describe(), err)
+		return fmt.Errorf("não consegui abrir conexão com %s (%s): %w", brokers[0], broker.Describe(), err)
 	}
 	return conn.Close()
 }

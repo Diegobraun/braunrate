@@ -42,10 +42,10 @@ func TestValueBornInOneResponseBecomesCaptureAndReferenceInTheNext(t *testing.T)
 	}
 	captures := script.Steps[0].Captures
 	if len(captures) != 1 || captures[0].Variable != "access_token" || captures[0].Expression != "$.access_token" {
-		t.Fatalf("a captura sugerida nao saiu certa: %+v", captures)
+		t.Fatalf("a captura sugerida não saiu certa: %+v", captures)
 	}
 	if !captures[0].Suggested {
-		t.Fatal("a captura saiu como fato, nao como sugestao a revisar")
+		t.Fatal("a captura saiu como fato, não como sugestao a revisar")
 	}
 	if got := script.Steps[1].Headers["Authorization"]; got != "Bearer ${access_token}" {
 		t.Fatalf("o segundo passo continuou com o token literal: %q", got)
@@ -65,10 +65,10 @@ func TestSameRouteWithDifferentIdentifiersBecomesOneStepAndOneDataSource(t *test
 		t.Fatalf("esperava 1 passo, vieram %d", len(script.Steps))
 	}
 	if script.Steps[0].Path != "/pedidos/${pedidos_id.valor}" {
-		t.Fatalf("o caminho nao virou parametro: %q", script.Steps[0].Path)
+		t.Fatalf("o caminho não virou parâmetro: %q", script.Steps[0].Path)
 	}
 	if len(files) != 1 || len(files[0].Values) != 3 {
-		t.Fatalf("os valores observados nao viraram fonte de dados: %+v", files)
+		t.Fatalf("os valores observados não viraram fonte de dados: %+v", files)
 	}
 	if files[0].CSV() != "valor\n9912\n8123\n7001\n" {
 		t.Fatalf("o CSV saiu diferente:\n%s", files[0].CSV())
@@ -86,8 +86,8 @@ func TestEveryKindOfNoiseIsDroppedWithAReasonOnScreen(t *testing.T) {
 		reason  string
 	}{
 		{"GET", "http://cdn.outro.com/app.js", "dominio de fora (cdn.outro.com)"},
-		{"GET", "http://api.local/static/app.js", "recurso estatico"},
-		{"GET", "http://api.local/favicon.ico", "recurso estatico"},
+		{"GET", "http://api.local/static/app.js", "recurso estático"},
+		{"GET", "http://api.local/favicon.ico", "recurso estático"},
 		{"GET", "http://api.local/collect?v=1", "telemetria"},
 		{"OPTIONS", "http://api.local/pedidos", "preflight de CORS"},
 		{"GET", "http://api.local/health", "pedido por -ignore (/health)"},
@@ -96,7 +96,7 @@ func TestEveryKindOfNoiseIsDroppedWithAReasonOnScreen(t *testing.T) {
 	for _, c := range cases {
 		request, err := http.NewRequest(c.method, c.address, nil)
 		if err != nil {
-			t.Fatalf("requisicao invalida: %v", err)
+			t.Fatalf("requisição inválida: %v", err)
 		}
 		reason, noise := recorder.classify(request)
 		if !noise {
@@ -136,7 +136,7 @@ func TestProxyRecordsWhatPassedAndAnswersTheClient(t *testing.T) {
 	}
 	response, err := client.Get(origin.URL + "/pedidos/1")
 	if err != nil {
-		t.Fatalf("o proxy nao entregou a resposta: %v", err)
+		t.Fatalf("o proxy não entregou a resposta: %v", err)
 	}
 	_ = response.Body.Close()
 
@@ -147,13 +147,13 @@ func TestProxyRecordsWhatPassedAndAnswersTheClient(t *testing.T) {
 
 	entries := recorder.Entries()
 	if len(entries) != 1 {
-		t.Fatalf("esperava 1 requisicao gravada, vieram %d", len(entries))
+		t.Fatalf("esperava 1 requisição gravada, vieram %d", len(entries))
 	}
 	if entries[0].URL.Path != "/pedidos/1" || entries[0].Status != 200 {
 		t.Fatalf("gravou outra coisa: %+v", entries[0])
 	}
 	if !strings.Contains(string(entries[0].ResponseBody), "/pedidos/1") {
-		t.Fatalf("o corpo da resposta nao foi guardado: %q", entries[0].ResponseBody)
+		t.Fatalf("o corpo da resposta não foi guardado: %q", entries[0].ResponseBody)
 	}
 }
 
@@ -184,10 +184,10 @@ func TestSessionCookieBecomesCaptureAndIsSentBackCorrelated(t *testing.T) {
 
 	captures := script.Steps[0].Captures
 	if len(captures) != 1 || captures[0].Variable != "sessao" || captures[0].Expression != "cookie:sessao" {
-		t.Fatalf("o cookie de sessao nao virou captura: %+v", captures)
+		t.Fatalf("o cookie de sessão não virou captura: %+v", captures)
 	}
 	if got := script.Steps[1].Headers["Cookie"]; got != "sessao=${sessao}" {
-		t.Fatalf("o segundo passo continuou com a sessao gravada: %q", got)
+		t.Fatalf("o segundo passo continuou com a sessão gravada: %q", got)
 	}
 }
 
@@ -205,10 +205,10 @@ func TestCookieThatNoResponseProducedIsMaskedPairByPair(t *testing.T) {
 	rendered := importer.RenderYAML(script)
 
 	if !strings.Contains(rendered.YAML, "sessao=${sessao}; rastreio=${cookie_rastreio}") {
-		t.Fatalf("o cabecalho Cookie nao saiu mascarado por par:\n%s", rendered.YAML)
+		t.Fatalf("o cabecalho Cookie não saiu mascarado por par:\n%s", rendered.YAML)
 	}
 	if strings.Contains(rendered.YAML, "abc123") {
-		t.Fatal("o cookie que nao foi correlacionado foi versionado com o valor da gravacao")
+		t.Fatal("o cookie que não foi correlacionado foi versionado com o valor da gravacao")
 	}
 }
 
@@ -234,10 +234,10 @@ func TestIdenticalRepeatedCallSaysTheRepetitionIsNotInTheScenario(t *testing.T) 
 		}
 	}
 	if said == "" {
-		t.Fatalf("a repeticao sumiu sem ser nomeada; os avisos foram %q", script.Warnings)
+		t.Fatalf("a repetição sumiu sem ser nomeada; os avisos foram %q", script.Warnings)
 	}
-	if !strings.Contains(said, "idempotencia") {
-		t.Fatalf("o aviso nao diz o que se perde: %q", said)
+	if !strings.Contains(said, "idempotência") {
+		t.Fatalf("o aviso não diz o que se perde: %q", said)
 	}
 }
 
@@ -251,7 +251,7 @@ func TestRouteWithVaryingIdentifiersIsNotWarnedAbout(t *testing.T) {
 	}, "cenario")
 
 	for _, warning := range script.Warnings {
-		if strings.Contains(warning, "virou um passo so") {
+		if strings.Contains(warning, "virou um passo só") {
 			t.Fatalf("avisou sobre o agrupamento que e o certo: %q", warning)
 		}
 	}
@@ -271,17 +271,17 @@ func TestEachGraphQLOperationBecomesItsOwnStep(t *testing.T) {
 	}, "cenario")
 
 	if len(script.Steps) != 2 {
-		t.Fatalf("esperava um passo por operacao, vieram %d", len(script.Steps))
+		t.Fatalf("esperava um passo por operação, vieram %d", len(script.Steps))
 	}
 	if script.Steps[0].GraphQL == nil || script.Steps[0].GraphQL.Operation != "ConsultarPedido" {
-		t.Fatalf("o primeiro passo nao saiu como graphql: %+v", script.Steps[0])
+		t.Fatalf("o primeiro passo não saiu como graphql: %+v", script.Steps[0])
 	}
 	if script.Steps[1].GraphQL == nil || script.Steps[1].GraphQL.Operation != "PagarFatura" {
-		t.Fatalf("a mutation nao virou passo proprio: %+v", script.Steps[1])
+		t.Fatalf("a mutation não virou passo próprio: %+v", script.Steps[1])
 	}
 	rendered := importer.RenderYAML(script)
 	if !strings.Contains(rendered.YAML, "- graphql ConsultarPedido: { p95: < 500ms }") {
-		t.Fatalf("o slo nao aponta a chave que o relatorio usa:\n%s", rendered.YAML)
+		t.Fatalf("o slo não aponta a chave que o relatório usa:\n%s", rendered.YAML)
 	}
 }
 

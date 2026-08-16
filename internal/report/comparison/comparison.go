@@ -70,7 +70,7 @@ type CountDifference struct {
 const (
 	DirectionWorse  = "piorou"
 	DirectionBetter = "melhorou"
-	DirectionSame   = "sem diferenca que valha leitura"
+	DirectionSame   = "sem diferença que valha leitura"
 )
 
 func Compare(before, after metrics.Document) Comparison {
@@ -86,9 +86,9 @@ func Compare(before, after metrics.Document) Comparison {
 	}
 
 	compared.Journey = compareDistribution("jornada inteira (95%)", before.Journey.Reported().P95, after.Journey.Reported().P95)
-	compared.Overall = compareDistribution("todas as requisicoes (95%)", before.Overall.Reported().P95, after.Overall.Reported().P95)
+	compared.Overall = compareDistribution("todas as requisições (95%)", before.Overall.Reported().P95, after.Overall.Reported().P95)
 	compared.JourneyPercentiles = comparePercentiles("jornada inteira", before.Journey.Reported(), after.Journey.Reported())
-	compared.OverallPercentiles = comparePercentiles("todas as requisicoes", before.Overall.Reported(), after.Overall.Reported())
+	compared.OverallPercentiles = comparePercentiles("todas as requisições", before.Overall.Reported(), after.Overall.Reported())
 	compared.Steps = compareSteps(before, after)
 	compared.Error = compareErrors(before, after)
 	compared.Sentence = phrase(compared, before, after)
@@ -113,33 +113,33 @@ func collectCaveats(before, after metrics.Document) []Caveat {
 	}
 
 	if before.Run.Spec != after.Run.Spec {
-		blocking("os cenarios sao diferentes: %q e %q", before.Run.Spec, after.Run.Spec)
+		blocking("os cenários são diferentes: %q e %q", before.Run.Spec, after.Run.Spec)
 	}
 	if before.Run.Target != after.Run.Target {
-		blocking("os alvos sao diferentes: %s e %s", before.Run.Target, after.Run.Target)
+		blocking("os alvos são diferentes: %s e %s", before.Run.Target, after.Run.Target)
 	}
 	if before.Environment.Host != after.Environment.Host || before.Environment.Cores != after.Environment.Cores {
-		blocking("as maquinas geradoras sao diferentes: %s com %d nucleos e %s com %d nucleos",
+		blocking("as máquinas geradoras são diferentes: %s com %d núcleos e %s com %d núcleos",
 			before.Environment.Host, before.Environment.Cores, after.Environment.Host, after.Environment.Cores)
 	}
 	if planSummary(before) != planSummary(after) {
-		blocking("os planos de carga sao diferentes: %s e %s", planSummary(before), planSummary(after))
+		blocking("os planos de carga são diferentes: %s e %s", planSummary(before), planSummary(after))
 	}
 	if before.Version != after.Version {
-		blocking("as execucoes usaram versoes diferentes do braunrate: %s e %s", before.Version, after.Version)
+		blocking("as execuções usaram versões diferentes do braunrate: %s e %s", before.Version, after.Version)
 	}
 	if before.Run.Model != after.Run.Model {
-		blocking("os modelos de chegada sao diferentes: %s e %s. Latencia de laco fechado nao se compara com latencia contada do instante agendado — a segunda inclui um atraso que a primeira nao chega a registrar",
+		blocking("os modelos de chegada são diferentes: %s e %s. Latência de laço fechado não se compara com latência contada do instante agendado — a segunda inclui um atraso que a primeira não chega a registrar",
 			before.Run.Model, after.Run.Model)
 	}
 	if !before.Valid() {
-		blocking("a execucao anterior tem resultado invalido e o numero dela nao vale como base")
+		blocking("a execução anterior tem resultado inválido e o número dela não vale como base")
 	}
 	if !after.Valid() {
-		blocking("a execucao nova tem resultado invalido e o numero dela nao vale como comparacao")
+		blocking("a execução nova tem resultado inválido e o número dela não vale como comparação")
 	}
 	if before.Run.AuthObtains > 0 || after.Run.AuthObtains > 0 {
-		caveats = append(caveats, Caveat{Text: "as duas execucoes usaram um token para tudo; cache ou sharding por identidade afeta as duas do mesmo jeito, mas nao some da comparacao"})
+		caveats = append(caveats, Caveat{Text: "as duas execuções usaram um token para tudo; cache ou sharding por identidade afeta as duas do mesmo jeito, mas não some da comparação"})
 	}
 	return caveats
 }
@@ -153,7 +153,7 @@ func planSummary(document metrics.Document) string {
 		if index > 0 {
 			summary += " + "
 		}
-		summary += fmt.Sprintf("%s ate %.0f/s por %ds", phase.Kind, phase.To, phase.DurationMs/1000)
+		summary += fmt.Sprintf("%s até %.0f/s por %ds", phase.Kind, phase.To, phase.DurationMs/1000)
 	}
 	return summary
 }
@@ -194,15 +194,15 @@ func compareDistribution(name string, before, after float64) Difference {
 
 func phraseDifference(difference Difference) string {
 	if difference.Before == 0 && difference.After == 0 {
-		return fmt.Sprintf("%s: sem amostra nas duas execucoes.", difference.Metrica)
+		return fmt.Sprintf("%s: sem amostra nas duas execuções.", difference.Metrica)
 	}
 	if difference.Direction == DirectionSame {
-		return fmt.Sprintf("%s: %.0f ms contra %.0f ms — diferenca dentro do ruido de duas execucoes.",
+		return fmt.Sprintf("%s: %.0f ms contra %.0f ms — diferença dentro do ruído de duas execuções.",
 			difference.Metrica, difference.Before, difference.After)
 	}
 	verb := "mais lento"
 	if difference.Direction == DirectionBetter {
-		verb = "mais rapido"
+		verb = "mais rápido"
 	}
 	return fmt.Sprintf("%s: %s %s — de %.0f ms para %.0f ms.",
 		difference.Metrica, Magnitude(difference), verb, difference.Before, difference.After)
@@ -212,7 +212,7 @@ func phraseDifference(difference Difference) string {
 // reader to divide in their head to get to "70 times".
 func Magnitude(difference Difference) string {
 	if difference.Direction == DirectionSame {
-		return "sem diferenca"
+		return "sem diferença"
 	}
 	if difference.Before <= 0 || difference.After <= 0 {
 		return fmt.Sprintf("%.0f%%", math.Abs(difference.Change)*100)
@@ -274,7 +274,7 @@ func compareErrors(before, after metrics.Document) CountDifference {
 	difference := CountDifference{Before: before.Overall.ErrorRate * 100, After: after.Overall.ErrorRate * 100}
 	switch {
 	case difference.Before == 0 && difference.After == 0:
-		difference.Sentence = "Nenhuma das duas execucoes teve erro."
+		difference.Sentence = "Nenhuma das duas execuções teve erro."
 	case difference.After > difference.Before:
 		difference.Sentence = fmt.Sprintf("A taxa de erro subiu de %.2f%% para %.2f%%.", difference.Before, difference.After)
 	case difference.After < difference.Before:
@@ -295,12 +295,12 @@ func phrase(compared Comparison, before, after metrics.Document) string {
 		main = compared.Overall
 	}
 
-	prefix := "Sem mudanca que valha leitura"
+	prefix := "Sem mudança que valha leitura"
 	if main.Direction == DirectionWorse {
 		prefix = "Ficou mais lento"
 	}
 	if main.Direction == DirectionBetter {
-		prefix = "Ficou mais rapido"
+		prefix = "Ficou mais rápido"
 	}
 
 	sentence := fmt.Sprintf("%s: %s", prefix, main.Sentence)
@@ -318,12 +318,12 @@ func phrase(compared Comparison, before, after metrics.Document) string {
 	}
 	switch {
 	case blocking > 0:
-		sentence += fmt.Sprintf(" Com %s que %s explicar a diferenca sozinha%s.",
+		sentence += fmt.Sprintf(" Com %s que %s explicar a diferença sozinha%s.",
 			texto.Count(blocking, "ressalva", "ressalvas"),
 			texto.Pick(blocking, "pode", "podem"),
 			texto.Pick(blocking, "", "s"))
 	case len(compared.Caveats) > 0:
-		sentence += fmt.Sprintf(" Com %s sobre o que mudou fora do servico.",
+		sentence += fmt.Sprintf(" Com %s sobre o que mudou fora do serviço.",
 			texto.Count(int64(len(compared.Caveats)), "ressalva", "ressalvas"))
 	}
 	return sentence
@@ -340,7 +340,7 @@ func invalidPhrase(before, after metrics.Document) string {
 	if !after.Valid() {
 		reasons = append(reasons, "a nova "+firstFinding(after))
 	}
-	return "Nao da para comparar, porque uma das execucoes nao vale como medicao: " + strings.Join(reasons, "; ") + "."
+	return "Não da para comparar, porque uma das execuções não vale como medição: " + strings.Join(reasons, "; ") + "."
 }
 
 func firstFinding(document metrics.Document) string {
@@ -352,5 +352,5 @@ func firstFinding(document metrics.Document) string {
 			return warning.Message
 		}
 	}
-	return "tem resultado invalido"
+	return "tem resultado inválido"
 }
