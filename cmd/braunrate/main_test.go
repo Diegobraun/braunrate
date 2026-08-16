@@ -10,8 +10,8 @@ import (
 	"github.com/Diegobraun/braunrate/internal/scenario"
 )
 
-// A opcao colada depois do arquivo era ignorada em silencio: o relatorio nao
-// era gravado e nada avisava. Silencio e o pior modo de falhar.
+// An option pasted after the file was silently ignored: the report was never
+// written and nothing warned. Silence is the worst failure mode.
 func TestFlagWorksBeforeAndAfterFile(t *testing.T) {
 	testCases := [][]string{
 		{"-html", "relatorio.html", "cenario.yaml"},
@@ -32,8 +32,8 @@ func TestFlagWorksBeforeAndAfterFile(t *testing.T) {
 	}
 }
 
-// De uma pasta vazia nao havia caminho ate o primeiro cenario: todo comando
-// recebia um arquivo e nenhum criava um.
+// From an empty folder there was no path to a first scenario: every command
+// took a file and none created one.
 func TestNewCommandWritesValidScenarioAndNeverOverwrites(t *testing.T) {
 	root := t.TempDir()
 	destination := filepath.Join(root, "cenario.yaml")

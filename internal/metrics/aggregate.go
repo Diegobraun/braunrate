@@ -17,9 +17,9 @@ const (
 type LatencyKind string
 
 const (
-	// O passo que abre a iteracao conta do instante agendado, entao esta
-	// protegido contra omissao coordenada. Os seguintes contam de quando o
-	// passo anterior terminou — nao existe instante agendado para eles.
+	// The step that opens the iteration counts from the scheduled instant, so
+	// it is protected against coordinated omission. The following ones count
+	// from when the previous step ended: they have no scheduled instant.
 	CorrectedLatency LatencyKind = "corrigida"
 	ServiceLatency   LatencyKind = "servico"
 )
@@ -110,8 +110,9 @@ func save(histogram *hdrhistogram.Histogram, value time.Duration) {
 	_ = histogram.RecordValue(microseconds)
 }
 
-// Somar existe para viabilizar execucao distribuida sem reescrita: HDR
-// histogram e contadores sao mergeaveis, media e percentil pre-calculado nao.
+// Add merges another aggregate into this one. It exists so distributed
+// execution needs no rewrite: HDR histograms and counters merge, means and
+// precomputed percentiles do not.
 func (a *Aggregate) Add(other *Aggregate) {
 	a.correctedLatency.Merge(other.correctedLatency)
 	a.serviceLatency.Merge(other.serviceLatency)

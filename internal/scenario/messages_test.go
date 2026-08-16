@@ -11,8 +11,8 @@ import (
 	_ "github.com/Diegobraun/braunrate/internal/protocol/wait"
 )
 
-// Erro de cenario e quase sempre um erro de quem esta aprendendo o formato: a
-// mensagem precisa mostrar a forma certa, nao so recusar a errada.
+// A scenario error is almost always made by someone learning the format: the
+// message has to show the right shape, not just refuse the wrong one.
 func TestErrorMessagesShowTheRightForm(t *testing.T) {
 	testCases := []struct {
 		name     string

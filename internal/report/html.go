@@ -69,8 +69,9 @@ type htmlWarning struct {
 	Evidence string
 }
 
-// O topo do relatorio e uma frase, e nao uma tabela: quem abre o arquivo
-// precisa saber se passou antes de saber quantos milissegundos deu.
+// HTML writes the report with a sentence on top instead of a table: whoever
+// opens the file needs to know whether it passed before knowing how many
+// milliseconds it took.
 func HTML(out io.Writer, document metrics.Document) error {
 	page := buildPage(document)
 	return htmlTemplate.Execute(out, page)
@@ -180,8 +181,8 @@ func phraseVolume(document metrics.Document) string {
 		percentage(document.Overall.ErrorRate*100))
 }
 
-// O eixo mostra pouca casa de propósito: numero de eixo e referencia de leitura,
-// e o valor exato ja esta na tabela acima.
+// The axis shows few digits on purpose: an axis number is a reading reference,
+// and the exact value is already in the table above.
 func axisLabel(value float64) string {
 	switch {
 	case value == 0:
@@ -257,8 +258,9 @@ const (
 	marginBottom = 34
 )
 
-// O grafico e SVG escrito na mao porque o relatorio precisa abrir sem rede:
-// biblioteca de grafico viria de CDN e o arquivo deixaria de ser autocontido.
+// The chart is hand-written SVG because the report has to open with no
+// network: a charting library would come from a CDN and the file would stop
+// being self-contained.
 func drawSeries(series []metrics.Bucket) (template.HTML, bool) {
 	if len(series) < 2 {
 		return "", false

@@ -47,8 +47,8 @@ func TestImprovementIsDeclaredToo(t *testing.T) {
 	}
 }
 
-// Duas execucoes nao dao intervalo de confianca; chamar variacao pequena de
-// regressao seria inventar precisao que a medicao nao tem.
+// Two runs give no confidence interval; calling a small change a regression
+// would invent precision the measurement does not have.
 func TestSmallChangeIsTreatedAsNoise(t *testing.T) {
 	c := comparison.Compare(document(10, 5), document(10.3, 5.1))
 	if c.Journey.Direction != comparison.DirectionSame {

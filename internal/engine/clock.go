@@ -14,9 +14,9 @@ type SystemClock struct{}
 
 func (SystemClock) Now() time.Time { return time.Now() }
 
-// Sleep sozinho erra na casa de milissegundos; a espera ativa final e o que
-// sustenta o desvio de agendamento abaixo de 100 us em taxa alta. O custo e
-// aproximadamente um nucleo dedicado ao agendador, declarado no relatorio.
+// Sleep alone is off by milliseconds; the final spin is what keeps scheduling
+// skew under 100 us at high rates. The cost is roughly one core dedicated to
+// the scheduler, and it is declared in the report.
 func (SystemClock) WaitUntil(instant time.Time) {
 	remaining := time.Until(instant)
 	if remaining <= 0 {

@@ -21,9 +21,9 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-// Mensageria so pode ser medida contra um broker de verdade: um dublê responde
-// no tempo que o teste mandar, e o numero deixaria de significar qualquer coisa.
-// Sem broker o teste declara que pulou, em vez de fingir que passou.
+// Messaging can only be measured against a real broker: a double answers in
+// whatever time the test dictates, and the number would stop meaning anything.
+// With no broker the test declares it skipped instead of pretending it passed.
 func kafkaBroker(t *testing.T) string {
 	t.Helper()
 	address := os.Getenv("BRAUNRATE_KAFKA")
@@ -112,9 +112,9 @@ slo:
   - global: { erros: < 1 }
 `
 
-// A medicao da cadeia assincrona: o passo aguardar so termina quando a mensagem
-// daquela iteracao aparece do outro lado, entao a jornada mede produtor,
-// processador e consumidor juntos — que e o que o usuario final sente.
+// Async chain measurement: the wait step only ends when that iteration's
+// message shows up on the other side, so the journey measures producer,
+// processor and consumer together, which is what the end user feels.
 func TestAsyncChainMeasuresProducerToConsumer(t *testing.T) {
 	brokers := kafkaBroker(t)
 	input := topic(t, brokers, "entrada", 4)
@@ -164,9 +164,9 @@ func TestAsyncChainMeasuresProducerToConsumer(t *testing.T) {
 	}
 }
 
-// Chave de particao sempre igual manda tudo para a mesma particao: o resto do
-// cluster fica parado e o numero fica otimista, exatamente como o assinante
-// unico do bug de identidade.
+// A always-equal partition key sends everything to the same partition: the
+// rest of the cluster sits idle and the number turns optimistic, exactly like
+// the single subscriber in the identity bug.
 func TestFixedPartitionKeyInvalidatesResult(t *testing.T) {
 	brokers := kafkaBroker(t)
 	input := topic(t, brokers, "fixa", 4)
@@ -331,9 +331,9 @@ cenario:
       valor: { pedido: "${pedidos.id}" }
 `
 
-// Back-pressure nao e assunto de protocolo: o escalonador e o mesmo. Se o
-// gerador nao sustenta a producao, o numero da cadeia fica errado do mesmo
-// jeito que numa carga HTTP, e o aviso precisa ter a mesma gravidade.
+// Back-pressure is not a protocol matter: the scheduler is the same one. If
+// the generator cannot sustain production, the chain number is wrong the same
+// way it would be under HTTP load, and the warning needs the same severity.
 func TestSaturatedGeneratorWhileProducingInvalidatesResult(t *testing.T) {
 	brokers := kafkaBroker(t)
 	loadTopic := topic(t, brokers, "saturacao", 1)

@@ -22,10 +22,10 @@ type equivalence struct {
 	dsl  func() (scenario.Spec, error)
 }
 
-// O YAML e a DSL precisam produzir a MESMA estrutura, e nao apenas resultados
-// parecidos: o cenario montado e o unico dado que o motor recebe, entao
-// igualdade aqui e igualdade de medicao. So o numero da linha e ignorado, que e
-// posicao no arquivo e nao existe em codigo Go.
+// The YAML and the DSL have to produce the SAME structure, not merely similar
+// results: the built scenario is the only input the engine gets, so equality
+// here is equality of measurement. Only the line number is ignored, since that
+// is a position in a file and does not exist in Go code.
 var testCases = []equivalence{
 	{
 		name: "http com variaveis, dados, autenticacao por token, capturas e slo",
@@ -127,7 +127,7 @@ slo:
 					Header("X-Inquilino", "${inquilino}").
 					Body(map[string]any{"assinante": "${assinantes.id}", "total": 199.9}).
 					Timeout(2*time.Second).
-					SeguirRedirect(false)).
+					FollowRedirects(false)).
 				SLO("consultar pedido", "p95", "< 150ms").
 				SLO("consultar pedido", "max", "< 1s").
 				SLO("POST /pedidos", "vazao", "> 50/s").
@@ -382,8 +382,8 @@ func TestYAMLAndDSLProduceSameScenario(t *testing.T) {
 	}
 }
 
-// Sem esta trava, um protocolo novo nasceria com equivalencia nao verificada e a
-// promessa dos dois publicos ficaria valendo so para o que ja existia.
+// Without this lock a new protocol would be born with unverified equivalence
+// and the two-audience promise would only hold for what already existed.
 func TestEveryRegisteredProtocolHasEquivalenceCase(t *testing.T) {
 	exercised := map[string]bool{}
 	for _, testCase := range testCases {

@@ -44,7 +44,7 @@ func (e CaptureError) Error() string {
 func Extract(capture scenario.Capture, response protocol.Response) (string, error) {
 	switch capture.Origin {
 	case scenario.CaptureJSON:
-		return extrairDeJSON(capture, response)
+		return extractFromJSON(capture, response)
 	case scenario.CaptureHeader:
 		for name, values := range response.Headers {
 			if strings.EqualFold(name, capture.Expression) && len(values) > 0 {
@@ -74,9 +74,9 @@ func Extract(capture scenario.Capture, response protocol.Response) (string, erro
 	}
 }
 
-// JSONPath aqui e o subconjunto que cobre o caso comum: caminho com pontos e
-// indice de lista. Aceita a forma "$.a.b[0].c" e a forma curta "a.b.0.c".
-func extrairDeJSON(capture scenario.Capture, response protocol.Response) (string, error) {
+// JSONPath here is the subset that covers the common case: dotted paths and
+// list indexes. It takes both "$.a.b[0].c" and the short "a.b.0.c".
+func extractFromJSON(capture scenario.Capture, response protocol.Response) (string, error) {
 	path := PathToGJSON(capture.Expression)
 	result := gjson.GetBytes(response.Body, path)
 	if !result.Exists() {

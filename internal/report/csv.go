@@ -8,9 +8,9 @@ import (
 	"github.com/Diegobraun/braunrate/internal/metrics"
 )
 
-// O CSV existe para planilha e para juntar execucoes; o campo tipo_de_latencia
-// vai junto porque uma coluna de p95 sem ele mistura latencia corrigida com
-// tempo de servico na mesma media.
+// CSV exists for spreadsheets and for stitching runs together; the
+// tipo_de_latencia column goes with it because a p95 column without it mixes
+// corrected latency and service time in the same average.
 func CSV(out io.Writer, document metrics.Document) error {
 	writer := csv.NewWriter(out)
 	defer writer.Flush()

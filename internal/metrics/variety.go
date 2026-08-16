@@ -6,9 +6,9 @@ import (
 	"strings"
 )
 
-// Teto de valores distintos guardados por variavel. O que importa e distinguir
-// "um valor so" de "muitos"; contar exatamente um milhao de valores custaria
-// memoria proporcional a carga sem mudar nenhuma conclusao.
+// Cap on distinct values kept per variable. What matters is telling "a single
+// value" from "many"; counting a million exactly would cost memory proportional
+// to the load without changing any conclusion.
 const distinctValuesCap = 1024
 
 type Variety struct {
@@ -38,9 +38,9 @@ func (c *varietyCounter) record(value string) {
 	c.seen[value] = struct{}{}
 }
 
-// Disponivel por variavel: quantos valores a fonte que alimenta aquela variavel
-// tem para oferecer. E o que permite dizer que usar um valor so foi defeito, e
-// nao um cenario que declarou um valor so.
+// Availability maps a variable to how many values its source can offer. It is
+// what tells a defect (one value used out of many) from a scenario that
+// declared a single value on purpose.
 type Availability map[string]int64
 
 const UnknownAvailability = int64(-1)
@@ -83,13 +83,15 @@ func phraseVariety(v Variety) string {
 	return fmt.Sprintf("%d valores distintos de %s em %s usos", v.Distinct, v.Name, thousands(v.Uses))
 }
 
-// O bug que motivou esta metrica: a autenticacao congelava os dados da primeira
-// iteracao e a execucao inteira rodava sobre um assinante so, com o relatorio
-// declarando variedade que nao existiu.
+// VarietyWarnings reports load that concentrated on a single value.
 //
-// A gravidade separa dois casos diferentes: fonte com varios valores e execucao
-// com um so e defeito e invalida o resultado; valor fixo declarado no cenario e
-// escolha de quem escreveu, e vira aviso de leitura.
+// The bug behind this metric: auth froze the first iteration's data and the
+// whole run went against one subscriber, while the report claimed a variety
+// that never happened.
+//
+// Severity separates two different cases: a source with many values and a run
+// with one is a defect and invalidates the result; a fixed value declared in
+// the scenario is the author's choice, and becomes a reading warning.
 func VarietyWarnings(varieties []Variety) []Warning {
 	var warnings []Warning
 	for _, variety := range varieties {

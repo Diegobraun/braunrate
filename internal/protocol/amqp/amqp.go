@@ -33,8 +33,8 @@ type Config struct {
 
 func (c *Config) Protocol() string { return "amqp" }
 
-// A chave e a rota do negocio, e nao a conexao: e o que aparece no relatorio
-// quando uma rota especifica fica lenta.
+// AggregationKey is the business route, never the connection: it is what shows
+// in the report when one specific route gets slow.
 func (c *Config) AggregationKey() string {
 	destination := c.Route
 	if c.Exchange != "" {
@@ -251,8 +251,9 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 		return protocol.Response{Class: classificar(err), Detail: summarize(err.Error())}
 	}
 
-	// Sem esperar a confirmacao, o tempo medido seria o de escrever no socket,
-	// e nao o de o broker aceitar a mensagem — mediria a rede local.
+	// Without waiting for the confirmation the measured time would be the
+	// socket write, not the broker accepting the message: it would time the
+	// local network.
 	if config.Confirm && confirmation != nil {
 		accepts, err := confirmation.WaitContext(ctx)
 		if err != nil {
@@ -304,9 +305,9 @@ func (p *Protocol) conexaoDe(address string, config *Config) (*conn, error) {
 	return created, nil
 }
 
-// Um canal AMQP nao e seguro para uso concorrente, entao cada requisicao pega
-// um do pool e devolve; abrir um canal por mensagem custaria um ida e volta a
-// mais dentro da medicao.
+// An AMQP channel is not safe for concurrent use, so each request takes one
+// from the pool and returns it; opening a channel per message would put an
+// extra round trip inside the measurement.
 func (c *conn) pegarCanal() (*amqp.Channel, error) {
 	select {
 	case canal := <-c.canais:

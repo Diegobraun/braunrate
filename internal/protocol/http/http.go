@@ -22,13 +22,13 @@ func init() {
 }
 
 type Config struct {
-	Method         string
-	Path           string
-	Headers        map[string]string
-	Body           []byte
-	ContentType    string
-	Timeout        time.Duration
-	SeguirRedirect *bool
+	Method          string
+	Path            string
+	Headers         map[string]string
+	Body            []byte
+	ContentType     string
+	Timeout         time.Duration
+	FollowRedirects *bool
 }
 
 func (c *Config) Protocol() string { return "http" }
@@ -152,8 +152,8 @@ func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
 			}
 			config.Timeout = duration
 		case "seguir_redirect":
-			seguir := value.Value == "true"
-			config.SeguirRedirect = &seguir
+			follow := value.Value == "true"
+			config.FollowRedirects = &follow
 		default:
 			return nil, fmt.Errorf("chave desconhecida no passo http: %q", key.Value)
 		}
@@ -165,9 +165,9 @@ func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
 	return config, nil
 }
 
-// Padrao e Validar existem para que a DSL em Go entre pelo mesmo lugar que o
-// YAML: um padrao que so um dos dois aplicasse viraria diferenca de medicao
-// entre os dois publicos.
+// Default and Validate exist so the Go DSL enters through the same door as the
+// YAML: a default applied by only one of them would become a measurement
+// difference between the two audiences.
 func Default() *Config {
 	return &Config{Method: http.MethodGet, Headers: map[string]string{}}
 }

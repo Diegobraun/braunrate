@@ -116,8 +116,8 @@ func TestJMXTokenNeverReachesFile(t *testing.T) {
 	}
 }
 
-// Traducao silenciosa de thread para taxa importaria a omissao coordenada
-// junto com o cenario: a pessoa acharia que mediu 50/s.
+// Silently turning threads into a rate would import coordinated omission along
+// with the scenario: the person would believe they measured 50/s.
 func TestWarnsThreadsAreNotArrivalRate(t *testing.T) {
 	importResult, err := importer.FromJMX([]byte(jmeterPlan))
 	if err != nil {

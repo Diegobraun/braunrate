@@ -79,8 +79,8 @@ func (s *Server) Close() error {
 	return s.server.Close()
 }
 
-// O congelamento segura o handler inteiro para reproduzir stop-the-world do
-// alvo, que e a situacao em que a omissao coordenada aparece.
+// The freeze holds the whole handler to reproduce a stop-the-world on the
+// target, which is the situation where coordinated omission shows up.
 func (s *Server) Freeze(duration time.Duration) {
 	s.mutexPausa.Lock()
 	s.fimDaPausa = time.Now().Add(duration)
@@ -136,8 +136,8 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"id":%d,"status":"OK","caminho":%q}`, number, r.URL.Path)
 }
 
-// A jornada com autenticacao existe para que o exemplo do README funcione sem
-// que ninguem precise de um servico de verdade a mao.
+// The authenticated journey exists so the README example works without anyone
+// needing a real service at hand.
 func (s *Server) wrap(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s.waitForResume()

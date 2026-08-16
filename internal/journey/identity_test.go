@@ -38,9 +38,9 @@ cenario:
     nome: consultar pedido
 `
 
-// A autenticacao guardava o contexto inteiro da primeira iteracao e o
-// reinjetava nas seguintes: toda a carga caia sobre a primeira linha do CSV
-// enquanto o relatorio afirmava que os dados variavam.
+// Auth kept the whole context of the first iteration and reinjected it into
+// the following ones: the entire load hit the first CSV row while the report
+// claimed the data varied.
 func TestAuthDoesNotFreezeFirstIterationData(t *testing.T) {
 	var mu sync.Mutex
 	seen := map[string]int{}

@@ -1,9 +1,9 @@
 package importer
 
-// O esqueleto existe porque, de uma pasta vazia, nao havia caminho ate o
-// primeiro cenario: todo comando recebe um arquivo e nenhum criava um. Os
-// comentarios sao para quem esta lendo YAML pela primeira vez, e por isso
-// mostram a forma dos blocos que quase todo cenario precisa.
+// Skeleton exists because from an empty folder there was no path to a first
+// scenario: every command takes a file and none created one. The comments in
+// it are for someone reading this YAML for the first time, which is why they
+// show the shape of the blocks nearly every scenario needs.
 func Skeleton() string {
 	return `# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
 # Com a extensao YAML do editor, a linha acima liga o autocompletar das chaves.

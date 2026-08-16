@@ -9,8 +9,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// A forma da expressao decide a origem: "$.campo" e JSON, "cabecalho:X-Id" e
-// cabecalho, "/padrao/" e expressao regular. O QA escreve uma linha e pronto.
+// The shape of the expression picks the origin: "$.field" is JSON,
+// "cabecalho:X-Id" is a header, "/pattern/" is a regular expression. QA writes
+// one line and is done.
 func readCaptures(no *yaml.Node) ([]Capture, error) {
 	if no.Kind != yaml.MappingNode {
 		return nil, nodeError(no, "captura precisa ser um mapa, por exemplo: captura: { faturaId: $.fatura.id }")
@@ -38,9 +39,9 @@ func readCaptures(no *yaml.Node) ([]Capture, error) {
 	return captures, nil
 }
 
-// A leitura da expressao e node-free porque a DSL em Go entra por aqui tambem:
-// duas interpretacoes da mesma expressao viraria captura que funciona num
-// publico e falha no outro.
+// ParseCapture is node-free because the Go DSL comes through here too: two
+// readings of the same expression would mean a capture that works for one
+// audience and fails for the other.
 func ParseCapture(name, text string) (Capture, error) {
 	expression := strings.TrimSpace(text)
 	capture := Capture{Variable: name, Expression: expression, Required: true}

@@ -23,8 +23,8 @@ func configuracaoHTTP(t *testing.T, body string) protocol.Config {
 	return config
 }
 
-// Muito sistema assincrono so mostra o efeito por API: sem sondagem, a cadeia
-// ponta a ponta nao se mede neles.
+// Many async systems only expose the effect over an API: without polling the
+// end-to-end chain cannot be measured on them.
 func TestHTTPWaitPollsUntilEffectAppears(t *testing.T) {
 	var calls atomic.Int64
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +88,7 @@ timeout: 120ms
 	}
 }
 
-// Sondar sem condicao mediria o tempo de responder, e nao o tempo ate o efeito.
+// Polling without a condition would measure response time, not time to effect.
 func TestHTTPWaitWithoutConditionIsRefusedWithExplanation(t *testing.T) {
 	_, err := decode(t, "http: { caminho: /pedidos/1 }\n")
 	if err == nil {

@@ -62,8 +62,9 @@ func runOpenModel(t *testing.T, address string) metrics.Document {
 	return m.Execute(context.Background())
 }
 
-// O laco fechado so envia a proxima requisicao depois que a anterior responde;
-// e assim que JMeter e Locust medem, e e por isso que a pausa some do p99 deles.
+// A closed loop only sends the next request after the previous one answers;
+// that is how JMeter and Locust measure, and why the pause vanishes from their
+// p99.
 func runClosedLoop(t *testing.T, address string) *hdrhistogram.Histogram {
 	t.Helper()
 	histogram := hdrhistogram.New(1, 600_000_000, 3)

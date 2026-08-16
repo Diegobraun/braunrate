@@ -55,8 +55,8 @@ func (c *Values) Values() map[string]string {
 	return clone
 }
 
-// A resolucao acontece na execucao, e nao no carregamento: sem isso valor
-// capturado de um passo nao chega ao passo seguinte.
+// Resolve happens at run time, not at load time: without that, a value
+// captured in one step never reaches the next one.
 func (c *Values) Resolve(text string) string {
 	if text == "" {
 		return text
@@ -75,9 +75,9 @@ func (c *Values) Resolve(text string) string {
 	})
 }
 
-// Cada substituicao feita fica anotada porque e daqui que sai a variedade
-// observada: caminho, corpo, cabecalho, variavel de GraphQL e chave de
-// mensagem passam todos por aqui, entao um so ponto cobre o cenario inteiro.
+// Every substitution is noted because observed variety comes from here: path,
+// body, header, GraphQL variable and message key all pass through, so a single
+// point covers the whole scenario.
 func (c *Values) noteUse(name, value string) {
 	c.mu.Lock()
 	c.uses[name] = value

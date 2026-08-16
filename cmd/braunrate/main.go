@@ -173,10 +173,10 @@ func execute(args []string) int {
 	return 0
 }
 
-// O flag padrao para de ler opcao no primeiro argumento posicional, entao
-// "executar cenario.yaml -html x.html" ignorava a opcao em silencio. Aqui a
-// lista e percorrida ate o fim, com as opcoes valendo antes ou depois do
-// arquivo.
+// The standard flag package stops reading options at the first positional
+// argument, so "executar cenario.yaml -html x.html" ignored the option
+// silently. Here the list is walked to the end, and options hold before or
+// after the file.
 func analisar(set *flag.FlagSet, args []string) []string {
 	var positional []string
 	for {
@@ -377,9 +377,9 @@ func debug(args []string) int {
 	return 0
 }
 
-// O comando curl chega como um argumento so, cheio de aspas, e a pessoa cola
-// a opcao antes ou depois dele; o flag padrao para de ler no primeiro
-// argumento posicional e perderia a opcao colada no fim.
+// The curl command arrives as a single argument full of quotes, and people
+// paste the option before or after it; the standard flag package stops at the
+// first positional argument and would drop an option pasted at the end.
 func newOne(args []string) int {
 	destination := "cenario.yaml"
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {

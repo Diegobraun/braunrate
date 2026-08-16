@@ -7,16 +7,16 @@ import (
 	"unicode"
 )
 
-// Todo importador termina aqui: curl, .jmx e o que vier depois montam um
-// roteiro e a escrita do YAML acontece num lugar so. Duas escritas separadas
-// significariam segredo mascarado num caminho e vazando no outro.
+// Every importer ends here: curl, .jmx and whatever comes next build a script
+// and the YAML is written in a single place. Two separate writers would mean a
+// secret masked on one path and leaking on the other.
 type ImportedStep struct {
-	Name           string
-	Method         string
-	Path           string
-	Headers        map[string]string
-	Body           string
-	SeguirRedirect bool
+	Name            string
+	Method          string
+	Path            string
+	Headers         map[string]string
+	Body            string
+	FollowRedirects bool
 }
 
 type ImportedSource struct {
@@ -35,8 +35,8 @@ type Script struct {
 	Descartes []string
 }
 
-// Cabecalho de credencial nunca sai no YAML: o arquivo gerado vai para o
-// repositorio, e token commitado e o jeito mais comum de vazar um.
+// A credential header never reaches the YAML: the generated file goes to the
+// repository, and a committed token is the most common way to leak one.
 var secretHeaders = map[string]string{
 	"authorization": "TOKEN",
 	"x-api-key":     "API_KEY",
@@ -115,7 +115,7 @@ func RenderYAML(script Script) Import {
 	write("cenario:")
 
 	for _, step := range steps {
-		simple := step.Body == "" && len(step.Headers) == 0 && !step.SeguirRedirect
+		simple := step.Body == "" && len(step.Headers) == 0 && !step.FollowRedirects
 		if simple {
 			write("  - http: %s %s", step.Method, step.Path)
 			write("    nome: %s", step.Name)
@@ -138,7 +138,7 @@ func RenderYAML(script Script) Import {
 			if step.Body != "" {
 				write("      corpo: %s", inlineBody(step.Body))
 			}
-			if step.SeguirRedirect {
+			if step.FollowRedirects {
 				write("      seguir_redirect: true")
 			}
 		}
@@ -171,9 +171,9 @@ func inlineBody(body string) string {
 	return "'" + strings.ReplaceAll(clean, "'", "''") + "'"
 }
 
-// Identificador e prefixo de versao nao entram no nome do passo: o nome e a
-// chave de agregacao do relatorio, e um nome por id daria uma linha por
-// requisicao em vez de uma linha por operacao.
+// Identifiers and version prefixes stay out of the step name: the name is the
+// report's aggregation key, and a name per id would give one row per request
+// instead of one row per operation.
 func resource(path string) string {
 	semConsulta, _, _ := strings.Cut(path, "?")
 	var parts []string

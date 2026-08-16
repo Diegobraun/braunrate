@@ -11,9 +11,9 @@ import (
 	"github.com/Diegobraun/braunrate/internal/report"
 )
 
-// O exemplo publicado e a primeira coisa que alguem abre para decidir se a
-// ferramenta presta. Ele e gerado de um resultado real congelado, e este teste
-// falha quando o arquivo commitado envelhece em relacao ao gerador.
+// The published example is the first thing someone opens to decide whether the
+// tool is any good. It is generated from a frozen real result, and this test
+// fails when the committed file ages behind the generator.
 func TestPublishedExampleIsUpToDate(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("..", "..", "docs", "exemplo-resultado.json"))
 	if err != nil {

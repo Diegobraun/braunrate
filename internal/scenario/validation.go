@@ -6,9 +6,9 @@ import (
 	"strings"
 )
 
-// Broker de mensageria nao tem esquema obrigatorio: "127.0.0.1:9092" e a forma
-// que todo mundo cola de um docker-compose, e recusar isso seria pedir que a
-// pessoa aprenda uma sintaxe que nem o Kafka usa.
+// A messaging broker has no mandatory scheme: "127.0.0.1:9092" is what people
+// paste from a docker-compose, and refusing it would ask them to learn a syntax
+// Kafka itself does not use.
 func validTarget(target string) bool {
 	if address, err := url.Parse(target); err == nil && address.Scheme != "" && address.Host != "" {
 		return true

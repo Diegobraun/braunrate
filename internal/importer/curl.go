@@ -8,14 +8,14 @@ import (
 )
 
 type Request struct {
-	Method         string
-	Target         string
-	Path           string
-	Headers        map[string]string
-	Body           string
-	SeguirRedirect bool
-	User           string
-	Password       string
+	Method          string
+	Target          string
+	Path            string
+	Headers         map[string]string
+	Body            string
+	FollowRedirects bool
+	User            string
+	Password        string
 }
 
 type Import struct {
@@ -35,8 +35,9 @@ func FromCurl(command string) (Import, error) {
 	return build(request), nil
 }
 
-// Aspas e barra invertida de continuacao de linha vem coladas no que a pessoa
-// copiou do navegador; separar por espaco simples quebraria todo corpo JSON.
+// Quotes and line-continuation backslashes come glued to what the person
+// copied from the browser; splitting on plain spaces would break every JSON
+// body.
 func split(command string) ([]string, error) {
 	var fields []string
 	var current strings.Builder
@@ -159,7 +160,7 @@ func interpretar(fields []string) (Request, error) {
 			}
 			address = value
 		case field == "-L" || field == "--location":
-			request.SeguirRedirect = true
+			request.FollowRedirects = true
 		case field == "-o" || field == "--output" || field == "-w" || field == "--write-out" || field == "-A" || field == "--user-agent" || field == "-b" || field == "--cookie" || field == "-e" || field == "--referer":
 			value, err := next(&index, field)
 			if err != nil {
@@ -207,12 +208,12 @@ func build(request Request) Import {
 		Name:   scenarioName(request),
 		Target: request.Target,
 		Steps: []ImportedStep{{
-			Name:           stepName(request),
-			Method:         request.Method,
-			Path:           request.Path,
-			Headers:        request.Headers,
-			Body:           request.Body,
-			SeguirRedirect: request.SeguirRedirect,
+			Name:            stepName(request),
+			Method:          request.Method,
+			Path:            request.Path,
+			Headers:         request.Headers,
+			Body:            request.Body,
+			FollowRedirects: request.FollowRedirects,
 		}},
 	}
 

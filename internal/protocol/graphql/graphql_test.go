@@ -39,8 +39,8 @@ func decodeErr(t *testing.T, text string) error {
 	return err
 }
 
-// Em GraphQL toda operacao chega no mesmo endereco: agregar por URL juntaria a
-// consulta mais barata com a mutation mais cara numa linha so.
+// In GraphQL every operation arrives at the same address: aggregating by URL
+// would put the cheapest query and the most expensive mutation on one row.
 func TestAggregationKeyIsOperationNotURL(t *testing.T) {
 	config := decode(t, "|\n  query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }\n")
 	if config.AggregationKey() != "graphql ConsultarPedido" {
@@ -108,8 +108,8 @@ func runAgainst(t *testing.T, body string, status int) protocol.Response {
 	})
 }
 
-// O erro de GraphQL chega com status 200: contar isso como sucesso e aprovar um
-// servico que esta respondendo erro em todas as requisicoes.
+// A GraphQL error arrives with status 200: counting that as success approves a
+// service that is answering an error to every request.
 func TestBodyErrorWithStatus200CountsAsError(t *testing.T) {
 	response := runAgainst(t, `{"errors":[{"message":"pedido nao encontrado","path":["pedido"],"extensions":{"code":"NOT_FOUND"}}]}`, 200)
 	if response.Class != protocol.ErrGraphQL {

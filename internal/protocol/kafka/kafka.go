@@ -32,8 +32,8 @@ type Config struct {
 
 func (c *Config) Protocol() string { return "kafka" }
 
-// A chave e o topico, e nao o broker: quem le o relatorio precisa saber qual
-// fluxo de negocio ficou lento, nao qual maquina recebeu o byte.
+// AggregationKey is the topic, never the broker: whoever reads the report
+// needs to know which business flow got slow, not which machine took the byte.
 func (c *Config) AggregationKey() string {
 	return "kafka produzir " + c.Topic
 }
@@ -98,9 +98,8 @@ func (p *Protocol) Close() error {
 	return last
 }
 
-// Quantas particoes cada topico tem. E o que permite ao relatorio dizer que
-// mandar tudo para uma particao so foi defeito de chave, e nao um topico de
-// uma particao.
+// Available reports how many partitions each topic has. It is what lets the
+// report tell a bad partition key from a topic that only has one partition.
 func (p *Protocol) Available() map[string]int64 {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -174,8 +173,8 @@ func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
 	return config, nil
 }
 
-// Padrao e Validar sao o caminho unico de construcao: a DSL em Go recusa o
-// mesmo cenario que o YAML recusa, com a mesma mensagem.
+// Default and Validate are the single construction path: the Go DSL refuses
+// the same scenario the YAML refuses, with the same message.
 func Default() *Config {
 	return &Config{Headers: map[string]string{}, Acks: "todos"}
 }
@@ -269,9 +268,9 @@ func (p *Protocol) writerOf(brokers []string, config *Config) (*kafka.Writer, er
 		return writer, nil
 	}
 
-	// Sem lote e sem espera: o braunrate mede o tempo ate o broker confirmar a
-	// mensagem daquela chegada agendada. Agrupar mensagens melhoraria a vazao e
-	// mediria o lote, nao a mensagem.
+	// No batching and no linger: braunrate measures the time until the broker
+	// confirms the message of that scheduled arrival. Batching would raise
+	// throughput and measure the batch, not the message.
 	writer := &kafka.Writer{
 		Addr:                   kafka.TCP(brokers...),
 		Topic:                  config.Topic,
@@ -303,9 +302,10 @@ func acksOf(acks string) kafka.RequiredAcks {
 	}
 }
 
-// A particao e calculada com o mesmo balanceador usado no envio: o kafka-go nao
-// devolve a particao escolhida, e a alternativa seria nao declarar nada sobre
-// distribuicao — que e justamente onde a carga fica otimista sem ninguem ver.
+// The partition is recomputed with the same balancer used to send: kafka-go
+// does not return the chosen partition, and the alternative would be declaring
+// nothing about distribution, which is exactly where load turns optimistic
+// unseen.
 func (p *Protocol) partitionOf(brokers []string, topic string, key []byte) int {
 	p.mu.Lock()
 	howMany, known := p.partitions[topic]

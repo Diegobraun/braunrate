@@ -35,8 +35,8 @@ func New(config scenario.Auth, execute RunStep, clock Clock) *Manager {
 	return &Manager{config: config, execute: execute, clock: clock, values: map[string]string{}}
 }
 
-// O token e obtido uma vez e renovado quando vence, nunca por requisicao: o
-// autor declara a renovacao e o motor cuida de quando ela acontece.
+// Header obtains the token once and refreshes it when it expires, never per
+// request: the author declares the refresh and the engine decides when.
 func (g *Manager) Header(ctx context.Context, values *runtime.Values) (string, string, error) {
 	if g.config.Kind == scenario.AuthBasic {
 		user := values.Resolve(g.config.User)
@@ -83,10 +83,10 @@ func (g *Manager) ensureToken(ctx context.Context, values *runtime.Values) error
 		return fmt.Errorf("a requisicao de autenticacao respondeu %d; confira usuario, senha e caminho em 'autenticacao.obter'", response.Status)
 	}
 
-	// So o que a requisicao de autenticacao produziu fica guardado. Guardar o
-	// contexto inteiro congelaria os dados da primeira iteracao e os reinjetaria
-	// em todas as outras: toda a carga cairia sobre a primeira linha do CSV, com
-	// o relatorio afirmando variedade que nao existiu.
+	// Only what the auth request produced is kept. Keeping the whole context
+	// would freeze the first iteration's data and reinject it into every other
+	// one: the entire load would hit the first CSV row while the report claimed
+	// a variety that never happened.
 	obtained := map[string]string{}
 	for name, value := range obtainValues.Values() {
 		if previous, existia := input[name]; existia && previous == value {

@@ -12,8 +12,8 @@ import (
 
 const bodyLimit = 1200
 
-// O modo de depuracao existe para que a correlacao quebrada apareca antes da
-// carga, e nao depois de minutos de execucao.
+// Debug exists so a broken correlation shows before the load, not after
+// minutes of running.
 func Debug(out io.Writer, number int, observation engine.Observation, showBody bool) {
 	write := func(format string, args ...any) {
 		fmt.Fprintf(out, format+"\n", args...)

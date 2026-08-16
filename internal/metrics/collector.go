@@ -66,8 +66,8 @@ func NewCollectorWithCapacity(start time.Time, lateThreshold time.Duration, capa
 	return c
 }
 
-// Uma goroutine unica grava nos histogramas: HDR nao suporta escrita
-// concorrente, e um mutex no caminho quente vira contencao em taxa alta.
+// A single goroutine writes to the histograms: HDR is not safe for concurrent
+// writes, and a mutex on the hot path becomes contention at high rates.
 func (c *Collector) consumir() {
 	defer close(c.pronto)
 	for sample := range c.input {
@@ -142,8 +142,8 @@ func (c *Collector) RecordDispatch(scheduled, dispatch time.Time, targetRate flo
 	bucket.TargetRate = targetRate
 }
 
-// A jornada e a unica metrica que continua contada do instante agendado do
-// inicio ao fim: e a que vale para a experiencia do usuario final.
+// RecordJourney stores the only metric counted from the scheduled instant end
+// to end, which is the one that matches what the end user feels.
 func (c *Collector) RecordJourney(scheduled, end time.Time, complete bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -154,8 +154,8 @@ func (c *Collector) RecordJourney(scheduled, end time.Time, complete bool) {
 	save(c.journeys, end.Sub(scheduled))
 }
 
-// Os usos de uma iteracao chegam juntos e sao contados fora do caminho quente
-// de histograma: e uma escrita por iteracao, nao uma por requisicao.
+// RecordUses counts an iteration's substitutions off the histogram hot path:
+// one write per iteration, not one per request.
 func (c *Collector) RecordUses(uses map[string]string) {
 	if len(uses) == 0 {
 		return

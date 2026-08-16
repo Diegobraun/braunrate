@@ -18,8 +18,8 @@ func decode(t *testing.T, text string) (protocol.Config, error) {
 	return kafka.New(protocol.DefaultOptions()).Decode(document.Content[0])
 }
 
-// O topico e o fluxo de negocio; o broker e infraestrutura. Quem le o relatorio
-// precisa saber qual fluxo ficou lento.
+// The topic is the business flow; the broker is infrastructure. Whoever reads
+// the report needs to know which flow got slow.
 func TestAggregationKeyIsTopic(t *testing.T) {
 	config, err := decode(t, "topico: pedidos\nchave: \"1\"\nvalor: { id: 1 }\n")
 	if err != nil {

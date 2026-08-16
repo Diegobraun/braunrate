@@ -12,9 +12,10 @@ type Verdict = metrics.Verdict
 
 type Evaluation = metrics.Evaluation
 
-// Execucao em que nenhuma jornada chegou ao fim nao pode passar, mesmo sem SLO
-// declarado que a pegue: o cenario nao mediu o que se propos a medir, e um
-// veredito verde ali e afirmacao errada, nao falta de criterio.
+// Evaluate refuses to pass a run where no journey finished, even with no
+// declared SLO that would catch it: the scenario did not measure what it set
+// out to measure, and a green verdict there is a wrong statement, not a
+// missing criterion.
 func Evaluate(rules []scenario.SLORule, document metrics.Document) Verdict {
 	verdict := Verdict{Passed: true}
 	if evaluation, had := noJourneyCompleted(document); had {

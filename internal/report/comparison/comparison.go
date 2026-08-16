@@ -8,9 +8,9 @@ import (
 	"github.com/Diegobraun/braunrate/internal/metrics"
 )
 
-// Duas execucoes nao produzem intervalo de confianca. Variacao menor que isto
-// e tratada como ruido porque, com uma amostra de cada lado, nao da para
-// afirmar que mudou: chamar 3% de regressao seria inventar precisao.
+// Two runs do not produce a confidence interval. Change below this is treated
+// as noise because, with one sample per side, there is no ground to claim
+// anything moved: calling 3% a regression would invent precision.
 const AcceptedNoise = 0.05
 
 type Comparison struct {
@@ -90,8 +90,8 @@ func identify(document metrics.Document) Identification {
 	}
 }
 
-// Comparar duas execucoes so vale quando as duas mediram a mesma coisa do
-// mesmo jeito; cada diferenca aqui pode explicar sozinha a variacao inteira.
+// Comparing two runs only holds when both measured the same thing the same
+// way; each difference here can explain the whole change on its own.
 func collectCaveats(before, after metrics.Document) []string {
 	var caveats []string
 
@@ -170,8 +170,8 @@ func phraseDifference(difference Difference) string {
 		difference.Metrica, Magnitude(difference), verb, difference.Before, difference.After)
 }
 
-// Acima de duas vezes, porcentagem para de ser legivel: "6994% mais lento"
-// obriga o leitor a dividir de cabeca para chegar em "70 vezes".
+// Past two times, percentages stop being readable: "6994% slower" forces the
+// reader to divide in their head to get to "70 times".
 func Magnitude(difference Difference) string {
 	if difference.Direction == DirectionSame {
 		return "sem diferenca"

@@ -18,10 +18,10 @@ type ProcessorOptions struct {
 	Freeze  time.Duration
 }
 
-// Um servico assincrono minimo: consome do topico de entrada, demora o que foi
-// declarado e publica no de saida com a mesma chave. Existe para que a medicao
-// da cadeia ponta a ponta possa ser reproduzida sem depender de um servico de
-// verdade.
+// Processor is a minimal async service: it consumes from the input topic,
+// takes the declared delay and publishes to the output topic with the same key.
+// It exists so end-to-end chain measurement can be reproduced without a real
+// service.
 type Processor struct {
 	opts      ProcessorOptions
 	readers   []*kafka.Reader
@@ -37,9 +37,10 @@ func NewProcessor(opts ProcessorOptions) *Processor {
 
 func (p *Processor) Processed() int64 { return p.processed.Load() }
 
-// Le o offset de cada particao antes de comecar, sem grupo de consumo: grupo
-// negocia particao no primeiro poll e perde o que foi produzido durante a
-// negociacao, o que apareceria no relatorio como lentidao do servico.
+// Start reads each partition's offset before running, with no consumer group:
+// a group negotiates partitions on the first poll and loses whatever was
+// produced during that negotiation, which would show in the report as service
+// slowness.
 func (p *Processor) Start() error {
 	conn, err := kafka.Dial("tcp", p.opts.Brokers[0])
 	if err != nil {

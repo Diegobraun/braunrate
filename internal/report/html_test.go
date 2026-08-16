@@ -135,8 +135,9 @@ func TestReportDeclaresSingleTokenLimitation(t *testing.T) {
 	}
 }
 
-// Relatorio de carga costuma ser aberto de dentro de rede fechada ou anexado
-// em ticket; se depender de rede, abre quebrado justamente onde importa.
+// A load report tends to be opened from a closed network or attached to a
+// ticket; if it depends on the network it opens broken exactly where it
+// matters.
 func TestReportFetchesNothingFromNetwork(t *testing.T) {
 	page := generate(t, sampleDocument())
 	forbidden := []string{"<script", "src=", "@import", "cdn.", "https://fonts", "<link"}

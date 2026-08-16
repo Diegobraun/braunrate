@@ -115,8 +115,8 @@ func TestGraphQLYieldsOneRowPerOperation(t *testing.T) {
 	}
 }
 
-// O alvo devolve NOT_FOUND com status 200 para identificador terminado em 7,
-// que e como o erro de GraphQL chega em producao.
+// The target returns NOT_FOUND with status 200 for identifiers ending in 7,
+// which is how a GraphQL error arrives in production.
 func TestGraphQLErrorWithStatus200FailsSLO(t *testing.T) {
 	document, verdict := executeGraphQL(t, "id,nome\n1007,ana\n")
 

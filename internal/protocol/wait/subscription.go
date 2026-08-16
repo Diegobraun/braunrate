@@ -13,9 +13,9 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// Guarda mensagens que chegaram antes de alguem pedir por elas. Sem isso, a
-// resposta rapida perde a corrida contra o registro da espera e viraria timeout
-// — a medicao acusaria lentidao que nao existe.
+// Cap on messages held for waiters that have not arrived yet. Without holding
+// them, a fast response loses the race against the wait registration and turns
+// into a timeout, blaming slowness that does not exist.
 const heldMessagesCap = 50000
 
 type message struct {
@@ -130,10 +130,10 @@ func openSubscription(config *Config, addresses []string) (*subscription, error)
 	}
 }
 
-// Sem grupo de consumo: entrar num grupo negocia particao com o broker e a
-// mensagem produzida durante a negociacao se perde, virando timeout que e do
-// consumidor e nao do servico. Aqui o offset de cada particao e lido no momento
-// em que a assinatura abre, antes de a carga comecar, e a leitura segue dali.
+// No consumer group: joining one negotiates partitions with the broker, and a
+// message produced during that negotiation is lost, turning into a timeout that
+// belongs to the consumer and not to the service. Here each partition's offset
+// is read when the subscription opens, before the load starts.
 func openKafka(config *Config, brokers []string) (*subscription, error) {
 	conn, err := kafka.Dial("tcp", brokers[0])
 	if err != nil {
@@ -211,8 +211,8 @@ func openKafka(config *Config, brokers []string) (*subscription, error) {
 	return subscription, nil
 }
 
-// A conexao precisa ser com o lider daquela particao: uma conexao generica com
-// o broker nao sabe de qual particao e o offset pedido.
+// The connection has to be to that partition's leader: a generic broker
+// connection does not know which partition the requested offset belongs to.
 func lastOffset(broker, topic string, partition int) (int64, error) {
 	leader, err := kafka.DialLeader(context.Background(), "tcp", broker, topic, partition)
 	if err != nil {

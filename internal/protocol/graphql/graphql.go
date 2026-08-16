@@ -36,9 +36,9 @@ type Config struct {
 
 func (c *Config) Protocol() string { return "graphql" }
 
-// A chave e a operacao, nunca a URL: em GraphQL todas as operacoes chegam no
-// mesmo endereco, e agregar por URL juntaria a consulta mais barata com a
-// mutation mais cara numa linha so.
+// AggregationKey is the operation, never the URL: in GraphQL every operation
+// arrives at the same address, and aggregating by URL would put the cheapest
+// query and the most expensive mutation on the same row.
 func (c *Config) AggregationKey() string {
 	return "graphql " + c.Operation
 }
@@ -159,8 +159,8 @@ func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
 	return Finish(config)
 }
 
-// Padrao e Finalizar sao o caminho unico de construcao: a DSL em Go monta a
-// mesma configuracao que o YAML monta, incluindo a extracao do nome da operacao.
+// Default and Finish are the single construction path: the Go DSL builds the
+// same config the YAML builds, operation name extraction included.
 func Default() *Config {
 	return &Config{Path: defaultPath, Headers: map[string]string{}, Vars: "{}"}
 }
@@ -302,9 +302,9 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 	return out
 }
 
-// O erro de GraphQL chega com status 200: tratar o passo como sucesso porque o
-// HTTP deu 200 e o jeito mais comum de um teste de carga aprovar um servico
-// que esta respondendo erro em todas as requisicoes.
+// A GraphQL error arrives with status 200: treating the step as a success
+// because HTTP said 200 is the most common way a load test approves a service
+// that is failing every single request.
 func classifyBody(content []byte) (protocol.ErrorClass, string) {
 	var body responseBody
 	if err := json.Unmarshal(content, &body); err != nil {

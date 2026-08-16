@@ -1,8 +1,8 @@
 package metrics
 
-// O veredito mora no documento porque o relatorio HTML e a comparacao entre
-// execucoes sao gerados a partir do JSON, e sem ele o arquivo nao diria se a
-// execucao passou.
+// Verdict lives in the document because the HTML report and the run comparison
+// are generated from the JSON, and without it the file would not say whether
+// the run passed.
 type Verdict struct {
 	Passed      bool         `json:"passou"`
 	Evaluations []Evaluation `json:"avaliacoes"`

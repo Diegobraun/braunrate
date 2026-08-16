@@ -172,8 +172,8 @@ func Default() *Config {
 	return &Config{Timeout: defaultTimeout}
 }
 
-// A correlacao obrigatoria vale igual na DSL: sem ela a medicao pegaria a
-// primeira mensagem que aparecesse e mediria o consumidor mais rapido.
+// Validate enforces correlation for the DSL too: without it the measurement
+// would take the first message to show up and time the fastest consumer.
 func Validate(config *Config) error {
 	if config.Source == "http" {
 		return validateHTTP(config)
@@ -194,8 +194,8 @@ Sem isso, qualquer mensagem serviria e a medicao mediria o consumidor mais rapid
 	return nil
 }
 
-// Sondar sem condicao mediria a primeira resposta, e nao o efeito: o passo
-// terminaria antes de o sistema fazer o que tinha de fazer.
+// Polling without a condition would measure the first response instead of the
+// effect: the step would end before the system did what it had to do.
 func validateHTTP(config *Config) error {
 	if config.Path == "" {
 		return errors.New(`o passo aguardar por http precisa do caminho, por exemplo:
@@ -266,8 +266,8 @@ func readSource(config *Config, no *yaml.Node) error {
 	return nil
 }
 
-// A assinatura abre antes da carga: o offset de leitura e fixado agora, e nao
-// depois que a primeira mensagem ja foi produzida.
+// Prepare opens the subscription before the load: the read offset is fixed
+// now, not after the first message has already been produced.
 func (p *Protocol) Prepare(_ context.Context, request protocol.Request) error {
 	config, ok := request.Config.(*Config)
 	if !ok || config.Source == "http" {

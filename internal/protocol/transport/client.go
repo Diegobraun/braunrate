@@ -14,9 +14,10 @@ import (
 	"github.com/Diegobraun/braunrate/internal/protocol"
 )
 
-// Um so lugar monta o cliente: HTTP e GraphQL precisam do mesmo pool de
-// conexoes, e pool diferente entre protocolos daria numero diferente para a
-// mesma carga sem nada no cenario explicando a diferenca.
+// NewClient is the single place a client is built: HTTP and GraphQL need the
+// same connection pool, and different pools per protocol would produce
+// different numbers for the same load with nothing in the scenario explaining
+// the difference.
 func NewClient(opts protocol.Options) *http.Client {
 	transporte := &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
@@ -34,7 +35,7 @@ func NewClient(opts protocol.Options) *http.Client {
 			client.Jar = jar
 		}
 	}
-	if !opts.SeguirRedirect {
+	if !opts.FollowRedirects {
 		client.CheckRedirect = func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		}
@@ -81,11 +82,11 @@ func Classify(err error) protocol.ErrorClass {
 
 func SummarizeError(err error) string {
 	text := err.Error()
-	for _, fallback := range []string{"connection refused", "connection reset", "no such host",
+	for _, known := range []string{"connection refused", "connection reset", "no such host",
 		"too many open files", "cannot assign requested address", "context deadline exceeded",
 		"EOF", "broken pipe"} {
-		if strings.Contains(text, fallback) {
-			return fallback
+		if strings.Contains(text, known) {
+			return known
 		}
 	}
 	if len(text) > 120 {
@@ -94,8 +95,8 @@ func SummarizeError(err error) string {
 	return text
 }
 
-// Token e senha aparecem cortados: a saida de depuracao costuma ir parar em
-// ticket e em captura de tela.
+// MaskSecret trims tokens and passwords: debug output tends to end up in
+// tickets and screenshots.
 func MaskSecret(name, value string) string {
 	lowerName := strings.ToLower(name)
 	if lowerName != "authorization" && !strings.Contains(lowerName, "token") &&

@@ -28,8 +28,8 @@ func TestAggregationKeyIsAwaitedDestination(t *testing.T) {
 	}
 }
 
-// Sem valor de correlacao, qualquer mensagem serviria: a medicao passaria a
-// medir o consumidor mais rapido do topico, e nao a mensagem daquela iteracao.
+// With no correlation value any message would do: the measurement would time
+// the fastest consumer on the topic instead of that iteration's message.
 func TestWaitWithoutCorrelationIsRefused(t *testing.T) {
 	_, err := decode(t, "kafka: { topico: pedidos-processados }\n")
 	if err == nil {

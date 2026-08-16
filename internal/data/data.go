@@ -19,9 +19,9 @@ type Source interface {
 	Name() string
 	Next(virtualUser int64) (map[string]string, error)
 	Exhausted() bool
-	// Quantos valores distintos cada variavel pode assumir. E o que permite ao
-	// relatorio dizer que usar um valor so foi defeito, e nao um cenario que
-	// declarou um valor so. Valor negativo significa indefinido.
+	// How many distinct values each variable can take. It is what lets the
+	// report tell a defect from a scenario that declared a single value. A
+	// negative value means unknown.
 	Available() map[string]int64
 }
 
@@ -155,8 +155,8 @@ func (f *syntheticSource) Name() string { return f.name }
 
 func (f *syntheticSource) Exhausted() bool { return false }
 
-// Dado sintetico nao tem lista fechada de valores: o que se sabe e que gerar
-// sempre o mesmo valor seria defeito.
+// Synthetic data has no closed list of values: all that is known is that
+// always generating the same value would be a defect.
 func (f *syntheticSource) Available() map[string]int64 {
 	available := map[string]int64{}
 	for _, field := range f.sortedNames {
@@ -165,9 +165,9 @@ func (f *syntheticSource) Available() map[string]int64 {
 	return available
 }
 
-// A semente entra no relatorio de ambiente e os campos sao gerados em ordem
-// fixa: sem as duas coisas a execucao nao e reproduzivel, e resultado nao
-// reproduzivel nao serve para comparar duas execucoes.
+// The seed goes into the environment block and fields are generated in a fixed
+// order: without both the run is not reproducible, and a non-reproducible
+// result is useless for comparing two runs.
 func (f *syntheticSource) Next(virtualUser int64) (map[string]string, error) {
 	sequence := f.sequence.Add(1)
 	random := rand.New(rand.NewSource(f.seed + sequence))

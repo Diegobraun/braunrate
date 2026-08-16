@@ -34,8 +34,8 @@ func nodeError(no *yaml.Node, format string, args ...any) error {
 	return ScenarioError{Line: line, Column: column, Message: fmt.Sprintf(format, args...)}
 }
 
-// Listadas aqui porque o schema publicado e testado contra elas: chave que
-// existe so num dos dois lados vira autocompletar que o parser recusa.
+// Listed here because the published schema is tested against them: a key that
+// exists on only one side becomes autocomplete the parser refuses.
 var (
 	TopKeys  = []string{"nome", "alvo", "variaveis", "autenticacao", "dados", "carga", "cenario", "slo"}
 	StepKeys = []string{"nome", "captura", "verificar", "espera"}

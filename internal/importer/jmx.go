@@ -24,8 +24,8 @@ func (e *element) attribute(name string) string {
 	return ""
 }
 
-// Propriedade de JMeter e sempre "<stringProp name=...>valor</stringProp>",
-// inclusive dentro de elementProp aninhado, entao a busca desce a arvore.
+// A JMeter property is always "<stringProp name=...>value</stringProp>",
+// including inside nested elementProp, so the lookup walks down the tree.
 func (e *element) property(name string) string {
 	for _, child := range e.Children {
 		if child.attribute("name") == name && len(child.Children) == 0 {
@@ -49,9 +49,9 @@ func (e *element) findAll(name string) []*element {
 	return findings
 }
 
-// A traducao e parcial de proposito e o que ficou de fora sai declarado: um
-// importador que engole o arquivo inteiro em silencio entrega um cenario que
-// mede outra coisa e ninguem percebe.
+// The translation is partial on purpose and whatever was left out is
+// declared: an importer that swallows the whole file silently hands back a
+// scenario that measures something else and nobody notices.
 var translatedElements = map[string]bool{
 	"jmeterTestPlan": true, "hashTree": true, "TestPlan": true, "ThreadGroup": true,
 	"HTTPSamplerProxy": true, "HeaderManager": true, "CSVDataSet": true,
@@ -216,10 +216,10 @@ func sourceFromCSV(set *element) ImportedSource {
 	return ImportedSource{Name: name, File: file, Consume: consume}
 }
 
-// Thread nao vira taxa: no JMeter cada thread so envia depois que a resposta
-// anterior chegou, entao 50 threads viram 50/s se o alvo responde em 1 s e 5/s
-// se responde em 10 s. Converter em silencio importaria a omissao coordenada
-// junto com o cenario.
+// Threads are not a rate: in JMeter each thread only sends after the previous
+// response arrived, so 50 threads are 50/s if the target answers in 1 s and 5/s
+// if it answers in 10 s. Converting silently would import coordinated omission
+// along with the scenario.
 func loadWarnings(root *element) []string {
 	var warnings []string
 	for _, group := range root.findAll("ThreadGroup") {

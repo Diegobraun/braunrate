@@ -1,8 +1,9 @@
-// A DSL monta a mesma estrutura que o YAML monta e entrega ao mesmo motor. Por
-// isso ela nao interpreta expressao propria: captura, comparacao e limite de SLO
-// passam pelas funcoes de cenario que o YAML usa, e nenhum padrao e reescrito
-// aqui. Duas interpretacoes da mesma linha viraria numero diferente entre os
-// dois publicos, que e exatamente o que a ferramenta promete nao fazer.
+// Package dsl builds the same structure the YAML builds and hands it to the
+// same engine. That is why it parses nothing of its own: captures, comparisons
+// and SLO limits go through the scenario functions the YAML uses, and no
+// default is rewritten here. Two readings of the same line would mean a
+// different number for each audience, which is exactly what the tool promises
+// not to do.
 package dsl
 
 import (
@@ -91,8 +92,8 @@ func (c *Builder) GeneratedData(name string, fields map[string]string, opts ...D
 	return c
 }
 
-func (c *Builder) Ramp(de, until Rate, during time.Duration) *Builder {
-	return c.phase(scenario.Phase{Kind: scenario.PhaseRamp, From: float64(de), To: float64(until), For: during})
+func (c *Builder) Ramp(from, to Rate, during time.Duration) *Builder {
+	return c.phase(scenario.Phase{Kind: scenario.PhaseRamp, From: float64(from), To: float64(to), For: during})
 }
 
 func (c *Builder) Plateau(rate Rate, during time.Duration) *Builder {
@@ -149,7 +150,8 @@ func Name(name string) StepOption {
 	}
 }
 
-// A expressao e a mesma do YAML: "$.fatura.id", "cabecalho:X-Id" ou "/regex/".
+// Capture takes the same expression the YAML takes: "$.invoice.id",
+// "cabecalho:X-Id" or "/regex/".
 func Capture(variable, expression string) StepOption {
 	return func(step *scenario.Step) error {
 		capture, err := scenario.ParseCapture(variable, expression)
@@ -188,15 +190,15 @@ func CheckBodyContains(fragment string) StepOption {
 	}
 }
 
-func CheckBodyMatches(fallback string) StepOption {
+func CheckBodyMatches(pattern string) StepOption {
 	return func(step *scenario.Step) error {
-		step.Assertions = append(step.Assertions, scenario.Assertion{Kind: scenario.AssertRegex, Value: fallback})
+		step.Assertions = append(step.Assertions, scenario.Assertion{Kind: scenario.AssertRegex, Value: pattern})
 		return nil
 	}
 }
 
-// A comparacao aceita a mesma escrita do YAML: "PAGA", "> 10", "existe",
-// "contem parcial".
+// CheckJSON takes the same comparison the YAML takes: "PAGA", "> 10",
+// "existe", "contem parcial".
 func CheckJSON(path, comparison string) StepOption {
 	return func(step *scenario.Step) error {
 		assertion := scenario.ParseComparison(path, comparison)

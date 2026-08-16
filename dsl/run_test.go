@@ -31,9 +31,9 @@ slo:
   - consultar pedido: { p95: < 1s }
 `
 
-// A equivalencia estrutural ja esta travada; este teste fecha o outro lado da
-// promessa: o cenario escrito em Go roda no mesmo motor e sai com as mesmas
-// chaves de agregacao e o mesmo veredito que o YAML gemeo.
+// Structural equivalence is already locked; this test closes the other half of
+// the promise: the scenario written in Go runs on the same engine and comes out
+// with the same aggregation keys and the same verdict as its YAML twin.
 func TestGoScenarioRunsOnSameEngineWithSameKeys(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

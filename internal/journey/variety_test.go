@@ -21,11 +21,11 @@ import (
 	"github.com/Diegobraun/braunrate/internal/scenario"
 )
 
-// Um cenario que exercita todos os lugares por onde um valor variavel sai:
-// caminho, corpo, cabecalho e variavel de GraphQL. O bug do dado congelado nao
-// foi um defeito isolado da autenticacao — foi uma classe de falha que a suite
-// nao verificava, porque contagem, latencia e erro continuam bonitos quando a
-// carga inteira usa o mesmo valor.
+// A scenario that exercises every place a varying value leaves through: path,
+// body, header and GraphQL variable. The frozen-data bug was not an isolated
+// auth defect, it was a class of failure the suite never checked, because
+// count, latency and errors all stay pretty when the whole load uses the same
+// value.
 const scenarioWithVariety = `
 nome: Variedade
 alvo: %s
@@ -160,8 +160,8 @@ func TestEveryDeclaredValueReachesTarget(t *testing.T) {
 	}
 }
 
-// O aviso que teria pegado o bug do dado congelado. A fonte oferece tres
-// valores; a execucao que usa um so e defeito, nao escolha.
+// The warning that would have caught the frozen-data bug. The source offers
+// three values; a run that uses one is a defect, not a choice.
 func TestSingleObservedValueBecomesHighSeverityWarning(t *testing.T) {
 	document := metrics.Document{
 		Variety: []metrics.Variety{

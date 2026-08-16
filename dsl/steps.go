@@ -15,9 +15,9 @@ import (
 	"github.com/Diegobraun/braunrate/internal/protocol/wait"
 )
 
-// O corpo declarado como estrutura vira JSON pelo mesmo caminho do YAML
-// (json.Marshal do mapa lido), entao os bytes enviados sao byte a byte os
-// mesmos nos dois publicos.
+// A body declared as a structure becomes JSON through the same path the YAML
+// takes (json.Marshal of the parsed map), so the bytes on the wire are
+// identical for both audiences.
 func serialize(body any) ([]byte, string, error) {
 	switch value := body.(type) {
 	case nil:
@@ -74,8 +74,8 @@ func (p *HTTPStep) Timeout(timeout time.Duration) *HTTPStep {
 	return p
 }
 
-func (p *HTTPStep) SeguirRedirect(seguir bool) *HTTPStep {
-	p.config.SeguirRedirect = &seguir
+func (p *HTTPStep) FollowRedirects(follow bool) *HTTPStep {
+	p.config.FollowRedirects = &follow
 	return p
 }
 
@@ -282,8 +282,8 @@ func WaitForKafka(topic string) *WaitStep {
 	return &WaitStep{config: config}
 }
 
-// Espera por HTTP existe para o sistema que so mostra o efeito por API: sem
-// isto, a cadeia ponta a ponta nao se mede nele.
+// WaitForHTTP exists for systems that only expose the effect over an API:
+// without it the end-to-end chain cannot be measured on them.
 func WaitForHTTP(path string) *WaitStep {
 	config := wait.Default()
 	config.Source = "http"
@@ -298,8 +298,8 @@ func WaitForAMQP(queue string) *WaitStep {
 	return &WaitStep{config: config}
 }
 
-// A correlacao e obrigatoria pelo mesmo motivo do YAML: esperar qualquer
-// mensagem mediria o consumidor mais rapido, e nao a jornada desta iteracao.
+// Key is required for the same reason it is in the YAML: waiting for any
+// message would time the fastest consumer, not this iteration's journey.
 func (p *WaitStep) Key(expected string) *WaitStep {
 	p.config.Expected = expected
 	return p

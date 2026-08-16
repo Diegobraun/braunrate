@@ -40,8 +40,8 @@ func DefaultOptions() Options {
 	}
 }
 
-// Observacao existe para o modo de depuracao: um usuario, uma iteracao, tudo
-// visivel. O caminho de execucao e o mesmo da carga.
+// Observation is what debug mode shows: one user, one iteration, everything
+// visible. The execution path is the same one the load uses.
 type Observation struct {
 	Step     string
 	Key      string
@@ -92,8 +92,8 @@ func New(c scenario.Spec, opts Options) (*Executor, error) {
 
 func (m *Executor) Plan() Plan { return m.plan }
 
-// Depurar roda uma unica iteracao pelo mesmo caminho da carga: mesmo motor,
-// mesma resolucao de variavel, mesma captura. So a carga muda.
+// Debug runs a single iteration through the load path: same engine, same
+// variable resolution, same capture. Only the load is missing.
 func (m *Executor) Debug(ctx context.Context) ([]Observation, map[string]string, error) {
 	values := runtime.New(0, 0, m.scenario.Vars)
 
@@ -196,8 +196,9 @@ func (m *Executor) Execute(ctx context.Context) metrics.Document {
 	})
 }
 
-// Espera por sondagem mede em degraus do intervalo: o numero e sempre maior ou
-// igual ao real, e quem le precisa saber disso antes de comparar com um SLO.
+// Polling measures in steps of the poll interval: the number is always greater
+// than or equal to the real one, and the reader has to know that before
+// comparing it against an SLO.
 func (m *Executor) scenarioWarnings() []metrics.Warning {
 	var warnings []metrics.Warning
 	for _, step := range m.scenario.Steps {
@@ -220,9 +221,10 @@ func (m *Executor) scenarioWarnings() []metrics.Warning {
 	return warnings
 }
 
-// Cada chegada agendada e uma iteracao inteira do cenario: e o que faz o valor
-// capturado num passo chegar ao passo seguinte. Se um passo falha, a iteracao
-// para — os passos seguintes dependeriam de uma captura que nao aconteceu.
+// Each scheduled arrival is a whole scenario iteration: that is what carries a
+// value captured in one step into the next. If a step fails the iteration
+// stops, because the following steps would depend on a capture that never
+// happened.
 func (m *Executor) runIteration(ctx context.Context, virtualUser int64, scheduled time.Time, collector *metrics.Collector) {
 	values := runtime.New(virtualUser, virtualUser, m.scenario.Vars)
 
@@ -456,9 +458,10 @@ func (m *Executor) availability() metrics.Availability {
 			}
 		}
 	}
-	// O token e um so por execucao por decisao declarada (ADR 0005), entao um
-	// valor unico aqui nao e defeito: a limitacao ja aparece no bloco de
-	// ambiente, e repetir como aviso grave abafaria os avisos que importam.
+	// One token per run is a declared decision (ADR 0005), so a single value
+	// here is not a defect: the limitation already shows in the environment
+	// block, and repeating it as a high warning would drown the ones that
+	// matter.
 	if m.scenario.Auth != nil && m.scenario.Auth.Obtain != nil {
 		for _, capture := range m.scenario.Auth.Obtain.Captures {
 			availability[capture.Variable] = 1
@@ -467,9 +470,9 @@ func (m *Executor) availability() metrics.Availability {
 	return availability
 }
 
-// Semente so existe para fonte sintetica: anotar semente de um CSV sugeriria
-// que o arquivo foi sorteado, e a frase do relatorio sobre variedade e a
-// variedade observada ([ADR 0007]), nunca a semente declarada.
+// Only synthetic sources have a seed: recording one for a CSV would suggest
+// the file was drawn at random, and what the report says about variety is the
+// observed variety (ADR 0007), never the declared seed.
 func (m *Executor) seeds() map[string]int64 {
 	seeds := map[string]int64{}
 	for _, source := range m.scenario.Data {

@@ -23,8 +23,8 @@ const (
 	ErrGraphQL     ErrorClass = "graphql"
 	ErrMessaging   ErrorClass = "mensageria"
 
-	// Falha ao autenticar tem classe propria porque cair em "configuracao"
-	// mandava procurar defeito no cenario quando o alvo e que estava fora do ar.
+	// Auth failure gets its own class because falling into "configuracao" sent
+	// people looking for a defect in the scenario when the target was down.
 	ErrAuth ErrorClass = "autenticacao"
 )
 
@@ -34,15 +34,15 @@ type Config interface {
 	Resolve(func(string) string) Config
 }
 
-// Implementada pelos protocolos que sabem se descrever para o modo de
-// depuracao, em vez de deixar a struct interna vazar para o usuario.
+// Describable is implemented by protocols that can describe themselves for
+// debug mode, instead of leaking the internal struct to the user.
 type Describable interface {
 	Config
 	Describe() []string
 }
 
-// Implementada pelos protocolos que aceitam cabecalho: e por aqui que o motor
-// injeta autenticacao sem que o protocolo saiba que ela existe.
+// WithHeaders is implemented by protocols that accept headers: it is how the
+// engine injects auth without the protocol knowing auth exists.
 type WithHeaders interface {
 	Config
 	WithHeader(name, value string) Config
@@ -63,22 +63,22 @@ type Response struct {
 	Class   ErrorClass
 	Detail  string
 	Key     string
-	// Fatos sobre o destino que so o protocolo conhece e que entram na
-	// variedade observada: particao do Kafka, fila do AMQP. Vazio nos
-	// protocolos que nao tem nada a declarar, e ai nao custa nada.
+	// Facts about the destination only the protocol knows, feeding observed
+	// variety: Kafka partition, AMQP queue. Empty for protocols with nothing
+	// to declare, and then it costs nothing.
 	Attributes map[string]string
 }
 
-// Implementada pelo protocolo que sabe quantos destinos distintos existem do
-// lado do servidor: sem isso o relatorio nao consegue dizer que usar uma
-// particao so foi defeito, e nao um topico de uma particao.
+// WithAvailability is implemented by protocols that know how many distinct
+// destinations exist server-side: without it the report cannot tell a
+// single-partition defect from a single-partition topic.
 type WithAvailability interface {
 	Available() map[string]int64
 }
 
-// Implementada pelo protocolo que precisa estar ouvindo antes de a carga
-// comecar. Sem isso, a mensagem da primeira iteracao pode chegar antes de
-// existir quem a espere, e o timeout seria do braunrate, nao do servico.
+// Preparable is implemented by protocols that must be listening before the
+// load starts. Without it the first iteration's message can arrive before
+// anyone waits for it, and the timeout would be braunrate's, not the service's.
 type Preparable interface {
 	Prepare(ctx context.Context, request Request) error
 }
@@ -120,19 +120,19 @@ func CloseAll() {
 }
 
 type Options struct {
-	Timeout        time.Duration
-	SeguirRedirect bool
-	MaxRedirects   int
-	KeepCookies    bool
-	ConnsPerHost   int
+	Timeout         time.Duration
+	FollowRedirects bool
+	MaxRedirects    int
+	KeepCookies     bool
+	ConnsPerHost    int
 }
 
 func DefaultOptions() Options {
 	return Options{
-		Timeout:        30 * time.Second,
-		SeguirRedirect: true,
-		MaxRedirects:   10,
-		KeepCookies:    false,
-		ConnsPerHost:   0,
+		Timeout:         30 * time.Second,
+		FollowRedirects: true,
+		MaxRedirects:    10,
+		KeepCookies:     false,
+		ConnsPerHost:    0,
 	}
 }

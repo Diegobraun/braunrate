@@ -24,8 +24,8 @@ func ProgressLine(snapshot metrics.Snapshot, targetRate float64, remaining time.
 		snapshot.LatencyP50Ms, snapshot.LatencyP99Ms, remaining.Round(time.Second), alert)
 }
 
-// A saida tem duas camadas: a frase em portugues comum diz o que aconteceu, e o
-// numero fica logo abaixo para quem precisa dele.
+// Summary has two layers: the plain-language sentence says what happened, and
+// the number sits right below it for whoever needs it.
 func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) {
 	write := func(format string, args ...any) {
 		fmt.Fprintf(out, format+"\n", args...)

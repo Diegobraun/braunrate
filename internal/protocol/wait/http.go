@@ -16,10 +16,11 @@ import (
 
 const defaultInterval = 500 * time.Millisecond
 
-// Boa parte dos sistemas assincronos so mostra o efeito por API: nao ha topico
-// para escutar, e sem isto a cadeia ponta a ponta nao se mede neles. A medicao
-// por sondagem e honesta desde que a granularidade seja declarada — o valor
-// medido e sempre maior ou igual ao real, ate um intervalo de sondagem.
+// Condition ends an HTTP wait. Many async systems only expose the effect over
+// an API: there is no topic to listen to, and without this the end-to-end
+// chain cannot be measured on them. Polling is honest as long as the
+// granularity is declared: the measured value is always greater than or equal
+// to the real one, by up to one poll interval.
 type Condition struct {
 	Status       int
 	Path         string
@@ -168,8 +169,9 @@ func readCondition(key string, raw map[string]string) (Condition, error) {
 	return condition, nil
 }
 
-// O motor usa isto para declarar no relatorio que aquele passo foi medido por
-// sondagem — sem a declaracao, o degrau do intervalo viraria latencia do alvo.
+// PollInterval lets the engine declare in the report that the step was
+// measured by polling: without it, the interval step would read as target
+// latency.
 func (c *Config) PollInterval() time.Duration {
 	if c.Source != "http" {
 		return 0

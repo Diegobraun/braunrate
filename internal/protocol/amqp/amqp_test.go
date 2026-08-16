@@ -38,8 +38,8 @@ func TestExchangeWithRouteAppearsInKey(t *testing.T) {
 	}
 }
 
-// Sem confirmacao, o tempo medido e o de escrever no socket: mediria a rede
-// local, e nao o broker aceitando a mensagem.
+// Without confirmation the measured time is the socket write: it would time
+// the local network, not the broker accepting the message.
 func TestConfirmationIsDefault(t *testing.T) {
 	config, err := decode(t, "fila: pedidos\ncorpo: { id: 1 }\n")
 	if err != nil {

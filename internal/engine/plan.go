@@ -21,9 +21,9 @@ type Plan struct {
 	totalRequests int64
 }
 
-// O instante agendado sai da inversao da integral da taxa, e nao de um
-// contador incremental: contador acumula erro e faz a taxa efetiva derivar
-// da taxa declarada ao longo de uma execucao longa.
+// InstantOf derives the scheduled instant by inverting the integral of the
+// rate function rather than stepping a counter: a counter accumulates rounding
+// error and makes the effective rate drift over a long run.
 func CompilePlan(plan scenario.LoadPlan) Plan {
 	compiled := Plan{}
 	var start time.Duration
