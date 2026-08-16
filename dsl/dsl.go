@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Diegobraun/braunrate/internal/messaging"
 	"github.com/Diegobraun/braunrate/internal/protocol"
 	"github.com/Diegobraun/braunrate/internal/scenario"
 )
@@ -372,4 +373,97 @@ func messages(errors []error) []string {
 		texts = append(texts, err.Error())
 	}
 	return texts
+}
+
+// BrokerAuth mirrors the `mensageria` block. The secret is a reference to an
+// environment variable here for the same reason it is in the YAML: a Go file
+// also goes to the repository.
+type BrokerAuth struct {
+	broker messaging.Broker
+	err    error
+}
+
+func BrokerAt(addresses ...string) *BrokerAuth {
+	return &BrokerAuth{broker: messaging.Broker{Addresses: addresses}}
+}
+
+func (authenticator *BrokerAuth) credential(kind messaging.Kind, user, passwordVar string) *BrokerAuth {
+	name, reference := scenario.EnvironmentVariable(passwordVar)
+	if !reference {
+		authenticator.err = fmt.Errorf("a senha do broker precisa ser referencia a variavel de ambiente, como \"${KAFKA_SENHA}\", e veio %q", passwordVar)
+		return authenticator
+	}
+	authenticator.broker.Auth = messaging.Auth{
+		Kind: kind, User: scenario.ExpandFromEnv(user),
+		PasswordVar: name, Password: scenario.ExpandFromEnv(passwordVar),
+	}
+	return authenticator
+}
+
+func (authenticator *BrokerAuth) Plain(user, passwordVar string) *BrokerAuth {
+	return authenticator.credential(messaging.Plain, user, passwordVar)
+}
+
+func (authenticator *BrokerAuth) SCRAM256(user, passwordVar string) *BrokerAuth {
+	return authenticator.credential(messaging.SCRAM256, user, passwordVar)
+}
+
+func (authenticator *BrokerAuth) SCRAM512(user, passwordVar string) *BrokerAuth {
+	return authenticator.credential(messaging.SCRAM512, user, passwordVar)
+}
+
+// MSKIAM never takes a key: the signature comes from the AWS default chain.
+func (authenticator *BrokerAuth) MSKIAM(region string) *BrokerAuth {
+	authenticator.broker.Auth = messaging.Auth{Kind: messaging.MSKIAM, Region: region}
+	authenticator.broker.TLS.Enabled = true
+	return authenticator
+}
+
+func (authenticator *BrokerAuth) ClientCertificate(certificate, key string) *BrokerAuth {
+	authenticator.broker.Auth.Kind = messaging.External
+	authenticator.broker.TLS.Enabled = true
+	authenticator.broker.TLS.Certificate = certificate
+	authenticator.broker.TLS.Key = key
+	return authenticator
+}
+
+func (authenticator *BrokerAuth) TLS() *BrokerAuth {
+	authenticator.broker.TLS.Enabled = true
+	return authenticator
+}
+
+func (authenticator *BrokerAuth) CA(path string) *BrokerAuth {
+	authenticator.broker.TLS.Enabled = true
+	authenticator.broker.TLS.CA = path
+	return authenticator
+}
+
+func (builder *Builder) KafkaBroker(authenticator *BrokerAuth) *Builder {
+	if authenticator.err != nil {
+		builder.note(authenticator.err)
+		return builder
+	}
+	if builder.scenario.Messaging == nil {
+		builder.scenario.Messaging = &messaging.Settings{}
+	}
+	broker := authenticator.broker
+	builder.scenario.Messaging.Kafka = &broker
+	return builder
+}
+
+func (builder *Builder) AMQPBroker(authenticator *BrokerAuth) *Builder {
+	if authenticator.err != nil {
+		builder.note(authenticator.err)
+		return builder
+	}
+	broker := authenticator.broker
+	if err := broker.SupportsAMQP(); err != nil {
+		builder.note(err)
+		return builder
+	}
+	if builder.scenario.Messaging == nil {
+		builder.scenario.Messaging = &messaging.Settings{}
+	}
+	builder.scenario.Messaging.AMQP = &broker
+	return builder
 }

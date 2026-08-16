@@ -174,6 +174,9 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 	write("  %s %s/%s, %d nucleos | braunrate %s | %s",
 		document.Environment.Host, document.Environment.OS, document.Environment.Arch,
 		document.Environment.Cores, document.Version, document.Run.Start.Format("2006-01-02 15:04:05"))
+	for _, broker := range document.Run.Brokers {
+		write("  Mensageria: %s", broker)
+	}
 	for _, variety := range document.Variety {
 		write("  %s", variety.Sentence)
 	}

@@ -2,6 +2,7 @@ package scenario
 
 import (
 	"fmt"
+	"github.com/Diegobraun/braunrate/internal/messaging"
 	"time"
 
 	"github.com/Diegobraun/braunrate/internal/protocol"
@@ -16,6 +17,7 @@ type Spec struct {
 	Requires      []string
 	Vars          map[string]string
 	Auth          *Auth
+	Messaging     *messaging.Settings
 	Data          []DataSource
 	Load          LoadPlan
 	Steps         []Step

@@ -47,7 +47,7 @@ Esta e a primeira das tres execucoes reais que sustentam a tese. Cada uma expoe 
 
 ## Estado
 
-**Fase 6 concluida** — motor de chegada aberta, HTTP, GraphQL, Kafka, RabbitMQ e passo `aguardar`, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `depurar`, `importar curl` e `importar jmx`), relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes), variedade observada e **cenario em Go equivalente ao YAML, travado por teste**.
+**Fase 7 concluida** — motor de chegada aberta, HTTP, GraphQL, Kafka, RabbitMQ e passo `aguardar`, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `debug`, `import curl`, `import jmx` e `record`), relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes), variedade observada, **cenario em Go equivalente ao YAML travado por teste**, modelo fechado declarado e **autenticacao de broker com a credencial fora do arquivo**.
 
 Decisao da Fase 0: **Go**, sustentada por dois criterios apenas — RSS sob carga (30 MB contra 597 MB do Java com G1, a 10.000/s) e binario unico estatico, que para o publico de QA significa instalar baixando um arquivo. Startup, precisao de agendamento e modo de falha apareceram na primeira analise com peso que nao aguentam, e estao marcados como nao-criterio no ADR. Numeros, metodologia e limites em [medicoes-fase0.md](docs/medicoes-fase0.md); a decisao com os pesos de cada criterio em [ADR 0001](docs/adr/0001-linguagem-e-runtime.md).
 
@@ -597,6 +597,75 @@ O exemplo que acompanha o repositorio, [`examples/cadeia-assincrona.yaml`](examp
 
 Detalhes das decisoes: [ADR 0008](docs/adr/0008-mensageria-e-cadeia-assincrona.md). Publicacao com confirmacao e o padrao (`acks: todos` no Kafka, publisher confirms no AMQP), sem lote — agrupar mensagens mediria o lote, nao a mensagem.
 
+### Apontando para um broker real
+
+Broker de homologacao nao aceita conexao anonima, e **credencial nunca vai para o arquivo** — so nome de variavel de ambiente ou a cadeia padrao da nuvem. O cenario vai para o repositorio; o repositorio guarda para sempre.
+
+**Kafka com SASL/SCRAM sobre TLS** — o caso mais comum:
+
+```yaml
+mensageria:
+  kafka:
+    brokers: [kafka.homolog:9093]
+    autenticacao: { tipo: scram_sha512, usuario: "${KAFKA_USUARIO}", senha: "${KAFKA_SENHA}" }
+    tls: { ca: /etc/ssl/homolog/ca.pem }
+```
+
+```bash
+KAFKA_USUARIO=ana KAFKA_SENHA=... braunrate validate homolog.yaml
+```
+
+```
+Cenario valido: "Pedidos em homologacao", 1 passo(s), 6000 iteracoes em 2m0s.
+Sem slo declarado: a execucao nunca vai falhar por lentidao. Adicione um bloco 'slo' para virar gate de CI.
+Mensageria: kafka em kafka.homolog:9093: scram_sha512, usuario ana + TLS com CA propria
+```
+
+Tipos aceitos: `sasl_plain`, `scram_sha256`, `scram_sha512`, `msk_iam` e `certificado` (mTLS, com `tls: { certificado: ..., chave: ... }`). `tls: true` liga TLS com as autoridades do sistema; `tls: { ca: ... }` usa uma autoridade interna.
+
+**AWS MSK com IAM** — nao ha campo de chave, e nao vai haver:
+
+```yaml
+mensageria:
+  kafka:
+    brokers: [b-1.msk.exemplo:9098, b-2.msk.exemplo:9098]
+    autenticacao: { tipo: msk_iam, regiao: us-east-1 }
+```
+
+```
+Mensageria: kafka em b-1.msk.exemplo:9098, b-2.msk.exemplo:9098: msk_iam (regiao us-east-1, credencial da cadeia padrao da AWS) + TLS
+```
+
+A assinatura vem da cadeia padrao da AWS — `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`, `AWS_PROFILE`, ou a role da maquina. TLS e ligado sozinho: a porta 9098 nao aceita outra coisa.
+
+**RabbitMQ com usuario e senha:**
+
+```yaml
+mensageria:
+  amqp:
+    autenticacao: { tipo: sasl_plain, usuario: "${RABBIT_USUARIO}", senha: "${RABBIT_SENHA}" }
+    tls: { ca: /etc/ssl/homolog/ca.pem }
+```
+
+```
+Mensageria: amqp em endereco do alvo: sasl_plain, usuario ana + TLS com CA propria
+```
+
+Senha escrita no arquivo **reprova a validacao**, e a mensagem ensina a saida:
+
+```
+erro no cenario: homolog.yaml:7:77: senha literal no cenario: credencial nunca vai para o arquivo, porque o arquivo vai para o repositorio.
+    troque por:  senha: ${BROKER_SENHA}
+    e rode com:  BROKER_SENHA=... braunrate execute cenario.yaml
+    valor de reserva (${VAR:-algo}) tambem nao serve: a reserva seria o segredo escrito no arquivo
+```
+
+Terminal, HTML, JSON e depuracao mostram tipo de autenticacao e usuario, nunca o segredo. Senha errada vira erro de classe `autenticacao` e falta de permissao vira `autorizacao` — nenhuma das duas vira "broker indisponivel", que mandaria olhar o firewall. O aperto de mao de TLS e SASL e pago na preparacao, antes do relogio comecar: se entrasse na medicao, a primeira mensagem carregaria o aperto de mao inteiro.
+
+**O que o CI exercita:** um Kafka com SCRAM-SHA-512 sobre TLS com CA propria ([`.github/broker-autenticado.sh`](.github/broker-autenticado.sh)). **O caminho completo do MSK com IAM nao roda no CI** — exigiria uma conta AWS com cluster de verdade. Ha teste de unidade cobrindo a assinatura na regiao declarada e a ausencia de qualquer pedido de chave, e so.
+
+**Fora por enquanto:** OAUTHBEARER (depende de provedor de identidade, e o caminho muda por provedor). **Fora, com motivo:** servico gerenciado de nuvem — SQS, SNS, Kinesis, EventBridge, Service Bus, Pub/Sub — nao e broker apontavel, e sim SDK com semantica propria de entrega e cobranca; entraria como protocolo novo, nao como autenticacao. GoldenGate tambem esta fora: e replicacao de banco por protocolo proprietario, nao QA de aplicacao. Decisoes em [ADR 0014](docs/adr/0014-autenticacao-de-mensageria.md).
+
 ### Quanto o gerador aguenta produzindo (medido)
 
 Sem lote, uma mensagem por chegada agendada e com confirmacao, a vazao maxima e menor que a de ferramentas que agrupam. O numero, medido:
@@ -750,6 +819,9 @@ A comparacao nunca chama de regressao o que pode ser ruido, lista tudo que mudou
 | GraphQL: uma linha por operacao, erro em 200 contado como erro | pronto |
 | Kafka e RabbitMQ com entrega confirmada, sem lote | pronto |
 | Passo `aguardar`: mede a cadeia assincrona ponta a ponta | pronto |
+| Autenticacao de broker: SASL/PLAIN, SCRAM, TLS com CA propria, mTLS | pronto |
+| AWS MSK com IAM pela cadeia padrao da AWS, sem chave no cenario | pronto, sem CI |
+| Segredo literal no cenario reprova a validacao, e a saida nunca mostra credencial | pronto |
 | Variedade observada, com resultado invalido quando a carga concentra | pronto |
 | Cenario em Go, com equivalencia YAML x DSL travada por teste | pronto |
 | `importar jmx`: requisicao, cabecalho, CSV e correlacao do plano do JMeter | parcial, declarado |
@@ -764,11 +836,13 @@ Tres razoes, nesta ordem:
 
 ## Escopo
 
-**Dentro:** HTTP/HTTPS e REST; GraphQL de primeira classe; Kafka e RabbitMQ (produzir e consumir); passo `aguardar` com timeout; correlacao, variaveis e fluxo de autenticacao; CSV com politica de consumo e geracao sintetica com semente; perfis de carga (rampa, patamar, pico, taxa constante) e modelo fechado declarado; SLO com codigo de saida; relatorio HTML autocontido, JSON, CSV e resumo de terminal; comparacao entre execucoes; importador de `.jmx` para o subconjunto comum; gravador de trafego HTTP.
+**Dentro:** HTTP/HTTPS e REST; GraphQL de primeira classe; Kafka e RabbitMQ (produzir e consumir); passo `aguardar` com timeout; correlacao, variaveis e fluxo de autenticacao; CSV com politica de consumo e geracao sintetica com semente; perfis de carga (rampa, patamar, pico, taxa constante) e modelo fechado declarado; SLO com codigo de saida; relatorio HTML autocontido, JSON, CSV e resumo de terminal; comparacao entre execucoes; importador de `.jmx` para o subconjunto comum; gravador de trafego HTTP; autenticacao de broker (SASL/PLAIN, SCRAM, TLS com CA propria, mTLS e AWS MSK com IAM), sempre com a credencial fora do arquivo.
 
 **Limitacao conhecida:** protocolo fora da lista acima exige recompilar o binario — a mesma friccao que o k6 tem. E consequencia da escolha de Go ([ADR 0004](docs/adr/0004-extensao-de-protocolo.md)), esta declarada aqui de proposito, e o processo de build reprodutivel para protocolo fora-de-arvore sera documentado. Avro e Schema Registry sao mais fracos em Go que na JVM e ficam para depois da v1.
 
 **Limitacao conhecida:** um unico token para a execucao inteira, com a consequencia declarada no relatorio ([ADR 0005](docs/adr/0005-identidade-e-token.md)). E a latencia dos passos seguintes ao primeiro e tempo de servico, nao latencia corrigida — a leitura honesta da jornada esta no bloco "A jornada inteira".
+
+**Limitacao conhecida:** o caminho completo do AWS MSK com IAM nao e exercitado no CI — o que roda la e SCRAM sobre TLS contra um broker de verdade, e a assinatura IAM tem cobertura de unidade. Servico gerenciado de nuvem (SQS, SNS, Kinesis, EventBridge, Service Bus, Pub/Sub) e GoldenGate ficam fora, com o motivo em [ADR 0014](docs/adr/0014-autenticacao-de-mensageria.md): os primeiros nao sao broker apontavel e entrariam como protocolos novos; o ultimo e replicacao de banco, nao QA de aplicacao. OAUTHBEARER fica para depois da v1.
 
 **Fora:** motor de browser real; nuvem gerenciada, dashboard multiusuario, conta de time; LDAP, FTP, SMTP, JMS classico; competir em vazao bruta com wrk; execucao distribuida na v1 — a arquitetura nao pode impedi-la, mas ela nao entra agora.
 
@@ -789,6 +863,9 @@ Tres razoes, nesta ordem:
 - [ADR 0009 — equivalencia entre YAML e DSL](docs/adr/0009-equivalencia-entre-yaml-e-dsl.md)
 - [ADR 0010 — codigo em ingles, produto em portugues](docs/adr/0010-idioma-do-codigo.md)
 - [ADR 0011 — verificacao de sanidade antes do veredito](docs/adr/0011-verificacao-de-sanidade.md)
+- [ADR 0012 — modelo fechado como opcao declarada](docs/adr/0012-modelo-fechado-como-opcao-declarada.md)
+- [ADR 0013 — gravador de trafego](docs/adr/0013-gravador-de-trafego.md)
+- [ADR 0014 — autenticacao de mensageria](docs/adr/0014-autenticacao-de-mensageria.md)
 - [Schema do cenario](docs/braunrate.schema.json) — autocompletar e validacao no editor
 - [Exemplo de relatorio HTML](docs/exemplo-relatorio.html) — saida real de uma execucao que falhou o SLO
 - [Medicao dos prototipos da Fase 0](docs/medicoes-fase0.md)

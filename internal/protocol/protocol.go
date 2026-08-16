@@ -3,6 +3,7 @@ package protocol
 import (
 	"context"
 	"fmt"
+	"github.com/Diegobraun/braunrate/internal/messaging"
 	"sort"
 	"time"
 
@@ -26,6 +27,10 @@ const (
 	// Auth failure gets its own class because falling into "configuracao" sent
 	// people looking for a defect in the scenario when the target was down.
 	ErrAuth ErrorClass = "autenticacao"
+
+	// A credential that was accepted and has no permission is not a wrong
+	// password: one is fixed in the environment, the other in the broker ACL.
+	ErrAuthorization ErrorClass = "autorizacao"
 )
 
 type Config interface {
@@ -49,10 +54,11 @@ type WithHeaders interface {
 }
 
 type Request struct {
-	StepName string
-	Config   Config
-	URLBase  string
-	Vars     map[string]string
+	StepName  string
+	Config    Config
+	URLBase   string
+	Vars      map[string]string
+	Messaging *messaging.Settings
 }
 
 type Response struct {

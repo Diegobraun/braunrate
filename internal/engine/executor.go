@@ -183,6 +183,7 @@ func (executor *Executor) Execute(runContext context.Context) metrics.Document {
 		Availability:     executor.availability(),
 		AuthObtains:      executor.authObtains(),
 		ScenarioWarnings: executor.scenarioWarnings(),
+		Brokers:          scenario.DescribeMessaging(executor.scenario.Messaging),
 		DeclaredSteps:    executor.declaredSteps(),
 		PlannedDuration:  executor.plan.Duration(),
 		PlannedRequests:  executor.plan.TotalRequests(),
@@ -372,10 +373,11 @@ func (executor *Executor) runStep(runContext context.Context, step scenario.Step
 
 	sample.SentAt = clock.Now()
 	response := implementation.Execute(runContext, protocol.Request{
-		StepName: step.Name,
-		Config:   config,
-		URLBase:  executor.scenario.Target,
-		Vars:     values.Values(),
+		StepName:  step.Name,
+		Config:    config,
+		URLBase:   executor.scenario.Target,
+		Vars:      values.Values(),
+		Messaging: executor.scenario.Messaging,
 	})
 	sample.FinishedAt = clock.Now()
 	sample.Status = response.Status
@@ -500,9 +502,10 @@ func (executor *Executor) prepareProtocols(runContext context.Context) error {
 			continue
 		}
 		err := preparer.Prepare(runContext, protocol.Request{
-			StepName: step.Name,
-			Config:   step.Config.Resolve(values.Resolve),
-			URLBase:  executor.scenario.Target,
+			StepName:  step.Name,
+			Config:    step.Config.Resolve(values.Resolve),
+			URLBase:   executor.scenario.Target,
+			Messaging: executor.scenario.Messaging,
 		})
 		if err != nil {
 			return fmt.Errorf("nao consegui preparar o passo %q: %w", step.Name, err)

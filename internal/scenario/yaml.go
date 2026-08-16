@@ -38,7 +38,7 @@ func nodeError(node *yaml.Node, format string, args ...any) error {
 // Listed here because the published schema is tested against them: a key that
 // exists on only one side becomes autocomplete the parser refuses.
 var (
-	TopKeys  = []string{"nome", "alvo", "requer", "variaveis", "autenticacao", "dados", "carga", "cenario", "slo"}
+	TopKeys  = []string{"nome", "alvo", "requer", "variaveis", "autenticacao", "mensageria", "dados", "carga", "cenario", "slo"}
 	StepKeys = []string{"nome", "captura", "verificar", "espera"}
 )
 
@@ -114,6 +114,12 @@ func Parse(content []byte) (Spec, error) {
 				return spec, err
 			}
 			spec.Data = sources
+		case "mensageria":
+			settings, err := readMessaging(value)
+			if err != nil {
+				return spec, err
+			}
+			spec.Messaging = settings
 		case "requer":
 			requirements, err := readRequirements(value)
 			if err != nil {

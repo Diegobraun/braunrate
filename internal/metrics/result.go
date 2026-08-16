@@ -50,6 +50,7 @@ type Run struct {
 	Seeds        map[string]int64 `json:"sementes_dos_dados"`
 	Availability Availability     `json:"valores_disponiveis_por_variavel"`
 	AuthObtains  int64            `json:"obtencoes_de_autenticacao"`
+	Brokers      []string         `json:"mensageria,omitempty"`
 }
 
 const ClosedModel = "fechado"
@@ -174,6 +175,7 @@ type DocumentInput struct {
 	Availability     Availability
 	AuthObtains      int64
 	ScenarioWarnings []Warning
+	Brokers          []string
 	DeclaredSteps    []string
 	PlannedDuration  time.Duration
 	PlannedRequests  int64
@@ -208,6 +210,7 @@ func BuildDocument(collector *Collector, input DocumentInput) Document {
 			Seeds:        input.Seeds,
 			Availability: input.Availability,
 			AuthObtains:  input.AuthObtains,
+			Brokers:      input.Brokers,
 		},
 		Scheduling: Scheduling{
 			Sent:                   collector.Sent,

@@ -263,6 +263,9 @@ func environmentSentences(document metrics.Document) []string {
 			document.Environment.Arch, document.Environment.Cores),
 		fmt.Sprintf("braunrate %s (%s), gerador e alvo medidos como declarado acima", document.Version, document.Environment.GoVersion),
 	}
+	for _, broker := range document.Run.Brokers {
+		sentences = append(sentences, "Mensageria: "+broker+".")
+	}
 	for _, variety := range document.Variety {
 		sentences = append(sentences, "Variedade observada: "+variety.Sentence+".")
 	}

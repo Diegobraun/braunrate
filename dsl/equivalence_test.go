@@ -372,6 +372,40 @@ cenario:
 		},
 	},
 	{
+		name: "mensageria autenticada",
+		yaml: `
+nome: Cobranca autenticada
+alvo: kafka.homolog:9093
+
+requer: [kafka, credencial]
+
+mensageria:
+  kafka:
+    brokers: [kafka.homolog:9093]
+    autenticacao: { tipo: scram_sha512, usuario: "${KAFKA_USUARIO}", senha: "${KAFKA_SENHA}" }
+    tls: { ca: /etc/ssl/ca.pem }
+
+carga:
+  perfis:
+    - patamar: { taxa: 10/s, durante: 5s }
+
+cenario:
+  - kafka: { topico: pedidos, valor: "{}" }
+    nome: publicar pedido
+`,
+		dsl: func() (scenario.Spec, error) {
+			return dsl.New("Cobranca autenticada").
+				Target("kafka.homolog:9093").
+				Requires("kafka", "credencial").
+				KafkaBroker(dsl.BrokerAt("kafka.homolog:9093").
+					SCRAM512("${KAFKA_USUARIO}", "${KAFKA_SENHA}").
+					CA("/etc/ssl/ca.pem")).
+				Plateau(dsl.PerSecond(10), 5*time.Second).
+				Step(dsl.Kafka("pedidos").Value("{}"), dsl.Name("publicar pedido")).
+				Build()
+		},
+	},
+	{
 		name: "modelo fechado",
 		yaml: `
 nome: Laco fechado
@@ -562,6 +596,20 @@ func withoutLines(c scenario.Spec) scenario.Spec {
 	for _, step := range c.Steps {
 		clone.Steps = append(clone.Steps, stepWithoutLines(step))
 	}
+	if c.Messaging != nil {
+		settings := *c.Messaging
+		if settings.Kafka != nil {
+			broker := *settings.Kafka
+			broker.Line = 0
+			settings.Kafka = &broker
+		}
+		if settings.AMQP != nil {
+			broker := *settings.AMQP
+			broker.Line = 0
+			settings.AMQP = &broker
+		}
+		clone.Messaging = &settings
+	}
 	clone.Data = nil
 	for _, source := range c.Data {
 		source.Line = 0
@@ -617,6 +665,7 @@ func diferencas(expected, obtained scenario.Spec) []string {
 	compare("requer", expected.Requires, obtained.Requires)
 	compare("variaveis", expected.Vars, obtained.Vars)
 	compare("autenticacao", expected.Auth, obtained.Auth)
+	compare("mensageria", expected.Messaging, obtained.Messaging)
 	compare("dados", expected.Data, obtained.Data)
 	compare("carga", expected.Load, obtained.Load)
 	compare("slo", expected.SLO, obtained.SLO)

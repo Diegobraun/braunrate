@@ -17,3 +17,5 @@ __pycache__/
 *.pyc
 /braunrate
 /resultado.json
+/relatorio.html
+profile.yaml

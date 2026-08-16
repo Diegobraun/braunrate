@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Diegobraun/braunrate/internal/messaging"
 	"github.com/Diegobraun/braunrate/internal/protocol"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"gopkg.in/yaml.v3"
@@ -201,7 +202,12 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de amqp"}
 	}
 
+	broker := request.Messaging.BrokerFor("amqp")
+
 	address := config.URL
+	if address == "" && broker != nil && len(broker.Addresses) > 0 {
+		address = broker.Addresses[0]
+	}
 	if address == "" {
 		address = request.URLBase
 	}
@@ -212,8 +218,11 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		}
 	}
 
-	open, err := implementation.conexaoDe(normalize(address), config)
+	open, err := implementation.conexaoDe(normalize(address), config, broker)
 	if err != nil {
+		if kind, credential := messaging.ClassifyError(err); credential {
+			return protocol.Response{Class: classOf(kind), Detail: messaging.Explain(kind, broker)}
+		}
 		return protocol.Response{Class: protocol.ErrNetwork, Detail: summarize(err.Error())}
 	}
 
@@ -273,14 +282,15 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 	}
 }
 
-func (implementation *Protocol) conexaoDe(address string, config *Config) (*conn, error) {
+func (implementation *Protocol) conexaoDe(address string, config *Config, broker *messaging.Broker) (*conn, error) {
 	implementation.mu.Lock()
 	defer implementation.mu.Unlock()
-	if existing, has := implementation.conns[address]; has {
+	key := address + "|" + broker.Describe()
+	if existing, has := implementation.conns[key]; has {
 		return existing, nil
 	}
 
-	link, err := amqp.Dial(address)
+	link, err := broker.DialAMQP(address)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +310,7 @@ func (implementation *Protocol) conexaoDe(address string, config *Config) (*conn
 		_ = canal.Close()
 	}
 
-	implementation.conns[address] = created
+	implementation.conns[key] = created
 	return created, nil
 }
 
@@ -347,9 +357,19 @@ func normalize(address string) string {
 	return "amqp://" + address
 }
 
+func classOf(kind string) protocol.ErrorClass {
+	if kind == "autenticacao" {
+		return protocol.ErrAuth
+	}
+	return protocol.ErrAuthorization
+}
+
 func classificar(err error) protocol.ErrorClass {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return protocol.ErrTimeout
+	}
+	if kind, credential := messaging.ClassifyError(err); credential {
+		return classOf(kind)
 	}
 	text := err.Error()
 	if strings.Contains(text, "timeout") || strings.Contains(text, "deadline") {

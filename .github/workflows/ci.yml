@@ -72,6 +72,19 @@ jobs:
           BRAUNRATE_AMQP: amqp://guest:guest@127.0.0.1:5672/
         run: go test ./internal/messaging/... ./internal/testsupport/... -count=1 -v -timeout 5m
 
+      - name: broker que exige credencial de verdade
+        run: |
+          chmod +x .github/broker-autenticado.sh
+          .github/broker-autenticado.sh /tmp/certificados-ci
+
+      - name: testes contra o broker autenticado
+        env:
+          BRAUNRATE_KAFKA_TLS: localhost:9095
+          BRAUNRATE_KAFKA_USER: ana
+          BRAUNRATE_KAFKA_PASSWORD: segredo-do-ci
+          BRAUNRATE_KAFKA_CA: /tmp/certificados-ci/ca.pem
+        run: go test ./internal/messaging/... -count=1 -v -timeout 5m
+
       - name: teste de auto-validacao de medicao
         run: go test ./internal/selfcheck/... -count=1 -v
 

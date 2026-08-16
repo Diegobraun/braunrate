@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Diegobraun/braunrate/internal/messaging"
 	"github.com/Diegobraun/braunrate/internal/protocol"
 	"github.com/segmentio/kafka-go"
 	"gopkg.in/yaml.v3"
@@ -212,7 +213,12 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de kafka"}
 	}
 
+	broker := request.Messaging.BrokerFor("kafka")
+
 	brokers := config.Brokers
+	if len(brokers) == 0 && broker != nil {
+		brokers = broker.Addresses
+	}
 	if len(brokers) == 0 {
 		brokers = targetBrokers(request.URLBase)
 	}
@@ -223,7 +229,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		}
 	}
 
-	writer, err := implementation.writerOf(brokers, config)
+	writer, err := implementation.writerOf(brokers, config, broker)
 	if err != nil {
 		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
 	}
@@ -243,7 +249,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 	}
 
 	if err := writer.WriteMessages(runContext, message); err != nil {
-		return protocol.Response{Class: classificar(err), Detail: summarize(err.Error())}
+		return protocol.Response{Class: classificar(err), Detail: detailOf(err, broker)}
 	}
 
 	partition := implementation.partitionOf(brokers, config.Topic, message.Key)
@@ -259,13 +265,18 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 	return response
 }
 
-func (implementation *Protocol) writerOf(brokers []string, config *Config) (*kafka.Writer, error) {
-	key := strings.Join(brokers, ",") + "|" + config.Topic + "|" + config.Acks
+func (implementation *Protocol) writerOf(brokers []string, config *Config, broker *messaging.Broker) (*kafka.Writer, error) {
+	key := strings.Join(brokers, ",") + "|" + config.Topic + "|" + config.Acks + "|" + broker.Describe()
 
 	implementation.mu.Lock()
 	defer implementation.mu.Unlock()
 	if writer, exists := implementation.writers[key]; exists {
 		return writer, nil
+	}
+
+	transport, err := broker.Transport()
+	if err != nil {
+		return nil, err
 	}
 
 	// No batching and no linger: braunrate measures the time until the broker
@@ -281,10 +292,13 @@ func (implementation *Protocol) writerOf(brokers []string, config *Config) (*kaf
 		AllowAutoTopicCreation: true,
 		Async:                  false,
 	}
+	if transport != nil {
+		writer.Transport = transport
+	}
 	implementation.writers[key] = writer
 
 	if _, measured := implementation.partitions[config.Topic]; !measured {
-		if howMany := countPartitions(brokers, config.Topic); howMany > 0 {
+		if howMany := countPartitions(brokers, config.Topic, broker); howMany > 0 {
 			implementation.partitions[config.Topic] = int64(howMany)
 		}
 	}
@@ -324,8 +338,8 @@ func (implementation *Protocol) partitionOf(brokers []string, topic string, key 
 	return balancer.Balance(kafka.Message{Key: key}, list...)
 }
 
-func countPartitions(brokers []string, topic string) int {
-	conn, err := kafka.Dial("tcp", brokers[0])
+func countPartitions(brokers []string, topic string, broker *messaging.Broker) int {
+	conn, err := dial(brokers[0], broker)
 	if err != nil {
 		return 0
 	}
@@ -335,6 +349,59 @@ func countPartitions(brokers []string, topic string) int {
 		return 0
 	}
 	return len(partitions)
+}
+
+// The SASL and TLS handshake happens when the connection opens. Opening it here,
+// before the load, keeps the handshake out of the latency of the first message —
+// the same reason the consumer of the wait step subscribes during preparation.
+func (implementation *Protocol) Prepare(runContext context.Context, request protocol.Request) error {
+	config, isKafka := request.Config.(*Config)
+	if !isKafka {
+		return nil
+	}
+	broker := request.Messaging.BrokerFor("kafka")
+	if !broker.Secured() {
+		return nil
+	}
+	brokers := config.Brokers
+	if len(brokers) == 0 {
+		brokers = broker.Addresses
+	}
+	if len(brokers) == 0 {
+		brokers = targetBrokers(request.URLBase)
+	}
+	if len(brokers) == 0 {
+		return nil
+	}
+	if _, err := implementation.writerOf(brokers, config, broker); err != nil {
+		return err
+	}
+	conn, err := dial(brokers[0], broker)
+	if err != nil {
+		if kind, credential := messaging.ClassifyError(err); credential {
+			return fmt.Errorf("%s", messaging.Explain(kind, broker))
+		}
+		return fmt.Errorf("nao consegui abrir conexao com %s (%s): %w", brokers[0], broker.Describe(), err)
+	}
+	return conn.Close()
+}
+
+func dial(address string, broker *messaging.Broker) (*kafka.Conn, error) {
+	dialer, err := broker.Dialer()
+	if err != nil {
+		return nil, err
+	}
+	if dialer == nil {
+		return kafka.Dial("tcp", address)
+	}
+	return dialer.Dial("tcp", address)
+}
+
+func detailOf(err error, broker *messaging.Broker) string {
+	if kind, credential := messaging.ClassifyError(err); credential {
+		return messaging.Explain(kind, broker)
+	}
+	return summarize(err.Error())
 }
 
 func targetBrokers(target string) []string {
@@ -355,6 +422,12 @@ func targetBrokers(target string) []string {
 func classificar(err error) protocol.ErrorClass {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return protocol.ErrTimeout
+	}
+	if kind, credential := messaging.ClassifyError(err); credential {
+		if kind == "autenticacao" {
+			return protocol.ErrAuth
+		}
+		return protocol.ErrAuthorization
 	}
 	text := err.Error()
 	if strings.Contains(text, "timeout") || strings.Contains(text, "deadline") {

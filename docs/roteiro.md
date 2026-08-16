@@ -72,6 +72,16 @@ Entregue tambem: `importar jmx`, traducao **parcial e declarada** do plano do JM
 
 Medido nesta fase: o teto do gerador produzindo em Kafka (15.000 msg/s confirmadas com 6 particoes, 5.000/s com uma, em loopback nesta maquina), e a deteccao de saturacao com passo de mensageria, agora coberta por teste contra broker de verdade.
 
+## Fase 7 — Chegar onde o teste de verdade acontece
+
+Entregue: **modelo fechado como opcao declarada**, nunca padrao — sem latencia corrigida, sem delta de omissao coordenada, com aviso permanente em primeiro plano no terminal e no HTML, aviso no `validate` e recusa de comparar aberto com fechado ([ADR 0012](adr/0012-modelo-fechado-como-opcao-declarada.md)).
+
+Entregue: **gravador de trafego** (`braunrate record`), que sai do proxy com correlacao sugerida e marcada, ruido filtrado com contagem por motivo, rota agrupada com os valores observados em CSV, e nenhum segredo no arquivo ([ADR 0013](adr/0013-gravador-de-trafego.md)).
+
+Entregue: **autenticacao de mensageria** — SASL/PLAIN, SCRAM-SHA-256 e SHA-512, TLS com CA propria, mTLS, RabbitMQ e AWS MSK com IAM pela cadeia padrao da AWS. Credencial so por variavel de ambiente ou pela cadeia da nuvem: valor literal reprova a validacao. Autenticacao e autorizacao viram classes proprias de erro, e o aperto de mao e pago na preparacao, fora da latencia ([ADR 0014](adr/0014-autenticacao-de-mensageria.md)).
+
+Coberto no CI contra broker de verdade: SCRAM-SHA-512 sobre TLS com CA propria. **Fora do CI, declarado:** o caminho completo do MSK com IAM.
+
 ## Prova central do produto
 
 A demonstracao de auto-validacao — **974,6 ms escondidos pelo laco fechado no mesmo alvo** — e o argumento central do braunrate. Vai para o topo do README na Fase 3, com a saida real do teste que roda no CI.

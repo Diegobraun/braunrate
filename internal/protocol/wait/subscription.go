@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/Diegobraun/braunrate/internal/messaging"
 	"github.com/segmentio/kafka-go"
 	"github.com/tidwall/gjson"
 )
@@ -119,12 +119,12 @@ func (subscription *subscription) correlationOf(key, value []byte) string {
 	return gjson.GetBytes(value, path).String()
 }
 
-func openSubscription(config *Config, addresses []string) (*subscription, error) {
+func openSubscription(config *Config, addresses []string, broker *messaging.Broker) (*subscription, error) {
 	switch config.Source {
 	case "kafka":
-		return openKafka(config, addresses)
+		return openKafka(config, addresses, broker)
 	case "amqp":
-		return openAMQP(config, addresses)
+		return openAMQP(config, addresses, broker)
 	default:
 		return nil, fmt.Errorf("fonte desconhecida em aguardar: %q", config.Source)
 	}
@@ -134,10 +134,17 @@ func openSubscription(config *Config, addresses []string) (*subscription, error)
 // message produced during that negotiation is lost, turning into a timeout that
 // belongs to the consumer and not to the service. Here each partition's offset
 // is read when the subscription opens, before the load starts.
-func openKafka(config *Config, brokers []string) (*subscription, error) {
-	conn, err := kafka.Dial("tcp", brokers[0])
+func openKafka(config *Config, brokers []string, broker *messaging.Broker) (*subscription, error) {
+	dialer, err := broker.Dialer()
 	if err != nil {
-		return nil, fmt.Errorf("nao consegui falar com o broker %s: %v", brokers[0], err)
+		return nil, err
+	}
+	conn, err := dialWith(dialer, brokers[0])
+	if err != nil {
+		if kind, credential := messaging.ClassifyError(err); credential {
+			return nil, fmt.Errorf("%s", messaging.Explain(kind, broker))
+		}
+		return nil, fmt.Errorf("nao consegui falar com o broker %s (%s): %v", brokers[0], broker.Describe(), err)
 	}
 	defer func() { _ = conn.Close() }()
 
@@ -155,7 +162,7 @@ func openKafka(config *Config, brokers []string) (*subscription, error) {
 
 	readers := make([]*kafka.Reader, 0, len(partitions))
 	for _, partition := range partitions {
-		offset, err := lastOffset(brokers[0], config.Topic, partition.ID)
+		offset, err := lastOffset(brokers[0], config.Topic, partition.ID, dialer)
 		if err != nil {
 			cancel()
 			for _, open := range readers {
@@ -171,6 +178,7 @@ func openKafka(config *Config, brokers []string) (*subscription, error) {
 			MinBytes:  1,
 			MaxBytes:  10 << 20,
 			MaxWait:   20 * time.Millisecond,
+			Dialer:    dialer,
 		})
 		if err := reader.SetOffset(offset); err != nil {
 			cancel()
@@ -213,8 +221,15 @@ func openKafka(config *Config, brokers []string) (*subscription, error) {
 
 // The connection has to be to that partition's leader: a generic broker
 // connection does not know which partition the requested offset belongs to.
-func lastOffset(broker, topic string, partition int) (int64, error) {
-	leader, err := kafka.DialLeader(context.Background(), "tcp", broker, topic, partition)
+func dialWith(dialer *kafka.Dialer, address string) (*kafka.Conn, error) {
+	if dialer == nil {
+		return kafka.Dial("tcp", address)
+	}
+	return dialer.Dial("tcp", address)
+}
+
+func lastOffset(address, topic string, partition int, dialer *kafka.Dialer) (int64, error) {
+	leader, err := dialLeaderWith(dialer, address, topic, partition)
 	if err != nil {
 		return 0, fmt.Errorf("nao consegui falar com o lider da particao %d de %q: %v", partition, topic, err)
 	}
@@ -227,10 +242,20 @@ func lastOffset(broker, topic string, partition int) (int64, error) {
 	return offset, nil
 }
 
-func openAMQP(config *Config, addresses []string) (*subscription, error) {
-	conn, err := amqp.Dial(normalizeAMQP(addresses[0]))
+func dialLeaderWith(dialer *kafka.Dialer, address, topic string, partition int) (*kafka.Conn, error) {
+	if dialer == nil {
+		return kafka.DialLeader(context.Background(), "tcp", address, topic, partition)
+	}
+	return dialer.DialLeader(context.Background(), "tcp", address, topic, partition)
+}
+
+func openAMQP(config *Config, addresses []string, broker *messaging.Broker) (*subscription, error) {
+	conn, err := broker.DialAMQP(normalizeAMQP(addresses[0]))
 	if err != nil {
-		return nil, fmt.Errorf("nao consegui conectar em %s: %v", addresses[0], err)
+		if kind, credential := messaging.ClassifyError(err); credential {
+			return nil, fmt.Errorf("%s", messaging.Explain(kind, broker))
+		}
+		return nil, fmt.Errorf("nao consegui conectar em %s: %v", messaging.SafeAddress(addresses[0]), err)
 	}
 	canal, err := conn.Channel()
 	if err != nil {

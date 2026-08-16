@@ -55,6 +55,19 @@
     "autenticacao": {
       "$ref": "#/$defs/autenticacao"
     },
+    "mensageria": {
+      "type": "object",
+      "description": "Como alcancar Kafka e RabbitMQ quando o broker exige credencial. O padrao continua sendo broker local sem autenticacao.",
+      "additionalProperties": false,
+      "properties": {
+        "kafka": {
+          "$ref": "#/$defs/broker"
+        },
+        "amqp": {
+          "$ref": "#/$defs/broker"
+        }
+      }
+    },
     "dados": {
       "type": "object",
       "description": "Fontes de dados. Cada chave vira um prefixo usavel como ${nome.coluna}.",
@@ -1035,6 +1048,89 @@
           }
         }
       ]
+    },
+    "broker": {
+      "type": "object",
+      "description": "Como alcancar o broker. Segredo nunca fica no arquivo: 'senha' so aceita referencia a variavel de ambiente, como ${KAFKA_SENHA}.",
+      "additionalProperties": false,
+      "properties": {
+        "brokers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Enderecos do broker.",
+          "examples": [
+            [
+              "kafka.homolog:9093"
+            ]
+          ]
+        },
+        "autenticacao": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tipo"
+          ],
+          "properties": {
+            "tipo": {
+              "enum": [
+                "sasl_plain",
+                "scram_sha256",
+                "scram_sha512",
+                "msk_iam",
+                "certificado"
+              ],
+              "description": "sasl_plain e scram_* usam usuario e senha. msk_iam assina com a cadeia padrao da AWS e nunca pede chave. certificado e mTLS. OAUTHBEARER nao entra na v1."
+            },
+            "usuario": {
+              "type": "string",
+              "description": "Usuario do broker. Pode vir de ${VARIAVEL}."
+            },
+            "senha": {
+              "type": "string",
+              "pattern": "^\\\\$\\\\{[A-Za-z_][A-Za-z0-9_]*\\\\}$",
+              "description": "So referencia a variavel de ambiente: ${KAFKA_SENHA}. Valor literal e recusado na validacao, e valor de reserva tambem, porque a reserva seria o segredo escrito no arquivo.",
+              "examples": [
+                "${KAFKA_SENHA}"
+              ]
+            },
+            "regiao": {
+              "type": "string",
+              "description": "Regiao da AWS, obrigatoria em msk_iam.",
+              "examples": [
+                "us-east-1"
+              ]
+            }
+          }
+        },
+        "tls": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "ca": {
+                  "type": "string",
+                  "description": "CA propria, em PEM."
+                },
+                "certificado": {
+                  "type": "string",
+                  "description": "Certificado de cliente, para mTLS."
+                },
+                "chave": {
+                  "type": "string",
+                  "description": "Chave do certificado de cliente."
+                }
+              }
+            }
+          ],
+          "description": "true para TLS com as CAs do sistema, ou um mapa com CA propria e certificado de cliente."
+        }
+      }
     }
   }
 }

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Diegobraun/braunrate/internal/messaging"
 	"github.com/Diegobraun/braunrate/internal/protocol"
 	"gopkg.in/yaml.v3"
 )
@@ -273,7 +274,7 @@ func (implementation *Protocol) Prepare(_ context.Context, request protocol.Requ
 	if !ok || config.Source == "http" {
 		return nil
 	}
-	_, err := implementation.subscribe(config, request.URLBase)
+	_, err := implementation.subscribe(config, request.URLBase, request.Messaging.BrokerFor(config.Source))
 	return err
 }
 
@@ -287,7 +288,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		return implementation.awaitOverHTTP(runContext, request, config)
 	}
 
-	subscription, err := implementation.subscribe(config, request.URLBase)
+	subscription, err := implementation.subscribe(config, request.URLBase, request.Messaging.BrokerFor(config.Source))
 	if err != nil {
 		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
 	}
@@ -321,8 +322,11 @@ func lookupField(config *Config) string {
 	return "chave"
 }
 
-func (implementation *Protocol) subscribe(config *Config, target string) (*subscription, error) {
+func (implementation *Protocol) subscribe(config *Config, target string, broker *messaging.Broker) (*subscription, error) {
 	addresses := config.Addresses
+	if len(addresses) == 0 && broker != nil {
+		addresses = broker.Addresses
+	}
 	if len(addresses) == 0 {
 		addresses = targetAddresses(target)
 	}
@@ -330,7 +334,7 @@ func (implementation *Protocol) subscribe(config *Config, target string) (*subsc
 		return nil, fmt.Errorf("aguardar em %s sem endereco: declare 'brokers' (kafka) ou 'url' (amqp) no passo, ou aponte o alvo do cenario para o broker", config.Source)
 	}
 
-	key := config.Source + "|" + strings.Join(addresses, ",") + "|" + config.Topic
+	key := config.Source + "|" + strings.Join(addresses, ",") + "|" + config.Topic + "|" + broker.Describe()
 
 	implementation.mu.Lock()
 	defer implementation.mu.Unlock()
@@ -338,7 +342,7 @@ func (implementation *Protocol) subscribe(config *Config, target string) (*subsc
 		return existing, nil
 	}
 
-	created, err := openSubscription(config, addresses)
+	created, err := openSubscription(config, addresses, broker)
 	if err != nil {
 		return nil, err
 	}
