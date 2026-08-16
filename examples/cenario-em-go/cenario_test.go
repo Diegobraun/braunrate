@@ -49,12 +49,13 @@ func TestPublishedGoScenarioRunsAndPasses(t *testing.T) {
 	}
 }
 
-// The snippet in the README and this file are the same text or the README is
-// wrong, and a wrong README is the only documentation nobody notices is wrong.
-func TestREADMESnippetIsThisFile(t *testing.T) {
-	readme, err := os.ReadFile("../../README.md")
+// The snippet published on the site and this file are the same text, or the
+// page is wrong — and a wrong page is the only documentation nobody notices is
+// wrong.
+func TestPublishedSnippetIsThisFile(t *testing.T) {
+	readme, err := os.ReadFile("../../docs/guias/05-receitas.md")
 	if err != nil {
-		t.Fatalf("nao consegui ler o README: %v", err)
+		t.Fatalf("nao consegui ler a receita publicada: %v", err)
 	}
 	source, err := os.ReadFile("cenario.go")
 	if err != nil {
@@ -63,7 +64,7 @@ func TestREADMESnippetIsThisFile(t *testing.T) {
 
 	published, found := betweenFences(string(readme))
 	if !found {
-		t.Fatal("o README nao tem mais o bloco de codigo Go; se ele saiu de proposito, este teste sai junto")
+		t.Fatal("a receita nao tem mais o bloco de codigo Go; se ele saiu de proposito, este teste sai junto")
 	}
 	expected, found := betweenMarkers(string(source))
 	if !found {
@@ -71,7 +72,7 @@ func TestREADMESnippetIsThisFile(t *testing.T) {
 	}
 
 	if published != expected {
-		t.Fatalf("o README derivou de examples/cenario-em-go/cenario.go.\nno README:\n%s\n\nno arquivo:\n%s", published, expected)
+		t.Fatalf("docs/guias/05-receitas.md derivou de examples/cenario-em-go/cenario.go.\nna pagina:\n%s\n\nno arquivo:\n%s", published, expected)
 	}
 }
 

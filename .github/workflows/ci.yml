@@ -92,6 +92,12 @@ jobs:
       - name: teste de auto-validacao de medicao
         run: go test ./internal/selfcheck/... -count=1 -v
 
+      # O site e gerado dos guias do proprio repositorio. Gerar aqui, no portao,
+      # e o que garante que um guia quebrado reprova o commit em vez de reprovar
+      # a publicacao depois que o commit ja entrou.
+      - name: o site de documentacao gera
+        run: go run ./cmd/site -out site
+
       - name: exemplo publicado esta atualizado
         run: |
           go build -o braunrate ./cmd/braunrate

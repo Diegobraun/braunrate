@@ -1,0 +1,64 @@
+name: paginas
+
+# A documentacao publicada e uma projecao do repositorio, entao ela sai de main
+# e de mais lugar nenhum: nao existe editar o site sem passar por revisao do
+# mesmo jeito que o codigo passa.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Uma publicacao por vez, e a ultima vence. Cancelar a anterior no meio deixaria
+# o site com metade dos arquivos de uma versao e metade de outra.
+concurrency:
+  group: paginas
+  cancel-in-progress: false
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publicar.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # A versao mostrada no site sai da ultima tag, e sem o historico das
+          # tags ela sairia "dev" na documentacao publicada.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+
+      # A suite e que decide se a documentacao esta certa: bloco de cenario que
+      # nao carrega, opcao que nao existe mais e chave do schema que nao chegou
+      # na referencia reprovam aqui, antes de qualquer coisa ir para o ar.
+      - name: a documentacao ainda vale
+        run: go test ./internal/site/... ./cmd/braunrate/... -count=1
+
+      - name: gerar
+        run: |
+          versao=$(git describe --tags --abbrev=0 2>/dev/null || echo dev)
+          go run -ldflags "-X github.com/Diegobraun/braunrate/internal/build.Version=${versao#v}" \
+            ./cmd/site -out site
+
+      - uses: actions/configure-pages@v5
+        with:
+          # Liga o Pages na origem "Actions" sem ninguem precisar entrar nas
+          # configuracoes do repositorio.
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: publicar
+        uses: actions/deploy-pages@v4

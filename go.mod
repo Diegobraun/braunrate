@@ -35,5 +35,6 @@ require (
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
+	github.com/yuin/goldmark v1.8.5 // indirect
 	golang.org/x/text v0.23.0 // indirect
 )
