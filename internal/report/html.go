@@ -164,7 +164,7 @@ func buildPage(document metrics.Document) htmlPage {
 		})
 	}
 	for _, warning := range document.Warnings {
-		line := htmlWarning{Class: "baixa", Label: "observacao", Message: warning.Message, Evidence: warning.Evidence}
+		line := htmlWarning{Class: "baixa", Label: "observação", Message: warning.Message, Evidence: warning.Evidence}
 		switch warning.Severity {
 		case metrics.SeverityHigh:
 			// Already listed above, as a sanity finding.

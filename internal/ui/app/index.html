@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>braunrate</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<header>
+  <a class="marca" href="#/">braunrate</a>
+  <span class="versao" id="versao">…</span>
+  <div class="equivalente">
+    <span class="rotulo">o mesmo pelo terminal</span>
+    <code id="comando">braunrate ui</code>
+    <button type="button" id="copiar">copiar</button>
+  </div>
+</header>
+
+<div class="pagina">
+  <nav>
+    <div class="titulo-lista">
+      <span>Cenários</span>
+      <a class="acao" href="#/novo">novo</a>
+    </div>
+    <ol id="cenarios"><li class="carregando">carregando…</li></ol>
+    <div class="titulo-lista">
+      <span>Execuções</span>
+      <a class="acao" href="#/execucoes">todas</a>
+    </div>
+    <ol id="execucoes"><li class="vazio">nenhuma ainda</li></ol>
+  </nav>
+  <main id="conteudo"><p class="carregando">carregando…</p></main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

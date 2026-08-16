@@ -390,3 +390,119 @@ func TestUnknownRunSaysWhereTheRunsLive(t *testing.T) {
 		t.Fatalf("a mensagem não diz que as execuções vivem na memória: %s", body)
 	}
 }
+
+func writableServerOn(t *testing.T, directory string) *httptest.Server {
+	t.Helper()
+	options := server.DefaultOptions(version)
+	options.Directory = directory
+	options.Writable = true
+	httpServer := httptest.NewServer(server.New(options).Handler())
+	t.Cleanup(httpServer.Close)
+	return httpServer
+}
+
+func send(t *testing.T, method, url, body string) (int, []byte) {
+	t.Helper()
+	request, err := http.NewRequest(method, url, strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("não consegui montar o pedido: %v", err)
+	}
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatalf("não consegui falar com o servidor: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	answer, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("não consegui ler a resposta: %v", err)
+	}
+	return response.StatusCode, answer
+}
+
+// A interface edita o arquivo, entao o que ela grava e o que o terminal le, byte
+// a byte — comentario incluido.
+func TestTheTextThatComesBackIsTheFileOnDisk(t *testing.T) {
+	original := "# um comentario que o autor escreveu\nnome: Consulta\nalvo: http://127.0.0.1:8080\n"
+	directory := directoryWith(t, map[string]string{"cenario.yaml": original})
+	base := writableServerOn(t, directory).URL
+
+	status, body := call(t, http.MethodGet, base+"/scenarios/cenario.yaml/text")
+	if status != http.StatusOK || string(body) != original {
+		t.Fatalf("a leitura mudou o arquivo (%d):\n%s", status, body)
+	}
+
+	edited := original + "# linha nova\n"
+	if status, answer := send(t, http.MethodPut, base+"/scenarios/cenario.yaml/text", edited); status != http.StatusOK {
+		t.Fatalf("a gravação respondeu %d: %s", status, answer)
+	}
+	onDisk, err := os.ReadFile(filepath.Join(directory, "cenario.yaml"))
+	if err != nil {
+		t.Fatalf("não consegui ler o arquivo gravado: %v", err)
+	}
+	if string(onDisk) != edited {
+		t.Fatalf("o arquivo no disco não é o que a interface gravou:\n%s", onDisk)
+	}
+}
+
+// Editar por fora e legitimo: o arquivo e a verdade, e nao a copia que a tela
+// tem na memoria.
+func TestAnEditFromOutsideIsWhatTheInterfaceReads(t *testing.T) {
+	directory := directoryWith(t, map[string]string{"cenario.yaml": "nome: antes\n"})
+	base := writableServerOn(t, directory).URL
+
+	if err := os.WriteFile(filepath.Join(directory, "cenario.yaml"), []byte("nome: depois\n"), 0o644); err != nil {
+		t.Fatalf("não consegui editar por fora: %v", err)
+	}
+	_, body := call(t, http.MethodGet, base+"/scenarios/cenario.yaml/text")
+	if string(body) != "nome: depois\n" {
+		t.Fatalf("a leitura não trouxe a edição de fora: %s", body)
+	}
+}
+
+// Sem Writable a porta continua so de leitura: 'serve' nao grava arquivo.
+func TestWithoutWritableNothingIsWritten(t *testing.T) {
+	directory := directoryWith(t, map[string]string{"cenario.yaml": "nome: x\n"})
+	base := serverOn(t, directory, false).URL
+
+	status, _ := send(t, http.MethodPut, base+"/scenarios/cenario.yaml/text", "nome: outro\n")
+	if status == http.StatusOK {
+		t.Fatal("a gravação passou num servidor sem Writable")
+	}
+	onDisk, err := os.ReadFile(filepath.Join(directory, "cenario.yaml"))
+	if err != nil || string(onDisk) != "nome: x\n" {
+		t.Fatalf("o arquivo mudou: %s (%v)", onDisk, err)
+	}
+}
+
+// O rascunho e conferido pela mesma leitura do terminal, entao o editor nunca
+// aprova o que 'braunrate validate' reprovaria.
+func TestTheDraftIsCheckedByTheSameReadingAsTheTerminal(t *testing.T) {
+	directory := directoryWith(t, map[string]string{"cenario.yaml": scenarioText("http://127.0.0.1:8080")})
+	base := writableServerOn(t, directory).URL
+
+	status, body := send(t, http.MethodPost, base+"/scenarios/cenario.yaml/validate", "nome: sem alvo\ncarg: 1\n")
+	if status != http.StatusUnprocessableEntity {
+		t.Fatalf("o rascunho quebrado passou (%d): %s", status, body)
+	}
+	if !strings.Contains(string(body), "chave desconhecida") {
+		t.Fatalf("a recusa do rascunho não é a do terminal: %s", body)
+	}
+
+	status, body = call(t, http.MethodPost, base+"/scenarios/cenario.yaml/validate")
+	if status != http.StatusOK {
+		t.Fatalf("sem corpo, a validação do arquivo gravado respondeu %d: %s", status, body)
+	}
+}
+
+// Gravar arquivo que nao e cenario transformaria a porta em escrita de arquivo
+// qualquer, que e outra coisa.
+func TestOnlyScenarioFilesAreWritten(t *testing.T) {
+	base := writableServerOn(t, directoryWith(t, map[string]string{})).URL
+
+	for _, name := range []string{"anotacoes.txt", "..%2fescapou.yaml"} {
+		status, body := send(t, http.MethodPut, base+"/scenarios/"+name+"/text", "nome: x\n")
+		if status != http.StatusBadRequest {
+			t.Fatalf("%q respondeu %d: %s", name, status, body)
+		}
+	}
+}

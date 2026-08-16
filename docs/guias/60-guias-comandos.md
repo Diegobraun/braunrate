@@ -24,6 +24,7 @@ Todas as opções: braunrate target -h
 | [`report`](#report) | gerar HTML ou CSV de um resultado já gravado |
 | [`compare`](#compare) | comparar duas execuções |
 | [`serve`](#serve) | expor a CLI como HTTP local |
+| [`ui`](#ui) | editar e rodar os cenários no navegador |
 | [`target`](#target) | subir o alvo de teste embutido |
 | [`version`](#version) | versão, commit e protocolos compilados |
 
@@ -242,6 +243,36 @@ curl -sN http://127.0.0.1:8080/runs/r001/stream
 
 O YAML continua sendo a verdade. Não há banco: os cenários são os arquivos do
 `-dir`, e as execuções vivem na memória do processo.
+
+## `ui`
+
+```bash
+braunrate ui -dir ./cenarios
+braunrate ui -addr 127.0.0.1:8080 -dir ./cenarios -open=false
+```
+
+```
+braunrate ui em http://127.0.0.1:8080, editando os cenários de ./cenarios
+Sem autenticação e sem TLS: qualquer um que alcance esta porta pode disparar carga contra os alvos dos cenários.
+Foi feito para rodar em 127.0.0.1. Expor em outra interface é outra decisão, e ela ainda não foi tomada.
+Gravação ligada: quem alcançar esta porta pode alterar os arquivos de cenário de ./cenarios.
+
+Abra no navegador:
+  http://127.0.0.1:8080
+```
+
+Abre no navegador o mesmo que a CLI faz: lista os cenários do diretório, edita o
+arquivo, valida enquanto você digita, roda uma iteração, executa com carga e
+mostra o relatório. O comando de terminal equivalente fica no topo da tela, em
+toda tela.
+
+> **Importante** A interface é um editor do arquivo, não um formulário que gera
+> um. O texto que você salva é o que o terminal lê, com os comentários que você
+> escreveu, e editar o arquivo por fora continua valendo. O motivo está em
+> [ADR 0018](decisoes.html).
+
+`-open=false` não abre o navegador sozinho, para quem roda em terminal remoto ou
+não quer que a janela suba.
 
 ## `target`
 

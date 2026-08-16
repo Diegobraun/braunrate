@@ -128,3 +128,33 @@ toca o usuario.
   abreviacao (`addr` casa `address`), e ela e a mesma que sugere chave de
   cenario. Agora `car` sugere `carga`, o que antes nao acontecia. Prefixo de
   tres letras ou mais e sinal forte o bastante para nao virar palpite errado.
+
+## 9. Tudo que a pessoa le sai acentuado; o que ela copia para o arquivo, nao
+
+- **Decisao**: terminal, relatorio HTML, demonstracao, mensagens de recusa,
+  site e README passam a sair em portugues acentuado. Chave de YAML, campo de
+  JSON, nome de rota, valor de enum (`lider`, `basica`, `aleatorio`, `contem`) e
+  nome de arquivo continuam em ASCII.
+- **Alternativa**: manter tudo sem acento, como estava desde a Fase 0.
+- **Por que esta**: texto sem acento em portugues le como rascunho, e o produto
+  pede confianca no numero que ele mostra. A fronteira e o que a pessoa **copia
+  de volta para o arquivo**: se a mensagem ensina `senha: ${BROKER_SENHA}`, o que
+  ela ensina precisa carregar no parser.
+- **Reversibilidade**: media. A varredura foi automatica sobre os literais de
+  string, com as excecoes acima conferidas uma a uma pela suite.
+- **Toca o usuario**: sim, em toda saida.
+- **Efeito colateral**: as saidas coladas na documentacao ficaram desatualizadas
+  no mesmo instante. Foram regeradas rodando os comandos, e nao reescritas a mao.
+
+## 10. A interface e um editor do arquivo, e mostra o comando equivalente
+
+- **Decisao**: `braunrate ui` abre o `.yaml` do diretorio numa area de texto,
+  valida o rascunho pela mesma leitura do terminal e grava o texto como ele esta.
+  O comando de terminal equivalente fica no topo de toda tela.
+- **Alternativa**: uma arvore de campos, com formulario por bloco do cenario.
+- **Por que esta**: registrada em [ADR 0018](adr/0018-interface-como-editor-do-arquivo.md).
+  Formulario que serializa de volta apaga comentario e destroi o diff, que e o
+  defeito do `.jmx` e o motivo do importador existir.
+- **Reversibilidade**: alta enquanto a interface nao guardar nada que o arquivo
+  nao guarde.
+- **Toca o usuario**: sim, e e a primeira tela de quem nao usa terminal.

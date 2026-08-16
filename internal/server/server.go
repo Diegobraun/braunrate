@@ -133,8 +133,12 @@ const maxScenarioBytes = 1 << 20
 // StartupWarning is printed, not logged: whoever started the server has to see
 // that the port has no authentication before pointing anyone at it.
 func (server *Server) StartupWarning() []string {
+	opening := fmt.Sprintf("braunrate serve em http://%s, servindo cenários de %s", server.options.Address, server.options.Directory)
+	if server.options.UI != nil {
+		opening = fmt.Sprintf("braunrate ui em http://%s, editando os cenários de %s", server.options.Address, server.options.Directory)
+	}
 	lines := []string{
-		fmt.Sprintf("braunrate serve em http://%s, servindo cenários de %s", server.options.Address, server.options.Directory),
+		opening,
 		"Sem autenticação e sem TLS: qualquer um que alcance esta porta pode disparar carga contra os alvos dos cenários.",
 		"Foi feito para rodar em 127.0.0.1. Expor em outra interface é outra decisão, e ela ainda não foi tomada.",
 	}
@@ -143,6 +147,9 @@ func (server *Server) StartupWarning() []string {
 	}
 	if server.options.Concurrent {
 		lines = append(lines, "Execução concorrente ligada: duas execuções ao mesmo tempo disputam a CPU que precisa despachar no instante agendado, e nenhuma das duas mede o que se propôs a medir.")
+	}
+	if server.options.UI != nil {
+		return append(lines, fmt.Sprintf("\nAbra no navegador:\n  http://%s", server.options.Address))
 	}
 	return append(lines, fmt.Sprintf("\nPara ver o que ele está servindo:\n  curl http://%s/scenarios", server.options.Address))
 }
@@ -157,7 +164,10 @@ func (server *Server) Listen() error {
 }
 
 func (server *Server) health(writer http.ResponseWriter, _ *http.Request) {
-	writeJSON(writer, http.StatusOK, map[string]any{"tool": "braunrate", "version": server.options.Version})
+	writeJSON(writer, http.StatusOK, map[string]any{
+		"tool": "braunrate", "version": server.options.Version,
+		"directory": server.options.Directory, "writable": server.options.Writable,
+	})
 }
 
 type scenarioLine struct {

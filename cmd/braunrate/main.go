@@ -8,8 +8,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -32,6 +34,7 @@ import (
 	"github.com/Diegobraun/braunrate/internal/server"
 	"github.com/Diegobraun/braunrate/internal/testsupport"
 	"github.com/Diegobraun/braunrate/internal/texto"
+	"github.com/Diegobraun/braunrate/internal/ui"
 )
 
 func main() {
@@ -63,6 +66,8 @@ func main() {
 		os.Exit(record(os.Args[2:]))
 	case "serve":
 		os.Exit(serve(os.Args[2:]))
+	case "ui":
+		os.Exit(userInterface(os.Args[2:]))
 	case "target":
 		os.Exit(serveTarget(os.Args[2:]))
 	case "version":
@@ -81,7 +86,7 @@ func main() {
 
 var commands = []string{
 	"demo", "new", "debug", "execute", "validate", "import", "record",
-	"report", "compare", "serve", "target", "version", "ajuda",
+	"report", "compare", "serve", "ui", "target", "version", "ajuda",
 }
 
 // A catalog in alphabetical order serves whoever already knows what they want.
@@ -124,6 +129,7 @@ uso:
   braunrate report <resultado.json> [opções]    gera HTML ou CSV de um resultado já gravado
   braunrate compare <antes.json> <depois.json> [-html <arquivo.html>]
   braunrate serve [-addr :8080] [-dir ./cenarios]   os mesmos comandos por HTTP, local
+  braunrate ui [-addr :8080] [-dir ./cenarios]      edita e roda os cenários no navegador
   braunrate target [opções]
   braunrate version
 
@@ -131,7 +137,7 @@ opções de execute:
   -result <arquivo.json>      grava o documento de resultado
   -html <arquivo.html>        grava o relatório HTML autocontido
   -csv <arquivo.csv>          grava uma linha por passo, para planilha
-  -max-concurrent <n>         máximo de requisições simultaneas (padrão 20000)
+  -max-concurrent <n>         máximo de requisições simultâneas (padrão 20000)
   -late-threshold <dur>       a partir daqui o gerador não sustentou a taxa (padrão 10ms)
   -quiet                      não imprime progresso durante a execução
 `, build.Version)
@@ -162,7 +168,7 @@ func execute(args []string) int {
 	resultPath := set.String("result", "", "arquivo JSON de resultado")
 	htmlPath := set.String("html", "", "arquivo HTML de relatório")
 	csvPath := set.String("csv", "", "arquivo CSV com uma linha por passo")
-	maxInflight := set.Int64("max-concurrent", 20000, "máximo de requisições simultaneas antes de desistir de disparar")
+	maxInflight := set.Int64("max-concurrent", 20000, "máximo de requisições simultâneas antes de desistir de disparar")
 	lateThreshold := set.Duration("late-threshold", 10*time.Millisecond, "atraso de disparo a partir do qual o gerador é considerado saturado")
 	quiet := set.Bool("quiet", false, "não imprime progresso")
 	baselinePath := set.String("baseline", "", "resultado de uma execução anterior, para as regras de regressão")
@@ -784,6 +790,57 @@ func serve(args []string) int {
 		return runner.ExitBadFile
 	}
 	return runner.ExitPassed
+}
+
+// A interface e o mesmo servidor do 'serve', com a gravacao ligada e as telas
+// montadas na raiz: o que ela sabe fazer, ela faz editando o arquivo de -dir.
+func userInterface(args []string) int {
+	set := newFlagSet("ui")
+	address := set.String("addr", "127.0.0.1:8080", "endereço de escuta")
+	directory := set.String("dir", ".", "diretorio com os cenários editados")
+	concurrent := set.Bool("concurrent", false, "permite mais de uma execução ao mesmo tempo, aceitando a contaminação da medição")
+	open := set.Bool("open", true, "abre o navegador na interface")
+	_ = parseArguments(set, args)
+
+	if info, err := os.Stat(*directory); err != nil || !info.IsDir() {
+		fmt.Fprintf(os.Stderr, "%s não é um diretório que eu consiga ler; -dir aponta para onde estão os cenários\n", *directory)
+		return runner.ExitBadFile
+	}
+
+	options := server.DefaultOptions(build.Version)
+	options.Address = *address
+	options.Directory = *directory
+	options.Concurrent = *concurrent
+	options.Writable = true
+	options.UI = ui.Handler()
+
+	httpServer := server.New(options)
+	for _, line := range httpServer.StartupWarning() {
+		fmt.Fprintln(os.Stderr, line)
+	}
+	if *open {
+		openBrowser("http://" + *address)
+	}
+	if err := httpServer.Listen(); err != nil {
+		fmt.Fprintf(os.Stderr, "o servidor parou: %v\n", err)
+		return runner.ExitBadFile
+	}
+	return runner.ExitPassed
+}
+
+// Abrir o navegador e conveniencia: se o sistema nao souber abrir, o endereco
+// ja esta impresso na tela e a interface continua no ar.
+func openBrowser(address string) {
+	var command *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		command = exec.Command("open", address)
+	case "windows":
+		command = exec.Command("rundll32", "url.dll,FileProtocolHandler", address)
+	default:
+		command = exec.Command("xdg-open", address)
+	}
+	_ = command.Start()
 }
 
 func serveTarget(args []string) int {
