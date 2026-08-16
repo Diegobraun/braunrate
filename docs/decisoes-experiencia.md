@@ -179,3 +179,38 @@ toca o usuário.
 - **Efeito colateral**: o exemplo congelado voltou a dizer `usuario: texto` na
   forma de corpo observada, porque ali não é frase: é o nome do campo que o
   cenário enviou.
+
+## 12. O alvo embutido responde `/pedidos` sem credencial
+
+- **Decisão**: `/pedidos` e `/pedidos/{id}` deixam de exigir token no alvo de
+  teste. `/faturas` e `/graphql` continuam exigindo, e é por eles que a jornada
+  autenticada é exercitada.
+- **Alternativa**: o esqueleto do `braunrate new` nascer com o bloco
+  `autenticacao` apontando para `/auth/token` do alvo embutido.
+- **Por que esta**: o primeiro contato de quem chega é `new`, `target`,
+  `execute`, e ele devolvia 401 em toda requisição. A alternativa resolveria o
+  mesmo caso colocando, em todo cenário gerado, um login para um serviço de
+  mentira — que quem for medir o próprio serviço tem que apagar. Menos
+  superfície é mudar duas linhas no alvo do que mudar todo arquivo que a
+  ferramenta escreve.
+- **Reversibilidade**: alta; é uma decisão do alvo de teste, não do formato.
+- **Toca o usuário**: sim, no primeiro comando com carga que ele roda.
+- **Efeito colateral**: o aviso do `target` deixou de apontar
+  `examples/ci.yaml`, que só existe para quem clonou o repositório, e passou a
+  apontar `braunrate new` — que funciona para quem só baixou o binário.
+
+## 13. A interface ensina os mesmos cinco conceitos que o terminal
+
+- **Decisão**: taxa, "95% em até X", critério de aceite, dado fixo e resultado
+  inválido ganham uma linha de explicação no campo em que aparecem. Desligam
+  todas juntas na caixa "explicações" do topo.
+- **Alternativa**: link para o site em cada campo.
+- **Por que esta**: é o mesmo princípio da Fase 1 — a explicação chega no ponto
+  em que o número aparece, não numa página que a pessoa precisa procurar. Link
+  tira do fluxo justamente quem ainda não sabe o que procurar.
+- **Reversibilidade**: alta.
+- **Toca o usuário**: sim, e sobretudo quem nunca fez teste de carga.
+- **Efeito colateral**: o desligamento é por sessão, como o `-quiet`, e não fica
+  guardado: preferência guardada seria estado da interface que o arquivo não
+  guarda, recusado na [ADR 0018](adr/0018-interface-como-editor-do-arquivo.md).
+

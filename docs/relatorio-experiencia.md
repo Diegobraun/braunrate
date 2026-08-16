@@ -526,27 +526,28 @@ $ curl -s http://127.0.0.1:8124/runs
 | O rascunho é conferido pela mesma leitura do terminal | `TestTheDraftIsCheckedByTheSameReadingAsTheTerminal` |
 | Só arquivo de cenário é gravado | `TestOnlyScenarioFilesAreWritten` |
 | Porta ocupada não convida a abrir o navegador | `TestABusyPortSaysHowToChooseAnother` |
+| A tela ensina os cinco conceitos, e desliga como o `-quiet` | `TestTheScreenTeachesTheSameFiveIdeasTheTerminalTeaches` |
 | Vazio, carregando e erro são tela, não silêncio | `nenhum nesta pasta`, `carregando…`, `rodando uma iteração…`, `O cenário não fecha`, `Não gravei`, `Não comecei` |
 
 ## Contagem de linhas
 
 | Arquivo | Linhas de produção |
 |---|---|
-| `internal/ui/app/app.js` | 469 |
-| `internal/ui/app/estilo.css` | 103 |
-| `internal/ui/app/index.html` | 38 |
+| `internal/ui/app/app.js` | 485 |
+| `internal/ui/app/estilo.css` | 112 |
+| `internal/ui/app/index.html` | 39 |
 | `internal/ui/ui.go` | 31 |
 | `internal/server/server.go` (saldo) | +98 |
 | `cmd/braunrate/main.go` (saldo) | +63 |
 | `internal/runner/runner.go` (saldo) | +18 |
-| **Total** | **820** |
+| **Total** | **847** |
 
 Alvo 1500, teto 2500. **Ficou abaixo do alvo**, e o motivo é a decisão de
 formato: como a interface edita o texto do arquivo, não existe camada que
 traduza árvore de campos para YAML e de volta — que é onde mora a maior parte do
 código de uma interface de teste de carga.
 
-Testes: `internal/ui/ui_test.go` (91) e o acréscimo em
+Testes: `internal/ui/ui_test.go` (115) e o acréscimo em
 `internal/server/server_test.go` (116). Documentação:
 [ADR 0018](adr/0018-interface-como-editor-do-arquivo.md) (75) e a seção `ui` no
 guia de comandos (31).
@@ -578,44 +579,61 @@ decisão que ainda não foi tomada.
 # O que continua difícil para quem está começando
 
 Fecho pelo que as três fases **não** resolveram. Cada item foi observado nesta
-autoverificação, não imaginado.
+autoverificação, não imaginado. Dois dos seis foram fechados depois da revisão,
+e ficam registrados aqui com o que foi feito.
 
-**1. Experimentar contra o alvo embutido dá 401 em tudo.** `braunrate new`
-escreve um cenário apontando para `127.0.0.1:8080` sem bloco de autenticação, e
-`braunrate target` pede token em `/pedidos`. Quem sobe os dois lados para
-experimentar recebe:
+**Fechado — experimentar contra o alvo embutido dava 401 em tudo.** `braunrate
+new` escreve um cenário que consulta `/pedidos/1`, e o alvo embutido pedia token
+nessa rota: `new`, `target` e `execute`, o caminho mais provável de quem chega,
+devolvia 401 em toda requisição, e a explicação só aparecia para quem tivesse
+rodado a depuração. `/pedidos` deixou de pedir credencial; `/faturas` e
+`/graphql` continuam pedindo, e é por elas que a jornada autenticada segue sendo
+exercitada. Hoje a sequência inteira passa:
 
 ```
-passo 1 — consultar pedido   [FALHOU em 9.3ms]
-  resposta:   status 401, 37 bytes
-  corpo:      {"erro":"token ausente ou inválido"}
+passo 1 — consultar pedido   [ok em 7.7ms]
+  requisição: GET /pedidos/1
+  resposta:   status 200, 89 bytes
+
+Iteração completa: 1 passo, tudo certo. Para rodar com carga:
+  braunrate execute cenario.yaml
 ```
 
-A depuração explica e entrega o bloco pronto para colar — mas só para quem rodou
-a depuração. Quem foi direto ao `execute` recebe `resultado inválido` com 100%
-de erro e precisa voltar um passo. O caminho existe; ele só não é o caminho
-curto.
+```
+SLO
+  ok    Passou: "consultar pedido" respondeu 95% em até 7 ms, dentro do limite de 200 ms.
+  ok    Passou: o cenário inteiro teve taxa de erro de 0.00%, dentro do limite de 1.00%.
+```
 
-**2. Ler o relatório inteiro ainda pede vocabulário.** Jornada, sanidade,
+Junto foi o aviso do `target`, que mandava rodar `examples/ci.yaml` — arquivo que
+só existe para quem clonou o repositório. Agora ele aponta `braunrate new`.
+Decisão 12, e `TestTheScenarioNewWritesAnswersOnTheEmbeddedTarget` reprova o
+commit que voltar a exigir token nessa rota.
+
+**Fechado — a interface não ensinava termo nenhum.** O terminal explica cinco
+conceitos no ponto em que o número aparece; a tela não explicava nenhum. Os
+cinco passaram a ter uma linha no campo em que aparecem: taxa e dado fixo no
+formulário de carga e de caminho, "95% em até X" e critério de aceite nos dois
+limites do SLO, e resultado inválido no veredito da execução. Desligam juntas na
+caixa "explicações" do topo — por sessão, como o `-quiet`, sem guardar
+preferência que o arquivo não guarda. Decisão 13.
+
+**1. Ler o relatório inteiro ainda pede vocabulário.** Jornada, sanidade,
 variedade observada e taxa efetiva são explicados no lugar em que aparecem, mas
 são muitos blocos numa tela só, e a ordem de leitura está no guia — não na
 página.
 
-**3. A interface não ensina o vocabulário.** Quem não sabe o que é `p95` precisa
-sair da interface e ir para o site; nenhuma tela explica um termo no lugar em
-que ele aparece, que é justamente o que a saída do terminal faz.
-
-**4. Kafka e RabbitMQ continuam exigindo um broker de verdade.** O alvo embutido
+**2. Kafka e RabbitMQ continuam exigindo um broker de verdade.** O alvo embutido
 sobe HTTP e sobe o processador assíncrono, mas só se você já tiver um Kafka
 apontado. Para os dois protocolos de mensageria não existe caminho de dez
 minutos.
 
-**5. O site não tem busca.** Seis perguntas foram respondidas em no máximo dois
+**3. O site não tem busca.** Seis perguntas foram respondidas em no máximo dois
 cliques, mas todas eram perguntas cuja página dava para adivinhar pelo nome.
 Quem chega com a mensagem de erro na mão procura pelo texto do erro, e hoje
 depende do `Ctrl+F` da página certa.
 
-**6. Windows não foi verificado.** As três fases foram percorridas em macOS. O
+**4. Windows não foi verificado.** As três fases foram percorridas em macOS. O
 binário é publicado para Windows, o `-open` tem o ramo do `rundll32`, e nada
 disso foi aberto numa máquina Windows por uma pessoa que nunca usou a
 ferramenta. Enquanto não for, a promessa dos dez minutos vale para macOS e

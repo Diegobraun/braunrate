@@ -21,6 +21,10 @@ function mostrarComando (texto) {
   comando.textContent = texto
 }
 
+document.getElementById('explicacoes').addEventListener('change', function () {
+  document.body.classList.toggle('sem-explicacoes', !this.checked)
+})
+
 document.getElementById('copiar').addEventListener('click', async function () {
   try {
     await navigator.clipboard.writeText(comando.textContent)
@@ -174,17 +178,25 @@ function telaNovo () {
       <div class="dupla">
         <label><span>Método</span>
           <select name="metodo"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></label>
-        <label><span>Caminho</span><input name="caminho" value="/pedidos/1" required></label>
+        <label><span>Caminho</span><input name="caminho" value="/pedidos/1" required>
+          <div class="ensina">Caminho com valor fixo mede o cache do alvo, não o alvo: toda requisição
+            vai ser idêntica. Depois de gravar, troque <code>/pedidos/1</code> por
+            <code>/pedidos/${'$'}{pedidos.id}</code> e declare de onde <code>${'$'}{pedidos.id}</code> vem.</div></label>
       </div>
       <div class="dupla">
         <label><span>Taxa (requisições por segundo)</span><input name="taxa" value="100" required>
-          <div class="ajuda">O gerador insiste nessa taxa mesmo se o alvo demorar.</div></label>
+          <div class="ensina">Taxa é o ritmo em que o gerador dispara, esteja o alvo rápido ou lento —
+            como usuários de verdade fazem. Ferramenta que espera a resposta anterior alivia o sistema
+            justamente quando ele está sofrendo.</div></label>
         <label><span>Duração</span><input name="duracao" value="30s" required></label>
       </div>
       <div class="dupla">
         <label><span>95% das respostas em até</span><input name="p95" value="500ms" required>
-          <div class="ajuda">Vira código de saída 1 se estourar.</div></label>
-        <label><span>Taxa de erro máxima (%)</span><input name="erros" value="0.1" required></label>
+          <div class="ensina">"95% em até 500ms" quer dizer que 5% das pessoas esperaram mais que isso.
+            Média não entra no relatório porque esconde justamente essas.</div></label>
+        <label><span>Taxa de erro máxima (%)</span><input name="erros" value="0.1" required>
+          <div class="ensina">Estes dois limites são o critério de aceite: se algum estourar, o braunrate
+            sai com código 1 e a esteira reprova o build.</div></label>
       </div>
       <div class="barra"><button class="principal" type="submit">Gravar cenário</button>
         <a class="botao" href="#/">cancelar</a></div>
@@ -361,7 +373,7 @@ async function telaExecucao (id) {
   mostrarComando(`braunrate execute ${execucao ? execucao.scenario : '<cenario>.yaml'} -html relatorio.html`)
   conteudo.innerHTML = `
     <h1>Execução ${escapar(id)}</h1>
-    <p class="legenda">${execucao ? escapar(execucao.scenario) : 'cenário desconhecido'}</p>
+    <p class="legenda" id="de-qual-cenario">${execucao ? escapar(execucao.scenario) : 'carregando…'}</p>
     <div id="andamento"></div>
     <div id="relatorio"></div>`
 
@@ -387,6 +399,8 @@ async function telaExecucao (id) {
     return
   }
   const documento = resposta.corpo
+  const doCenario = documento.execucao && documento.execucao.cenario
+  document.getElementById('de-qual-cenario').textContent = doCenario || (execucao ? execucao.scenario : '')
   if (documento.status === 'running') {
     relatorio.innerHTML = '<p class="carregando">ainda rodando…</p>'
     return
@@ -396,7 +410,9 @@ async function telaExecucao (id) {
   const sanidade = documento.sanidade || {}
   if (sanidade.verificada && !sanidade.valida) {
     relatorio.innerHTML = `<div class="aviso erro"><h3>Resultado inválido</h3>
-      <p>${escapar(sanidade.frase)}</p></div>` +
+      <p>${escapar(sanidade.frase)}</p>
+      <div class="ensina">Nenhum número desta execução vale como resposta: ela não aprova nem reprova, e
+        o código de saída é 3. Corrija o que está abaixo e rode de novo.</div></div>` +
       (sanidade.achados || []).map(achado =>
         `<div class="aviso erro"><p>${escapar(achado.mensagem)}</p><p><small>${escapar(achado.evidencia)}</small></p></div>`).join('')
   }

@@ -66,6 +66,15 @@ input, select { font: inherit; padding: 7px 10px; border-radius: 7px; border: 1p
 label { display: block; margin-bottom: 12px; }
 label span { display: block; font-size: 13px; margin-bottom: 4px; }
 label .ajuda { color: var(--suave); font-size: 12px; margin-top: 4px; }
+
+/* O que a demonstração do terminal explica no ponto em que o número aparece,
+   a tela explica no campo em que o conceito aparece. Desliga como o -quiet:
+   pela sessão, sem guardar preferência que o arquivo não guarda. */
+.ensina { color: var(--suave); font-size: 12px; margin-top: 4px;
+  border-left: 2px solid var(--borda); padding-left: 8px; }
+body.sem-explicacoes .ensina { display: none; }
+.explicacoes { color: var(--suave); font-size: 12px; display: flex; align-items: center; gap: 5px; }
+.explicacoes input { width: auto; }
 .formulario { max-width: 620px; }
 .dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 

@@ -89,3 +89,27 @@ func TestTheEditorIsATextAreaOverTheFile(t *testing.T) {
 		}
 	}
 }
+
+// A demonstracao do terminal explica cinco conceitos no ponto em que o numero
+// aparece. Quem chega pela tela nao pode receber menos.
+func TestTheScreenTeachesTheSameFiveIdeasTheTerminalTeaches(t *testing.T) {
+	address := serve(t)
+	_, script := get(t, address, "/app.js")
+
+	for _, idea := range []string{
+		"Taxa é o ritmo em que o gerador dispara",
+		"quer dizer que 5% das pessoas esperaram mais que isso",
+		"são o critério de aceite",
+		"mede o cache do alvo, não o alvo",
+		"Nenhum número desta execução vale como resposta",
+	} {
+		if !strings.Contains(script, idea) {
+			t.Errorf("a tela não explica %q", idea)
+		}
+	}
+
+	_, page := get(t, address, "/")
+	if !strings.Contains(page, `id="explicacoes"`) || !strings.Contains(script, "sem-explicacoes") {
+		t.Error("não há como desligar as explicações, e o -quiet do terminal tem")
+	}
+}
