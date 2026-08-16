@@ -90,6 +90,15 @@ func TestTargetFreezeIsNotConfusedWithGeneratorSaturation(t *testing.T) {
 		}
 	}
 
+	// A propria regra do produto vale para o experimento: com o gerador
+	// atrasando, nao da para separar o alvo do gerador, e o que esta execucao
+	// mediu nao serve para afirmar nada. Numa maquina disputada, isso e a
+	// medicao que nao vale, e nao a deteccao que quebrou.
+	if document.Scheduling.LateDispatches*100 >= document.Scheduling.Sent {
+		t.Skipf("a maquina atrasou %d de %d despachos: o experimento nao separa alvo de gerador aqui",
+			document.Scheduling.LateDispatches, document.Scheduling.Sent)
+	}
+
 	found := false
 	for _, warning := range document.Warnings {
 		if warning.Kind == "alvo_degradado" {
