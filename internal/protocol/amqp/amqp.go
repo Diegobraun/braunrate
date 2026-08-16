@@ -80,7 +80,6 @@ type Protocol struct {
 
 type conn struct {
 	link     *amqp.Connection
-	mu       sync.Mutex
 	canais   chan *amqp.Channel
 	confirms bool
 }

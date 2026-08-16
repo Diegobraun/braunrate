@@ -329,7 +329,7 @@ func countPartitions(brokers []string, topic string) int {
 	if err != nil {
 		return 0
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	partitions, err := conn.ReadPartitions(topic)
 	if err != nil {
 		return 0

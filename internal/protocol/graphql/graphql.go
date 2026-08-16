@@ -275,7 +275,7 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 	if err != nil {
 		return protocol.Response{Class: transport.Classify(err), Detail: transport.SummarizeError(err)}
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	content, err := io.ReadAll(response.Body)
 	if err != nil {

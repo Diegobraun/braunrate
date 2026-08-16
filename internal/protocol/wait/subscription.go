@@ -139,7 +139,7 @@ func openKafka(config *Config, brokers []string) (*subscription, error) {
 	if err != nil {
 		return nil, fmt.Errorf("nao consegui falar com o broker %s: %v", brokers[0], err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	partitions, err := conn.ReadPartitions(config.Topic)
 	if err != nil {
@@ -218,7 +218,7 @@ func lastOffset(broker, topic string, partition int) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("nao consegui falar com o lider da particao %d de %q: %v", partition, topic, err)
 	}
-	defer leader.Close()
+	defer func() { _ = leader.Close() }()
 
 	offset, err := leader.ReadLastOffset()
 	if err != nil {

@@ -37,7 +37,7 @@ slo:
 func TestGoScenarioRunsOnSameEngineWithSameKeys(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"status":"ABERTO"}`)
+		_, _ = fmt.Fprint(w, `{"status":"ABERTO"}`)
 	}))
 	t.Cleanup(server.Close)
 

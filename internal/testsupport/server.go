@@ -127,13 +127,13 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 		s.randomMu.Unlock()
 		if draw < s.opts.ErrorProportion {
 			w.WriteHeader(s.opts.ErrorStatus)
-			fmt.Fprintf(w, `{"id":%d,"status":"ERRO"}`, number)
+			_, _ = fmt.Fprintf(w, `{"id":%d,"status":"ERRO"}`, number)
 			return
 		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"id":%d,"status":"OK","caminho":%q}`, number, r.URL.Path)
+	_, _ = fmt.Fprintf(w, `{"id":%d,"status":"OK","caminho":%q}`, number, r.URL.Path)
 }
 
 // The authenticated journey exists so the README example works without anyone
@@ -154,7 +154,7 @@ func (s *Server) requireToken(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer "+s.token() {
 			w.WriteHeader(http.StatusUnauthorized)
-			fmt.Fprint(w, `{"erro":"token ausente ou invalido"}`)
+			_, _ = fmt.Fprint(w, `{"erro":"token ausente ou invalido"}`)
 			return
 		}
 		handler(w, r)
@@ -168,17 +168,17 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	fmt.Fprintf(w, `{"access_token":%q,"expira_em":1800}`, s.token())
+	_, _ = fmt.Fprintf(w, `{"access_token":%q,"expira_em":1800}`, s.token())
 }
 
 func (s *Server) handleOrder(w http.ResponseWriter, r *http.Request) {
 	order := strings.TrimPrefix(r.URL.Path, "/pedidos/")
 	if order == "" {
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, `{"erro":"informe o pedido"}`)
+		_, _ = fmt.Fprint(w, `{"erro":"informe o pedido"}`)
 		return
 	}
-	fmt.Fprintf(w, `{"id":%q,"status":"ABERTO","ultimaFatura":{"id":"f-%s","valor":199.90,"status":"ABERTA"}}`,
+	_, _ = fmt.Fprintf(w, `{"id":%q,"status":"ABERTO","ultimaFatura":{"id":"f-%s","valor":199.90,"status":"ABERTA"}}`,
 		order, order)
 }
 
@@ -188,5 +188,5 @@ func (s *Server) handlePayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	invoice := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/faturas/"), "/pagar")
-	fmt.Fprintf(w, `{"id":%q,"status":"PAGA","pagoEm":"2026-08-15T00:00:00Z"}`, invoice)
+	_, _ = fmt.Fprintf(w, `{"id":%q,"status":"PAGA","pagoEm":"2026-08-15T00:00:00Z"}`, invoice)
 }

@@ -49,7 +49,7 @@ func topic(t *testing.T, brokers string, name string, partitions int) string {
 	if err != nil {
 		t.Fatalf("nao consegui falar com o broker: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	if err := conn.CreateTopics(kafka.TopicConfig{
 		Topic:             complete,
 		NumPartitions:     partitions,

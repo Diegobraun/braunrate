@@ -60,7 +60,7 @@ func serveGraphQL(w http.ResponseWriter, operation, body string) {
 	if operation != "" {
 		w.Header().Set("X-Operacao", operation)
 	}
-	fmt.Fprint(w, body)
+	_, _ = fmt.Fprint(w, body)
 }
 
 func operationName(query string) string {

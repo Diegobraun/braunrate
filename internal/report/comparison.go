@@ -1,17 +1,15 @@
 package report
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
 	"github.com/Diegobraun/braunrate/internal/report/comparison"
 )
 
-func Comparison(out io.Writer, c comparison.Comparison) {
-	write := func(format string, args ...any) {
-		fmt.Fprintf(out, format+"\n", args...)
-	}
+func Comparison(out io.Writer, c comparison.Comparison) error {
+	lines := &lineWriter{out: out}
+	write := lines.writef
 
 	write("")
 	write("%s", c.Sentence)
@@ -55,6 +53,7 @@ func Comparison(out io.Writer, c comparison.Comparison) {
 	}
 	write("  Duas execucoes nao dao intervalo de confianca: variacao abaixo de %.0f%% e tratada como ruido.", comparison.AcceptedNoise*100)
 	write("")
+	return lines.err
 }
 
 func change(difference comparison.Difference) string {

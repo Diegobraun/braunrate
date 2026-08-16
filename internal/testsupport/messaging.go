@@ -46,7 +46,7 @@ func (p *Processor) Start() error {
 	if err != nil {
 		return fmt.Errorf("nao consegui falar com o broker: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	partitions, err := conn.ReadPartitions(p.opts.Input)
 	if err != nil {
@@ -126,7 +126,7 @@ func lastOffset(broker, topic string, partition int) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("nao consegui falar com o lider da particao %d de %q: %w", partition, topic, err)
 	}
-	defer leader.Close()
+	defer func() { _ = leader.Close() }()
 
 	offset, err := leader.ReadLastOffset()
 	if err != nil {

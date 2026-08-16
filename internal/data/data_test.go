@@ -92,7 +92,8 @@ func TestRandomConsumeWithSameSeedRepeatsSequence(t *testing.T) {
 		}
 		return read
 	}
-	if strings.Join(sequence(), ",") != strings.Join(sequence(), ",") {
+	first, again := strings.Join(sequence(), ","), strings.Join(sequence(), ",")
+	if first != again {
 		t.Error("mesma semente precisa produzir a mesma sequencia; sem isso a execucao nao e reproduzivel")
 	}
 }

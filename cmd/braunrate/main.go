@@ -143,7 +143,12 @@ func execute(args []string) int {
 	if document.Valid() {
 		document.SLO = slo.Evaluate(c.SLO, document)
 	}
-	report.Summary(os.Stdout, document, document.SLO)
+	// A failed write to stdout does not change what happened to the target, so
+	// the verdict below stands; what cannot happen is the report vanishing in
+	// silence.
+	if err := report.Summary(os.Stdout, document, document.SLO); err != nil {
+		fmt.Fprintf(os.Stderr, "nao consegui escrever o resumo: %v\n", err)
+	}
 
 	if *resultPath != "" {
 		if err := writeJSON(*resultPath, document); err != nil {
@@ -209,7 +214,7 @@ func writeHTML(path string, document metrics.Document) error {
 		return fmt.Errorf("erro ao criar %s: %v", path, err)
 	}
 	if err := report.HTML(file, document); err != nil {
-		file.Close()
+		_ = file.Close()
 		return fmt.Errorf("erro ao gerar o relatorio HTML: %v", err)
 	}
 	// Close reports the write the operating system had not flushed yet. Deferred
@@ -227,7 +232,7 @@ func writeCSVFile(path string, document metrics.Document) error {
 		return fmt.Errorf("erro ao criar %s: %v", path, err)
 	}
 	if err := report.CSV(file, document); err != nil {
-		file.Close()
+		_ = file.Close()
 		return fmt.Errorf("erro ao gerar o CSV: %v", err)
 	}
 	if err := file.Close(); err != nil {
@@ -310,7 +315,10 @@ func compare(args []string) int {
 	}
 
 	result := comparison.Compare(before, after)
-	report.Comparison(os.Stdout, result)
+	if err := report.Comparison(os.Stdout, result); err != nil {
+		fmt.Fprintf(os.Stderr, "nao consegui escrever a comparacao: %v\n", err)
+		return 2
+	}
 	if !result.Comparable {
 		return 3
 	}
@@ -366,12 +374,18 @@ func debug(args []string) int {
 
 	failed := false
 	for index, observation := range observations {
-		report.Debug(os.Stdout, index+1, observation, *showBody)
+		if err := report.Debug(os.Stdout, index+1, observation, *showBody); err != nil {
+			fmt.Fprintf(os.Stderr, "nao consegui escrever a depuracao: %v\n", err)
+			return 2
+		}
 		if observation.Class != protocol.Success {
 			failed = true
 		}
 	}
-	report.IterationVars(os.Stdout, vars)
+	if err := report.IterationVars(os.Stdout, vars); err != nil {
+		fmt.Fprintf(os.Stderr, "nao consegui escrever a depuracao: %v\n", err)
+		return 2
+	}
 
 	fmt.Println()
 	if failed {

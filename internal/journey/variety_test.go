@@ -101,7 +101,7 @@ func TestEveryDeclaredValueReachesTarget(t *testing.T) {
 
 		switch {
 		case r.URL.Path == "/auth/token":
-			fmt.Fprint(w, `{"access_token":"token-de-teste"}`)
+			_, _ = fmt.Fprint(w, `{"access_token":"token-de-teste"}`)
 			return
 		case strings.HasPrefix(r.URL.Path, "/pedidos/"):
 			received.note("caminho", strings.TrimPrefix(r.URL.Path, "/pedidos/"))
@@ -122,7 +122,7 @@ func TestEveryDeclaredValueReachesTarget(t *testing.T) {
 			_ = json.Unmarshal(body, &sent)
 			received.note("graphql", fmt.Sprint(sent.Vars["id"]))
 		}
-		fmt.Fprint(w, `{"data":{"pedido":{"status":"ABERTO"}},"status":"ABERTO"}`)
+		_, _ = fmt.Fprint(w, `{"data":{"pedido":{"status":"ABERTO"}},"status":"ABERTO"}`)
 	}))
 	t.Cleanup(server.Close)
 

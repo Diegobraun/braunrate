@@ -48,13 +48,13 @@ func TestAuthDoesNotFreezeFirstIterationData(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Path == "/auth/token" {
-			fmt.Fprint(w, `{"access_token":"token-de-teste"}`)
+			_, _ = fmt.Fprint(w, `{"access_token":"token-de-teste"}`)
 			return
 		}
 		mu.Lock()
 		seen[filepath.Base(r.URL.Path)]++
 		mu.Unlock()
-		fmt.Fprint(w, `{"status":"ABERTO"}`)
+		_, _ = fmt.Fprint(w, `{"status":"ABERTO"}`)
 	}))
 	t.Cleanup(server.Close)
 

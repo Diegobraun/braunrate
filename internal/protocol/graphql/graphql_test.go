@@ -96,7 +96,7 @@ func runAgainst(t *testing.T, body string, status int) protocol.Response {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
-		fmt.Fprint(w, body)
+		_, _ = fmt.Fprint(w, body)
 	}))
 	t.Cleanup(server.Close)
 

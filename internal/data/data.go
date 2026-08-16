@@ -52,7 +52,7 @@ func openCSV(source scenario.DataSource, root string) (Source, error) {
 	if err != nil {
 		return nil, fmt.Errorf("nao consegui abrir o arquivo de dados %q: %w", source.File, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	reader := csv.NewReader(file)
 	reader.TrimLeadingSpace = true

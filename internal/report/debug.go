@@ -1,7 +1,6 @@
 package report
 
 import (
-	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -14,10 +13,9 @@ const bodyLimit = 1200
 
 // Debug exists so a broken correlation shows before the load, not after
 // minutes of running.
-func Debug(out io.Writer, number int, observation engine.Observation, showBody bool) {
-	write := func(format string, args ...any) {
-		fmt.Fprintf(out, format+"\n", args...)
-	}
+func Debug(out io.Writer, number int, observation engine.Observation, showBody bool) error {
+	output := &lineWriter{out: out}
+	write := output.writef
 
 	mark := "ok"
 	if observation.Class != protocol.Success {
@@ -51,14 +49,17 @@ func Debug(out io.Writer, number int, observation engine.Observation, showBody b
 	if observation.Class != protocol.Success && len(observation.Failures) == 0 {
 		write("  problema:   %s", classNames[string(observation.Class)])
 	}
+	return output.err
 }
 
-func IterationVars(out io.Writer, vars map[string]string) {
-	fmt.Fprintln(out, "")
-	fmt.Fprintln(out, "variaveis no fim da iteracao")
+func IterationVars(out io.Writer, vars map[string]string) error {
+	output := &lineWriter{out: out}
+	output.writef("")
+	output.writef("variaveis no fim da iteracao")
 	for _, name := range sortNames(vars) {
-		fmt.Fprintf(out, "  %s = %s\n", name, encurtar(vars[name]))
+		output.writef("  %s = %s", name, encurtar(vars[name]))
 	}
+	return output.err
 }
 
 func describeConfig(config protocol.Config) []string {

@@ -26,10 +26,9 @@ func ProgressLine(snapshot metrics.Snapshot, targetRate float64, remaining time.
 
 // Summary has two layers: the plain-language sentence says what happened, and
 // the number sits right below it for whoever needs it.
-func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) {
-	write := func(format string, args ...any) {
-		fmt.Fprintf(out, format+"\n", args...)
-	}
+func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) error {
+	lines := &lineWriter{out: out}
+	write := lines.writef
 
 	write("")
 	write("%s — contra %s", document.Run.Spec, document.Run.Target)
@@ -154,6 +153,7 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) {
 		write("  Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.")
 	}
 	write("")
+	return lines.err
 }
 
 func seeds(values map[string]int64) string {

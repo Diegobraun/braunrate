@@ -30,10 +30,10 @@ func TestHTTPWaitPollsUntilEffectAppears(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if calls.Add(1) < 3 {
-			fmt.Fprint(w, `{"status":"PENDENTE"}`)
+			_, _ = fmt.Fprint(w, `{"status":"PENDENTE"}`)
 			return
 		}
-		fmt.Fprint(w, `{"status":"PROCESSADO"}`)
+		_, _ = fmt.Fprint(w, `{"status":"PROCESSADO"}`)
 	}))
 	t.Cleanup(server.Close)
 
@@ -63,7 +63,7 @@ timeout: 2s
 
 func TestHTTPWaitTimeoutSaysWhatItSawAndHowManyPolls(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"status":"PENDENTE"}`)
+		_, _ = fmt.Fprint(w, `{"status":"PENDENTE"}`)
 	}))
 	t.Cleanup(server.Close)
 
