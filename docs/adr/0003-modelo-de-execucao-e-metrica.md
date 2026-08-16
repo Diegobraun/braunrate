@@ -76,6 +76,16 @@ Isso e o que mantem a execucao distribuida possivel sem reescrita (estudo §3.8)
 
 A execucao produz um documento de resultado versionado (`versao_do_formato`) contendo: bloco de ambiente, plano de carga aplicado, agregados por chave, histogramas serializados, series temporais, classificacao de erros, avisos de saturacao e veredito de SLO. Relatorio HTML, JSON, CSV, sumario markdown e comparacao entre execucoes sao **projecoes** desse documento — nenhum deles recalcula nada por conta propria.
 
+### 7. Todo custo de preparacao e pago antes de o relogio comecar
+
+O relogio da execucao so comeca depois que todos os protocolos terminaram de se preparar. Preparacao e montagem, nao carga: se ela entrar no relogio, os primeiros instantes agendados nascem no passado e a corrida se declara saturada por um atraso que o gerador nunca causou — a ferramenta invalida a propria medicao.
+
+Isso ja aconteceu duas vezes. Na Fase 5, a assinatura do consumidor do passo `aguardar` levava centenas de milissegundos e foi movida para fora do laco. Na Fase 7, o aperto de mao de TLS e SASL repetiu o problema, agora empurrando o agendamento inteiro. A regra geral existe para nao haver uma terceira:
+
+**Protocolo novo nasce obrigado a declarar o que precisa preparar.** Quem tem custo de abertura — conexao, assinatura, aperto de mao, negociacao de esquema — implementa `Preparable` e paga ali. Quem nao implementa esta afirmando que abrir custa o mesmo que operar, e essa afirmacao passa a ser explicita em vez de acidental.
+
+Consequencia aceita: o tempo de preparacao nao aparece em nenhum percentil. Ele e custo de montagem do teste, e reportar montagem como latencia do alvo seria a mesma mentira que a omissao coordenada, so que na outra direcao.
+
 ## Alternativas descartadas
 
 - **Corrigir omissao coordenada por pos-processamento** (estilo `recordValueWithExpectedInterval`): funciona como remendo quando nao se controla o gerador, mas inventa amostras. Aqui controlamos o agendamento, entao medir certo desde a origem e melhor do que estimar depois.

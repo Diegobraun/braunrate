@@ -90,8 +90,15 @@ type WithAvailability interface {
 }
 
 // Preparable is implemented by protocols that must be listening before the
-// load starts. Without it the first iteration's message can arrive before
-// anyone waits for it, and the timeout would be braunrate's, not the service's.
+// load starts, or that pay a cost to open — a subscription, a TLS and SASL
+// handshake, a schema negotiation. Everything done here happens before the run
+// clock starts, so it never lands in any percentile.
+//
+// A protocol that does not implement this is asserting that opening costs the
+// same as operating. When that assertion was wrong it invalidated the run
+// twice: the consumer subscription in phase 5 and the handshake in phase 7 both
+// pushed the first scheduled instants into the past, and the run declared
+// itself saturated for a delay the generator never caused. See ADR 0003 §7.
 type Preparable interface {
 	Prepare(runContext context.Context, request Request) error
 }
