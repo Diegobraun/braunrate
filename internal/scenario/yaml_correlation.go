@@ -236,8 +236,15 @@ func readAuth(node *yaml.Node) (*Auth, error) {
 		case "senha":
 			auth.Password = value.Value
 		default:
-			return nil, nodeError(key, "chave desconhecida em autenticacao: %q\n"+
-				"    disponiveis: tipo, obter, renovar_apos, cabecalho, usuario, senha", key.Value)
+			return nil, nodeError(key, "chave desconhecida em autenticacao: %q\n%s", key.Value,
+				suggestWithExample(key.Value, []string{"tipo", "obter", "renovar_apos", "cabecalho", "usuario", "senha"},
+					"    'obter' carrega uma requisicao inteira mais a captura do token:\n"+
+						"      autenticacao:\n"+
+						"        tipo: token\n"+
+						"        obter:\n"+
+						"          http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: \"${SENHA}\" } }\n"+
+						"          captura: { token: \"$.access_token\" }\n"+
+						"        renovar_apos: 25m"))
 		}
 	}
 

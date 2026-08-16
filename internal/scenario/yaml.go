@@ -134,7 +134,12 @@ func Parse(content []byte) (Spec, error) {
 			spec.SLO = rules
 		default:
 			return spec, nodeError(key, "chave desconhecida no topo do cenario: %q\n%s",
-				key.Value, suggest(key.Value, TopKeys))
+				key.Value, suggestWithExample(key.Value, TopKeys, "    um cenario minimo tem quatro delas:\n"+
+					"      nome: Consulta de pedidos\n"+
+					"      alvo: http://127.0.0.1:8080\n"+
+					"      carga: { perfis: [ { patamar: { taxa: 100/s, durante: 1m } } ] }\n"+
+					"      cenario:\n"+
+					"        - http: GET /pedidos/1"))
 		}
 	}
 
@@ -211,7 +216,12 @@ func readLoad(node *yaml.Node) (LoadPlan, error) {
 		key := node.Content[index]
 		value := node.Content[index+1]
 		if !slices.Contains(loadKeys, key.Value) {
-			return plan, nodeError(key, "chave desconhecida em carga: %q\n%s", key.Value, suggest(key.Value, loadKeys))
+			return plan, nodeError(key, "chave desconhecida em carga: %q\n%s", key.Value,
+				suggestWithExample(key.Value, loadKeys, "    exemplo:\n"+
+					"      carga:\n"+
+					"        perfis:\n"+
+					"          - rampa: { de: 10/s, ate: 200/s, durante: 30s }\n"+
+					"          - patamar: { taxa: 200/s, durante: 5m }"))
 		}
 		nodes[key.Value] = value
 	}
@@ -352,7 +362,10 @@ func readPhase(node *yaml.Node) (Phase, error) {
 			phase.For = duration
 		default:
 			return phase, nodeError(key, "chave desconhecida no perfil %q: %q\n%s", kindNode.Value, key.Value,
-				suggest(key.Value, []string{"de", "ate", "taxa", "durante"}))
+				suggestWithExample(key.Value, []string{"de", "ate", "taxa", "durante"},
+					"    rampa usa de/ate/durante; patamar, pico e constante usam taxa/durante:\n"+
+						"      - rampa: { de: 10/s, ate: 200/s, durante: 30s }\n"+
+						"      - patamar: { taxa: 200/s, durante: 5m }"))
 		}
 	}
 	if phase.Kind == PhaseRamp && phase.From == 0 && phase.To == 0 {
@@ -441,7 +454,12 @@ func readStep(node *yaml.Node) (Step, error) {
 		default:
 			if _, exists := protocol.Lookup(key.Value); !exists {
 				return step, nodeError(key, "nao reconheco %q como tipo de passo\n%s",
-					key.Value, suggest(key.Value, append(protocol.Registered(), StepKeys...)))
+					key.Value, suggestWithExample(key.Value, append(protocol.Registered(), StepKeys...),
+						"    um passo e um mapa com o protocolo e o que ele leva:\n"+
+							"      - http: GET /pedidos/1\n"+
+							"        nome: consultar pedido\n"+
+							"        verificar: { status: 200 }\n"+
+							"        captura: { faturaId: \"$.ultimaFatura.id\" }"))
 			}
 			if step.Protocol != "" {
 				return step, nodeError(key, "o passo declara mais de um protocolo: %q e %q", step.Protocol, key.Value)
@@ -467,6 +485,13 @@ func readStep(node *yaml.Node) (Step, error) {
 		step.Name = config.AggregationKey()
 	}
 	return step, nil
+}
+
+// Knowing that "perfis" exists does not teach that "perfis" is a list of maps
+// with a profile kind inside. Where the shape is not obvious from the name, the
+// message carries the shape.
+func suggestWithExample(received string, valid []string, example string) string {
+	return suggest(received, valid) + "\n" + example
 }
 
 func suggest(received string, valid []string) string {

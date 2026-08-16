@@ -17,7 +17,7 @@ Classificacao: **bloqueia** (a pessoa nao termina sozinha), **atrasa** (termina,
 | 2 | Execucao em que nenhuma jornada chegou ao fim sai com "Passou" e codigo 0 | B | bloqueia |
 | 3 | Esperar efeito visivel por HTTP e impossivel, e a mensagem nao diz o que fazer | C | bloqueia |
 | 4 | Alvo fora do ar vira "erro de configuracao do cenario" — diagnostico errado | B | bloqueia |
-| 5 | Erro de chave desconhecida lista as chaves validas mas nao mostra a forma certa | A | atrasa |
+| 5 | ~~Erro de chave desconhecida lista as chaves validas mas nao mostra a forma certa~~ — **resolvido** | A | atrasa |
 | 6 | Variavel de ambiente nao definida vira texto vazio, sem aviso | A | atrasa |
 | 7 | Caminho fixo escapa da verificacao de variedade | A | atrasa |
 | 8 | Passo que nunca executou some do relatorio | B | atrasa |
@@ -55,7 +55,7 @@ Sem consultar o README, nao ha como saber que existe `nome`, `alvo`, `carga`, `c
 
 A mensagem acima e o erro cru do Go, na unica parte do produto que nao fala portugues, e nao diz qual seria o proximo passo.
 
-### A3 e A5 — Chave desconhecida lista as validas mas nao mostra a forma (atrasa)
+### A3 e A5 — Chave desconhecida lista as validas mas nao mostra a forma (atrasa) — RESOLVIDO
 
 ```
 $ braunrate validar cenario.yaml
@@ -71,6 +71,18 @@ erro no cenario: cenario.yaml:11:3: chave desconhecida em autenticacao: "url"
 ```
 
 Erros que ja mostram exemplo (perfil desconhecido, passo que nao e mapa) resolveram em uma edicao. Os que so listam chave custaram duas.
+
+**Resolvido.** Chave desconhecida no topo, em `carga`, em `autenticacao`, num perfil ou num passo passa a mostrar a forma:
+
+```
+erro no cenario: cenario.yaml:4:3: chave desconhecida em carga: "taxa"
+    disponiveis: modelo, perfis, usuarios, duracao, intervalo_entre_iteracoes
+    exemplo:
+      carga:
+        perfis:
+          - rampa: { de: 10/s, ate: 200/s, durante: 30s }
+          - patamar: { taxa: 200/s, durante: 5m }
+```
 
 ### A4 — Sugestao dispara para palavra sem relacao (incomoda)
 

@@ -61,3 +61,58 @@ func TestYAMLSyntaxErrorAnswersInPortugueseWithThePositionAndTheFix(t *testing.T
 		})
 	}
 }
+
+// Knowing that "perfis" exists does not teach that "perfis" is a list of maps
+// with a profile kind inside. A3 and A5 of the audit cost two edits each
+// because the message listed names and stopped there.
+func TestUnknownKeyShowsTheShapeAndNotOnlyTheNames(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+		shape   string
+	}{
+		{
+			name:    "carga",
+			content: "nome: x\nalvo: http://a\ncarga:\n  taxa: 100/s\ncenario:\n  - http: GET /\n",
+			shape:   "patamar: { taxa: 200/s, durante: 5m }",
+		},
+		{
+			name: "autenticacao",
+			content: "nome: x\nalvo: http://a\nautenticacao:\n  tipo: token\n  url: /auth\n" +
+				"carga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n",
+			shape: "captura: { token: \"$.access_token\" }",
+		},
+		{
+			name:    "chave de topo",
+			content: "nome: x\nalvo: http://a\nvelocidade: 10\ncenario:\n  - http: GET /\n",
+			shape:   "alvo: http://127.0.0.1:8080",
+		},
+		{
+			name: "perfil",
+			content: "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamar: { velocidade: 1/s, durante: 1s }\n" +
+				"cenario:\n  - http: GET /\n",
+			shape: "rampa: { de: 10/s, ate: 200/s, durante: 30s }",
+		},
+		{
+			name: "passo",
+			content: "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\n" +
+				"cenario:\n  - http: GET /\n    conferir: { status: 200 }\n",
+			shape: "verificar: { status: 200 }",
+		},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			_, err := scenario.Parse([]byte(testCase.content))
+			if err == nil {
+				t.Fatal("a chave desconhecida foi aceita")
+			}
+			if !strings.Contains(err.Error(), "disponiveis:") {
+				t.Fatalf("a mensagem nao lista as chaves validas: %v", err)
+			}
+			if !strings.Contains(err.Error(), testCase.shape) {
+				t.Fatalf("a mensagem nao mostra a forma (%q): %v", testCase.shape, err)
+			}
+		})
+	}
+}
