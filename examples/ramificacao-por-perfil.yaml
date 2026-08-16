@@ -7,24 +7,24 @@
 # A ramificação honesta é por dado: a coluna decide a rota, e o CSV declara a
 # proporção. Aqui são dois terços pessoa física para um terço pessoa jurídica,
 # porque foi assim que as linhas foram escritas.
-nome: Ramificação por perfil de cliente
-alvo: ${ALVO:-http://127.0.0.1:8080}
+name: Ramificação por perfil de cliente
+target: ${ALVO:-http://127.0.0.1:8080}
 
-dados:
+data:
   clientes:
-    arquivo: dados/clientes.csv
-    consumo: circular
+    file: dados/clientes.csv
+    consume: circular
 
-carga:
-  perfis:
-    - patamar: { taxa: 50/s, durante: 5s }
+load:
+  profiles:
+    - steady: { rate: 50/s, duration: 5s }
 
-cenario:
-  - nome: consultar limite
+scenario:
+  - name: consultar limite
     http:
-      metodo: GET
-      caminho: /${clientes.rota}/${clientes.id}/limite
-    verificar:
+      method: GET
+      path: /${clientes.rota}/${clientes.id}/limite
+    expect:
       status: 200
       # Prova que a rota veio do dado: o alvo embutido devolve o caminho que
       # recebeu. Sem isso, uma coluna vazia interpolaria e a execução passaria
@@ -33,7 +33,7 @@ cenario:
 
 slo:
   - consultar limite: { p95: < 200ms }
-  - global: { erros: < 1 }
+  - global: { errors: < 1 }
 
 # O que esta linha única esconde: se pessoa jurídica for mais cara que pessoa
 # física, o p95 do passo é o p95 da população cara usando o nome do passo

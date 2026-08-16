@@ -1,50 +1,50 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
-nome: Jornada de cobrança
-alvo: http://127.0.0.1:8080
+name: Jornada de cobrança
+target: http://127.0.0.1:8080
 
-variaveis:
+variables:
   usuario: ${USUARIO:-ana}
 
-autenticacao:
-  tipo: token
-  obter:
+auth:
+  type: token
+  obtain:
     http:
-      metodo: POST
-      caminho: /auth/token
-      corpo: { usuario: "${usuario}", senha: "${SENHA:-segredo}" }
-    captura: { token: $.access_token }
-  renovar_apos: 25m
+      method: POST
+      path: /auth/token
+      body: { usuario: "${usuario}", senha: "${SENHA:-segredo}" }
+    capture: { token: $.access_token }
+  refreshAfter: 25m
 
-dados:
+data:
   assinantes:
-    arquivo: dados/assinantes.csv
-    consumo: circular
+    file: dados/assinantes.csv
+    consume: circular
 
-carga:
-  perfis:
-    - rampa: { de: 50/s, ate: 300/s, durante: 5s }
-    - patamar: { taxa: 300/s, durante: 5s }
+load:
+  profiles:
+    - ramp: { from: 50/s, to: 300/s, duration: 5s }
+    - steady: { rate: 300/s, duration: 5s }
 
-cenario:
+scenario:
   - http: GET /pedidos/${assinantes.id}
-    nome: consultar pedido
-    verificar:
+    name: consultar pedido
+    expect:
       status: 200
       json: { $.ultimaFatura.status: ABERTA }
-    captura:
+    capture:
       faturaId: $.ultimaFatura.id
 
-  - nome: pagar fatura
+  - name: pagar fatura
     http:
-      metodo: POST
-      caminho: /faturas/${faturaId}/pagar
-      corpo: { valor: 199.90 }
-    verificar:
+      method: POST
+      path: /faturas/${faturaId}/pagar
+      body: { valor: 199.90 }
+    expect:
       status: 200
       json: { $.status: PAGA }
 
 slo:
   - consultar pedido: { p95: < 150ms }
   - pagar fatura: { p95: < 200ms }
-  - jornada: { p95: < 2s, p99: < 5s }
-  - global: { erros: < 0.1 }
+  - journey: { p95: < 2s, p99: < 5s }
+  - global: { errors: < 0.1 }

@@ -45,9 +45,9 @@ func (manager *Manager) Header(runContext context.Context, values *runtime.Value
 		return "Authorization", "Basic " + credential, nil
 	}
 
-	// Credencial que ja esta no ambiente — 'tipo: cabecalho' com uma chave de
-	// API — nao tem login para fazer: sem este desvio o gerenciador ia buscar um
-	// bloco 'obter' que o cenario nunca declarou.
+	// A credential already in the environment — 'type: header' with an API key —
+	// has no login to perform: without this branch the manager would look for an
+	// 'obtain' block the scenario never declared.
 	if manager.config.Obtain != nil {
 		if err := manager.ensureToken(runContext, values); err != nil {
 			return "", "", err
@@ -65,7 +65,7 @@ func (manager *Manager) Header(runContext context.Context, values *runtime.Value
 
 	name, model, found := strings.Cut(manager.config.Header, ":")
 	if !found {
-		return "", "", fmt.Errorf("o cabeçalho de autenticação precisa ser \"Nome: valor\", recebido %q", manager.config.Header)
+		return "", "", fmt.Errorf("the auth header has to be \"Name: value\", got %q", manager.config.Header)
 	}
 	return strings.TrimSpace(name), strings.TrimSpace(values.Resolve(model)), nil
 }
@@ -82,10 +82,10 @@ func (manager *Manager) ensureToken(runContext context.Context, values *runtime.
 	obtainValues := runtime.New(0, 0, input)
 	response, err := manager.execute(runContext, *manager.config.Obtain, obtainValues)
 	if err != nil {
-		return fmt.Errorf("não consegui obter a autenticação (%s): %w", manager.config.Obtain.AggregationKey(), err)
+		return fmt.Errorf("I could not obtain the credential (%s): %w", manager.config.Obtain.AggregationKey(), err)
 	}
 	if response.Status >= 400 {
-		return fmt.Errorf("a requisição de autenticação respondeu %d; confira usuário, senha e caminho em 'autenticacao.obter'", response.Status)
+		return fmt.Errorf("the auth request answered %d; check the user, the password and the path in 'auth.obtain'", response.Status)
 	}
 
 	// Only what the auth request produced is kept. Keeping the whole context

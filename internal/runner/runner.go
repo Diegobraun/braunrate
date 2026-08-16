@@ -82,7 +82,7 @@ func Load(path string) (scenario.Spec, engine.Plan, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		spec, parseErr := scenario.ParseFile(path)
-		return spec, engine.Plan{}, badFile(parseErr, "erro no cenário: %v", parseErr)
+		return spec, engine.Plan{}, badFile(parseErr, "error in the scenario: %v", parseErr)
 	}
 	return Check(content, path)
 }
@@ -97,7 +97,7 @@ func Check(content []byte, name string) (scenario.Spec, engine.Plan, error) {
 			positioned.File = name
 			err = positioned
 		}
-		return spec, engine.Plan{}, badFile(err, "erro no cenário: %v", err)
+		return spec, engine.Plan{}, badFile(err, "error in the scenario: %v", err)
 	}
 	if err := spec.Validate(); err != nil {
 		return spec, engine.Plan{}, badFile(err, "%v", err)
@@ -195,7 +195,7 @@ func Debug(runContext context.Context, path string, version string) (Iteration, 
 	observations, vars, err := executor.Debug(runContext)
 	protocol.CloseAll()
 	if err != nil {
-		return Iteration{Spec: spec}, Fault{Exit: ExitSLO, Message: fmt.Sprintf("não consegui chegar ao primeiro passo: %v", err)}
+		return Iteration{Spec: spec}, Fault{Exit: ExitSLO, Message: fmt.Sprintf("I could not reach the first step: %v", err)}
 	}
 	return Iteration{Observations: observations, Vars: vars, Spec: spec}, nil
 }
@@ -230,13 +230,13 @@ func WriteHTML(path string, document metrics.Document) error {
 	}
 	if err := report.HTML(file, document); err != nil {
 		_ = file.Close()
-		return fmt.Errorf("erro ao gerar o relatório HTML: %v", err)
+		return fmt.Errorf("error generating the HTML report: %v", err)
 	}
 	// Close reports the write the operating system had not flushed yet. Deferred
 	// and discarded, a full disk produced a truncated file and a message saying
 	// the report was ready.
 	if err := file.Close(); err != nil {
-		return fmt.Errorf("erro ao fechar %s, o relatório pode estar incompleto: %v", path, err)
+		return fmt.Errorf("error closing %s, the report may be incomplete: %v", path, err)
 	}
 	return nil
 }
@@ -248,10 +248,10 @@ func WriteComparisonHTML(path string, result comparison.Comparison, version stri
 	}
 	if err := report.ComparisonHTML(file, result, version); err != nil {
 		_ = file.Close()
-		return fmt.Errorf("erro ao gerar a comparação em HTML: %v", err)
+		return fmt.Errorf("error generating the comparison in HTML: %v", err)
 	}
 	if err := file.Close(); err != nil {
-		return fmt.Errorf("erro ao fechar %s, a comparação pode estar incompleta: %v", path, err)
+		return fmt.Errorf("error closing %s, the comparison may be incomplete: %v", path, err)
 	}
 	return nil
 }
@@ -315,24 +315,24 @@ func (iteration Iteration) Failed() bool {
 func Describe(spec scenario.Spec, plan engine.Plan) []string {
 	var lines []string
 	if spec.Load.Closed() {
-		lines = append(lines, fmt.Sprintf("Cenário válido: %q, %s, %d usuários em laço fechado durante %s.",
-			spec.Name, text.Count(int64(len(spec.Steps)), "passo", "passos"), spec.Load.Users, plan.Duration()))
+		lines = append(lines, fmt.Sprintf("Valid scenario: %q, %s, %d users in a closed loop for %s.",
+			spec.Name, text.Count(int64(len(spec.Steps)), "step", "steps"), spec.Load.Users, plan.Duration()))
 	} else {
-		lines = append(lines, fmt.Sprintf("Cenário válido: %q, %s, %s em %s.",
-			spec.Name, text.Count(int64(len(spec.Steps)), "passo", "passos"),
-			text.Count(plan.TotalRequests(), "iteração", "iterações"), plan.Duration()))
+		lines = append(lines, fmt.Sprintf("Valid scenario: %q, %s, %s in %s.",
+			spec.Name, text.Count(int64(len(spec.Steps)), "step", "steps"),
+			text.Count(plan.TotalRequests(), "iteration", "iterations"), plan.Duration()))
 	}
 	if warning, closed := scenario.ClosedModelWarning(spec); closed {
 		lines = append(lines, warning)
 	}
 	if len(spec.SLO) == 0 {
-		lines = append(lines, "Sem slo declarado: a execução nunca vai falhar por lentidao. Adicione um bloco 'slo' para virar gate de CI.")
+		lines = append(lines, "No slo declared: the run will never fail for slowness. Add an 'slo' block to turn it into a CI gate.")
 	}
 	for _, broker := range scenario.DescribeMessaging(spec.Messaging) {
-		lines = append(lines, "Mensageria: "+broker)
+		lines = append(lines, "Messaging: "+broker)
 	}
 	if len(spec.Requires) > 0 {
-		lines = append(lines, fmt.Sprintf("Depende de infraestrutura externa: %s. Sem isso a execução não roda.",
+		lines = append(lines, fmt.Sprintf("It depends on external infrastructure: %s. Without it the run does not happen.",
 			strings.Join(spec.Requires, ", ")))
 	}
 	if len(spec.MissingEnvironment) > 0 {
@@ -346,7 +346,7 @@ func Describe(spec scenario.Spec, plan engine.Plan) []string {
 // Execution is what sends the request, and a request with an empty credential
 // comes back 401 with nothing in the output connecting the two, so it refuses.
 func missingEnvironmentWarning(spec scenario.Spec) string {
-	return fmt.Sprintf("Variável de ambiente não definida: %s. Aqui isso é só aviso; na execução o campo sairia vazio, então 'braunrate execute' recusa até a variável existir.",
+	return fmt.Sprintf("Environment variable not set: %s. Here that is only a warning; in a run the field would come out empty, so 'braunrate execute' refuses until the variable exists.",
 		strings.Join(spec.MissingEnvironment, ", "))
 }
 
@@ -358,8 +358,8 @@ func RequireEnvironment(spec scenario.Spec) error {
 	}
 	first := spec.MissingEnvironment[0]
 	return Fault{Exit: ExitBadFile, Message: fmt.Sprintf(
-		"o cenário usa %s, e essa variável não está no ambiente: o campo sairia vazio e o alvo responderia com erro que não explica nada.\n"+
-			"    rode com:  %s=... braunrate execute cenario.yaml\n"+
-			"    ou declare uma reserva no próprio cenário:  variaveis: { %s: \"${%s:-valor}\" }",
+		"the scenario uses %s, and that variable is not in the environment: the field would come out empty and the target would answer with an error that explains nothing.\n"+
+			"    run with:  %s=... braunrate execute scenario.yaml\n"+
+			"    or declare a fallback in the scenario itself:  variables: { %s: \"${%s:-value}\" }",
 		strings.Join(spec.MissingEnvironment, ", "), first, strings.ToLower(first), first)}
 }

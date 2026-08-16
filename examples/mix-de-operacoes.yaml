@@ -6,45 +6,45 @@
 #
 # A escolha é por posição no ciclo, não sorteio: duas execuções do mesmo arquivo
 # aplicam o mesmo mix, então a diferença entre elas é do alvo (ADR 0016).
-nome: Mix de operações
-alvo: ${ALVO:-http://127.0.0.1:8080}
+name: Mix de operações
+target: ${ALVO:-http://127.0.0.1:8080}
 
-autenticacao:
-  tipo: token
-  obter:
-    http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: "${SENHA:-segredo}" } }
-    captura: { token: $.access_token }
+auth:
+  type: token
+  obtain:
+    http: { method: POST, path: /auth/token, body: { usuario: ana, senha: "${SENHA:-segredo}" } }
+    capture: { token: $.access_token }
 
-dados:
+data:
   pedidos:
-    arquivo: dados/assinantes.csv
-    consumo: circular
+    file: dados/assinantes.csv
+    consume: circular
 
-carga:
-  perfis:
-    - patamar: { taxa: 100/s, durante: 5s }
+load:
+  profiles:
+    - steady: { rate: 100/s, duration: 5s }
 
-cenario:
-  - nome: consultar pedido
-    peso: 60
-    http: { metodo: GET, caminho: "/pedidos/${pedidos.id}" }
-    verificar: { status: 200 }
+scenario:
+  - name: consultar pedido
+    weight: 60
+    http: { method: GET, path: "/pedidos/${pedidos.id}" }
+    expect: { status: 200 }
 
-  - nome: consultar fatura
-    peso: 30
-    http: { metodo: GET, caminho: "/pedidos/${pedidos.id}/fatura" }
-    verificar: { status: 200 }
+  - name: consultar fatura
+    weight: 30
+    http: { method: GET, path: "/pedidos/${pedidos.id}/fatura" }
+    expect: { status: 200 }
 
-  - nome: criar pedido
-    peso: 10
-    http: { metodo: POST, caminho: /pedidos, corpo: { assinante: "${pedidos.id}" } }
-    verificar: { status: 201 }
+  - name: criar pedido
+    weight: 10
+    http: { method: POST, path: /pedidos, body: { assinante: "${pedidos.id}" } }
+    expect: { status: 201 }
 
 slo:
   - consultar pedido: { p95: < 200ms }
   - consultar fatura: { p95: < 200ms }
   - criar pedido: { p95: < 300ms }
-  - global: { erros: < 1 }
+  - global: { errors: < 1 }
 
 # Não existe passo com captura aqui, e não é por acaso: peso escolhe qual
 # alternativa executar, não qual passo dentro de uma jornada. Um cenário com

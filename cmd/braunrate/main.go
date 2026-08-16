@@ -45,7 +45,7 @@ func main() {
 	switch os.Args[1] {
 	case "demo":
 		os.Exit(runDemo(os.Args[2:]))
-	case "ajuda", "help", "-h", "--help":
+	case "help", "-h", "--help":
 		usage(os.Stdout)
 		os.Exit(0)
 	case "execute":
@@ -60,6 +60,8 @@ func main() {
 		os.Exit(compare(os.Args[2:]))
 	case "new":
 		os.Exit(newOne(os.Args[2:]))
+	case "migrate":
+		os.Exit(migrate(os.Args[2:]))
 	case "import":
 		os.Exit(importCommand(os.Args[2:]))
 	case "record":
@@ -71,81 +73,82 @@ func main() {
 	case "target":
 		os.Exit(serveTarget(os.Args[2:]))
 	case "version":
-		fmt.Printf("braunrate %s\ncommit: %s\ndata: %s\nprotocolos compilados: %v\n",
+		fmt.Printf("braunrate %s\ncommit: %s\ndate: %s\ncompiled protocols: %v\n",
 			build.Version, build.Commit, build.Date, protocol.Registered())
 		os.Exit(0)
 	default:
-		fmt.Fprintf(os.Stderr, "%q não é um comando do braunrate.\n", os.Args[1])
+		fmt.Fprintf(os.Stderr, "%q is not a braunrate command.\n", os.Args[1])
 		if best, found := text.Closest(os.Args[1], commands); found {
-			fmt.Fprintf(os.Stderr, "Você quis dizer %q?\n", best)
+			fmt.Fprintf(os.Stderr, "Did you mean %q?\n", best)
 		}
-		fmt.Fprintln(os.Stderr, "\nTodos os comandos:  braunrate ajuda")
+		fmt.Fprintln(os.Stderr, "\nEvery command:  braunrate help")
 		os.Exit(2)
 	}
 }
 
 var commands = []string{
-	"demo", "new", "debug", "execute", "validate", "import", "record",
-	"report", "compare", "serve", "ui", "target", "version", "ajuda",
+	"demo", "new", "migrate", "debug", "execute", "validate", "import", "record",
+	"report", "compare", "serve", "ui", "target", "version", "help",
 }
 
 // A catalog in alphabetical order serves whoever already knows what they want.
 // Nobody arriving now can guess that the path is new, debug and only then
 // execute, nor that target exists for whoever has nothing to test against.
 func firstScreen(out io.Writer) {
-	_, _ = fmt.Fprintf(out, `braunrate %s — teste de carga com medição honesta
+	_, _ = fmt.Fprintf(out, `braunrate %s — load testing that does not lie about its own result
 
-Nunca usou? Veja funcionando em 30 segundos:
+Never used it? See it working in 30 seconds:
 
     braunrate demo
 
-Já tem uma API para testar? O caminho é:
+Already have an API to test? The path is:
 
-    1. braunrate import curl 'curl https://sua-api/pedidos -H "Authorization: ..."'
-       (ou: braunrate new cenario.yaml, para começar do zero)
+    1. braunrate import curl 'curl https://your-api/orders -H "Authorization: ..."'
+       (or: braunrate new scenario.yaml, to start from scratch)
 
-    2. braunrate debug cenario.yaml
-       roda uma vez só e mostra tudo: o que foi enviado, o que voltou, o que falhou
+    2. braunrate debug scenario.yaml
+       runs once and shows everything: what went out, what came back, what failed
 
-    3. braunrate execute cenario.yaml
-       agora sim, a carga de verdade
+    3. braunrate execute scenario.yaml
+       now the real load
 
-Todos os comandos:  braunrate ajuda
+Every command:  braunrate help
 `, build.Version)
 }
 
 func usage(out io.Writer) {
 	_, _ = fmt.Fprintf(out, `braunrate %s
 
-uso:
-  braunrate demo [--com-falha]                  sobe um alvo, roda um cenário e explica os números
-  braunrate new [cenario.yaml]                  cria um cenário de partida, comentado
-  braunrate debug <cenario.yaml>                um usuário, uma iteração, tudo visível
-  braunrate execute <cenario.yaml> [opções]
-  braunrate validate <cenario.yaml>
-  braunrate import curl "<comando curl>"        gera um cenário a partir de um curl
-  braunrate import jmx <plano.jmx>              traduz o subconjunto comum de um plano do JMeter
-  braunrate record -output <cenario.yaml>       grava um cenário a partir do que passar pelo proxy
-  braunrate report <resultado.json> [opções]    gera HTML ou CSV de um resultado já gravado
-  braunrate compare <antes.json> <depois.json> [-html <arquivo.html>]
-  braunrate serve [-addr :8080] [-dir ./cenarios]   os mesmos comandos por HTTP, local
-  braunrate ui [-addr :8080] [-dir ./cenarios]      edita e roda os cenários no navegador
-  braunrate target [opções]
+usage:
+  braunrate demo [--with-failure]               starts a target, runs a scenario and explains the numbers
+  braunrate new [scenario.yaml]                 creates a starting scenario, commented
+  braunrate migrate <scenario.yaml|dir> [-dry-run] [-output <file>]
+  braunrate debug <scenario.yaml>               one user, one iteration, everything visible
+  braunrate execute <scenario.yaml> [options]
+  braunrate validate <scenario.yaml>
+  braunrate import curl "<curl command>"        generates a scenario from a curl
+  braunrate import jmx <plan.jmx>               translates the common subset of a JMeter plan
+  braunrate record -output <scenario.yaml>      records a scenario from whatever goes through the proxy
+  braunrate report <result.json> [options]      generates HTML or CSV from a result already saved
+  braunrate compare <before.json> <after.json> [-html <file.html>]
+  braunrate serve [-addr :8080] [-dir ./scenarios]  the same commands over HTTP, local
+  braunrate ui [-addr :8080] [-dir ./scenarios]     edit and run the scenarios in the browser
+  braunrate target [options]
   braunrate version
 
-opções de execute:
-  -result <arquivo.json>      grava o documento de resultado
-  -html <arquivo.html>        grava o relatório HTML autocontido
-  -csv <arquivo.csv>          grava uma linha por passo, para planilha
-  -max-concurrent <n>         máximo de requisições simultâneas (padrão 20000)
-  -late-threshold <dur>       a partir daqui o gerador não sustentou a taxa (padrão 10ms)
-  -quiet                      não imprime progresso durante a execução
+execute options:
+  -result <file.json>         writes the result document
+  -html <file.html>           writes the self-contained HTML report
+  -csv <file.csv>             writes one line per step, for a spreadsheet
+  -max-concurrent <n>         maximum simultaneous requests (default 20000)
+  -late-threshold <dur>       past this the generator did not sustain the rate (default 10ms)
+  -quiet                      does not print progress during the run
 `, build.Version)
 }
 
 func runDemo(args []string) int {
 	set := newFlagSet("demo")
-	withFailure := set.Bool("com-falha", false, "roda contra um alvo que trava no meio, e compara com o laço fechado")
+	withFailure := set.Bool("with-failure", false, "runs against a target that freezes halfway, and compares with the closed loop")
 	_ = parseArguments(set, args)
 
 	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -165,17 +168,17 @@ func runDemo(args []string) int {
 
 func execute(args []string) int {
 	set := newFlagSet("execute")
-	resultPath := set.String("result", "", "arquivo JSON de resultado")
-	htmlPath := set.String("html", "", "arquivo HTML de relatório")
-	csvPath := set.String("csv", "", "arquivo CSV com uma linha por passo")
-	maxInflight := set.Int64("max-concurrent", 20000, "máximo de requisições simultâneas antes de desistir de disparar")
-	lateThreshold := set.Duration("late-threshold", 10*time.Millisecond, "atraso de disparo a partir do qual o gerador é considerado saturado")
-	quiet := set.Bool("quiet", false, "não imprime progresso")
-	baselinePath := set.String("baseline", "", "resultado de uma execução anterior, para as regras de regressão")
+	resultPath := set.String("result", "", "JSON result file")
+	htmlPath := set.String("html", "", "HTML report file")
+	csvPath := set.String("csv", "", "CSV file with one line per step")
+	maxInflight := set.Int64("max-concurrent", 20000, "maximum simultaneous requests before giving up on firing")
+	lateThreshold := set.Duration("late-threshold", 10*time.Millisecond, "dispatch delay past which the generator counts as saturated")
+	quiet := set.Bool("quiet", false, "does not print progress")
+	baselinePath := set.String("baseline", "", "result of a previous run, for the regression rules")
 	positional := parseArguments(set, args)
 
 	if len(positional) < 1 {
-		fmt.Fprintln(os.Stderr, "informe o arquivo de cenário")
+		fmt.Fprintln(os.Stderr, "name the scenario file")
 		return runner.ExitBadFile
 	}
 	scenarioPath := positional[0]
@@ -205,10 +208,10 @@ func execute(args []string) int {
 	}
 
 	if c.Load.Closed() {
-		fmt.Fprintf(os.Stderr, "executando %q contra %s: %d usuários em laço fechado durante %s\n",
+		fmt.Fprintf(os.Stderr, "running %q against %s: %d users in a closed loop for %s\n",
 			c.Name, c.Target, c.Load.Users, plan.Duration())
 	} else {
-		fmt.Fprintf(os.Stderr, "executando %q contra %s: %s iterações em %s\n",
+		fmt.Fprintf(os.Stderr, "running %q against %s: %s iterations in %s\n",
 			c.Name, c.Target, humanize(plan.TotalRequests()), plan.Duration())
 	}
 
@@ -227,7 +230,7 @@ func execute(args []string) int {
 	// the verdict below stands; what cannot happen is the report vanishing in
 	// silence.
 	if err := report.Summary(os.Stdout, result.Document, result.Document.SLO); err != nil {
-		fmt.Fprintf(os.Stderr, "não consegui escrever o resumo: %v\n", err)
+		fmt.Fprintf(os.Stderr, "I could not write the summary: %v\n", err)
 	}
 
 	for _, output := range []struct {
@@ -243,11 +246,11 @@ func execute(args []string) int {
 		}
 	}
 	if *htmlPath != "" {
-		fmt.Fprintf(os.Stderr, "relatório em %s\n", *htmlPath)
+		fmt.Fprintf(os.Stderr, "report at %s\n", *htmlPath)
 	}
-	// -quiet e o desligamento: quem roda em esteira ja sabe o proximo passo, e
-	// a linha vira ruido em log. Execucao reprovada tambem nao ganha a dica: o
-	// proximo passo ali e corrigir, e o bloco de SLO ja disse o que.
+	// -quiet is the off switch: whoever runs this in a pipeline already knows the
+	// next step, and the line turns into log noise. A failed run gets no hint
+	// either: the next step there is to fix it, and the SLO block already said what.
 	if !*quiet && result.Exit == runner.ExitPassed {
 		fmt.Fprintf(os.Stderr, "\n%s\n", nextAfterExecute(scenarioPath, *resultPath, *htmlPath))
 	}
@@ -255,16 +258,16 @@ func execute(args []string) int {
 	return result.Exit
 }
 
-// Um numero sozinho nao responde "melhorou?". A proxima coisa a fazer depende
-// do que esta execucao ja gravou, e dizer isso custa uma linha.
+// A number on its own does not answer "did it get better?". What to do next
+// depends on what this run already saved, and saying so costs one line.
 func nextAfterExecute(scenarioPath, resultPath, htmlPath string) string {
 	if resultPath == "" {
-		return fmt.Sprintf("Para comparar com a próxima execução, guarde este resultado:\n  braunrate execute %s -result antes.json", scenarioPath)
+		return fmt.Sprintf("To compare against the next run, keep this result:\n  braunrate execute %s -result before.json", scenarioPath)
 	}
 	if htmlPath == "" {
-		return fmt.Sprintf("Próximo passo:\n  braunrate report %s -html relatório.html\n  braunrate compare %s depois.json   (depois da próxima execução)", resultPath, resultPath)
+		return fmt.Sprintf("Next step:\n  braunrate report %s -html report.html\n  braunrate compare %s after.json   (after the next run)", resultPath, resultPath)
 	}
-	return fmt.Sprintf("Depois da próxima execução, para saber se melhorou:\n  braunrate compare %s depois.json", resultPath)
+	return fmt.Sprintf("After the next run, to know whether it got better:\n  braunrate compare %s after.json", resultPath)
 }
 
 // The exit code of a failure is decided in the runner, so the CLI and the
@@ -286,7 +289,7 @@ func newFlagSet(name string) *flag.FlagSet {
 }
 
 // The standard flag package stops reading options at the first positional
-// argument, so "executar cenario.yaml -html x.html" ignored the option
+// argument, so "execute scenario.yaml -html x.html" ignored the option
 // silently. Here the list is walked to the end, and options hold before or
 // after the file.
 func parseArguments(set *flag.FlagSet, args []string) []string {
@@ -309,7 +312,7 @@ func parseArguments(set *flag.FlagSet, args []string) []string {
 
 func refuseFlag(set *flag.FlagSet, args []string, err error) {
 	if errors.Is(err, flag.ErrHelp) {
-		fmt.Fprintf(os.Stderr, "opções de %s:\n", set.Name())
+		fmt.Fprintf(os.Stderr, "%s options:\n", set.Name())
 		set.SetOutput(os.Stderr)
 		set.PrintDefaults()
 		os.Exit(0)
@@ -332,14 +335,14 @@ func unknownFlagMessage(set *flag.FlagSet, args []string, err error) string {
 	var known []string
 	set.VisitAll(func(f *flag.Flag) { known = append(known, f.Name) })
 
-	message := fmt.Sprintf("%q não existe.", "-"+received)
+	message := fmt.Sprintf("%q does not exist.", "-"+received)
 	if best, found := text.Closest(received, known); found {
-		message += fmt.Sprintf(" Você quis dizer %q?\n\n    braunrate %s %s\n",
+		message += fmt.Sprintf(" Did you mean %q?\n\n    braunrate %s %s\n",
 			"-"+best, set.Name(), strings.Join(corrected(args, received, best), " "))
 	} else {
 		message += "\n"
 	}
-	return message + fmt.Sprintf("\nTodas as opções: braunrate %s -h\n", set.Name())
+	return message + fmt.Sprintf("\nEvery option: braunrate %s -h\n", set.Name())
 }
 
 // The command comes back ready to paste, with the typo replaced and everything
@@ -362,13 +365,13 @@ func corrected(args []string, received, best string) []string {
 
 func reportCommand(args []string) int {
 	set := newFlagSet("report")
-	htmlPath := set.String("html", "", "arquivo HTML a gerar")
-	csvPath := set.String("csv", "", "arquivo CSV a gerar")
+	htmlPath := set.String("html", "", "HTML file to generate")
+	csvPath := set.String("csv", "", "CSV file to generate")
 	positional := parseArguments(set, args)
 
 	if len(positional) < 1 {
-		fmt.Fprintln(os.Stderr, `informe o resultado gravado, por exemplo:
-  braunrate report saída.json -html relatório.html`)
+		fmt.Fprintln(os.Stderr, `name the saved result, for example:
+  braunrate report result.json -html report.html`)
 		return 2
 	}
 	document, err := runner.ReadDocument(positional[0])
@@ -378,34 +381,34 @@ func reportCommand(args []string) int {
 	}
 
 	if *htmlPath == "" && *csvPath == "" {
-		*htmlPath = "relatorio.html"
+		*htmlPath = "report.html"
 	}
 	if *htmlPath != "" {
 		if err := runner.WriteHTML(*htmlPath, document); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
 		}
-		fmt.Printf("relatório em %s\n", *htmlPath)
-		fmt.Printf("\nAbra no navegador; ele é autocontido e não busca nada na rede.\n")
+		fmt.Printf("report at %s\n", *htmlPath)
+		fmt.Printf("\nOpen it in the browser; it is self-contained and fetches nothing from the network.\n")
 	}
 	if *csvPath != "" {
 		if err := runner.WriteCSV(*csvPath, document); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
 		}
-		fmt.Printf("csv em %s\n", *csvPath)
+		fmt.Printf("csv at %s\n", *csvPath)
 	}
 	return 0
 }
 
 func compare(args []string) int {
 	set := newFlagSet("compare")
-	htmlPath := set.String("html", "", "grava a comparação em HTML autocontido")
+	htmlPath := set.String("html", "", "writes the comparison as self-contained HTML")
 	positional := parseArguments(set, args)
 
 	if len(positional) < 2 {
-		fmt.Fprintln(os.Stderr, `informe as duas execuções, a antiga primeiro:
-  braunrate compare antes.json depois.json`)
+		fmt.Fprintln(os.Stderr, `name the two runs, the older one first:
+  braunrate compare before.json after.json`)
 		return 2
 	}
 	before, err := runner.ReadDocument(positional[0])
@@ -421,7 +424,7 @@ func compare(args []string) int {
 
 	result := comparison.Compare(before, after)
 	if err := report.Comparison(os.Stdout, result); err != nil {
-		fmt.Fprintf(os.Stderr, "não consegui escrever a comparação: %v\n", err)
+		fmt.Fprintf(os.Stderr, "I could not write the comparison: %v\n", err)
 		return 2
 	}
 	if *htmlPath != "" {
@@ -429,7 +432,7 @@ func compare(args []string) int {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 2
 		}
-		fmt.Printf("comparação em %s\n", *htmlPath)
+		fmt.Printf("comparison at %s\n", *htmlPath)
 	}
 	if !result.Comparable {
 		return 3
@@ -443,11 +446,11 @@ func humanize(value int64) string {
 
 func debug(args []string) int {
 	set := newFlagSet("debug")
-	showBody := set.Bool("body", true, "mostra o corpo das respostas")
+	showBody := set.Bool("body", true, "shows the response bodies")
 	positional := parseArguments(set, args)
 
 	if len(positional) < 1 {
-		fmt.Fprintln(os.Stderr, "informe o arquivo de cenário")
+		fmt.Fprintln(os.Stderr, "name the scenario file")
 		return runner.ExitBadFile
 	}
 	scenarioPath := positional[0]
@@ -461,9 +464,9 @@ func debug(args []string) int {
 		return faultExit(err)
 	}
 
-	fmt.Printf("depurando %q contra %s: 1 usuário, 1 iteração, sem carga\n", c.Name, c.Target)
+	fmt.Printf("debugging %q against %s: 1 user, 1 iteration, no load\n", c.Name, c.Target)
 	for _, line := range scenario.DescribeMessaging(c.Messaging) {
-		fmt.Printf("mensageria: %s\n", line)
+		fmt.Printf("messaging: %s\n", line)
 	}
 
 	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -477,51 +480,51 @@ func debug(args []string) int {
 
 	for index, observation := range iteration.Observations {
 		if err := report.Debug(os.Stdout, index+1, observation, *showBody); err != nil {
-			fmt.Fprintf(os.Stderr, "não consegui escrever a depuracao: %v\n", err)
+			fmt.Fprintf(os.Stderr, "I could not write the debug output: %v\n", err)
 			return runner.ExitBadFile
 		}
 	}
 	if err := report.IterationVars(os.Stdout, iteration.Vars); err != nil {
-		fmt.Fprintf(os.Stderr, "não consegui escrever a depuracao: %v\n", err)
+		fmt.Fprintf(os.Stderr, "I could not write the debug output: %v\n", err)
 		return runner.ExitBadFile
 	}
 
 	fmt.Println()
 	if !iteration.Complete() {
 		if len(iteration.Observations) < len(c.Steps) && !iteration.Failed() {
-			fmt.Println("A iteração não chegou ao fim.")
+			fmt.Println("The iteration did not reach the end.")
 		} else {
-			fmt.Printf("A iteração parou no passo %d. Corrija e rode de novo; a carga só vale depois que a iteração passa.\n",
+			fmt.Printf("The iteration stopped at step %d. Fix it and run again; the load is only worth running after the iteration passes.\n",
 				len(iteration.Observations))
 		}
 		if c.Auth == nil && refusedForCredentials(iteration) {
 			fmt.Print(`
-O alvo recusou por credencial, e o cenário não declara autenticação nenhuma.
-Declare de onde vem o token e o braunrate obtém uma vez e reaproveita em todas
-as jornadas:
+The target refused for lack of a credential, and the scenario declares no auth
+at all. Declare where the token comes from and braunrate obtains it once and
+reuses it across every journey:
 
-  autenticacao:
-    tipo: token
-    obter:
-      http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana } }
-      captura: { token: $.access_token }
+  auth:
+    type: token
+    obtain:
+      http: { method: POST, path: /auth/token, body: { user: ana } }
+      capture: { token: $.access_token }
 `)
 		}
 		if unreachable(iteration) {
-			fmt.Printf("\nNinguém atendeu em %s. Confira se o serviço está no ar e se o endereço está certo.\n"+
-				"Se você ainda não tem um serviço para testar, suba o embutido em outro terminal:\n"+
+			fmt.Printf("\nNobody answered at %s. Check that the service is up and that the address is right.\n"+
+				"If you do not have a service to test yet, start the built-in one in another terminal:\n"+
 				"  braunrate target\n", c.Target)
 		}
 		return runner.ExitSLO
 	}
-	fmt.Printf("Iteração completa: %s, tudo certo. Para rodar com carga:\n  braunrate execute %s\n",
-		text.Count(int64(len(iteration.Observations)), "passo", "passos"), scenarioPath)
+	fmt.Printf("Iteration complete: %s, all good. To run it with load:\n  braunrate execute %s\n",
+		text.Count(int64(len(iteration.Observations)), "step", "steps"), scenarioPath)
 	return runner.ExitPassed
 }
 
 // A 401 with no authentication block is not a mystery to whoever wrote the
 // scenario knowing the tool has one. It is a wall to everyone else, and the
-// body of the answer says "token ausente" without saying where to declare it.
+// body of the answer says "missing token" without saying where to declare it.
 func refusedForCredentials(iteration runner.Iteration) bool {
 	for _, observation := range iteration.Observations {
 		if observation.Response.Status == http.StatusUnauthorized || observation.Response.Status == http.StatusForbidden {
@@ -531,7 +534,7 @@ func refusedForCredentials(iteration runner.Iteration) bool {
 	return false
 }
 
-// "falha de rede / connection refused" says what the operating system saw, not
+// "network failure / connection refused" says what the operating system saw, not
 // what to do about it — and whoever is on their first scenario has no reason to
 // know that a target has to be running somewhere.
 func unreachable(iteration runner.Iteration) bool {
@@ -547,21 +550,21 @@ func unreachable(iteration runner.Iteration) bool {
 // paste the option before or after it; the standard flag package stops at the
 // first positional argument and would drop an option pasted at the end.
 func newOne(args []string) int {
-	destination := "cenario.yaml"
+	destination := "scenario.yaml"
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		destination = args[0]
 	}
 	if _, err := os.Stat(destination); err == nil {
-		fmt.Fprintf(os.Stderr, "%s já existe; escolha outro nome:\n  braunrate new outro-cenario.yaml\n", destination)
+		fmt.Fprintf(os.Stderr, "%s already exists; pick another name:\n  braunrate new another-scenario.yaml\n", destination)
 		return 2
 	}
 	if err := os.WriteFile(destination, []byte(importer.Skeleton()), 0o644); err != nil {
-		fmt.Fprintf(os.Stderr, "não consegui gravar %s: %v\n", destination, err)
+		fmt.Fprintf(os.Stderr, "I could not write %s: %v\n", destination, err)
 		return 1
 	}
 
-	fmt.Fprintf(os.Stderr, "cenário de partida em %s: troque o alvo e o caminho pelo seu serviço.\n", destination)
-	fmt.Fprintf(os.Stderr, "\nPróximo passo, antes de qualquer carga:\n  braunrate debug %s\n", destination)
+	fmt.Fprintf(os.Stderr, "starting scenario at %s: swap the target and the path for your service.\n", destination)
+	fmt.Fprintf(os.Stderr, "\nNext step, before any load:\n  braunrate debug %s\n", destination)
 	return 0
 }
 
@@ -571,27 +574,25 @@ func importCommand(args []string) int {
 	for index := 0; index < len(args); index++ {
 		arg := args[index]
 		switch {
-		case arg == "-output" || arg == "--saida":
+		case arg == "-output":
 			if index+1 >= len(args) {
-				fmt.Fprintln(os.Stderr, "a opção -output ficou sem o nome do arquivo")
+				fmt.Fprintln(os.Stderr, "the -output option came with no file name")
 				return 2
 			}
 			index++
 			out = args[index]
 		case strings.HasPrefix(arg, "-output="):
 			out = strings.TrimPrefix(arg, "-output=")
-		case strings.HasPrefix(arg, "--saida="):
-			out = strings.TrimPrefix(arg, "--saida=")
 		default:
 			rest = append(rest, arg)
 		}
 	}
 
 	if len(rest) < 1 || (rest[0] != "curl" && rest[0] != "jmx") {
-		fmt.Fprintln(os.Stderr, `informe o que importar. Hoje existem dois formatos:
-  braunrate import curl "curl -X POST https://exemplo/pedidos -d '{}'" -output cenario.yaml
+		fmt.Fprintln(os.Stderr, `say what to import. There are two formats today:
+  braunrate import curl "curl -X POST https://example/orders -d '{}'" -output scenario.yaml
   pbpaste | braunrate import curl
-  braunrate import jmx plano.jmx -output cenario.yaml`)
+  braunrate import jmx plan.jmx -output scenario.yaml`)
 		return 2
 	}
 
@@ -599,12 +600,12 @@ func importCommand(args []string) int {
 	var err error
 	if rest[0] == "jmx" {
 		if len(rest) < 2 {
-			fmt.Fprintln(os.Stderr, "informe o arquivo .jmx:\n  braunrate import jmx plano.jmx -output cenario.yaml")
+			fmt.Fprintln(os.Stderr, "name the .jmx file:\n  braunrate import jmx plan.jmx -output scenario.yaml")
 			return 2
 		}
 		content, readErr := os.ReadFile(rest[1])
 		if readErr != nil {
-			fmt.Fprintf(os.Stderr, "não consegui ler %s: %v\n", rest[1], readErr)
+			fmt.Fprintf(os.Stderr, "I could not read %s: %v\n", rest[1], readErr)
 			return 2
 		}
 		importResult, err = importer.FromJMX(content)
@@ -613,7 +614,7 @@ func importCommand(args []string) int {
 		if strings.TrimSpace(command) == "" {
 			read, readErr := io.ReadAll(os.Stdin)
 			if readErr != nil {
-				fmt.Fprintf(os.Stderr, "não consegui ler o comando da entrada padrão: %v\n", readErr)
+				fmt.Fprintf(os.Stderr, "I could not read the command from standard input: %v\n", readErr)
 				return 2
 			}
 			command = string(read)
@@ -626,7 +627,7 @@ func importCommand(args []string) int {
 	}
 
 	if _, err := scenario.Parse([]byte(importResult.YAML)); err != nil {
-		fmt.Fprintf(os.Stderr, "gerei um cenário que eu mesmo não aceito; isso é defeito meu, não do seu arquivo:\n%v\n", err)
+		fmt.Fprintf(os.Stderr, "I generated a scenario I do not accept myself; that is my defect, not your file's:\n%v\n", err)
 		return 1
 	}
 
@@ -635,33 +636,33 @@ func importCommand(args []string) int {
 		fmt.Print(importResult.YAML)
 	} else {
 		if err := os.WriteFile(destination, []byte(importResult.YAML), 0o644); err != nil {
-			fmt.Fprintf(os.Stderr, "não consegui gravar %s: %v\n", destination, err)
+			fmt.Fprintf(os.Stderr, "I could not write %s: %v\n", destination, err)
 			return 1
 		}
-		fmt.Fprintf(os.Stderr, "cenário gravado em %s\n", destination)
+		fmt.Fprintf(os.Stderr, "scenario written to %s\n", destination)
 	}
 
 	for _, warning := range importResult.Warnings {
-		fmt.Fprintf(os.Stderr, "atenção: %s\n", warning)
+		fmt.Fprintf(os.Stderr, "warning: %s\n", warning)
 	}
 	if destination != "" {
-		fmt.Fprintf(os.Stderr, "\nPróximo passo, antes de qualquer carga:\n  braunrate debug %s\n", destination)
+		fmt.Fprintf(os.Stderr, "\nNext step, before any load:\n  braunrate debug %s\n", destination)
 	} else {
-		fmt.Fprintln(os.Stderr, "\nPróximo passo: grave com -output cenario.yaml e rode 'braunrate debug cenario.yaml'.")
+		fmt.Fprintln(os.Stderr, "\nNext step: save it with -output scenario.yaml and run 'braunrate debug scenario.yaml'.")
 	}
 	return 0
 }
 
 func record(args []string) int {
 	set := newFlagSet("record")
-	output := set.String("output", "", "arquivo de cenário a gravar")
-	address := set.String("addr", "127.0.0.1:8888", "endereço onde o proxy escuta")
-	hosts := set.String("host", "", "hosts a gravar, separados por virgula (padrão: o primeiro que aparecer)")
-	ignore := set.String("ignore", "", "trechos de caminho a descartar, separados por virgula")
+	output := set.String("output", "", "scenario file to write")
+	address := set.String("addr", "127.0.0.1:8888", "address the proxy listens on")
+	hosts := set.String("host", "", "hosts to record, comma separated (default: the first one that shows up)")
+	ignore := set.String("ignore", "", "path fragments to drop, comma separated")
 	parseArguments(set, args)
 
 	if *output == "" {
-		fmt.Fprintln(os.Stderr, "informe onde gravar o cenário:\n  braunrate record -output cenario.yaml")
+		fmt.Fprintln(os.Stderr, "say where to write the scenario:\n  braunrate record -output scenario.yaml")
 		return 2
 	}
 
@@ -675,18 +676,18 @@ func record(args []string) int {
 	defer cancel()
 
 	err := proxy.Serve(runContext, func(listening string) {
-		fmt.Fprintf(os.Stderr, `gravando em %s
+		fmt.Fprintf(os.Stderr, `recording at %s
 
-Aponte o cliente para este proxy e navegue pelo fluxo que você quer medir:
-  navegador: configure o proxy HTTP para %s
-  curl:      curl -x http://%s http://seu-servico/pedidos
-  terminal:  export http_proxy=http://%s
+Point the client at this proxy and walk through the flow you want to measure:
+  browser:  set the HTTP proxy to %s
+  curl:     curl -x http://%s http://your-service/orders
+  terminal: export http_proxy=http://%s
 
-Duas coisas que este gravador não sabe, e você sabe:
-  a carga e o slo saem como chute de partida, não como medição — ajuste antes de usar como gate
-  uma sequência gravada uma vez não é o mix de produção: a proporção entre as rotas e sua decisão
+Two things this recorder does not know, and you do:
+  the load and the slo come out as a starting guess, not as a measurement — tune them before using it as a gate
+  a sequence recorded once is not the production mix: the proportion between routes is your call
 
-Ctrl+C encerra e escreve o cenário.
+Ctrl+C stops and writes the scenario.
 `, listening, listening, listening, listening)
 	})
 	if err != nil {
@@ -697,14 +698,14 @@ Ctrl+C encerra e escreve o cenário.
 
 	entries := proxy.Entries()
 	for _, line := range recorder.DroppedLines(proxy.Dropped()) {
-		fmt.Fprintf(os.Stderr, "descartei %s\n", line)
+		fmt.Fprintf(os.Stderr, "dropped %s\n", line)
 	}
 	for host, count := range proxy.Tunneled() {
-		fmt.Fprintf(os.Stderr, "não gravei %d conexão(ões) HTTPS para %s: gravar dentro de TLS exige autoridade certificadora própria, que está fora do escopo\n", count, host)
+		fmt.Fprintf(os.Stderr, "I did not record %d HTTPS connection(s) to %s: recording inside TLS needs a certificate authority of our own, which is out of scope\n", count, host)
 	}
 	if len(entries) == 0 {
-		fmt.Fprintln(os.Stderr, "nenhuma requisição gravada; não vou escrever um cenário vazio")
-		fmt.Fprintln(os.Stderr, "se o tráfego era HTTPS, aponte o cliente para o endereço HTTP do serviço, ou use -host para liberar o domínio certo")
+		fmt.Fprintln(os.Stderr, "no request recorded; I will not write an empty scenario")
+		fmt.Fprintln(os.Stderr, "if the traffic was HTTPS, point the client at the HTTP address of the service, or use -host to allow the right domain")
 		return 1
 	}
 
@@ -713,31 +714,31 @@ Ctrl+C encerra e escreve o cenário.
 	generated := importer.RenderYAML(script)
 
 	if _, err := scenario.Parse([]byte(generated.YAML)); err != nil {
-		fmt.Fprintf(os.Stderr, "gravei um cenário que eu mesmo não aceito; isso é defeito meu, não da sua navegação:\n%v\n", err)
+		fmt.Fprintf(os.Stderr, "I recorded a scenario I do not accept myself; that is my defect, not your browsing:\n%v\n", err)
 		return 1
 	}
 	if err := os.WriteFile(*output, []byte(generated.YAML), 0o644); err != nil {
-		fmt.Fprintf(os.Stderr, "não consegui gravar %s: %v\n", *output, err)
+		fmt.Fprintf(os.Stderr, "I could not write %s: %v\n", *output, err)
 		return 1
 	}
-	fmt.Fprintf(os.Stderr, "%s viraram %s em %s\n",
-		text.Count(int64(len(entries)), "requisição", "requisições"),
-		text.Count(int64(len(script.Steps)), "passo", "passos"), *output)
+	fmt.Fprintf(os.Stderr, "%s became %s in %s\n",
+		text.Count(int64(len(entries)), "request", "requests"),
+		text.Count(int64(len(script.Steps)), "step", "steps"), *output)
 
 	directory := filepath.Dir(*output)
 	for index, file := range files {
 		path := filepath.Join(directory, script.Data[index].File)
 		if err := os.WriteFile(path, []byte(file.CSV()), 0o644); err != nil {
-			fmt.Fprintf(os.Stderr, "não consegui gravar %s: %v\n", path, err)
+			fmt.Fprintf(os.Stderr, "I could not write %s: %v\n", path, err)
 			return 1
 		}
-		fmt.Fprintf(os.Stderr, "%d valor(es) observado(s) de %s em %s\n", len(file.Values), file.Name, path)
+		fmt.Fprintf(os.Stderr, "%d observed value(s) of %s in %s\n", len(file.Values), file.Name, path)
 	}
 
 	for _, warning := range generated.Warnings {
-		fmt.Fprintf(os.Stderr, "atenção: %s\n", warning)
+		fmt.Fprintf(os.Stderr, "warning: %s\n", warning)
 	}
-	fmt.Fprintf(os.Stderr, "\nPróximo passo, antes de qualquer carga:\n  braunrate debug %s\n", *output)
+	fmt.Fprintf(os.Stderr, "\nNext step, before any load:\n  braunrate debug %s\n", *output)
 	return 0
 }
 
@@ -750,7 +751,7 @@ func splitList(value string) []string {
 
 func validate(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "informe o arquivo de cenário")
+		fmt.Fprintln(os.Stderr, "name the scenario file")
 		return runner.ExitBadFile
 	}
 	c, plan, err := runner.Load(args[0])
@@ -760,19 +761,19 @@ func validate(args []string) int {
 	for _, line := range runner.Describe(c, plan) {
 		fmt.Println(line)
 	}
-	fmt.Printf("\nAntes de rodar a carga, veja se o cenário faz o que você espera:\n  braunrate debug %s\n", args[0])
+	fmt.Printf("\nBefore running the load, check that the scenario does what you expect:\n  braunrate debug %s\n", args[0])
 	return runner.ExitPassed
 }
 
 func serve(args []string) int {
 	set := newFlagSet("serve")
-	address := set.String("addr", "127.0.0.1:8080", "endereço de escuta")
-	directory := set.String("dir", ".", "diretorio com os cenários servidos")
-	concurrent := set.Bool("concurrent", false, "permite mais de uma execução ao mesmo tempo, aceitando a contaminação da medição")
+	address := set.String("addr", "127.0.0.1:8080", "address to listen on")
+	directory := set.String("dir", ".", "directory holding the scenarios served")
+	concurrent := set.Bool("concurrent", false, "allows more than one run at a time, accepting that the measurements contaminate each other")
 	_ = parseArguments(set, args)
 
 	if info, err := os.Stat(*directory); err != nil || !info.IsDir() {
-		fmt.Fprintf(os.Stderr, "%s não é um diretório que eu consiga ler; -dir aponta para onde estão os cenários\n", *directory)
+		fmt.Fprintf(os.Stderr, "%s is not a directory I can read; -dir points at where the scenarios are\n", *directory)
 		return runner.ExitBadFile
 	}
 
@@ -790,36 +791,38 @@ func serve(args []string) int {
 		fmt.Fprintln(os.Stderr, line)
 	}
 	if err := httpServer.ServeOn(listener); err != nil {
-		fmt.Fprintf(os.Stderr, "o servidor parou: %v\n", err)
+		fmt.Fprintf(os.Stderr, "the server stopped: %v\n", err)
 		return runner.ExitBadFile
 	}
 	return runner.ExitPassed
 }
 
-// A porta ocupada e o primeiro erro de quem sobe dois processos, e "bind:
-// address already in use" nao diz o que fazer a quem nunca escolheu porta.
+// A busy port is the first error for whoever starts two processes, and "bind:
+// address already in use" does not say what to do to someone who never picked
+// a port.
 func portInUse(command, flagName, address string, err error) int {
 	if !errors.Is(err, syscall.EADDRINUSE) {
-		fmt.Fprintf(os.Stderr, "não consegui escutar em %s: %v\n", address, err)
+		fmt.Fprintf(os.Stderr, "I could not listen on %s: %v\n", address, err)
 		return runner.ExitBadFile
 	}
-	fmt.Fprintf(os.Stderr, "%s já está ocupado por outro processo. Escolha outra porta:\n"+
+	fmt.Fprintf(os.Stderr, "%s is already taken by another process. Pick another port:\n"+
 		"  braunrate %s %s 127.0.0.1:8081\n", address, command, flagName)
 	return runner.ExitBadFile
 }
 
-// A interface e o mesmo servidor do 'serve', com a gravacao ligada e as telas
-// montadas na raiz: o que ela sabe fazer, ela faz editando o arquivo de -dir.
+// The interface is the same server as 'serve', with writing enabled and the
+// screens mounted at the root: whatever it can do, it does by editing the file
+// under -dir.
 func userInterface(args []string) int {
 	set := newFlagSet("ui")
-	address := set.String("addr", "127.0.0.1:8080", "endereço de escuta")
-	directory := set.String("dir", ".", "diretorio com os cenários editados")
-	concurrent := set.Bool("concurrent", false, "permite mais de uma execução ao mesmo tempo, aceitando a contaminação da medição")
-	open := set.Bool("open", true, "abre o navegador na interface")
+	address := set.String("addr", "127.0.0.1:8080", "address to listen on")
+	directory := set.String("dir", ".", "directory holding the scenarios edited")
+	concurrent := set.Bool("concurrent", false, "allows more than one run at a time, accepting that the measurements contaminate each other")
+	open := set.Bool("open", true, "opens the browser on the interface")
 	_ = parseArguments(set, args)
 
 	if info, err := os.Stat(*directory); err != nil || !info.IsDir() {
-		fmt.Fprintf(os.Stderr, "%s não é um diretório que eu consiga ler; -dir aponta para onde estão os cenários\n", *directory)
+		fmt.Fprintf(os.Stderr, "%s is not a directory I can read; -dir points at where the scenarios are\n", *directory)
 		return runner.ExitBadFile
 	}
 
@@ -848,8 +851,8 @@ func userInterface(args []string) int {
 	return runner.ExitPassed
 }
 
-// Abrir o navegador e conveniencia: se o sistema nao souber abrir, o endereco
-// ja esta impresso na tela e a interface continua no ar.
+// Opening the browser is a convenience: if the system does not know how, the
+// address is already on screen and the interface stays up.
 func openBrowser(address string) {
 	var command *exec.Cmd
 	switch runtime.GOOS {
@@ -865,16 +868,16 @@ func openBrowser(address string) {
 
 func serveTarget(args []string) int {
 	set := newFlagSet("target")
-	address := set.String("address", "127.0.0.1:8080", "endereço de escuta")
-	latency := set.Duration("latency", 5*time.Millisecond, "latência fixa por requisição")
-	jitter := set.Duration("jitter", 0, "variação aleatória somada a latência")
-	freezeAfter := set.Duration("freeze-after", 0, "instante em que o alvo congela")
-	freezeFor := set.Duration("freeze-for", 0, "duração do congelamento")
-	brokers := set.String("kafka", "", "brokers do Kafka para subir também o processador assíncrono")
-	input := set.String("input", "pedidos", "tópico consumido pelo processador")
-	out := set.String("output", "pedidos-processados", "tópico publicado pelo processador")
-	processorDelay := set.Duration("processor-delay", 20*time.Millisecond, "quanto o processador demora por mensagem")
-	raw := set.Bool("raw", false, "alvo mínimo: responde sem interpretar a requisição, para medir o teto do gerador")
+	address := set.String("address", "127.0.0.1:8080", "address to listen on")
+	latency := set.Duration("latency", 5*time.Millisecond, "fixed latency per request")
+	jitter := set.Duration("jitter", 0, "random variation added to the latency")
+	freezeAfter := set.Duration("freeze-after", 0, "instant at which the target freezes")
+	freezeFor := set.Duration("freeze-for", 0, "how long the freeze lasts")
+	brokers := set.String("kafka", "", "Kafka brokers, to also start the async processor")
+	input := set.String("input", "orders", "topic the processor consumes")
+	out := set.String("output", "orders-processed", "topic the processor publishes to")
+	processorDelay := set.Duration("processor-delay", 20*time.Millisecond, "how long the processor takes per message")
+	raw := set.Bool("raw", false, "minimal target: answers without reading the request, to measure the generator ceiling")
 	_ = parseArguments(set, args)
 
 	if *raw {
@@ -890,10 +893,10 @@ func serveTarget(args []string) int {
 	if err := server.Start(*address); err != nil {
 		return portInUse("target", "-address", *address, err)
 	}
-	fmt.Fprintf(os.Stderr, "alvo de teste em %s (responde em %s)\n", server.Address(), *latency)
-	fmt.Fprintf(os.Stderr, "\nEm outro terminal, escreva um cenário e rode contra este alvo:\n"+
-		"  braunrate new cenario.yaml\n  braunrate debug cenario.yaml\n"+
-		"Se você só quer ver a ferramenta funcionando, não precisa deste comando:\n  braunrate demo\n\n")
+	fmt.Fprintf(os.Stderr, "test target at %s (answers in %s)\n", server.Address(), *latency)
+	fmt.Fprintf(os.Stderr, "\nIn another terminal, write a scenario and run it against this target:\n"+
+		"  braunrate new scenario.yaml\n  braunrate debug scenario.yaml\n"+
+		"If you only want to see the tool working, you do not need this command:\n  braunrate demo\n\n")
 
 	var processor *testsupport.Processor
 	if *brokers != "" {
@@ -907,11 +910,11 @@ func serveTarget(args []string) int {
 		// everything here turned one broken piece into every scenario failing
 		// with an authentication error, which points at the wrong place.
 		if err := processor.Start(); err != nil {
-			fmt.Fprintf(os.Stderr, "ATENÇÃO: o processador assíncrono não subiu: %v\n", err)
-			fmt.Fprintln(os.Stderr, "         o alvo HTTP continua no ar; cenário com 'aguardar' vai falhar por timeout")
+			fmt.Fprintf(os.Stderr, "WARNING: the async processor did not start: %v\n", err)
+			fmt.Fprintln(os.Stderr, "         the HTTP target stays up; a scenario with 'await' will fail on timeout")
 			processor = nil
 		} else {
-			fmt.Fprintf(os.Stderr, "processador assíncrono: %s -> %s, %s por mensagem\n", *input, *out, *processorDelay)
+			fmt.Fprintf(os.Stderr, "async processor: %s -> %s, %s per message\n", *input, *out, *processorDelay)
 		}
 	}
 
@@ -921,28 +924,158 @@ func serveTarget(args []string) int {
 	_ = server.Close()
 	if processor != nil {
 		_ = processor.Close()
-		fmt.Fprintf(os.Stderr, "\nmensagens processadas: %d", processor.Processed())
+		fmt.Fprintf(os.Stderr, "\nmessages processed: %d", processor.Processed())
 	}
-	fmt.Fprintf(os.Stderr, "\natendidas: %d\n", server.Served())
+	fmt.Fprintf(os.Stderr, "\nserved: %d\n", server.Served())
 	return 0
 }
 
-// O alvo minimo existe para medir o gerador, nao para exercitar cenario: ele
-// nao roteia, nao le metodo e responde 200 a qualquer coisa. Medir o teto contra
-// o alvo completo mede o par gerador+alvo, que e a ressalva que a Fase 0 ja
-// tinha registrado e nunca teve como remover.
+// The minimal target exists to measure the generator, not to exercise a
+// scenario: it does not route, does not read the method and answers 200 to
+// anything. Measuring the ceiling against the full target measures the
+// generator+target pair, which is the caveat Phase 0 had already registered.
 func serveRawTarget(address string) int {
 	server := testsupport.NewRaw()
 	if err := server.Start(address); err != nil {
 		return portInUse("target -raw", "-address", address, err)
 	}
-	fmt.Fprintf(os.Stderr, "alvo mínimo em %s: responde 200 sem interpretar a requisição\n", server.Address())
-	fmt.Fprintln(os.Stderr, "use só para medir o teto do gerador — ele não valida rota, metodo nem corpo")
+	fmt.Fprintf(os.Stderr, "minimal target at %s: answers 200 without reading the request\n", server.Address())
+	fmt.Fprintln(os.Stderr, "use it only to measure the generator ceiling — it checks no route, method or body")
 
 	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	<-runContext.Done()
 	_ = server.Close()
-	fmt.Fprintf(os.Stderr, "\natendidas: %d\n", server.Served())
+	fmt.Fprintf(os.Stderr, "\nserved: %d\n", server.Served())
 	return 0
+}
+
+// Without a migration the format change locks everyone into 0.5.0, including
+// whoever wrote this. Overwriting in place with a .bak beside it is the default
+// because the usual case is a folder with thirty scenarios and one command.
+func migrate(args []string) int {
+	set := newFlagSet("migrate")
+	output := set.String("output", "", "writes the converted scenario to this file instead of overwriting")
+	dryRun := set.Bool("dry-run", false, "shows what would change and writes nothing")
+	positional := parseArguments(set, args)
+
+	if len(positional) < 1 {
+		fmt.Fprintln(os.Stderr, `name the scenario or the folder to convert:
+  braunrate migrate scenario.yaml
+  braunrate migrate ./scenarios/ -dry-run`)
+		return runner.ExitBadFile
+	}
+
+	files, err := scenariosUnder(positional[0])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return runner.ExitBadFile
+	}
+	if *output != "" && len(files) > 1 {
+		fmt.Fprintf(os.Stderr, "-output writes one file, and %s holds %d scenarios; drop -output to convert them in place\n",
+			positional[0], len(files))
+		return runner.ExitBadFile
+	}
+
+	converted := 0
+	for _, path := range files {
+		changed, err := migrateOne(path, *output, *dryRun)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return runner.ExitBadFile
+		}
+		if changed {
+			converted++
+		}
+	}
+	if converted == 0 {
+		fmt.Fprintln(os.Stderr, "\nnothing to convert: every scenario is already in the English format.")
+		return runner.ExitPassed
+	}
+	if *dryRun {
+		fmt.Fprintf(os.Stderr, "\n%s would change. Run without -dry-run to write.\n", text.Count(int64(converted), "file", "files"))
+		return runner.ExitPassed
+	}
+	fmt.Fprintf(os.Stderr, "\n%s converted. Next step:\n  braunrate validate %s\n",
+		text.Count(int64(converted), "file", "files"), files[0])
+	return runner.ExitPassed
+}
+
+func migrateOne(path, output string, dryRun bool) (bool, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return false, fmt.Errorf("I could not read %s: %v", path, err)
+	}
+	rewritten, changes, err := scenario.Migrate(content)
+	if err != nil {
+		return false, fmt.Errorf("%s: %v", path, err)
+	}
+	if len(changes) == 0 {
+		fmt.Fprintf(os.Stderr, "%s: already in the English format\n", path)
+		return false, nil
+	}
+
+	fmt.Fprintf(os.Stderr, "%s: %s\n", path, text.Count(int64(len(changes)), "key changes", "keys change"))
+	for _, change := range changes {
+		fmt.Fprintf(os.Stderr, "  %s\n", change)
+	}
+	if dryRun {
+		return true, nil
+	}
+
+	// The converted file goes through the new parser before anything is written:
+	// a migration that produces a scenario the tool refuses is worse than no
+	// migration, because the original is gone by then.
+	converted, err := scenario.Parse(rewritten)
+	if err != nil {
+		return false, fmt.Errorf("I converted %s into a scenario I do not accept myself; that is my defect, not your file's:\n%v", path, err)
+	}
+	// A step with no declared name takes the name of what it does, and that name
+	// changed with the format: an slo rule pointing at "aguardar pedidos" no
+	// longer matches "await pedidos". Renaming the rule would be guessing at the
+	// author's text, so what the migration does is say so.
+	if err := converted.Validate(); err != nil {
+		fmt.Fprintf(os.Stderr, "  the converted scenario does not validate yet:\n%v\n", err)
+	}
+
+	destination := output
+	if destination == "" {
+		destination = path
+		if err := os.WriteFile(path+".bak", content, 0o644); err != nil {
+			return false, fmt.Errorf("I could not write the backup %s.bak: %v", path, err)
+		}
+		fmt.Fprintf(os.Stderr, "  original kept at %s.bak\n", path)
+	}
+	if err := os.WriteFile(destination, rewritten, 0o644); err != nil {
+		return false, fmt.Errorf("I could not write %s: %v", destination, err)
+	}
+	return true, nil
+}
+
+func scenariosUnder(path string) ([]string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("I could not find %s", path)
+	}
+	if !info.IsDir() {
+		return []string{path}, nil
+	}
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return nil, fmt.Errorf("I could not read the folder %s: %v", path, err)
+	}
+	var files []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if extension := filepath.Ext(entry.Name()); extension != ".yaml" && extension != ".yml" {
+			continue
+		}
+		files = append(files, filepath.Join(path, entry.Name()))
+	}
+	if len(files) == 0 {
+		return nil, fmt.Errorf("no .yaml file in %s", path)
+	}
+	return files, nil
 }

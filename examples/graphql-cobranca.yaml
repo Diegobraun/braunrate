@@ -1,26 +1,26 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
-nome: Cobrança via GraphQL
-alvo: ${ALVO:-http://127.0.0.1:8080}
+name: Cobrança via GraphQL
+target: ${ALVO:-http://127.0.0.1:8080}
 
-autenticacao:
-  tipo: token
-  obter:
-    http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: "${SENHA:-segredo}" } }
-    captura: { token: $.access_token }
+auth:
+  type: token
+  obtain:
+    http: { method: POST, path: /auth/token, body: { usuario: ana, senha: "${SENHA:-segredo}" } }
+    capture: { token: $.access_token }
 
-dados:
+data:
   assinantes:
-    arquivo: dados/assinantes.csv
-    consumo: circular
+    file: dados/assinantes.csv
+    consume: circular
 
-carga:
-  perfis:
-    - rampa: { de: 50/s, ate: 200/s, durante: 5s }
-    - patamar: { taxa: 200/s, durante: 5s }
+load:
+  profiles:
+    - ramp: { from: 50/s, to: 200/s, duration: 5s }
+    - steady: { rate: 200/s, duration: 5s }
 
-cenario:
+scenario:
   - graphql:
-      consulta: |
+      query: |
         query ConsultarPedido($id: ID!) {
           pedido(id: $id) {
             id
@@ -28,22 +28,22 @@ cenario:
             ultimaFatura { id valor status }
           }
         }
-      variaveis: { id: "${assinantes.id}" }
-    verificar:
+      variables: { id: "${assinantes.id}" }
+    expect:
       json: { $.data.pedido.status: ABERTO }
-    captura:
+    capture:
       faturaId: $.data.pedido.ultimaFatura.id
 
   - graphql:
-      consulta: |
+      query: |
         mutation PagarFatura($fatura: ID!) {
           pagarFatura(id: $fatura) { id status pagoEm }
         }
-      variaveis: { fatura: "${faturaId}" }
-    verificar:
+      variables: { fatura: "${faturaId}" }
+    expect:
       json: { $.data.pagarFatura.status: PAGA }
 
 slo:
   - graphql ConsultarPedido: { p95: < 150ms }
   - graphql PagarFatura: { p95: < 200ms }
-  - global: { erros: < 0.1 }
+  - global: { errors: < 0.1 }
