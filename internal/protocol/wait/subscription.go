@@ -228,7 +228,36 @@ func dialWith(dialer *kafka.Dialer, address string) (*kafka.Conn, error) {
 	return dialer.Dial("tcp", address)
 }
 
+// A topic created moments before answers metadata with a leader that is not yet
+// serving as one, and the read comes back Not Leader For Partition. Bounded on
+// purpose: a broker that does not settle in ten seconds is broken, and hiding
+// that would turn it into a slow one.
+const leaderWait = 10 * time.Second
+
 func lastOffset(address, topic string, partition int, dialer *kafka.Dialer) (int64, error) {
+	deadline := time.Now().Add(leaderWait)
+	for {
+		offset, err := readLastOffset(address, topic, partition, dialer)
+		if err == nil {
+			return offset, nil
+		}
+		if !Settling(err) || !time.Now().Before(deadline) {
+			return 0, err
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+
+// Settling is exported for the test: telling a broker that is still starting
+// from one that refused for good is the whole decision here.
+func Settling(err error) bool {
+	text := strings.ToLower(err.Error())
+	return strings.Contains(text, "not leader for partition") ||
+		strings.Contains(text, "leader not available") ||
+		strings.Contains(text, "unknown topic or partition")
+}
+
+func readLastOffset(address, topic string, partition int, dialer *kafka.Dialer) (int64, error) {
 	leader, err := dialLeaderWith(dialer, address, topic, partition)
 	if err != nil {
 		return 0, fmt.Errorf("nao consegui falar com o lider da particao %d de %q: %v", partition, topic, err)

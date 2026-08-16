@@ -86,3 +86,35 @@ func TestWaitDescribesWhereTheAddressComesFromWhenTheStepDeclaresNone(t *testing
 		t.Fatalf("a descricao nao diz de onde vem o endereco:\n%s", description)
 	}
 }
+
+// A topic created moments before answers metadata with a leader that is not yet
+// serving as one. Without this, preparing the subscription failed and the whole
+// wait step was dropped from the run.
+func TestOffsetReadWaitsOutTheLeaderElectionAndGivesUpOnAnythingElse(t *testing.T) {
+	settling := []string{
+		"[6] Not Leader For Partition: the client attempted to send messages to a replica that is not the leader",
+		"[5] Leader Not Available",
+		"[3] Unknown Topic Or Partition",
+	}
+	for _, message := range settling {
+		if !wait.Settling(errorOf(message)) {
+			t.Fatalf("%q devia ser tratado como broker se acomodando", message)
+		}
+	}
+
+	permanent := []string{
+		"dial tcp 10.0.0.1:9092: connect: connection refused",
+		"[29] Topic Authorization Failed",
+	}
+	for _, message := range permanent {
+		if wait.Settling(errorOf(message)) {
+			t.Fatalf("%q nao pode virar espera: o erro nao passa sozinho", message)
+		}
+	}
+}
+
+type textError string
+
+func (err textError) Error() string { return string(err) }
+
+func errorOf(text string) error { return textError(text) }
