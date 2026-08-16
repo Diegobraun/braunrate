@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Diegobraun/braunrate/internal/build"
 	"github.com/Diegobraun/braunrate/internal/importer"
 	"github.com/Diegobraun/braunrate/internal/metrics"
 	"github.com/Diegobraun/braunrate/internal/protocol"
@@ -29,8 +30,6 @@ import (
 	"github.com/Diegobraun/braunrate/internal/testsupport"
 	"github.com/Diegobraun/braunrate/internal/texto"
 )
-
-const version = "0.4.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -59,7 +58,8 @@ func main() {
 	case "target":
 		os.Exit(serveTarget(os.Args[2:]))
 	case "version":
-		fmt.Printf("braunrate %s\nprotocolos compilados: %v\n", version, protocol.Registered())
+		fmt.Printf("braunrate %s\ncommit: %s\ndata: %s\nprotocolos compilados: %v\n",
+			build.Version, build.Commit, build.Date, protocol.Registered())
 		os.Exit(0)
 	default:
 		usage()
@@ -91,7 +91,7 @@ opcoes de execute:
   -max-concurrent <n>         maximo de requisicoes simultaneas (padrao 20000)
   -late-threshold <dur>       a partir daqui o gerador conta como saturado (padrao 10ms)
   -quiet                      nao imprime progresso durante a execucao
-`, version)
+`, build.Version)
 }
 
 func execute(args []string) int {
@@ -120,7 +120,7 @@ func execute(args []string) int {
 		return faultExit(err)
 	}
 
-	options := runner.DefaultOptions(version)
+	options := runner.DefaultOptions(build.Version)
 	options.MaxInflight = *maxInflight
 	options.LateThreshold = *lateThreshold
 	options.BaselinePath = *baselinePath
@@ -316,7 +316,7 @@ func debug(args []string) int {
 	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	iteration, err := runner.Debug(runContext, scenarioPath, version)
+	iteration, err := runner.Debug(runContext, scenarioPath, build.Version)
 	if err != nil {
 		fmt.Fprintln(os.Stderr)
 		return faultExit(err)
@@ -580,7 +580,7 @@ func serve(args []string) int {
 		return runner.ExitBadFile
 	}
 
-	options := server.DefaultOptions(version)
+	options := server.DefaultOptions(build.Version)
 	options.Address = *address
 	options.Directory = *directory
 	options.Concurrent = *concurrent

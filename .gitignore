@@ -1,7 +1,7 @@
 .DS_Store
 *.class
 target/
-build/
+/build/
 bin/
 out/
 .idea/

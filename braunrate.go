@@ -18,6 +18,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/Diegobraun/braunrate/internal/build"
 	"github.com/Diegobraun/braunrate/internal/metrics"
 	"github.com/Diegobraun/braunrate/internal/report"
 	"github.com/Diegobraun/braunrate/internal/runner"
@@ -48,7 +49,7 @@ type Verdict = slo.Verdict
 type Options struct {
 	// Version aparece no bloco de ambiente do relatorio e no documento. Duas
 	// execucoes com versoes diferentes nao sao comparaveis sem ressalva, e e por
-	// isso que ela viaja com o numero.
+	// isso que ela viaja com o numero. Vazio usa a versao deste binario.
 	Version string
 	// DataRoot e a pasta a partir da qual os caminhos de 'dados' sao resolvidos.
 	// Vazio significa o diretorio de trabalho.
@@ -81,7 +82,11 @@ func Parse(content []byte) (Scenario, error) {
 // volta com Valid() falso e sem veredito, porque nao ha o que aprovar ou
 // reprovar. Consulte Passed antes de decidir.
 func Run(runContext context.Context, spec Scenario, options Options) (Result, error) {
-	runnerOptions := runner.DefaultOptions(options.Version)
+	declaredVersion := options.Version
+	if declaredVersion == "" {
+		declaredVersion = build.Version
+	}
+	runnerOptions := runner.DefaultOptions(declaredVersion)
 	if options.MaxInflight > 0 {
 		runnerOptions.MaxInflight = options.MaxInflight
 	}
