@@ -18,7 +18,30 @@ func Closest(received string, valid []string) (string, bool) {
 	// A fixed distance of three turns "taxa" into "voce quis dizer rampa?",
 	// which is not a typo of anything. The tolerance grows with the word,
 	// because a long word survives more typing than a short one.
-	return best, best != "" && shortestDistance <= tolerance(received)
+	if best != "" && shortestDistance <= tolerance(received) {
+		return best, true
+	}
+	// "-addr" for "-address" is not a typo, it is an abbreviation, and the
+	// distance of three puts it out of reach of a four-letter word. Whoever
+	// typed the beginning of the right name knows which one they want.
+	return abbreviation(received, valid)
+}
+
+func abbreviation(received string, valid []string) (string, bool) {
+	const shortestUsefulPrefix = 3
+	if len(received) < shortestUsefulPrefix {
+		return "", false
+	}
+	best := ""
+	for _, candidate := range valid {
+		if !strings.HasPrefix(strings.ToLower(candidate), strings.ToLower(received)) {
+			continue
+		}
+		if best == "" || len(candidate) < len(best) {
+			best = candidate
+		}
+	}
+	return best, best != ""
 }
 
 func tolerance(received string) int {

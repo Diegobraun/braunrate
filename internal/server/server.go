@@ -76,7 +76,7 @@ func (server *Server) StartupWarning() []string {
 	if server.options.Concurrent {
 		lines = append(lines, "Execucao concorrente ligada: duas execucoes ao mesmo tempo disputam a CPU que precisa despachar no instante agendado, e nenhuma das duas mede o que se propos a medir.")
 	}
-	return lines
+	return append(lines, fmt.Sprintf("\nPara ver o que ele esta servindo:\n  curl http://%s/scenarios", server.options.Address))
 }
 
 func (server *Server) Listen() error {

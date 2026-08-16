@@ -120,6 +120,24 @@ A conferencia nao e "o binario existe": ela roda `version` e exige que bata com 
 
 ## Como usar
 
+Se voce nunca fez teste de carga, comece por aqui. Um comando, um terminal,
+nenhum arquivo antes:
+
+```bash
+braunrate demo              # sobe um alvo, roda um cenario e explica cada numero
+braunrate demo --com-falha  # o mesmo, contra um alvo que trava no meio
+```
+
+A demonstracao escreve o cenario que ela roda (`demo.yaml`, comentado) e o
+relatorio HTML. `--com-falha` mede a mesma travada de duas formas — em laco
+fechado, como JMeter e Locust medem, e em modelo aberto — e mostra a diferenca
+entre as duas na tela.
+
+`braunrate` sem argumento nenhum diz qual e o proximo comando; `braunrate
+ajuda` lista todos.
+
+Depois disso:
+
 ```bash
 go build -o braunrate ./cmd/braunrate
 
@@ -132,6 +150,7 @@ braunrate execute examples/http-basico.yaml -html=relatorio.html -result=saida.j
 braunrate compare antes.json depois.json       # o que mudou entre duas execucoes
 braunrate record -output cenario.yaml          # grava navegando por um proxy local
 braunrate serve -dir ./cenarios                # os mesmos comandos por HTTP, local
+braunrate ajuda                                # todos os comandos
 ```
 
 Cenario minimo:

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Diegobraun/braunrate/internal/build"
+	"github.com/Diegobraun/braunrate/internal/demo"
 	"github.com/Diegobraun/braunrate/internal/importer"
 	"github.com/Diegobraun/braunrate/internal/metrics"
 	"github.com/Diegobraun/braunrate/internal/protocol"
@@ -33,10 +35,15 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		usage()
-		os.Exit(2)
+		firstScreen(os.Stdout)
+		os.Exit(0)
 	}
 	switch os.Args[1] {
+	case "demo":
+		os.Exit(runDemo(os.Args[2:]))
+	case "ajuda", "help", "-h", "--help":
+		usage(os.Stdout)
+		os.Exit(0)
 	case "execute":
 		os.Exit(execute(os.Args[2:]))
 	case "validate":
@@ -62,15 +69,50 @@ func main() {
 			build.Version, build.Commit, build.Date, protocol.Registered())
 		os.Exit(0)
 	default:
-		usage()
+		fmt.Fprintf(os.Stderr, "%q nao e um comando do braunrate.\n", os.Args[1])
+		if best, found := texto.Closest(os.Args[1], commands); found {
+			fmt.Fprintf(os.Stderr, "Voce quis dizer %q?\n", best)
+		}
+		fmt.Fprintln(os.Stderr, "\nTodos os comandos:  braunrate ajuda")
 		os.Exit(2)
 	}
 }
 
-func usage() {
-	fmt.Fprintf(os.Stderr, `braunrate %s
+var commands = []string{
+	"demo", "new", "debug", "execute", "validate", "import", "record",
+	"report", "compare", "serve", "target", "version", "ajuda",
+}
+
+// A catalog in alphabetical order serves whoever already knows what they want.
+// Nobody arriving now can guess that the path is new, debug and only then
+// execute, nor that target exists for whoever has nothing to test against.
+func firstScreen(out io.Writer) {
+	_, _ = fmt.Fprintf(out, `braunrate %s — teste de carga com medicao honesta
+
+Nunca usou? Veja funcionando em 30 segundos:
+
+    braunrate demo
+
+Ja tem uma API para testar? O caminho e:
+
+    1. braunrate import curl 'curl https://sua-api/pedidos -H "Authorization: ..."'
+       (ou: braunrate new cenario.yaml, para comecar do zero)
+
+    2. braunrate debug cenario.yaml
+       roda uma vez so e mostra tudo: o que foi enviado, o que voltou, o que falhou
+
+    3. braunrate execute cenario.yaml
+       agora sim, a carga de verdade
+
+Todos os comandos:  braunrate ajuda
+`, build.Version)
+}
+
+func usage(out io.Writer) {
+	_, _ = fmt.Fprintf(out, `braunrate %s
 
 uso:
+  braunrate demo [--com-falha]                  sobe um alvo, roda um cenario e explica os numeros
   braunrate new [cenario.yaml]                  cria um cenario de partida, comentado
   braunrate debug <cenario.yaml>                um usuario, uma iteracao, tudo visivel
   braunrate execute <cenario.yaml> [opcoes]
@@ -89,13 +131,33 @@ opcoes de execute:
   -html <arquivo.html>        grava o relatorio HTML autocontido
   -csv <arquivo.csv>          grava uma linha por passo, para planilha
   -max-concurrent <n>         maximo de requisicoes simultaneas (padrao 20000)
-  -late-threshold <dur>       a partir daqui o gerador conta como saturado (padrao 10ms)
+  -late-threshold <dur>       a partir daqui o gerador nao sustentou a taxa (padrao 10ms)
   -quiet                      nao imprime progresso durante a execucao
 `, build.Version)
 }
 
+func runDemo(args []string) int {
+	set := newFlagSet("demo")
+	withFailure := set.Bool("com-falha", false, "roda contra um alvo que trava no meio, e compara com o laco fechado")
+	_ = parseArguments(set, args)
+
+	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	err := demo.Run(runContext, demo.Options{
+		WithFailure: *withFailure,
+		Directory:   ".",
+		Version:     build.Version,
+		Output:      os.Stdout,
+	})
+	if err != nil {
+		return faultExit(err)
+	}
+	return runner.ExitPassed
+}
+
 func execute(args []string) int {
-	set := flag.NewFlagSet("execute", flag.ExitOnError)
+	set := newFlagSet("execute")
 	resultPath := set.String("result", "", "arquivo JSON de resultado")
 	htmlPath := set.String("html", "", "arquivo HTML de relatorio")
 	csvPath := set.String("csv", "", "arquivo CSV com uma linha por passo")
@@ -176,8 +238,26 @@ func execute(args []string) int {
 	if *htmlPath != "" {
 		fmt.Fprintf(os.Stderr, "relatorio em %s\n", *htmlPath)
 	}
+	// -quiet e o desligamento: quem roda em esteira ja sabe o proximo passo, e
+	// a linha vira ruido em log. Execucao reprovada tambem nao ganha a dica: o
+	// proximo passo ali e corrigir, e o bloco de SLO ja disse o que.
+	if !*quiet && result.Exit == runner.ExitPassed {
+		fmt.Fprintf(os.Stderr, "\n%s\n", nextAfterExecute(scenarioPath, *resultPath, *htmlPath))
+	}
 
 	return result.Exit
+}
+
+// Um numero sozinho nao responde "melhorou?". A proxima coisa a fazer depende
+// do que esta execucao ja gravou, e dizer isso custa uma linha.
+func nextAfterExecute(scenarioPath, resultPath, htmlPath string) string {
+	if resultPath == "" {
+		return fmt.Sprintf("Para comparar com a proxima execucao, guarde este resultado:\n  braunrate execute %s -result antes.json", scenarioPath)
+	}
+	if htmlPath == "" {
+		return fmt.Sprintf("Proximo passo:\n  braunrate report %s -html relatorio.html\n  braunrate compare %s depois.json   (depois da proxima execucao)", resultPath, resultPath)
+	}
+	return fmt.Sprintf("Depois da proxima execucao, para saber se melhorou:\n  braunrate compare %s depois.json", resultPath)
 }
 
 // The exit code of a failure is decided in the runner, so the CLI and the
@@ -190,14 +270,26 @@ func faultExit(err error) int {
 	return runner.ExitBadFile
 }
 
+// ContinueOnError with the output silenced, so a wrong option gets the
+// suggestion below instead of the ten-line dump the flag package prints.
+func newFlagSet(name string) *flag.FlagSet {
+	set := flag.NewFlagSet(name, flag.ContinueOnError)
+	set.SetOutput(io.Discard)
+	return set
+}
+
 // The standard flag package stops reading options at the first positional
 // argument, so "executar cenario.yaml -html x.html" ignored the option
 // silently. Here the list is walked to the end, and options hold before or
 // after the file.
 func parseArguments(set *flag.FlagSet, args []string) []string {
 	var positional []string
+	original := args
 	for {
 		if err := set.Parse(args); err != nil {
+			// Exiting here is what flag.ExitOnError already did; what changed is
+			// what gets printed on the way out.
+			refuseFlag(set, original, err)
 			return positional
 		}
 		if set.NArg() == 0 {
@@ -208,8 +300,61 @@ func parseArguments(set *flag.FlagSet, args []string) []string {
 	}
 }
 
+func refuseFlag(set *flag.FlagSet, args []string, err error) {
+	if errors.Is(err, flag.ErrHelp) {
+		fmt.Fprintf(os.Stderr, "opcoes de %s:\n", set.Name())
+		set.SetOutput(os.Stderr)
+		set.PrintDefaults()
+		os.Exit(0)
+	}
+	fmt.Fprint(os.Stderr, unknownFlagMessage(set, args, err))
+	os.Exit(runner.ExitBadFile)
+}
+
+const notDefined = "flag provided but not defined: -"
+
+// The tool already knew how to answer this: the suggestion by edit distance
+// existed for scenario keys while "braunrate target -addr" got the whole option
+// list. Same posture, same wording.
+func unknownFlagMessage(set *flag.FlagSet, args []string, err error) string {
+	_, received, isUnknown := strings.Cut(err.Error(), notDefined)
+	if !isUnknown {
+		return err.Error() + "\n"
+	}
+
+	var known []string
+	set.VisitAll(func(f *flag.Flag) { known = append(known, f.Name) })
+
+	message := fmt.Sprintf("%q nao existe.", "-"+received)
+	if best, found := texto.Closest(received, known); found {
+		message += fmt.Sprintf(" Voce quis dizer %q?\n\n    braunrate %s %s\n",
+			"-"+best, set.Name(), strings.Join(corrected(args, received, best), " "))
+	} else {
+		message += "\n"
+	}
+	return message + fmt.Sprintf("\nTodas as opcoes: braunrate %s -h\n", set.Name())
+}
+
+// The command comes back ready to paste, with the typo replaced and everything
+// else the person had typed still in place.
+func corrected(args []string, received, best string) []string {
+	fixed := make([]string, 0, len(args))
+	for _, argument := range args {
+		name := strings.TrimLeft(argument, "-")
+		value := ""
+		if cut, after, found := strings.Cut(name, "="); found {
+			name, value = cut, "="+after
+		}
+		if name == received {
+			argument = "-" + best + value
+		}
+		fixed = append(fixed, argument)
+	}
+	return fixed
+}
+
 func reportCommand(args []string) int {
-	set := flag.NewFlagSet("report", flag.ExitOnError)
+	set := newFlagSet("report")
 	htmlPath := set.String("html", "", "arquivo HTML a gerar")
 	csvPath := set.String("csv", "", "arquivo CSV a gerar")
 	positional := parseArguments(set, args)
@@ -234,6 +379,7 @@ func reportCommand(args []string) int {
 			return 1
 		}
 		fmt.Printf("relatorio em %s\n", *htmlPath)
+		fmt.Printf("\nAbra no navegador; ele e autocontido e nao busca nada na rede.\n")
 	}
 	if *csvPath != "" {
 		if err := runner.WriteCSV(*csvPath, document); err != nil {
@@ -246,7 +392,7 @@ func reportCommand(args []string) int {
 }
 
 func compare(args []string) int {
-	set := flag.NewFlagSet("compare", flag.ExitOnError)
+	set := newFlagSet("compare")
 	htmlPath := set.String("html", "", "grava a comparacao em HTML autocontido")
 	positional := parseArguments(set, args)
 
@@ -289,7 +435,7 @@ func humanize(value int64) string {
 }
 
 func debug(args []string) int {
-	set := flag.NewFlagSet("debug", flag.ExitOnError)
+	set := newFlagSet("debug")
 	showBody := set.Bool("body", true, "mostra o corpo das respostas")
 	positional := parseArguments(set, args)
 
@@ -341,11 +487,28 @@ func debug(args []string) int {
 			fmt.Printf("A iteracao parou no passo %d. Corrija e rode de novo; a carga so vale depois que a iteracao passa.\n",
 				len(iteration.Observations))
 		}
+		if unreachable(iteration) {
+			fmt.Printf("\nNinguem atendeu em %s. Confira se o servico esta no ar e se o endereco esta certo.\n"+
+				"Se voce ainda nao tem um servico para testar, suba o embutido em outro terminal:\n"+
+				"  braunrate target\n", c.Target)
+		}
 		return runner.ExitSLO
 	}
 	fmt.Printf("Iteracao completa: %s, tudo certo. Para rodar com carga:\n  braunrate execute %s\n",
 		texto.Count(int64(len(iteration.Observations)), "passo", "passos"), scenarioPath)
 	return runner.ExitPassed
+}
+
+// "falha de rede / connection refused" says what the operating system saw, not
+// what to do about it — and whoever is on their first scenario has no reason to
+// know that a target has to be running somewhere.
+func unreachable(iteration runner.Iteration) bool {
+	for _, observation := range iteration.Observations {
+		if observation.Class == protocol.ErrNetwork {
+			return true
+		}
+	}
+	return false
 }
 
 // The curl command arrives as a single argument full of quotes, and people
@@ -458,7 +621,7 @@ func importCommand(args []string) int {
 }
 
 func record(args []string) int {
-	set := flag.NewFlagSet("record", flag.ExitOnError)
+	set := newFlagSet("record")
 	output := set.String("output", "", "arquivo de cenario a gravar")
 	address := set.String("addr", "127.0.0.1:8888", "endereco onde o proxy escuta")
 	hosts := set.String("host", "", "hosts a gravar, separados por virgula (padrao: o primeiro que aparecer)")
@@ -565,11 +728,12 @@ func validate(args []string) int {
 	for _, line := range runner.Describe(c, plan) {
 		fmt.Println(line)
 	}
+	fmt.Printf("\nAntes de rodar a carga, veja se o cenario faz o que voce espera:\n  braunrate debug %s\n", args[0])
 	return runner.ExitPassed
 }
 
 func serve(args []string) int {
-	set := flag.NewFlagSet("serve", flag.ExitOnError)
+	set := newFlagSet("serve")
 	address := set.String("addr", "127.0.0.1:8080", "endereco de escuta")
 	directory := set.String("dir", ".", "diretorio com os cenarios servidos")
 	concurrent := set.Bool("concurrent", false, "permite mais de uma execucao ao mesmo tempo, aceitando a contaminacao da medicao")
@@ -597,7 +761,7 @@ func serve(args []string) int {
 }
 
 func serveTarget(args []string) int {
-	set := flag.NewFlagSet("target", flag.ExitOnError)
+	set := newFlagSet("target")
 	address := set.String("address", "127.0.0.1:8080", "endereco de escuta")
 	latency := set.Duration("latency", 5*time.Millisecond, "latencia fixa por requisicao")
 	jitter := set.Duration("jitter", 0, "variacao aleatoria somada a latencia")
@@ -608,7 +772,7 @@ func serveTarget(args []string) int {
 	out := set.String("output", "pedidos-processados", "topico publicado pelo processador")
 	processorDelay := set.Duration("processor-delay", 20*time.Millisecond, "quanto o processador demora por mensagem")
 	raw := set.Bool("raw", false, "alvo minimo: responde sem interpretar a requisicao, para medir o teto do gerador")
-	_ = set.Parse(args)
+	_ = parseArguments(set, args)
 
 	if *raw {
 		return serveRawTarget(*address)
@@ -624,7 +788,9 @@ func serveTarget(args []string) int {
 		fmt.Fprintf(os.Stderr, "erro ao subir alvo: %v\n", err)
 		return 1
 	}
-	fmt.Fprintf(os.Stderr, "alvo de teste em %s (latencia %s)\n", server.Address(), *latency)
+	fmt.Fprintf(os.Stderr, "alvo de teste em %s (responde em %s)\n", server.Address(), *latency)
+	fmt.Fprintf(os.Stderr, "\nEm outro terminal, aponte um cenario para ca:\n  braunrate execute examples/ci.yaml\n"+
+		"Se voce so quer ver a ferramenta funcionando, nao precisa deste comando:\n  braunrate demo\n\n")
 
 	var processor *testsupport.Processor
 	if *brokers != "" {

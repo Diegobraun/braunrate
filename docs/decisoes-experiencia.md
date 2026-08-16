@@ -77,7 +77,30 @@ toca o usuario.
 - **Toca o usuario**: sim, cria arquivo no diretorio de trabalho, e a saida diz
   qual.
 
-## 6. Flag desconhecida sugere a certa em vez de despejar a lista
+## 6. A dica de proximo passo do `execute` desliga com `-quiet`
+
+- **Decisao**: `braunrate execute` termina apontando o proximo comando, e a
+  linha some com `-quiet` ou quando a execucao reprovou.
+- **Alternativa**: imprimir sempre.
+- **Por que esta**: principio 4 da hierarquia — quem ja sabe nao pode ser
+  atrapalhado. Numa esteira a linha vira ruido em log, e quando o criterio de
+  aceite reprovou o proximo passo e corrigir, nao comparar.
+- **Reversibilidade**: alta.
+- **Toca o usuario**: sim, no fim de toda execucao interativa.
+
+## 7. `debug` que nao alcanca o alvo aponta `braunrate target`
+
+- **Decisao**: falha de rede na depuracao imprime que ninguem atendeu naquele
+  endereco e oferece o alvo embutido.
+- **Alternativa**: manter "falha de rede / connection refused", que e o que o
+  sistema operacional viu.
+- **Por que esta**: apareceu na autoverificacao da Fase 1 — quem esta no
+  primeiro cenario nao tem por que saber que um alvo precisa estar no ar em
+  algum lugar, nem que a ferramenta traz um.
+- **Reversibilidade**: alta.
+- **Toca o usuario**: sim.
+
+## 8. Flag desconhecida sugere a certa em vez de despejar a lista
 
 - **Decisao**: `braunrate target -addr :8080` responde `"-addr" nao existe. Voce
   quis dizer "-address"?`, com o comando corrigido pronto para copiar.
@@ -88,3 +111,7 @@ toca o usuario.
   desde a validacao de cenario, presa dentro do pacote `scenario`.
 - **Reversibilidade**: alta.
 - **Toca o usuario**: sim, em todo comando com opcoes.
+- **Efeito colateral aceito**: a funcao de semelhanca ganhou regra de
+  abreviacao (`addr` casa `address`), e ela e a mesma que sugere chave de
+  cenario. Agora `car` sugere `carga`, o que antes nao acontecia. Prefixo de
+  tres letras ou mais e sinal forte o bastante para nao virar palpite errado.

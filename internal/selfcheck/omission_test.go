@@ -2,7 +2,6 @@ package selfcheck
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -12,7 +11,6 @@ import (
 	protocolohttp "github.com/Diegobraun/braunrate/internal/protocol/http"
 	"github.com/Diegobraun/braunrate/internal/scenario"
 	"github.com/Diegobraun/braunrate/internal/testsupport"
-	"github.com/HdrHistogram/hdrhistogram-go"
 )
 
 const (
@@ -62,28 +60,6 @@ func runOpenModel(t *testing.T, address string) metrics.Document {
 	return m.Execute(context.Background())
 }
 
-// A closed loop only sends the next request after the previous one answers;
-// that is how JMeter and Locust measure, and why the pause vanishes from their
-// p99.
-func runClosedLoop(t *testing.T, address string) *hdrhistogram.Histogram {
-	t.Helper()
-	histogram := hdrhistogram.New(1, 600_000_000, 3)
-	client := &http.Client{Timeout: 30 * time.Second}
-	limit := time.Now().Add(runDuration)
-
-	for time.Now().Before(limit) {
-		start := time.Now()
-		response, err := client.Get(address + "/pedido")
-		if err != nil {
-			continue
-		}
-		_, _ = io.Copy(io.Discard, response.Body)
-		_ = response.Body.Close()
-		_ = histogram.RecordValue(time.Since(start).Microseconds())
-	}
-	return histogram
-}
-
 func TestMeasurementReflectsTargetFreeze(t *testing.T) {
 	server := startFreezingTarget(t)
 	document := runOpenModel(t, server.Address())
@@ -131,14 +107,14 @@ func TestClosedLoopWouldHideThePauseOpenModelShows(t *testing.T) {
 	document := runOpenModel(t, openModelServer.Address())
 
 	closedModelServer := startFreezingTarget(t)
-	histogram := runClosedLoop(t, closedModelServer.Address())
+	closed := RunClosedLoop(context.Background(), closedModelServer.Address(), "/pedido", runDuration)
 
 	openP99 := document.Overall.Latency.P99
-	closedP99 := float64(histogram.ValueAtQuantile(99)) / 1000
+	closedP99 := closed.P99
 
 	t.Logf("mesma pausa de %s no mesmo alvo:", freezeDuration)
 	t.Logf("  modelo aberto (braunrate): p99 %.1f ms sobre %d amostras", openP99, document.Overall.Count)
-	t.Logf("  laco fechado:              p99 %.1f ms sobre %d amostras", closedP99, histogram.TotalCount())
+	t.Logf("  laco fechado:              p99 %.1f ms sobre %d amostras", closedP99, closed.Samples)
 	t.Logf("  omissao coordenada: %.1f ms escondidos pelo laco fechado", openP99-closedP99)
 
 	if closedP99*5 > openP99 {
