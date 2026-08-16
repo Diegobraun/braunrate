@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"flag"
+	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +12,7 @@ import (
 
 	_ "github.com/Diegobraun/braunrate/internal/protocol/http"
 	"github.com/Diegobraun/braunrate/internal/scenario"
+	"github.com/Diegobraun/braunrate/internal/server"
 )
 
 // An option pasted after the file was silently ignored: the report was never
@@ -95,4 +98,50 @@ func TestAFlagWithNoRelativeGetsNoGuess(t *testing.T) {
 	if strings.Contains(message, "quis dizer") {
 		t.Errorf("palpite sem parentesco:\n%s", message)
 	}
+}
+
+// A porta ocupada e o primeiro erro de quem sobe a interface duas vezes, e ate
+// aqui a saida era o texto do sistema operacional depois do convite para abrir
+// o navegador. O convite so sai depois do bind; esta e a mensagem que sobra.
+func TestABusyPortSaysHowToChooseAnother(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("não consegui ocupar uma porta: %v", err)
+	}
+	defer func() { _ = listener.Close() }()
+
+	address := listener.Addr().String()
+	options := server.DefaultOptions("teste")
+	options.Address = address
+
+	_, err = server.New(options).Bind()
+	if err == nil {
+		t.Fatal("escutei numa porta ocupada")
+	}
+
+	message := captureStderr(t, func() { portInUse("ui", address, err) })
+	for _, expected := range []string{address + " já está ocupado", "braunrate ui -addr"} {
+		if !strings.Contains(message, expected) {
+			t.Errorf("a mensagem não traz %q:\n%s", expected, message)
+		}
+	}
+}
+
+func captureStderr(t *testing.T, run func()) string {
+	t.Helper()
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("não consegui abrir o cano: %v", err)
+	}
+	original := os.Stderr
+	os.Stderr = writer
+	run()
+	os.Stderr = original
+	_ = writer.Close()
+
+	content, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("não consegui ler o que saiu: %v", err)
+	}
+	return string(content)
 }

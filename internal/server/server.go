@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -154,13 +155,27 @@ func (server *Server) StartupWarning() []string {
 	return append(lines, fmt.Sprintf("\nPara ver o que ele está servindo:\n  curl http://%s/scenarios", server.options.Address))
 }
 
-func (server *Server) Listen() error {
+// Bind is separate from serving so the caller can print "abra no navegador"
+// only after the port exists: the invitation printed before a failed bind sends
+// whoever is starting the interface to a page that never answers.
+func (server *Server) Bind() (net.Listener, error) {
+	return net.Listen("tcp", server.options.Address)
+}
+
+func (server *Server) ServeOn(listener net.Listener) error {
 	httpServer := &http.Server{
-		Addr:              server.options.Address,
 		Handler:           server.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
-	return httpServer.ListenAndServe()
+	return httpServer.Serve(listener)
+}
+
+func (server *Server) Listen() error {
+	listener, err := server.Bind()
+	if err != nil {
+		return err
+	}
+	return server.ServeOn(listener)
 }
 
 func (server *Server) health(writer http.ResponseWriter, _ *http.Request) {

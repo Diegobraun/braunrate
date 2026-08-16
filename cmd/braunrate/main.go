@@ -782,14 +782,28 @@ func serve(args []string) int {
 	options.Concurrent = *concurrent
 
 	httpServer := server.New(options)
+	listener, err := httpServer.Bind()
+	if err != nil {
+		return portInUse("serve", *address, err)
+	}
 	for _, line := range httpServer.StartupWarning() {
 		fmt.Fprintln(os.Stderr, line)
 	}
-	if err := httpServer.Listen(); err != nil {
+	if err := httpServer.ServeOn(listener); err != nil {
 		fmt.Fprintf(os.Stderr, "o servidor parou: %v\n", err)
 		return runner.ExitBadFile
 	}
 	return runner.ExitPassed
+}
+
+func portInUse(command, address string, err error) int {
+	if !errors.Is(err, syscall.EADDRINUSE) {
+		fmt.Fprintf(os.Stderr, "não consegui escutar em %s: %v\n", address, err)
+		return runner.ExitBadFile
+	}
+	fmt.Fprintf(os.Stderr, "%s já está ocupado por outro processo. Escolha outra porta:\n"+
+		"  braunrate %s -addr 127.0.0.1:8081\n", address, command)
+	return runner.ExitBadFile
 }
 
 // A interface e o mesmo servidor do 'serve', com a gravacao ligada e as telas
@@ -815,13 +829,17 @@ func userInterface(args []string) int {
 	options.UI = ui.Handler()
 
 	httpServer := server.New(options)
+	listener, err := httpServer.Bind()
+	if err != nil {
+		return portInUse("ui", *address, err)
+	}
 	for _, line := range httpServer.StartupWarning() {
 		fmt.Fprintln(os.Stderr, line)
 	}
 	if *open {
 		openBrowser("http://" + *address)
 	}
-	if err := httpServer.Listen(); err != nil {
+	if err := httpServer.ServeOn(listener); err != nil {
 		fmt.Fprintf(os.Stderr, "o servidor parou: %v\n", err)
 		return runner.ExitBadFile
 	}
