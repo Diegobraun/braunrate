@@ -385,6 +385,9 @@ func debug(args []string) int {
 	}
 
 	fmt.Printf("depurando %q contra %s: 1 usuario, 1 iteracao, sem carga\n", c.Name, c.Target)
+	for _, line := range scenario.DescribeMessaging(c.Messaging) {
+		fmt.Printf("mensageria: %s\n", line)
+	}
 
 	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
