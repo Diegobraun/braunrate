@@ -116,3 +116,92 @@ func TestNoRulesMeansNoVerdict(t *testing.T) {
 		t.Errorf("frase = %q", verdict.Sentence)
 	}
 }
+
+// A run where 98% of the requests failed was approving a latency criterion with
+// the p95 of an error page: the failures are fast, they fill the sample, and
+// every quantile stops describing the work the scenario meant to measure.
+func TestLatencyRuleIsNotApprovedOverASampleOfFailures(t *testing.T) {
+	document := metrics.Document{
+		Steps: []metrics.StepResult{{
+			Name: "consultar", Count: 500, Errors: 490, Successes: 10,
+			Latency: metrics.Distribution{P50: 0.4, P95: 1.4, P99: 301},
+		}},
+		Overall: metrics.OverallResult{Count: 500, Errors: 490, ErrorRate: 0.98},
+	}
+	rules := []scenario.SLORule{{
+		Scope: scenario.ScopeStep, Step: "consultar", Metrica: "p95",
+		Operator: scenario.OpLess, Limit: 200, Unit: "ms", Text: "p95: < 200ms",
+	}}
+
+	verdict := slo.Evaluate(rules, document, nil)
+	if verdict.Passed {
+		t.Fatal("o gate aprovou latencia num passo que falhou em 98% das requisicoes")
+	}
+	sentence := verdict.Evaluations[0].Sentence
+	for _, expected := range []string{"98% de falha", "tempo de falhar"} {
+		if !strings.Contains(sentence, expected) {
+			t.Errorf("a frase nao explica por que nao avaliou: falta %q em %q", expected, sentence)
+		}
+	}
+}
+
+// The majority is the line: while the requests that worked are most of the
+// sample the percentile still describes them, and a criterion that stopped
+// being evaluated on any run with errors would be a criterion nobody declares.
+func TestLatencyRuleIsStillEvaluatedWhileMostRequestsWork(t *testing.T) {
+	document := metrics.Document{
+		Steps: []metrics.StepResult{{
+			Name: "consultar", Count: 1000, Errors: 300, Successes: 700,
+			Latency: metrics.Distribution{P95: 120},
+		}},
+	}
+	rules := []scenario.SLORule{{
+		Scope: scenario.ScopeStep, Step: "consultar", Metrica: "p95",
+		Operator: scenario.OpLess, Limit: 200, Unit: "ms", Text: "p95: < 200ms",
+	}}
+
+	verdict := slo.Evaluate(rules, document, nil)
+	if !verdict.Passed {
+		t.Fatalf("30%% de erro deixou de avaliar a latencia: %q", verdict.Evaluations[0].Sentence)
+	}
+}
+
+// The error rate itself is a fact about the sample, not a reading of it: a
+// criterion on errors has to keep working precisely when everything failed.
+func TestErrorRuleIsStillEvaluatedWhenEverythingFails(t *testing.T) {
+	document := metrics.Document{
+		Steps:   []metrics.StepResult{{Name: "consultar", Count: 500, Errors: 490, Successes: 10}},
+		Overall: metrics.OverallResult{Count: 500, Errors: 490},
+	}
+	rules := []scenario.SLORule{{
+		Scope: scenario.ScopeOverall, Metrica: "erros",
+		Operator: scenario.OpLess, Limit: 1, Unit: "%", Text: "erros: < 1",
+	}}
+
+	verdict := slo.Evaluate(rules, document, nil)
+	if verdict.Passed {
+		t.Fatal("98% de erro passou no criterio de erro")
+	}
+	if verdict.Evaluations[0].NoData {
+		t.Fatalf("o criterio de erro deixou de ser avaliado: %q", verdict.Evaluations[0].Sentence)
+	}
+}
+
+// The journey histogram records the ones that aborted too, so a journey
+// criterion has the same hole: most journeys stopping at the first step in a
+// millisecond would approve a p95 that no user ever waited.
+func TestJourneyRuleIsNotApprovedWhenMostJourneysAbort(t *testing.T) {
+	document := metrics.Document{
+		Journey: metrics.Journey{Started: 500, Completed: 10,
+			Latency: metrics.Distribution{P95: 2}},
+	}
+	rules := []scenario.SLORule{{
+		Scope: scenario.ScopeJourney, Metrica: "p95",
+		Operator: scenario.OpLess, Limit: 2000, Unit: "ms", Text: "p95: < 2s",
+	}}
+
+	verdict := slo.Evaluate(rules, document, nil)
+	if verdict.Passed {
+		t.Fatal("o gate aprovou a jornada com 490 de 500 jornadas interrompidas")
+	}
+}

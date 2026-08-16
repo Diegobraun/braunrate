@@ -2,6 +2,7 @@ package slo
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Diegobraun/braunrate/internal/metrics"
@@ -58,14 +59,17 @@ func evaluateRule(rule scenario.SLORule, document metrics.Document, byStep map[s
 
 	var distribution metrics.Distribution
 	var count, errors, successes int64
+	var sampled, worked int64
 
 	switch rule.Scope {
 	case scenario.ScopeOverall:
 		distribution = document.Overall.Reported()
 		count, errors, successes = document.Overall.Count, document.Overall.Errors, document.Overall.Successes
+		sampled, worked = count, count-errors
 	case scenario.ScopeJourney:
 		distribution = document.Journey.Reported()
 		count = document.Journey.Completed
+		sampled, worked = document.Journey.Started, document.Journey.Completed
 	default:
 		step, exists := byStep[rule.Step]
 		if !exists {
@@ -76,6 +80,11 @@ func evaluateRule(rule scenario.SLORule, document metrics.Document, byStep map[s
 		}
 		distribution = step.Latency
 		count, errors, successes = step.Count, step.Errors, step.Successes
+		sampled, worked = count, count-errors
+	}
+
+	if evaluation, refused := refuseLatencyOverFailures(rule, evaluation, sampled, worked); refused {
+		return evaluation
 	}
 
 	switch rule.Metrica {
@@ -366,4 +375,29 @@ func phrase(verdict Verdict) string {
 		return fmt.Sprintf("Passou: as %d regras de SLO foram atendidas.", len(verdict.Evaluations))
 	}
 	return strings.Join(failures, " ")
+}
+
+var latencyMetrics = []string{"p50", "p75", "p90", "p95", "p99", "p99.9", "max"}
+
+// A percentile describes the work the scenario meant to measure only while the
+// requests that worked are the majority of the sample. Below that every
+// quantile is drawn mostly from failures, and the number is the time the target
+// took to refuse — the same reason the sanity check already invalidates a step
+// that failed in 100% of the requests. There is one histogram per step, so the
+// criterion cannot be re-evaluated over the successes alone; what the gate can
+// do is refuse to approve. A run with 98% of errors was passing a latency
+// criterion with the p95 of an error page.
+func refuseLatencyOverFailures(rule scenario.SLORule, evaluation Evaluation, sampled, worked int64) (Evaluation, bool) {
+	if !slices.Contains(latencyMetrics, rule.Metrica) {
+		return evaluation, false
+	}
+	if sampled <= 0 || worked*2 >= sampled {
+		return evaluation, false
+	}
+	evaluation.NoData = true
+	evaluation.Passed = false
+	evaluation.Sentence = fmt.Sprintf(
+		"Nao avaliada: %s teve %.0f%% de falha, entao a %s acima e sobretudo o tempo de falhar, nao o tempo do trabalho. A regra %q nao pode ser verificada sobre esta amostra, e sem verificacao o gate nao aprova.",
+		targetName(rule), float64(sampled-worked)/float64(sampled)*100, readableName(rule.Metrica), rule.Text)
+	return evaluation, true
 }
