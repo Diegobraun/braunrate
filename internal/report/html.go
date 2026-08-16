@@ -17,6 +17,7 @@ type htmlPage struct {
 	Verdict           htmlVerdict
 	Journey           metrics.Journey
 	Steps             []htmlStep
+	HasNeverRan       bool
 	HasServiceLatency bool
 	ClosedLoop        string
 	Warnings          []htmlWarning
@@ -57,11 +58,14 @@ type htmlStep struct {
 	Max       string
 	Errors    int64
 	HasError  bool
+	NeverRan  bool
 }
 
 type htmlError struct {
-	Class string
-	Count string
+	Step    string
+	Class   string
+	Count   string
+	Example string
 }
 
 type htmlWarning struct {
@@ -121,6 +125,14 @@ func buildPage(document metrics.Document) htmlPage {
 		}
 		page.Steps = append(page.Steps, line)
 	}
+	// A step that never ran used to vanish from the table, and whoever read the
+	// report never found out it existed.
+	for _, name := range metrics.StepsThatNeverRan(document) {
+		page.Steps = append(page.Steps, htmlStep{
+			Name: name, Count: "0", P50: "—", P95: "—", P99: "—", P999: "—", Max: "—", NeverRan: true,
+		})
+		page.HasNeverRan = true
+	}
 
 	for _, finding := range document.Sanity.Findings {
 		page.Warnings = append(page.Warnings, htmlWarning{
@@ -143,8 +155,10 @@ func buildPage(document metrics.Document) htmlPage {
 		page.Warnings = append(page.Warnings, line)
 	}
 
-	for _, line := range errorsByClass(document) {
-		page.Errors = append(page.Errors, htmlError{Class: line.class, Count: thousands(line.count)})
+	for _, line := range errorLines(document) {
+		page.Errors = append(page.Errors, htmlError{
+			Step: line.step, Class: line.class, Count: thousands(line.count), Example: line.example,
+		})
 	}
 	page.Reliability = reliabilitySentences(document)
 	page.Plan = planSentences(document)
@@ -498,13 +512,16 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
   <tr><th>passo</th><th>requisicoes</th><th>metade</th><th>95%</th><th>99%</th><th>99,9%</th><th>pior</th><th>erros</th></tr>
   {{range .Steps}}
   <tr>
-    <td><span class="marca">({{.Mark}})</span> {{.Name}}</td>
+    <td>{{if .NeverRan}}{{.Name}}{{else}}<span class="marca">({{.Mark}})</span> {{.Name}}{{end}}</td>
     <td>{{.Count}}</td><td>{{.P50}}</td><td>{{.P95}}</td><td>{{.P99}}</td>
     <td>{{.P999}}</td><td>{{.Max}}</td>
-    <td{{if .HasError}} class="erro"{{end}}>{{.Errors}}</td>
+    <td{{if .HasError}} class="erro"{{end}}>{{if .NeverRan}}—{{else}}{{.Errors}}{{end}}</td>
   </tr>
   {{end}}
 </table>
+{{if .HasNeverRan}}
+<p class="nota">Passo com traco nunca chegou a executar: a iteracao parou antes dele. O motivo esta em "Erros", no passo que falhou primeiro.</p>
+{{end}}
 {{if .ClosedLoop}}
 <p class="nota">(2) tempo de resposta puro. No laco fechado nao existe instante agendado: o usuario virtual so pede de novo depois da resposta anterior, entao nenhum atraso de fila aparece nestes numeros.</p>
 {{else}}
@@ -539,8 +556,8 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 {{if .Errors}}
 <h2>Erros</h2>
 <table>
-  <tr><th>tipo</th><th>quantidade</th></tr>
-  {{range .Errors}}<tr><td>{{.Class}}</td><td>{{.Count}}</td></tr>{{end}}
+  <tr><th>passo</th><th>o que aconteceu</th><th>quantidade</th><th>exemplo</th></tr>
+  {{range .Errors}}<tr><td>{{.Step}}</td><td>{{.Class}}</td><td>{{.Count}}</td><td>{{.Example}}</td></tr>{{end}}
 </table>
 {{end}}
 

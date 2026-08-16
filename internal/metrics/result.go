@@ -51,6 +51,10 @@ type Run struct {
 	Availability Availability     `json:"valores_disponiveis_por_variavel"`
 	AuthObtains  int64            `json:"obtencoes_de_autenticacao"`
 	Brokers      []string         `json:"mensageria,omitempty"`
+	// Declared so the report can show a step that never ran. Without it, a step
+	// that depended on a capture that failed simply vanished from the table and
+	// the reader never learned it existed.
+	DeclaredSteps []string `json:"passos_declarados,omitempty"`
 }
 
 const ClosedModel = "fechado"
@@ -197,20 +201,21 @@ func BuildDocument(collector *Collector, input DocumentInput) Document {
 			GoVersion: runtime.Version(),
 		},
 		Run: Run{
-			Spec:         input.Spec,
-			Target:       input.Target,
-			Start:        input.Start,
-			End:          input.End,
-			DurationMs:   input.End.Sub(input.Start).Milliseconds(),
-			Model:        input.Model,
-			AppliedPlan:  input.Phases,
-			Users:        input.Users,
-			ThinkTimeMs:  input.ThinkTime.Milliseconds(),
-			MaxInflight:  input.MaxInflight,
-			Seeds:        input.Seeds,
-			Availability: input.Availability,
-			AuthObtains:  input.AuthObtains,
-			Brokers:      input.Brokers,
+			Spec:          input.Spec,
+			Target:        input.Target,
+			Start:         input.Start,
+			End:           input.End,
+			DurationMs:    input.End.Sub(input.Start).Milliseconds(),
+			Model:         input.Model,
+			AppliedPlan:   input.Phases,
+			Users:         input.Users,
+			ThinkTimeMs:   input.ThinkTime.Milliseconds(),
+			MaxInflight:   input.MaxInflight,
+			Seeds:         input.Seeds,
+			Availability:  input.Availability,
+			AuthObtains:   input.AuthObtains,
+			Brokers:       input.Brokers,
+			DeclaredSteps: input.DeclaredSteps,
 		},
 		Scheduling: Scheduling{
 			Sent:                   collector.Sent,
@@ -448,4 +453,25 @@ func phraseJourney(journey Journey, closed bool) string {
 	}
 	return fmt.Sprintf("Todas as %d jornadas chegaram ao fim; metade levou ate %.0f ms e 95%% ate %.0f ms, %s.",
 		journey.Started, latency.P50, latency.P95, counted)
+}
+
+// StepsThatNeverRan is the difference between what the scenario declared and
+// what the measurement saw. It is empty for a result written before the field
+// existed, which is why the report treats it as extra information and not as
+// the source of the step list.
+func StepsThatNeverRan(document Document) []string {
+	if len(document.Run.DeclaredSteps) == 0 {
+		return nil
+	}
+	measured := map[string]bool{}
+	for _, step := range document.Steps {
+		measured[step.Name] = true
+	}
+	var missing []string
+	for _, declared := range document.Run.DeclaredSteps {
+		if !measured[declared] {
+			missing = append(missing, declared)
+		}
+	}
+	return missing
 }

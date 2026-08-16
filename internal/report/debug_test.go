@@ -56,3 +56,33 @@ func problemLine(text string) string {
 	}
 	return ""
 }
+
+// B8 and B9 of the audit: a step that never ran vanished from the table, and
+// the error section said "status HTTP inesperado 60" without saying which
+// status or in which step — both were already in the JSON.
+func TestReportShowsTheStepThatNeverRanAndNamesTheError(t *testing.T) {
+	document := sampleDocument()
+	document.Run.DeclaredSteps = []string{"consultar pedido", "pagar fatura", "passo que nunca rodou"}
+	document.Steps[0].Errors = 40
+	document.Steps[0].ErrorsByClass = map[string]int64{"status": 40}
+	document.Steps[0].Details = map[string]int64{"status 401": 40}
+
+	var out strings.Builder
+	if err := report.Summary(&out, document, document.SLO); err != nil {
+		t.Fatalf("resumo nao escreveu: %v", err)
+	}
+	text := out.String()
+
+	if !strings.Contains(text, "passo que nunca rodou") {
+		t.Fatalf("o passo que nunca rodou sumiu do relatorio:\n%s", text)
+	}
+	if !strings.Contains(text, "nunca chegou a executar") {
+		t.Fatalf("nada explica o traco na linha do passo:\n%s", text)
+	}
+	if !strings.Contains(text, "status 401") {
+		t.Fatalf("a linha de erro nao diz qual status:\n%s", text)
+	}
+	if !strings.Contains(text, document.Steps[0].Name) {
+		t.Fatalf("a linha de erro nao diz em qual passo:\n%s", text)
+	}
+}

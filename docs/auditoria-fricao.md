@@ -20,8 +20,8 @@ Classificacao: **bloqueia** (a pessoa nao termina sozinha), **atrasa** (termina,
 | 5 | ~~Erro de chave desconhecida lista as chaves validas mas nao mostra a forma certa~~ — **resolvido** | A | atrasa |
 | 6 | ~~Variavel de ambiente nao definida vira texto vazio, sem aviso~~ — **resolvido** | A | atrasa |
 | 7 | Caminho fixo escapa da verificacao de variedade | A | atrasa |
-| 8 | Passo que nunca executou some do relatorio | B | atrasa |
-| 9 | Linha de erro nao diz o status nem o passo | B | atrasa |
+| 8 | ~~Passo que nunca executou some do relatorio~~ — **resolvido** | B | atrasa |
+| 9 | ~~Linha de erro nao diz o status nem o passo~~ — **resolvido** | B | atrasa |
 | 10 | ~~Erro de sintaxe YAML sai cru, em ingles, sem arquivo nem coluna~~ — **resolvido** | C | atrasa |
 | 11 | Timeout do `aguardar` diz "tempo esgotado" e imprime campo vazio | C | atrasa |
 | 12 | Arquivo inexistente responde em ingles e nao ensina o proximo passo | A | incomoda |
@@ -178,11 +178,23 @@ $ echo $?
 
 **Nenhuma jornada chegou ao fim, 100% de erro, veredito "Passou", codigo de saida 0.** Um pipeline com esse cenario fica verde. A regra declarada era so de latencia, e latencia de requisicao que falhou continua baixa. E o caso mais grave do percurso: nao e ausencia de informacao, e afirmacao errada.
 
-### B8 — Passo que nunca executou some do relatorio (atrasa)
+### B8 — Passo que nunca executou some do relatorio (atrasa) — RESOLVIDO
 
 O passo 2 dependia da captura que falhou. Ele nao aparece em "Por passo" — nem com zero. Quem le nao descobre que existia um segundo passo.
 
-### B9 — Linha de erro nao diz o status nem o passo (atrasa)
+**Resolvido.** O passo declarado que nao registrou amostra entra na tabela com traco, e uma nota diz onde procurar o motivo:
+
+```
+Por passo
+  passo                          requisicoes    metade       95%       99%     99,9%      pior   erros
+  consultar pedido           (1)         40    7.1 ms    8.2 ms    9.3 ms    9.3 ms    9.3 ms      40
+  pagar fatura                            0         —         —         —         —         —       —
+
+  Passo com traco nunca chegou a executar: a iteracao parou antes dele. O motivo
+  esta em "Erros", no passo que falhou primeiro.
+```
+
+### B9 — Linha de erro nao diz o status nem o passo (atrasa) — RESOLVIDO
 
 ```
 Erros
@@ -190,6 +202,14 @@ Erros
 ```
 
 Qual status, em qual passo? O JSON tem; o terminal, nao.
+
+**Resolvido.** Uma linha por passo e classe, com o exemplo mais frequente:
+
+```
+Erros
+  passo                      o que aconteceu                    quantidade   exemplo
+  segundo passo              status HTTP inesperado                     40   status 401
+```
 
 ### Defeito 2 — SLO impossivel de atingir
 

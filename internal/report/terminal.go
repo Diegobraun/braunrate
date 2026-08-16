@@ -98,6 +98,17 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 			milliseconds(step.Reported().P99), milliseconds(step.Reported().P999),
 			milliseconds(step.Reported().Max), step.Errors)
 	}
+	// A step that never ran used to vanish from here, and whoever read the
+	// report never found out it existed.
+	for _, name := range metrics.StepsThatNeverRan(document) {
+		write("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7s",
+			trim(name, 26), "", "0", "—", "—", "—", "—", "—", "—")
+	}
+	if len(metrics.StepsThatNeverRan(document)) > 0 {
+		write("")
+		write("  Passo com traco nunca chegou a executar: a iteracao parou antes dele. O motivo")
+		write("  esta em \"Erros\", no passo que falhou primeiro.")
+	}
 	write("")
 	if document.Closed() {
 		write("  (2) tempo de resposta puro. No laco fechado nao existe instante agendado: o")
@@ -132,11 +143,12 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 		write("")
 	}
 
-	errors := errorsByClass(document)
+	errors := errorLines(document)
 	if len(errors) > 0 {
 		write("Erros")
+		write("  %-26s %-34s %10s   %s", "passo", "o que aconteceu", "quantidade", "exemplo")
 		for _, line := range errors {
-			write("  %-50s %s", line.class, thousands(line.count))
+			write("  %-26s %-34s %10s   %s", trim(line.step, 26), trim(line.class, 34), thousands(line.count), line.example)
 		}
 		write("")
 	}
@@ -205,8 +217,10 @@ func seeds(values map[string]int64) string {
 }
 
 type errorLine struct {
-	class string
-	count int64
+	step    string
+	class   string
+	count   int64
+	example string
 }
 
 var classNames = map[string]string{
@@ -232,19 +246,42 @@ func className(class string) string {
 	return class
 }
 
-func errorsByClass(document metrics.Document) []errorLine {
-	total := map[string]int64{}
+// One line per class was the whole error section: "status HTTP inesperado 60"
+// does not say which status, nor in which step, and both are in the JSON.
+func errorLines(document metrics.Document) []errorLine {
+	var lines []errorLine
 	for _, step := range document.Steps {
 		for class, count := range step.ErrorsByClass {
-			total[className(class)] += count
+			lines = append(lines, errorLine{
+				step:    step.Name,
+				class:   className(class),
+				count:   count,
+				example: mostFrequent(step.Details, class),
+			})
 		}
 	}
-	lines := make([]errorLine, 0, len(total))
-	for class, count := range total {
-		lines = append(lines, errorLine{class: class, count: count})
-	}
-	sort.Slice(lines, func(i, j int) bool { return lines[i].count > lines[j].count })
+	sort.Slice(lines, func(first, second int) bool {
+		if lines[first].count != lines[second].count {
+			return lines[first].count > lines[second].count
+		}
+		return lines[first].step < lines[second].step
+	})
 	return lines
+}
+
+// The detail map holds every distinct message; the most frequent one is the one
+// worth a line, and the count already says how many there were.
+func mostFrequent(details map[string]int64, class string) string {
+	best, most := "", int64(0)
+	for detail, count := range details {
+		if count > most || (count == most && detail < best) {
+			best, most = detail, count
+		}
+	}
+	if best == "" {
+		return class
+	}
+	return trim(best, 44)
 }
 
 func milliseconds(value float64) string {
