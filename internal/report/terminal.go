@@ -35,6 +35,16 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) {
 	write("%s — contra %s", document.Run.Spec, document.Run.Target)
 	write("")
 
+	if !document.Valid() && document.Sanity.Checked {
+		write("%s", document.Sanity.Sentence)
+		write("")
+		for _, finding := range document.Sanity.Findings {
+			write("  - %s", finding.Message)
+			write("    %s", finding.Evidence)
+		}
+		write("")
+	}
+
 	if len(verdict.Evaluations) > 0 {
 		write("%s", verdict.Sentence)
 		write("")
@@ -108,6 +118,10 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) {
 	write("Confiabilidade da medicao")
 	for _, warning := range document.Warnings {
 		if warning.Severity == metrics.SeverityHigh {
+			// Already reported at the top, as a sanity finding.
+			if document.Sanity.Checked {
+				continue
+			}
 			write("  RESULTADO INVALIDO: %s", warning.Message)
 		} else {
 			write("  Atencao: %s", warning.Message)

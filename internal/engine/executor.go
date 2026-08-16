@@ -193,7 +193,18 @@ func (m *Executor) Execute(ctx context.Context) metrics.Document {
 		Availability:     m.availability(),
 		AuthObtains:      m.authObtains(),
 		ScenarioWarnings: m.scenarioWarnings(),
+		DeclaredSteps:    m.declaredSteps(),
+		PlannedDuration:  m.plan.Duration(),
+		PlannedRequests:  m.plan.TotalRequests(),
 	})
+}
+
+func (m *Executor) declaredSteps() []string {
+	names := make([]string, 0, len(m.scenario.Steps))
+	for _, step := range m.scenario.Steps {
+		names = append(names, step.Name)
+	}
+	return names
 }
 
 // Polling measures in steps of the poll interval: the number is always greater

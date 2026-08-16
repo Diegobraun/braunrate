@@ -116,10 +116,20 @@ func buildPage(document metrics.Document) htmlPage {
 		page.Steps = append(page.Steps, line)
 	}
 
+	for _, finding := range document.Sanity.Findings {
+		page.Warnings = append(page.Warnings, htmlWarning{
+			Class: "alta", Label: "resultado invalido",
+			Message: finding.Message, Evidence: finding.Evidence,
+		})
+	}
 	for _, warning := range document.Warnings {
 		line := htmlWarning{Class: "baixa", Label: "observacao", Message: warning.Message, Evidence: warning.Evidence}
 		switch warning.Severity {
 		case metrics.SeverityHigh:
+			// Already listed above, as a sanity finding.
+			if document.Sanity.Checked {
+				continue
+			}
 			line.Class, line.Label = "alta", "resultado invalido"
 		case metrics.SeverityMedium:
 			line.Class, line.Label = "media", "atencao"
@@ -146,8 +156,12 @@ func buildVerdict(document metrics.Document) htmlVerdict {
 
 	if !document.Valid() {
 		verdict.Class = "invalido"
-		verdict.Sentence = "Resultado invalido: o gerador nao sustentou a carga declarada."
-		verdict.Subtitle = "Os numeros abaixo medem o gerador, nao o alvo. Rode de novo com taxa menor ou em uma maquina maior antes de tirar qualquer conclusao."
+		verdict.Sentence = "Resultado invalido: a execucao nao mediu o que se propos a medir."
+		verdict.Subtitle = "Isto nao e veredito sobre o alvo — e a medicao que nao vale, e por isso nenhuma regra de SLO foi avaliada."
+		if !document.Sanity.Checked {
+			verdict.Sentence = "Resultado invalido: o gerador nao sustentou a carga declarada."
+			verdict.Subtitle = "Os numeros abaixo medem o gerador, nao o alvo. Rode de novo com taxa menor ou em uma maquina maior antes de tirar qualquer conclusao."
+		}
 		return verdict
 	}
 

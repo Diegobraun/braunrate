@@ -21,6 +21,7 @@ type Document struct {
 	Journey       Journey       `json:"jornada"`
 	Steps         []StepResult  `json:"passos"`
 	Overall       OverallResult `json:"global"`
+	Sanity        Sanity        `json:"sanidade"`
 	SLO           Verdict       `json:"slo"`
 	Variety       []Variety     `json:"variedade_observada"`
 	Warnings      []Warning     `json:"avisos"`
@@ -115,7 +116,13 @@ type Warning struct {
 	Evidence string   `json:"evidencia"`
 }
 
+// Valid has a single source of truth, the sanity check. The loop over warnings
+// is the fallback for a result file written before the check existed: it
+// reproduces exactly the rule that was in force then.
 func (d Document) Valid() bool {
+	if d.Sanity.Checked {
+		return d.Sanity.Valid
+	}
 	for _, warning := range d.Warnings {
 		if warning.Severity == SeverityHigh {
 			return false
@@ -137,6 +144,9 @@ type DocumentInput struct {
 	Availability     Availability
 	AuthObtains      int64
 	ScenarioWarnings []Warning
+	DeclaredSteps    []string
+	PlannedDuration  time.Duration
+	PlannedRequests  int64
 }
 
 func BuildDocument(c *Collector, input DocumentInput) Document {
@@ -210,6 +220,7 @@ func BuildDocument(c *Collector, input DocumentInput) Document {
 
 	document.Variety = c.Varieties(input.Availability)
 	document.Warnings = append(evaluateWarnings(c, document), input.ScenarioWarnings...)
+	document.Sanity = CheckSanity(document, input)
 	return document
 }
 

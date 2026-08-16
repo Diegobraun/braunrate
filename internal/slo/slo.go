@@ -12,16 +12,11 @@ type Verdict = metrics.Verdict
 
 type Evaluation = metrics.Evaluation
 
-// Evaluate refuses to pass a run where no journey finished, even with no
-// declared SLO that would catch it: the scenario did not measure what it set
-// out to measure, and a green verdict there is a wrong statement, not a
-// missing criterion.
+// Evaluate assumes the run already passed the sanity check: whether the result
+// means anything is decided before any rule is read, in metrics.CheckSanity,
+// and a run that failed there never reaches here.
 func Evaluate(rules []scenario.SLORule, document metrics.Document) Verdict {
 	verdict := Verdict{Passed: true}
-	if evaluation, had := noJourneyCompleted(document); had {
-		verdict.Passed = false
-		verdict.Evaluations = append(verdict.Evaluations, evaluation)
-	}
 	byStep := map[string]metrics.StepResult{}
 	for _, step := range document.Steps {
 		byStep[step.Name] = step
@@ -37,23 +32,6 @@ func Evaluate(rules []scenario.SLORule, document metrics.Document) Verdict {
 
 	verdict.Sentence = phrase(verdict)
 	return verdict
-}
-
-func noJourneyCompleted(document metrics.Document) (Evaluation, bool) {
-	if document.Journey.Started == 0 || document.Journey.Completed > 0 {
-		return Evaluation{}, false
-	}
-	return Evaluation{
-		Step:     "jornada",
-		Metrica:  "completas",
-		Rule:     "toda jornada precisa chegar ao fim",
-		Obtained: 0,
-		Limit:    float64(document.Journey.Started),
-		Unit:     "jornadas",
-		Passed:   false,
-		Sentence: fmt.Sprintf("Falhou: nenhuma das %d jornadas chegou ao fim, entao o cenario nao mediu o que se propos a medir. Rode 'braunrate depurar' para ver onde a iteracao para.",
-			document.Journey.Started),
-	}, true
 }
 
 func avaliarRegra(rule scenario.SLORule, document metrics.Document, byStep map[string]metrics.StepResult) Evaluation {

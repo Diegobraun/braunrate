@@ -140,9 +140,10 @@ func execute(args []string) int {
 	if !*silencioso {
 		fmt.Fprintln(os.Stderr)
 	}
-	verdict := slo.Evaluate(c.SLO, document)
-	document.SLO = verdict
-	report.Summary(os.Stdout, document, verdict)
+	if document.Valid() {
+		document.SLO = slo.Evaluate(c.SLO, document)
+	}
+	report.Summary(os.Stdout, document, document.SLO)
 
 	if *resultPath != "" {
 		if err := writeJSON(*resultPath, document); err != nil {
@@ -167,7 +168,7 @@ func execute(args []string) int {
 	if !document.Valid() {
 		return 3
 	}
-	if !verdict.Passed {
+	if !document.SLO.Passed {
 		return 1
 	}
 	return 0

@@ -222,7 +222,7 @@ Anotado durante o percurso, como manda a regra — cada um destes e achado:
 Corrigidos antes da Fase 7 (bloqueiam):
 
 - **1** — `braunrate novo [cenario.yaml]` grava um cenario de partida comentado, com os blocos de dados e autenticacao no fim, comentados, e termina apontando `braunrate depurar`.
-- **2** — execucao em que nenhuma jornada chegou ao fim falha com frase propria e codigo 1, mesmo sem SLO declarado que a pegue. Cenario sem bloco `slo` continua rodando e reportando como antes.
+- **2** — execucao em que nenhuma jornada chegou ao fim falha com frase propria, mesmo sem SLO declarado que a pegue. Cenario sem bloco `slo` continua rodando e reportando como antes. Depois virou um dos seis casos da verificacao de sanidade, e a saida passou de 1 para 3: nao e o alvo que reprovou, e a medicao que nao vale ([ADR 0011](adr/0011-verificacao-de-sanidade.md)).
 - **3** — `aguardar` passa a esperar por HTTP (`http:` mais `ate:`), sondando ate a condicao valer, com o intervalo de sondagem declarado no relatorio como granularidade da medicao.
 - **4** — falha ao autenticar ganhou classe de erro propria ("nao consegui autenticar"), com o caminho da requisicao de token na mensagem.
 

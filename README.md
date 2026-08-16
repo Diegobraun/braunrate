@@ -84,7 +84,7 @@ cenario:
     verificar: { status: 200 }
 ```
 
-Codigo de saida: `0` passou, `1` **falhou o SLO**, `2` erro de cenario, `3` **resultado invalido** — o gerador saturou e o numero nao vale.
+Codigo de saida: `0` passou, `1` **falhou o SLO**, `2` erro de cenario, `3` **resultado invalido** — a execucao nao mediu o que se propos a medir, entao nao ha o que aprovar ou reprovar ([como isso e verificado](#antes-de-qualquer-veredito-este-resultado-quer-dizer-alguma-coisa)).
 
 Cenario com autenticacao, correlacao, dados e SLO — o exemplo completo esta em [`examples/jornada-autenticada.yaml`](examples/jornada-autenticada.yaml):
 
@@ -429,6 +429,45 @@ RabbitMQ segue a mesma forma:
       corpo: { pedido: "${pedidos.id}" }
 ```
 
+## Antes de qualquer veredito: este resultado quer dizer alguma coisa?
+
+Toda execucao passa por uma verificacao de sanidade **antes** de o SLO ser lido. Ela nao pergunta se o alvo foi bem; pergunta se a execucao mediu o que se propos a medir. Quando a resposta e nao, o SLO nem chega a ser avaliado e o comando sai com **codigo 3**:
+
+```
+$ braunrate executar cenario.yaml
+Consulta sem autenticacao — contra http://127.0.0.1:8099
+
+Resultado invalido: a execucao nao mediu o que se propos a medir. Isto nao e veredito sobre o
+alvo — e a medicao que nao vale, e por isso nenhuma regra de SLO foi avaliada.
+
+  - nenhuma jornada chegou ao fim, entao o cenario nao exercitou a sequencia que declarou.
+    Rode 'braunrate depurar' para ver onde a iteracao para
+    60 jornadas iniciadas, 0 completas
+  - o passo "consultar pedido" falhou em 100% das requisicoes; nenhuma resposta bem-sucedida
+    entrou na medicao dele
+    60 requisicoes, 60 erros (status: 60)
+
+$ echo $?
+3
+```
+
+Os seis casos que invalidam:
+
+| Caso | Por que o numero nao vale |
+|---|---|
+| nenhuma jornada chegou ao fim | o cenario nao exercitou a sequencia que declarou |
+| todos os passos falharam, ou um passo falhou em 100% | a latencia medida e o tempo de recusar, nao o de fazer |
+| a carga declarada nao foi aplicada inteira | so o pedaco que rodou ficou medido |
+| um passo declarado nao registrou amostra | ele ficou de fora da medicao |
+| variedade colapsada em fonte com varios valores | o alvo pode ter respondido de cache |
+| gerador saturado | os numeros medem o gerador, nao o alvo |
+
+Os tres primeiros sao novos; os tres ultimos ja existiam soltos e agora passam pelo mesmo ponto de decisao, entao ha um lugar so no codigo que diz que um resultado nao conta.
+
+A verificacao vale **sempre**, com ou sem bloco `slo` — cenario sem SLO continua executando e reportando, so nao serve de gate. Codigo 3 e diferente de codigo 1: **1** e "o alvo nao atendeu o criterio", **3** e "esta execucao nao serve para afirmar nada".
+
+Isso nasceu de tres bugs da mesma familia: dados congelados na primeira iteracao, o proprio `examples/ci.yaml` rodando 100% de 401 e passando verde desde a Fase 1, e a variedade que so foi conferida quando alguem pediu. Os tres eram execucao sintaticamente perfeita, semanticamente vazia, com a suite inteira verde ([ADR 0011](docs/adr/0011-verificacao-de-sanidade.md)).
+
 ## Variedade observada: o relatorio diz o que aconteceu, nao o que foi declarado
 
 ```
@@ -483,6 +522,7 @@ A comparacao nunca chama de regressao o que pode ser ruido, lista tudo que mudou
 | Autenticacao por token com renovacao, e basica | pronto |
 | Dados: CSV com politica de consumo e geracao com semente | pronto |
 | Assercoes funcionais e SLO por passo e global, com codigo de saida | pronto |
+| Verificacao de sanidade do resultado antes de qualquer veredito | pronto |
 | Tempo total da jornada, contado do instante agendado | pronto |
 | Autoria: schema no editor, `depurar`, `importar curl`, erros que ensinam | pronto |
 | Relatorio HTML autocontido, com veredito em uma frase | pronto |
@@ -528,6 +568,7 @@ Tres razoes, nesta ordem:
 - [ADR 0008 — mensageria e cadeia assincrona](docs/adr/0008-mensageria-e-cadeia-assincrona.md)
 - [ADR 0009 — equivalencia entre YAML e DSL](docs/adr/0009-equivalencia-entre-yaml-e-dsl.md)
 - [ADR 0010 — codigo em ingles, produto em portugues](docs/adr/0010-idioma-do-codigo.md)
+- [ADR 0011 — verificacao de sanidade antes do veredito](docs/adr/0011-verificacao-de-sanidade.md)
 - [Schema do cenario](docs/braunrate.schema.json) — autocompletar e validacao no editor
 - [Exemplo de relatorio HTML](docs/exemplo-relatorio.html) — saida real de uma execucao que falhou o SLO
 - [Medicao dos prototipos da Fase 0](docs/medicoes-fase0.md)
