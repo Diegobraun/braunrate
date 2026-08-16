@@ -4,6 +4,16 @@ Registro das decisoes tomadas durante o trabalho autonomo da noite de 2026-08-16
 Ordenado por risco: primeiro o que muda o que o usuario ve, o que contraria ADR
 existente e o que e caro de reverter; depois o resto.
 
+## Revisao dos ADRs — o cenario em Go so roda de dentro deste modulo, e o README passa a dizer isso
+
+Alternativa considerada: expor motor e documento de resultado como API publica, para o cenario em Go rodar de um modulo de fora.
+
+Por que esta: o README mostrava `motor.Novo(...)` como se qualquer projeto pudesse importar, e o motor vive em `internal/` — o exemplo nao compila fora daqui, e ainda usava os nomes em portugues de antes do ADR 0010. Decidir o que vira API publica e decisao de v1, quando a interface vira contrato versionado (ADR 0004); inventar essa superficie sozinho de madrugada seria a decisao mais cara de reverter da noite. O que da para fazer agora e o exemplo compilar e a limitacao aparecer escrita.
+
+Reversibilidade: barato — e texto; expor o motor depois nao desfaz nada.
+
+Toca o usuario: sim. O trecho em Go do README trocou de nomes (`dsl.New`, `Target`, `Auth`, `Build`, `engine.New`) e ganhou uma limitacao conhecida logo abaixo. O que estava publicado nao compilava em lugar nenhum.
+
 ## Item 8 — forma de corpo entra na variedade pelo mesmo cano dos valores
 
 Alternativa considerada: uma metrica separada, com contador, secao e aviso proprios.

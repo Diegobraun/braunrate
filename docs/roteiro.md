@@ -67,7 +67,7 @@ Os testes de mensageria rodam contra Kafka e RabbitMQ de verdade no CI, e **pula
 
 ## Fase 6 — Segundo publico
 
-Entregue: DSL em Go que monta o mesmo `cenario.Cenario` que o YAML monta e vai para o mesmo motor, com a equivalencia travada por teste caso a caso e por teste de cobertura (protocolo, chave de topo, origem de captura, tipo de assercao, perfil, autenticacao e consumo sem caso de equivalencia quebram o build). Decisao em [ADR 0009](adr/0009-equivalencia-entre-yaml-e-dsl.md).
+Entregue: DSL em Go que monta o mesmo `scenario.Spec` que o YAML monta e vai para o mesmo motor, com a equivalencia travada por teste caso a caso e por teste de cobertura (protocolo, chave de topo, origem de captura, tipo de assercao, perfil, autenticacao, consumo e opcao de protocolo sem caso de equivalencia quebram o build). Decisao em [ADR 0009](adr/0009-equivalencia-entre-yaml-e-dsl.md).
 
 Entregue tambem: `importar jmx`, traducao **parcial e declarada** do plano do JMeter — requisicao HTTP, cabecalho (com credencial virando variavel de ambiente), CSVDataSet e correlacao viram cenario ou aviso; thread nunca vira taxa; o que nao foi traduzido sai listado elemento a elemento.
 

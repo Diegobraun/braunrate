@@ -285,38 +285,42 @@ Iteracao completa: 2 passo(s), tudo certo. Para rodar com carga:
 Quando o cenario passa do que o YAML expressa — laco sobre uma lista, decisao no meio da jornada, dado vindo de um sistema seu — o mesmo cenario se escreve em Go, com o mesmo motor e as mesmas metricas:
 
 ```go
-c, err := dsl.Novo("Jornada autenticada").
-	Alvo("https://api.exemplo.com").
-	Autenticacao(dsl.PorToken(
-		dsl.POST("/auth/token").Corpo(map[string]any{"usuario": "ana", "senha": "${SENHA}"}),
-		dsl.Capturar("token", "$.access_token"),
-	).RenovarApos(25 * time.Minute)).
-	DadosDeArquivo("assinantes", "dados/assinantes.csv").
-	Rampa(dsl.PorSegundo(10), dsl.PorSegundo(100), 30*time.Second).
-	Patamar(dsl.PorSegundo(100), time.Minute).
-	Passo(dsl.GET("/pedidos/${assinantes.id}"),
-		dsl.Nome("consultar pedido"),
-		dsl.VerificarStatus(200),
-		dsl.Capturar("faturaId", "$.ultimaFatura.id")).
+cenario, err := dsl.New("Jornada autenticada").
+	Target("https://api.exemplo.com").
+	Auth(dsl.WithToken(
+		dsl.POST("/auth/token").Body(map[string]any{"usuario": "ana", "senha": "${SENHA}"}),
+		dsl.Capture("token", "$.access_token"),
+	).RefreshAfter(25 * time.Minute)).
+	DataFromFile("assinantes", "dados/assinantes.csv").
+	Ramp(dsl.PerSecond(10), dsl.PerSecond(100), 30*time.Second).
+	Plateau(dsl.PerSecond(100), time.Minute).
+	Step(dsl.GET("/pedidos/${assinantes.id}"),
+		dsl.Name("consultar pedido"),
+		dsl.CheckStatus(200),
+		dsl.Capture("faturaId", "$.ultimaFatura.id")).
 	SLO("consultar pedido", "p95", "< 150ms").
-	SLOGlobal("erros", "< 0.1").
-	Construir()
+	OverallSLO("erros", "< 0.1").
+	Build()
 
-m, err := motor.Novo(c, motor.OpcoesPadrao())
-documento := m.Executar(context.Background())
+executor, err := engine.New(cenario, engine.DefaultOptions())
+documento := executor.Execute(context.Background())
 ```
 
-**Migrar de YAML para Go nao e reescrever.** A DSL nao interpreta nada por conta propria: `"$.ultimaFatura.id"`, `"> 10"` e `"< 150ms"` sao lidos pelas mesmas funcoes que leem o YAML, e cada protocolo aplica seus padroes num lugar so. Um teste compara a estrutura inteira dos dois caminhos, caso a caso, e falha se um protocolo registrado, uma chave de topo ou uma forma de cenario ficar sem caso de equivalencia:
+**Limitacao conhecida:** `dsl` e publico, mas o motor ainda vive em `internal/`. Na pratica isso quer dizer que **o cenario em Go roda de dentro deste modulo** — um `go test` ou um `main` no proprio repositorio. Rodar de um modulo de fora vai exigir expor motor e documento de resultado como API publica, e isso e decisao de v1, quando a interface vira contrato versionado ([ADR 0004](docs/adr/0004-extensao-de-protocolo.md)). Ate la a DSL vale para quem versiona o teste junto com o servico e constroi o binario a partir daqui.
+
+**Migrar de YAML para Go nao e reescrever.** A DSL nao interpreta nada por conta propria: `"$.ultimaFatura.id"`, `"> 10"` e `"< 150ms"` sao lidos pelas mesmas funcoes que leem o YAML, e cada protocolo aplica seus padroes num lugar so. Um teste compara a estrutura inteira dos dois caminhos, caso a caso, e falha se um protocolo registrado, uma chave de topo, uma forma de cenario ou uma opcao de protocolo ficar sem caso de equivalencia:
 
 ```
-$ go test ./dsl/ -run TestYAMLEDSL -v
---- PASS: TestYAMLEDSLProduzemOMesmoCenario (0.00s)
-    --- PASS: TestYAMLEDSLProduzemOMesmoCenario/http_com_variaveis,_dados,_autenticacao_por_token,_capturas_e_slo (0.00s)
-    --- PASS: TestYAMLEDSLProduzemOMesmoCenario/graphql_por_operacao (0.00s)
-    --- PASS: TestYAMLEDSLProduzemOMesmoCenario/kafka_com_aguardar_fechando_a_cadeia (0.00s)
-    --- PASS: TestYAMLEDSLProduzemOMesmoCenario/amqp_em_fila_e_em_troca_com_rota (0.00s)
-    --- PASS: TestYAMLEDSLProduzemOMesmoCenario/autenticacao_basica_e_consumo_unico_por_usuario (0.00s)
-    --- PASS: TestYAMLEDSLProduzemOMesmoCenario/autenticacao_por_cabecalho_fixo (0.00s)
+$ go test ./dsl/ -run TestYAMLAndDSL -v
+--- PASS: TestYAMLAndDSLProduceSameScenario (0.00s)
+    --- PASS: TestYAMLAndDSLProduceSameScenario/http_com_variaveis,_dados,_autenticacao_por_token,_capturas_e_slo (0.00s)
+    --- PASS: TestYAMLAndDSLProduceSameScenario/graphql_por_operacao (0.00s)
+    --- PASS: TestYAMLAndDSLProduceSameScenario/kafka_com_aguardar_fechando_a_cadeia (0.00s)
+    --- PASS: TestYAMLAndDSLProduceSameScenario/amqp_em_fila_e_em_troca_com_rota (0.00s)
+    --- PASS: TestYAMLAndDSLProduceSameScenario/autenticacao_basica_e_consumo_unico_por_usuario (0.00s)
+    --- PASS: TestYAMLAndDSLProduceSameScenario/autenticacao_por_cabecalho_fixo (0.00s)
+    --- PASS: TestYAMLAndDSLProduceSameScenario/mensageria_autenticada (0.00s)
+    --- PASS: TestYAMLAndDSLProduceSameScenario/modelo_fechado (0.00s)
 ```
 
 ## Dados: um valor por jornada, nao por requisicao
@@ -393,7 +397,7 @@ Geradores disponiveis: `uuid`, `sequencia`, `numero(min,max)`, `inteiro(min,max)
 requer: [kafka]
 ```
 
-**Limitacao conhecida:** nao existe leitura de `.xlsx`. CSV cobre o caso e a dependencia de Excel e pesada demais para o motor. Se aparecer necessidade, sera um `braunrate import planilha` que converte para CSV — nunca leitura direta durante a execucao.
+**Limitacao conhecida:** nao existe leitura de `.xlsx`. CSV cobre o caso e a dependencia de Excel e pesada demais para o motor. Se aparecer necessidade, sera um `braunrate import xlsx` que converte para CSV — nunca leitura direta durante a execucao.
 
 ## O que serve de criterio
 

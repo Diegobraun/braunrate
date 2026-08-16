@@ -192,6 +192,25 @@ func (step *KafkaStep) Timeout(timeout time.Duration) *KafkaStep {
 	return step
 }
 
+// Partition sends the whole load of this step to one partition, ignoring the
+// key. It concentrates on purpose, and the report says so.
+func (step *KafkaStep) Partition(partition int) *KafkaStep {
+	if partition < 0 {
+		step.err = fmt.Errorf("particao invalida: %d (use um numero, como 0 ou 3)", partition)
+		return step
+	}
+	step.config.Partition = &partition
+	return step
+}
+
+// Group names a consumer group to watch while the load runs. It only observes:
+// entering the group would take a partition away from the service being
+// measured.
+func (step *KafkaStep) Group(group string) *KafkaStep {
+	step.config.Group = group
+	return step
+}
+
 func (step *KafkaStep) build() (string, protocol.Config, error) {
 	if step.err != nil {
 		return "", nil, step.err

@@ -15,8 +15,8 @@ Repetidos e a palavra. Um timeout padrao aplicado num caminho e nao no outro, um
 
 **Nao existe interpretacao propria da DSL. Onde havia leitura presa a no de YAML, ela foi extraida para funcao sem no, e os dois caminhos chamam a mesma.**
 
-1. **Interpretacao compartilhada no pacote `cenario`**: `MontarCaptura` (`$.campo`, `cabecalho:X-Id`, `/regex/`), `MontarComparacao` (`> 10`, `existe`, `contem`), `MontarRegraDeSLO` (`< 150ms`, `> 500/s`), `Interpolar` e `ExpandirDoAmbiente`. O leitor de YAML virou uma casca fina que so acrescenta linha e coluna ao erro.
-2. **Padrao e validacao de protocolo tambem num lugar so**: cada protocolo expoe `Padrao()` e `Validar()` (ou `Finalizar()`, no GraphQL, que extrai o nome da operacao). O `Decodificar` do YAML e o construtor da DSL chamam os mesmos. Protocolo novo entra equivalente sem escrever nada a mais.
+1. **Interpretacao compartilhada no pacote `scenario`**: `ParseCapture` (`$.campo`, `cabecalho:X-Id`, `/regex/`), `ParseComparison` (`> 10`, `existe`, `contem`), `ParseSLORule` (`< 150ms`, `> 500/s`), `Interpolate` e `ExpandFromEnv`. O leitor de YAML virou uma casca fina que so acrescenta linha e coluna ao erro.
+2. **Padrao e validacao de protocolo tambem num lugar so**: cada protocolo expoe `Default()` e `Validate()` (ou `Finish()`, no GraphQL, que extrai o nome da operacao). O `Decode` do YAML e o construtor da DSL chamam os mesmos. Protocolo novo entra equivalente sem escrever nada a mais.
 3. **A equivalencia e travada por teste, nao por revisao.** Cada caso tem o YAML e o codigo Go que deveriam produzir o mesmo cenario, e o teste compara a estrutura inteira — nao um resumo, nao uma amostra. So o numero da linha e ignorado: e posicao no arquivo, e nao existe em codigo Go.
 4. **A cobertura do teste tambem e travada.** Um teste falha se um protocolo registrado, uma chave de topo do YAML, uma origem de captura, um tipo de assercao, um perfil de carga, um tipo de autenticacao ou uma politica de consumo nao aparecer em nenhum caso de equivalencia. Sem isso, o que fosse acrescentado depois nasceria sem equivalencia verificada e a promessa valeria so para o que ja existia.
 5. **A DSL nao acrescenta capacidade que o YAML nao tem.** Ela acrescenta o que so codigo da: laco, condicao, dado vindo de um sistema proprio. O cenario resultante e o mesmo tipo que o YAML produz e vai para o mesmo motor.
@@ -30,6 +30,6 @@ Repetidos e a palavra. Um timeout padrao aplicado num caminho e nao no outro, um
 ## Consequencias
 
 - Mudanca de padrao (um timeout, uma regra de captura) precisa ser feita uma vez, e vale para os dois publicos automaticamente.
-- Acrescentar chave nova ao YAML sem acrescentar na DSL quebra o build — de proposito.
+- Acrescentar chave nova ao YAML sem acrescentar na DSL quebra o build — de proposito. **A trava so passou a cobrir opcao de protocolo na revisao da Fase 8**: `particao` e `grupo` entraram no passo Kafka sem metodo na DSL e nada reclamou, porque a cobertura olhava protocolo, chave de topo e forma de cenario, nunca os campos de configuracao de cada protocolo. Agora um teste percorre os campos de cada `Config` e exige que todos aparecam em algum caso.
 - A DSL herda as validacoes que ensinam: operacao GraphQL sem nome, `aguardar` sem correlacao e passo Kafka sem valor recusam do mesmo jeito, com a mesma mensagem.
 - Fica pendente: comparar tambem a **execucao** dos dois caminhos alem da estrutura (hoje ha um teste que roda o par gemeo e compara chaves de agregacao e veredito, mas nao a distribuicao inteira).

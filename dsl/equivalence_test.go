@@ -221,6 +221,8 @@ cenario:
       brokers: [127.0.0.1:9092]
       acks: lider
       timeout: 5s
+      particao: 2
+      grupo: cobranca
 
   - aguardar:
       kafka: { topico: pedidos-processados, brokers: [127.0.0.1:9092] }
@@ -249,7 +251,9 @@ slo:
 					Header("origem", "braunrate").
 					Brokers("127.0.0.1:9092").
 					Acks("lider").
-					Timeout(5*time.Second)).
+					Timeout(5*time.Second).
+					Partition(2).
+					Group("cobranca")).
 				Step(dsl.WaitForKafka("pedidos-processados").
 					Addresses("127.0.0.1:9092").
 					Key("${pedidos.id}").
@@ -697,4 +701,55 @@ func format(value any) string {
 		return "<nao formatavel>"
 	}
 	return string(text)
+}
+
+// The ADR 0009 promise is that adding a key to the YAML without adding it to
+// the DSL breaks the build. The locks above cover the shape of the scenario,
+// not the options of each protocol — and `particao` and `grupo` went into the
+// Kafka step without a DSL method, in silence. This one walks the fields of
+// every protocol config and demands that each of them be exercised somewhere.
+func TestEveryProtocolConfigFieldHasEquivalenceCase(t *testing.T) {
+	touched := map[string]map[string]bool{}
+	shapes := map[string]reflect.Type{}
+
+	for _, testCase := range testCases {
+		built, err := testCase.dsl()
+		if err != nil {
+			t.Fatalf("%s: %v", testCase.name, err)
+		}
+		for _, step := range built.Steps {
+			value := reflect.ValueOf(step.Config)
+			for value.Kind() == reflect.Pointer {
+				if value.IsNil() {
+					break
+				}
+				value = value.Elem()
+			}
+			if value.Kind() != reflect.Struct {
+				continue
+			}
+			shapes[step.Protocol] = value.Type()
+			if touched[step.Protocol] == nil {
+				touched[step.Protocol] = map[string]bool{}
+			}
+			for index := 0; index < value.NumField(); index++ {
+				if !value.Field(index).IsZero() {
+					touched[step.Protocol][value.Type().Field(index).Name] = true
+				}
+			}
+		}
+	}
+
+	for protocolName, shape := range shapes {
+		for index := 0; index < shape.NumField(); index++ {
+			field := shape.Field(index)
+			if !field.IsExported() {
+				continue
+			}
+			if !touched[protocolName][field.Name] {
+				t.Errorf("o campo %s.%s nunca aparece num caso de equivalencia: se a DSL nao souber declarar, o cenario em Go nao consegue dizer o que o YAML diz",
+					protocolName, field.Name)
+			}
+		}
+	}
 }
