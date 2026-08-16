@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 )
 
 // CheckReferences applies the undeclared-variable rule to the built scenario
@@ -108,4 +109,50 @@ func unique(names []string) []string {
 		}
 	}
 	return kept
+}
+
+// ReferencedFields lists, per data source, the fields the scenario reads from
+// it. A CSV declares its columns in the file, so the check that the column
+// exists can only happen once the file is open — and until it did, a column
+// that was not there interpolated to nothing and the request went out with a
+// blank in the middle of the path.
+func ReferencedFields(spec Spec) map[string][]string {
+	bySource := map[string]map[string]bool{}
+	collect := func(text string) {
+		for _, used := range referencesIn(text) {
+			source, field, dotted := strings.Cut(used.name, ".")
+			if !dotted || field == "" {
+				continue
+			}
+			if bySource[source] == nil {
+				bySource[source] = map[string]bool{}
+			}
+			bySource[source][field] = true
+		}
+	}
+
+	for _, value := range spec.Vars {
+		collect(value)
+	}
+	collect(spec.Target)
+	for _, step := range spec.Steps {
+		for _, text := range textsOf(step.Config) {
+			collect(text)
+		}
+		for _, assertion := range step.Assertions {
+			collect(assertion.Target)
+			collect(assertion.Value)
+		}
+	}
+
+	fields := map[string][]string{}
+	for source, names := range bySource {
+		listed := make([]string, 0, len(names))
+		for name := range names {
+			listed = append(listed, name)
+		}
+		sort.Strings(listed)
+		fields[source] = listed
+	}
+	return fields
 }

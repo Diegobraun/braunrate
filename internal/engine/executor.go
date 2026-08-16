@@ -88,6 +88,9 @@ func New(spec scenario.Spec, options Options) (*Executor, error) {
 		}
 		executor.sources = append(executor.sources, open)
 	}
+	if err := checkDataFields(spec, executor.sources); err != nil {
+		return nil, err
+	}
 
 	if spec.Auth != nil {
 		executor.authenticator = auth.New(*spec.Auth, executor.runAuthStep, options.Clock)

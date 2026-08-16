@@ -318,7 +318,7 @@ func debug(args []string) int {
 
 	iteration, err := runner.Debug(runContext, scenarioPath, version)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n%v\n", err)
+		fmt.Fprintln(os.Stderr)
 		return faultExit(err)
 	}
 
