@@ -18,7 +18,7 @@ Classificacao: **bloqueia** (a pessoa nao termina sozinha), **atrasa** (termina,
 | 3 | Esperar efeito visivel por HTTP e impossivel, e a mensagem nao diz o que fazer | C | bloqueia |
 | 4 | Alvo fora do ar vira "erro de configuracao do cenario" — diagnostico errado | B | bloqueia |
 | 5 | ~~Erro de chave desconhecida lista as chaves validas mas nao mostra a forma certa~~ — **resolvido** | A | atrasa |
-| 6 | Variavel de ambiente nao definida vira texto vazio, sem aviso | A | atrasa |
+| 6 | ~~Variavel de ambiente nao definida vira texto vazio, sem aviso~~ — **resolvido** | A | atrasa |
 | 7 | Caminho fixo escapa da verificacao de variedade | A | atrasa |
 | 8 | Passo que nunca executou some do relatorio | B | atrasa |
 | 9 | Linha de erro nao diz o status nem o passo | B | atrasa |
@@ -93,9 +93,23 @@ tipo de perfil desconhecido: "taxa"
 
 `taxa` nao e erro de digitacao de `rampa`. A distancia de edicao aceita 3 sem olhar o tamanho da palavra.
 
-### A6 — Variavel de ambiente nao definida vira texto vazio (atrasa)
+### A6 — Variavel de ambiente nao definida vira texto vazio (atrasa) — RESOLVIDO
 
 O cenario declara `senha: "${SENHA}"`. Sem `SENHA` no ambiente, a requisicao sai com senha vazia e nada e dito — nem em `validar`, nem em `depurar`, nem no relatorio. Contra uma API real, o resultado e 401 sem explicacao.
+
+**Resolvido**, com dois comportamentos diferentes de proposito. `validate` trata o arquivo e costuma rodar onde o segredo nao esta, entao **avisa**:
+
+```
+Variavel de ambiente nao definida: SENHA_DA_API. Aqui isso e so aviso; na execucao o campo sairia vazio, entao 'braunrate execute' recusa ate a variavel existir.
+```
+
+`execute` e `debug` sao quem manda a requisicao, e **recusam antes de disparar qualquer coisa**:
+
+```
+o cenario usa SENHA_DA_API, e essa variavel nao esta no ambiente: o campo sairia vazio e o alvo responderia com erro que nao explica nada.
+    rode com:  SENHA_DA_API=... braunrate execute cenario.yaml
+    ou declare uma reserva no proprio cenario:  variaveis: { senha_da_api: "${SENHA_DA_API:-valor}" }
+```
 
 ### A7 — Caminho fixo escapa da verificacao de variedade (atrasa)
 

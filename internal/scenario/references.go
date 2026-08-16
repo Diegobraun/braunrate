@@ -14,16 +14,35 @@ import (
 // silence: the request went out with an empty field, the target answered 401 or
 // 404, and nothing in the output connected the two. Refusing at validation is
 // the only moment where the person is still looking at the file.
-func checkReferences(document *yaml.Node, spec Spec) error {
-	known := knownVariables(spec)
-	return walkScalars(document, func(node *yaml.Node) error {
+func checkReferences(document *yaml.Node, spec *Spec) error {
+	known := knownVariables(*spec)
+	missing := map[string]bool{}
+	err := walkScalars(document, func(node *yaml.Node) error {
 		for _, used := range referencesIn(node.Value) {
 			if err := known.resolve(used, node); err != nil {
 				return err
 			}
+			// Only a name the environment has to supply counts here: a dotted
+			// one comes from a data source and a known one from the file.
+			if !used.hasDefault && environmentName.MatchString(used.name) && !defined(used.name) {
+				missing[used.name] = true
+			}
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	for name := range missing {
+		spec.MissingEnvironment = append(spec.MissingEnvironment, name)
+	}
+	sort.Strings(spec.MissingEnvironment)
+	return nil
+}
+
+func defined(name string) bool {
+	_, exists := os.LookupEnv(name)
+	return exists
 }
 
 type reference struct {
@@ -91,11 +110,7 @@ func (known variableScope) resolve(used reference, node *yaml.Node) error {
 var environmentName = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
 
 func fromEnvironment(name string) bool {
-	if environmentName.MatchString(name) {
-		return true
-	}
-	_, defined := os.LookupEnv(name)
-	return defined
+	return environmentName.MatchString(name) || defined(name)
 }
 
 func (known variableScope) resolveFromSource(source, field string, used reference, node *yaml.Node) error {

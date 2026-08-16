@@ -15,13 +15,17 @@ type Spec struct {
 	Name          string
 	Target        string
 	Requires      []string
-	Vars          map[string]string
-	Auth          *Auth
-	Messaging     *messaging.Settings
-	Data          []DataSource
-	Load          LoadPlan
-	Steps         []Step
-	SLO           []SLORule
+	// Names referenced as ${NOME} that only the environment can supply and that
+	// were not in it when the file was read. Not part of what the file says —
+	// part of what the machine had — so the DSL does not carry it.
+	MissingEnvironment []string
+	Vars               map[string]string
+	Auth               *Auth
+	Messaging          *messaging.Settings
+	Data               []DataSource
+	Load               LoadPlan
+	Steps              []Step
+	SLO                []SLORule
 }
 
 type Step struct {

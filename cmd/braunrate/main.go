@@ -115,6 +115,10 @@ func execute(args []string) int {
 		return faultExit(err)
 	}
 
+	if err := runner.RequireEnvironment(c); err != nil {
+		return faultExit(err)
+	}
+
 	options := runner.DefaultOptions(version)
 	options.MaxInflight = *maxInflight
 	options.LateThreshold = *lateThreshold
@@ -285,6 +289,10 @@ func debug(args []string) int {
 
 	c, _, err := runner.Load(scenarioPath)
 	if err != nil {
+		return faultExit(err)
+	}
+
+	if err := runner.RequireEnvironment(c); err != nil {
 		return faultExit(err)
 	}
 

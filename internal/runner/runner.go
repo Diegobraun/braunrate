@@ -91,6 +91,9 @@ func Execute(runContext context.Context, path string, options Options) (Result, 
 	if err != nil {
 		return Result{}, err
 	}
+	if err := RequireEnvironment(spec); err != nil {
+		return Result{}, err
+	}
 
 	engineOptions := engine.DefaultOptions()
 	engineOptions.Version = options.Version
@@ -144,6 +147,9 @@ type Iteration struct {
 func Debug(runContext context.Context, path string, version string) (Iteration, error) {
 	spec, _, err := Load(path)
 	if err != nil {
+		return Iteration{}, err
+	}
+	if err := RequireEnvironment(spec); err != nil {
 		return Iteration{}, err
 	}
 
@@ -276,5 +282,30 @@ func Describe(spec scenario.Spec, plan engine.Plan) []string {
 		lines = append(lines, fmt.Sprintf("Depende de infraestrutura externa: %s. Sem isso a execucao nao roda.",
 			strings.Join(spec.Requires, ", ")))
 	}
+	if len(spec.MissingEnvironment) > 0 {
+		lines = append(lines, missingEnvironmentWarning(spec))
+	}
 	return append(lines, scenario.GateWarnings(spec)...)
+}
+
+// Validation is about the file and runs where the secret is not: it warns.
+// Execution is what sends the request, and a request with an empty credential
+// comes back 401 with nothing in the output connecting the two, so it refuses.
+func missingEnvironmentWarning(spec scenario.Spec) string {
+	return fmt.Sprintf("Variavel de ambiente nao definida: %s. Aqui isso e so aviso; na execucao o campo sairia vazio, entao 'braunrate execute' recusa ate a variavel existir.",
+		strings.Join(spec.MissingEnvironment, ", "))
+}
+
+// RequireEnvironment is exported so the caller can refuse before printing the
+// headline: announcing a run and then refusing it reads like a crash.
+func RequireEnvironment(spec scenario.Spec) error {
+	if len(spec.MissingEnvironment) == 0 {
+		return nil
+	}
+	first := spec.MissingEnvironment[0]
+	return Fault{Exit: ExitBadFile, Message: fmt.Sprintf(
+		"o cenario usa %s, e essa variavel nao esta no ambiente: o campo sairia vazio e o alvo responderia com erro que nao explica nada.\n"+
+			"    rode com:  %s=... braunrate execute cenario.yaml\n"+
+			"    ou declare uma reserva no proprio cenario:  variaveis: { %s: \"${%s:-valor}\" }",
+		strings.Join(spec.MissingEnvironment, ", "), first, strings.ToLower(first), first)}
 }

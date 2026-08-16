@@ -14,6 +14,16 @@ Reversibilidade: medio — trocar a regra em `fromEnvironment` e um lugar so, ma
 
 Toca o usuario: sim. `validate` passa a reprovar (codigo 2) cenario com `${nome}` que nao venha de `variaveis`, `captura`, `dados` ou do ambiente. Cenario que dependia do valor vazio deixa de rodar. Documentado no README em "De onde vem cada `${variavel}`".
 
+## A6 — `validate` avisa e `execute` recusa quando falta variavel de ambiente
+
+Alternativa considerada: recusar nos dois, tratando variavel ausente como erro de cenario.
+
+Por que esta: sao perguntas diferentes. `validate` trata do arquivo e costuma rodar onde o segredo nao esta — laptop antes de commitar, job de lint sem credencial —, e recusar ali tiraria o comando de uso justamente onde ele serve. `execute` e quem manda a requisicao: sair com credencial vazia devolve 401 e nada na saida liga uma coisa a outra.
+
+Reversibilidade: barato — uma chamada a `RequireEnvironment`.
+
+Toca o usuario: sim. `braunrate execute` passa a sair com codigo 2 sem disparar nada quando falta variavel; antes rodava inteiro e devolvia um relatorio de 100% de erro. Cenario que dependia disso precisa declarar reserva ou definir a variavel.
+
 ## A8 — a referencia quebrada aponta a coluna dela, nao o inicio da linha
 
 Alternativa considerada: usar a posicao do escalar, que e o que o resto do parser faz.

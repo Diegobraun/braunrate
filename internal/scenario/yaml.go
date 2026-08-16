@@ -144,7 +144,7 @@ func Parse(content []byte) (Spec, error) {
 	}
 
 	spec.Target = Interpolate(spec.Target, spec.Vars)
-	if err := checkReferences(document, spec); err != nil {
+	if err := checkReferences(document, &spec); err != nil {
 		return spec, err
 	}
 	return spec, nil

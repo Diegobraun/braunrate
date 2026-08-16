@@ -600,6 +600,10 @@ func missing[T comparable](t *testing.T, subject string, expected []T, seen map[
 
 func withoutLines(c scenario.Spec) scenario.Spec {
 	clone := c
+	// What the machine had, not what the file says: the YAML side records which
+	// environment variables were missing when it was read, and the DSL has no
+	// file to read.
+	clone.MissingEnvironment = nil
 	clone.Steps = nil
 	for _, step := range c.Steps {
 		clone.Steps = append(clone.Steps, stepWithoutLines(step))
