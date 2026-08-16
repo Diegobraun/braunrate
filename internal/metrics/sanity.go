@@ -11,16 +11,16 @@ import (
 // Checked separates a verified run from a document written by an older version,
 // which has no sanity block at all.
 type Sanity struct {
-	Checked  bool            `json:"verificada"`
-	Valid    bool            `json:"valida"`
-	Findings []SanityFinding `json:"achados"`
-	Sentence string          `json:"frase"`
+	Checked  bool            `json:"checked"`
+	Valid    bool            `json:"valid"`
+	Findings []SanityFinding `json:"findings"`
+	Sentence string          `json:"sentence"`
 }
 
 type SanityFinding struct {
-	Kind     string `json:"tipo"`
-	Message  string `json:"mensagem"`
-	Evidence string `json:"evidencia"`
+	Kind     string `json:"kind"`
+	Message  string `json:"message"`
+	Evidence string `json:"evidence"`
 }
 
 // Says nothing about the target: a run where everything failed may well be the

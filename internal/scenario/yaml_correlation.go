@@ -418,7 +418,7 @@ func ParseSLORule(target, metric, rawLimit string) (SLORule, error) {
 	rule := SLORule{
 		Scope:    scopeOf(target),
 		Step:     target,
-		Metrica:  metric,
+		Metric:  metric,
 		Operator: OpLessOrEqual,
 	}
 	if rule.Scope != ScopeStep {
@@ -430,7 +430,7 @@ func ParseSLORule(target, metric, rawLimit string) (SLORule, error) {
 	}
 
 	text := strings.TrimSpace(rawLimit)
-	rule.Text = rule.Metrica + ": " + text
+	rule.Text = rule.Metric + ": " + text
 
 	for _, operator := range []Operator{OpLessOrEqual, OpGreaterOrEqual, OpLess, OpGreater} {
 		if strings.HasPrefix(text, string(operator)) {
@@ -443,7 +443,7 @@ func ParseSLORule(target, metric, rawLimit string) (SLORule, error) {
 	limit, err := parseLimit(text, rule.Unit)
 	if err != nil {
 		return rule, fmt.Errorf("invalid limit in %q: %v\n"+
-			"    examples: p95: < 150ms | errors: < 0.1 | success: >= 99.9 | throughput: >= 200/s | journeyP95: <= 10%% worse", rule.Metrica, err)
+			"    examples: p95: < 150ms | errors: < 0.1 | success: >= 99.9 | throughput: >= 200/s | journeyP95: <= 10%% worse", rule.Metric, err)
 	}
 	rule.Limit = limit
 	return rule, nil
@@ -466,16 +466,16 @@ func scopeOf(target string) SLOScope {
 // at least that, the way "erros: 0.1" means at most that.
 func describeMetric(rule *SLORule) error {
 	if rule.Scope == ScopeRegression {
-		if !isRegressionMetric(rule.Metrica) {
+		if !isRegressionMetric(rule.Metric) {
 			return fmt.Errorf("unknown regression metric: %q\n"+
 				"    available: journeyP50, journeyP95, journeyP99, globalP95, globalP99\n"+
-				"    example: - regression: { journeyP95: <= 10%% worse }", rule.Metrica)
+				"    example: - regression: { journeyP95: <= 10%% worse }", rule.Metric)
 		}
 		rule.Unit = "% worse"
 		return nil
 	}
 
-	switch rule.Metrica {
+	switch rule.Metric {
 	case "p50", "p75", "p90", "p95", "p99", "p99.9", "max":
 		rule.Unit = "ms"
 	case "errors":
@@ -486,18 +486,18 @@ func describeMetric(rule *SLORule) error {
 	case "throughput":
 		if rule.Scope != ScopeOverall {
 			return fmt.Errorf("%q only exists in global, because it is the rate of the whole run\n"+
-				"    write:  - global: { %s: >= 200/s }", rule.Metrica, rule.Metrica)
+				"    write:  - global: { %s: >= 200/s }", rule.Metric, rule.Metric)
 		}
 		rule.Unit = "/s"
 		rule.Operator = OpGreaterOrEqual
 	default:
 		return fmt.Errorf("unknown slo metric: %q\n"+
-			"    available: p50, p75, p90, p95, p99, p99.9, max, errors, success, throughput", rule.Metrica)
+			"    available: p50, p75, p90, p95, p99, p99.9, max, errors, success, throughput", rule.Metric)
 	}
 
-	if rule.Scope == ScopeJourney && (rule.Metrica == "errors" || rule.Metrica == "success") {
+	if rule.Scope == ScopeJourney && (rule.Metric == "errors" || rule.Metric == "success") {
 		return fmt.Errorf("%q does not exist in journey: a journey that does not reach the end already invalidates the run\n"+
-			"    for the error rate write:  - global: { %s: ... }", rule.Metrica, rule.Metrica)
+			"    for the error rate write:  - global: { %s: ... }", rule.Metric, rule.Metric)
 	}
 	return nil
 }

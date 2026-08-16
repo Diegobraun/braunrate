@@ -152,9 +152,9 @@ type runLine struct {
 	Scenario string         `json:"scenario"`
 	Name     string         `json:"name"`
 	Status   string         `json:"status"`
-	Exit     int            `json:"exit_code"`
+	Exit     int            `json:"exitCode"`
 	Verdict  string         `json:"verdict"`
-	Started  time.Time      `json:"started_at"`
+	Started  time.Time      `json:"startedAt"`
 	Summary  map[string]any `json:"summary,omitempty"`
 }
 

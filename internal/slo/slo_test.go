@@ -35,7 +35,7 @@ func scopeOf(step string) scenario.SLOScope {
 }
 
 func rule(step, metricName string, operator scenario.Operator, limit float64, unit string) scenario.SLORule {
-	return scenario.SLORule{Step: step, Scope: scopeOf(step), Metrica: metricName,
+	return scenario.SLORule{Step: step, Scope: scopeOf(step), Metric: metricName,
 		Operator: operator, Limit: limit, Unit: unit,
 		Text: metricName + " " + string(operator) + " limite"}
 }
@@ -130,7 +130,7 @@ func TestLatencyRuleIsNotApprovedOverASampleOfFailures(t *testing.T) {
 		Overall: metrics.OverallResult{Count: 500, Errors: 490, ErrorRate: 0.98},
 	}
 	rules := []scenario.SLORule{{
-		Scope: scenario.ScopeStep, Step: "consultar", Metrica: "p95",
+		Scope: scenario.ScopeStep, Step: "consultar", Metric: "p95",
 		Operator: scenario.OpLess, Limit: 200, Unit: "ms", Text: "p95: < 200ms",
 	}}
 
@@ -157,7 +157,7 @@ func TestLatencyRuleIsStillEvaluatedWhileMostRequestsWork(t *testing.T) {
 		}},
 	}
 	rules := []scenario.SLORule{{
-		Scope: scenario.ScopeStep, Step: "consultar", Metrica: "p95",
+		Scope: scenario.ScopeStep, Step: "consultar", Metric: "p95",
 		Operator: scenario.OpLess, Limit: 200, Unit: "ms", Text: "p95: < 200ms",
 	}}
 
@@ -175,7 +175,7 @@ func TestErrorRuleIsStillEvaluatedWhenEverythingFails(t *testing.T) {
 		Overall: metrics.OverallResult{Count: 500, Errors: 490},
 	}
 	rules := []scenario.SLORule{{
-		Scope: scenario.ScopeOverall, Metrica: "erros",
+		Scope: scenario.ScopeOverall, Metric: "erros",
 		Operator: scenario.OpLess, Limit: 1, Unit: "%", Text: "erros: < 1",
 	}}
 
@@ -197,7 +197,7 @@ func TestJourneyRuleIsNotApprovedWhenMostJourneysAbort(t *testing.T) {
 			Latency: metrics.Distribution{P95: 2}},
 	}
 	rules := []scenario.SLORule{{
-		Scope: scenario.ScopeJourney, Metrica: "p95",
+		Scope: scenario.ScopeJourney, Metric: "p95",
 		Operator: scenario.OpLess, Limit: 2000, Unit: "ms", Text: "p95: < 2s",
 	}}
 
@@ -219,7 +219,7 @@ func TestRegressionSentenceNamesTheBaseline(t *testing.T) {
 			Latency: metrics.Distribution{P95: 2}},
 	}
 	rules := []scenario.SLORule{{
-		Scope: scenario.ScopeRegression, Metrica: "jornada_p95",
+		Scope: scenario.ScopeRegression, Metric: "jornada_p95",
 		Operator: scenario.OpLess, Limit: 20, Unit: "%", Text: "jornada_p95: < 20",
 	}}
 

@@ -22,18 +22,18 @@ const bucketDuration = time.Second
 const bucketRetention = 60 * time.Second
 
 type Bucket struct {
-	StartEpochMs int64   `json:"inicio_epoch_ms"`
-	Sent         int64   `json:"enviadas"`
-	Completed    int64   `json:"concluidas"`
-	Errors       int64   `json:"erros"`
-	TargetRate   float64 `json:"taxa_alvo"`
-	LatencyP50Ms float64 `json:"latencia_p50_ms"`
-	LatencyP99Ms float64 `json:"latencia_p99_ms"`
+	StartEpochMs int64   `json:"startEpochMs"`
+	Sent         int64   `json:"sent"`
+	Completed    int64   `json:"completed"`
+	Errors       int64   `json:"errors"`
+	TargetRate   float64 `json:"targetRate"`
+	LatencyP50Ms float64 `json:"latencyP50Ms"`
+	LatencyP99Ms float64 `json:"latencyP99Ms"`
 	// Samples that arrived after this bucket was closed. They are in the step
 	// aggregate and in the counters above; what they missed are the two
 	// quantiles, and dropping them without saying so would be a number quietly
 	// computed over less than it claims.
-	LateSamples int64 `json:"amostras_fora_da_janela,omitempty"`
+	LateSamples int64 `json:"samplesOutsideWindow,omitempty"`
 	histogram   *hdrhistogram.Histogram
 }
 

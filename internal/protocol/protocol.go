@@ -140,13 +140,13 @@ type Preparable interface {
 // to watch. The engine records it, like every other number: a protocol declares
 // what it measured and never writes to the report itself (ADR 0003 §3).
 type ConsumerLag struct {
-	Group       string        `json:"grupo"`
-	Topic       string        `json:"topico"`
-	Max         int64         `json:"atraso_maximo"`
-	Final       int64         `json:"atraso_no_fim"`
-	ByPartition map[int]int64 `json:"atraso_maximo_por_particao"`
-	Readings    int           `json:"leituras"`
-	Problem     string        `json:"problema,omitempty"`
+	Group       string        `json:"group"`
+	Topic       string        `json:"topic"`
+	Max         int64         `json:"maxLag"`
+	Final       int64         `json:"lagAtEnd"`
+	ByPartition map[int]int64 `json:"maxLagPerPartition"`
+	Readings    int           `json:"reads"`
+	Problem     string        `json:"problem,omitempty"`
 }
 
 // WithBrokers is implemented by step configurations that need a broker address

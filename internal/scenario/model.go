@@ -8,7 +8,7 @@ import (
 	"github.com/Diegobraun/braunrate/internal/protocol"
 )
 
-const FormatVersion = "1"
+const FormatVersion = "2"
 
 type Spec struct {
 	FormatVersion string

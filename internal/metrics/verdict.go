@@ -4,23 +4,23 @@ package metrics
 // are generated from the JSON, and without it the file would not say whether
 // the run passed.
 type Verdict struct {
-	Passed      bool         `json:"passou"`
-	Evaluations []Evaluation `json:"avaliacoes"`
-	Undeclared  []string     `json:"criterios_nao_declarados"`
-	Sentence    string       `json:"frase"`
+	Passed      bool         `json:"passed"`
+	Evaluations []Evaluation `json:"evaluations"`
+	Undeclared  []string     `json:"undeclaredCriteria"`
+	Sentence    string       `json:"sentence"`
 }
 
 type Evaluation struct {
-	Step     string  `json:"passo"`
-	Metrica  string  `json:"metrica"`
-	Rule     string  `json:"regra"`
-	Obtained float64 `json:"obtido"`
-	Limit    float64 `json:"limite"`
-	Unit     string  `json:"unidade"`
-	Passed   bool    `json:"passou"`
-	Sentence string  `json:"frase"`
-	NoData   bool    `json:"sem_dados"`
+	Step     string  `json:"step"`
+	Metric  string  `json:"metric"`
+	Rule     string  `json:"rule"`
+	Obtained float64 `json:"obtained"`
+	Limit    float64 `json:"limit"`
+	Unit     string  `json:"unit"`
+	Passed   bool    `json:"passed"`
+	Sentence string  `json:"sentence"`
+	NoData   bool    `json:"noData"`
 	// Untrustworthy marks a rule that was measured but cannot judge: the
 	// comparison behind it has a caveat that explains the difference on its own.
-	Untrustworthy bool `json:"comparacao_nao_confiavel"`
+	Untrustworthy bool `json:"comparisonNotTrustworthy"`
 }

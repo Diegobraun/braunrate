@@ -177,7 +177,7 @@ TLS: `ca` → `ca`, `certificado` → `certificate`, `chave` → `key`.
 
 O ADR 0010 deixou os campos do JSON em portugues por serem "formato publicado". Isso se inverte agora, pela mesma razao que move o YAML: o documento e commitado como linha de base para `-baseline`, lido por script de CI e comparado entre execucoes. Todos os campos passam para camelCase em ingles (`versao_do_formato` → `formatVersion`, `latencia_corrigida` → `correctedLatency`, `variedade_observada` → `observedVariety`, e assim para os 132 campos).
 
-`versaoDoFormato` sobe de `1` para `2`, e quem ler um documento da versao 1 recebe a mensagem que ensina o caminho, nao um campo vazio.
+`formatVersion` do resultado sobe de `2` para `3`, e `formatVersion` do cenario de `1` para `2`. Um documento da 0.5.0 e reconhecido pela chave `ferramenta` e recebe a mensagem que ensina o caminho, nao um campo vazio.
 
 ## Alternativas descartadas
 

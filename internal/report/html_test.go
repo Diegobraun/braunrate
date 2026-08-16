@@ -62,7 +62,7 @@ func TestReportTopIsSentenceNotTable(t *testing.T) {
 	document := sampleDocument()
 	document.SLO = metrics.Verdict{
 		Passed:      true,
-		Evaluations: []metrics.Evaluation{{Step: "consultar pedido", Metrica: "p95", Passed: true}},
+		Evaluations: []metrics.Evaluation{{Step: "consultar pedido", Metric: "p95", Passed: true}},
 		Sentence:    "Passou: as 3 regras de SLO foram atendidas.",
 	}
 	page := generate(t, document)
@@ -102,7 +102,7 @@ func TestInvalidResultIsNotPresentedAsTargetNumber(t *testing.T) {
 	document := sampleDocument()
 	document.SLO = metrics.Verdict{
 		Passed:      true,
-		Evaluations: []metrics.Evaluation{{Step: "consultar pedido", Metrica: "p95", Passed: true}},
+		Evaluations: []metrics.Evaluation{{Step: "consultar pedido", Metric: "p95", Passed: true}},
 		Sentence:    "Passou: as 3 regras de SLO foram atendidas.",
 	}
 	document.Warnings = []metrics.Warning{{

@@ -16,55 +16,55 @@ import (
 const AcceptedNoise = 0.05
 
 type Comparison struct {
-	Before             Identification        `json:"antes"`
-	After              Identification        `json:"depois"`
-	Sentence           string                `json:"frase"`
-	Comparable         bool                  `json:"comparavel"`
-	Caveats            []Caveat              `json:"ressalvas"`
-	Journey            Difference            `json:"jornada"`
+	Before             Identification        `json:"before"`
+	After              Identification        `json:"after"`
+	Sentence           string                `json:"sentence"`
+	Comparable         bool                  `json:"comparable"`
+	Caveats            []Caveat              `json:"caveats"`
+	Journey            Difference            `json:"journey"`
 	Overall            Difference            `json:"global"`
-	JourneyPercentiles map[string]Difference `json:"jornada_por_percentil"`
-	OverallPercentiles map[string]Difference `json:"global_por_percentil"`
-	Steps              []StepDifference      `json:"passos"`
-	Error              CountDifference       `json:"taxa_de_erro"`
+	JourneyPercentiles map[string]Difference `json:"journeyByPercentile"`
+	OverallPercentiles map[string]Difference `json:"globalByPercentile"`
+	Steps              []StepDifference      `json:"steps"`
+	Error              CountDifference       `json:"errorRate"`
 }
 
 // Blocking marks a caveat that explains the whole difference by itself. Only
 // those take the verdict away from a regression gate; treating every caveat as
 // blocking would disable the gate on any authenticated scenario.
 type Caveat struct {
-	Text     string `json:"texto"`
-	Blocking bool   `json:"impede_comparacao"`
+	Text     string `json:"text"`
+	Blocking bool   `json:"blocksComparison"`
 }
 
 type Identification struct {
-	Spec    string `json:"cenario"`
-	Target  string `json:"alvo"`
-	Start   string `json:"inicio"`
-	Version string `json:"versao"`
+	Spec    string `json:"scenario"`
+	Target  string `json:"target"`
+	Start   string `json:"start"`
+	Version string `json:"version"`
 }
 
 type Difference struct {
-	Metrica   string  `json:"metrica"`
-	Before    float64 `json:"antes_ms"`
-	After     float64 `json:"depois_ms"`
-	Change    float64 `json:"variacao"`
-	Direction string  `json:"sentido"`
-	Sentence  string  `json:"frase"`
+	Metric   string  `json:"metric"`
+	Before    float64 `json:"beforeMs"`
+	After     float64 `json:"afterMs"`
+	Change    float64 `json:"change"`
+	Direction string  `json:"direction"`
+	Sentence  string  `json:"sentence"`
 }
 
 type StepDifference struct {
-	Step     string     `json:"passo"`
+	Step     string     `json:"step"`
 	P95      Difference `json:"p95"`
 	P99      Difference `json:"p99"`
-	New      bool       `json:"novo"`
-	Vanished bool       `json:"sumiu"`
+	New      bool       `json:"new"`
+	Vanished bool       `json:"gone"`
 }
 
 type CountDifference struct {
-	Before   float64 `json:"antes"`
-	After    float64 `json:"depois"`
-	Sentence string  `json:"frase"`
+	Before   float64 `json:"before"`
+	After    float64 `json:"after"`
+	Sentence string  `json:"sentence"`
 }
 
 const (
@@ -176,7 +176,7 @@ func comparePercentiles(name string, before, after metrics.Distribution) map[str
 }
 
 func compareDistribution(name string, before, after float64) Difference {
-	difference := Difference{Metrica: name, Before: before, After: after, Direction: DirectionSame}
+	difference := Difference{Metric: name, Before: before, After: after, Direction: DirectionSame}
 	if before > 0 {
 		difference.Change = (after - before) / before
 	}
@@ -194,18 +194,18 @@ func compareDistribution(name string, before, after float64) Difference {
 
 func phraseDifference(difference Difference) string {
 	if difference.Before == 0 && difference.After == 0 {
-		return fmt.Sprintf("%s: sem amostra nas duas execuções.", difference.Metrica)
+		return fmt.Sprintf("%s: sem amostra nas duas execuções.", difference.Metric)
 	}
 	if difference.Direction == DirectionSame {
 		return fmt.Sprintf("%s: %.0f ms contra %.0f ms — diferença dentro do ruído de duas execuções.",
-			difference.Metrica, difference.Before, difference.After)
+			difference.Metric, difference.Before, difference.After)
 	}
 	verb := "mais lento"
 	if difference.Direction == DirectionBetter {
 		verb = "mais rápido"
 	}
 	return fmt.Sprintf("%s: %s %s — de %.0f ms para %.0f ms.",
-		difference.Metrica, Magnitude(difference), verb, difference.Before, difference.After)
+		difference.Metric, Magnitude(difference), verb, difference.Before, difference.After)
 }
 
 // Past two times, percentages stop being readable: "6994% slower" forces the

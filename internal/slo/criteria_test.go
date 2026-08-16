@@ -179,7 +179,7 @@ func TestSaturatedRunNeverBecomesAnSLOFailure(t *testing.T) {
 
 func regressionBaseline(before, after float64, caveats ...comparison.Caveat) *slo.Baseline {
 	worse := comparison.Difference{
-		Metrica: "jornada inteira (p95)", Before: before, After: after,
+		Metric: "jornada inteira (p95)", Before: before, After: after,
 		Change: (after - before) / before, Direction: comparison.DirectionWorse,
 	}
 	if worse.Change < comparison.AcceptedNoise {

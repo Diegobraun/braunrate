@@ -144,21 +144,21 @@ func (aggregate *Aggregate) ServiceDistribution() Distribution {
 }
 
 type Distribution struct {
-	Samples int64   `json:"amostras"`
-	P50     float64 `json:"p50_ms"`
-	P75     float64 `json:"p75_ms"`
-	P90     float64 `json:"p90_ms"`
-	P95     float64 `json:"p95_ms"`
-	P99     float64 `json:"p99_ms"`
-	P999    float64 `json:"p99_9_ms"`
-	Max     float64 `json:"max_ms"`
-	Minimum float64 `json:"min_ms"`
-	Mean    float64 `json:"media_ms"`
+	Samples int64   `json:"samples"`
+	P50     float64 `json:"p50Ms"`
+	P75     float64 `json:"p75Ms"`
+	P90     float64 `json:"p90Ms"`
+	P95     float64 `json:"p95Ms"`
+	P99     float64 `json:"p99Ms"`
+	P999    float64 `json:"p999Ms"`
+	Max     float64 `json:"maxMs"`
+	Minimum float64 `json:"minMs"`
+	Mean    float64 `json:"meanMs"`
 	// The histogram every field above is a projection of, in the HDR V2
 	// compressed encoding. Percentiles and means do not add, so this is the only
 	// field through which two documents can be summed — which is what ADR 0003
 	// §5 promised and the format did not deliver.
-	Histogram string `json:"histograma,omitempty"`
+	Histogram string `json:"histogram,omitempty"`
 }
 
 // Merged returns the distribution of the two histograms added. It is exact:

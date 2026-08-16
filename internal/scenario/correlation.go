@@ -8,10 +8,10 @@ type CaptureOrigin string
 
 const (
 	CaptureJSON   CaptureOrigin = "json"
-	CaptureHeader CaptureOrigin = "cabecalho"
+	CaptureHeader CaptureOrigin = "header"
 	CaptureCookie CaptureOrigin = "cookie"
 	CaptureRegex  CaptureOrigin = "regex"
-	CaptureBody   CaptureOrigin = "corpo"
+	CaptureBody   CaptureOrigin = "body"
 	CaptureStatus CaptureOrigin = "status"
 )
 
@@ -28,10 +28,10 @@ type AssertionKind string
 
 const (
 	AssertStatus       AssertionKind = "status"
-	AssertBodyContains AssertionKind = "corpo_contem"
+	AssertBodyContains AssertionKind = "bodyContains"
 	AssertJSON         AssertionKind = "json"
 	AssertRegex        AssertionKind = "regex"
-	AssertHeader       AssertionKind = "cabecalho"
+	AssertHeader       AssertionKind = "header"
 )
 
 type Assertion struct {
@@ -52,16 +52,16 @@ const (
 	OpLessOrEqual    Operator = "<="
 	OpGreater        Operator = ">"
 	OpGreaterOrEqual Operator = ">="
-	OpContains       Operator = "contem"
-	OpExists         Operator = "existe"
+	OpContains       Operator = "contains"
+	OpExists         Operator = "exists"
 )
 
 type AuthKind string
 
 const (
 	AuthToken  AuthKind = "token"
-	AuthBasic  AuthKind = "basica"
-	AuthHeader AuthKind = "cabecalho"
+	AuthBasic  AuthKind = "basic"
+	AuthHeader AuthKind = "header"
 )
 
 type Auth struct {
@@ -77,10 +77,10 @@ type Auth struct {
 type ConsumePolicy string
 
 const (
-	ConsumeSequential    ConsumePolicy = "sequencial"
-	ConsumeRandom        ConsumePolicy = "aleatorio"
+	ConsumeSequential    ConsumePolicy = "sequential"
+	ConsumeRandom        ConsumePolicy = "random"
 	ConsumeCircular      ConsumePolicy = "circular"
-	ConsumeUniquePerUser ConsumePolicy = "unico_por_usuario"
+	ConsumeUniquePerUser ConsumePolicy = "uniquePerUser"
 )
 
 type DataSource struct {
@@ -88,13 +88,13 @@ type DataSource struct {
 	File    string
 	Consume ConsumePolicy
 	Seed    int64
-	// Nome da variavel de ambiente de onde a semente veio, vazio quando ela foi
-	// escrita no arquivo. Reproduzir uma execucao exige saber qual semente rodou
-	// e de onde ela saiu, e nao ha como saber isso depois se ninguem guardar.
-	SeedFrom  string
-	Fields    map[string]Generator
-	Registros int
-	Line      int
+	// Name of the environment variable the seed came from, empty when it was
+	// written in the file. Reproducing a run means knowing which seed ran and
+	// where it came from, and there is no way to know that later.
+	SeedFrom string
+	Fields   map[string]Generator
+	Records  int
+	Line     int
 }
 
 // PerUse is off by default: the same generated value has to hold for the whole
@@ -116,16 +116,16 @@ func (dataSource DataSource) Synthetic() bool {
 type SLOScope string
 
 const (
-	ScopeStep       SLOScope = "passo"
+	ScopeStep       SLOScope = "step"
 	ScopeOverall    SLOScope = "global"
-	ScopeJourney    SLOScope = "jornada"
-	ScopeRegression SLOScope = "regressao"
+	ScopeJourney    SLOScope = "journey"
+	ScopeRegression SLOScope = "regression"
 )
 
 type SLORule struct {
 	Scope    SLOScope
 	Step     string
-	Metrica  string
+	Metric  string
 	Operator Operator
 	Limit    float64
 	Unit     string

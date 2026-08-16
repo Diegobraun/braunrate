@@ -108,7 +108,7 @@ func buildComparisonPage(c comparison.Comparison, version string) comparisonPage
 
 func comparisonLineOf(difference comparison.Difference) comparisonLine {
 	return comparisonLine{
-		Metric: difference.Metrica,
+		Metric: difference.Metric,
 		Before: milliseconds(difference.Before),
 		After:  milliseconds(difference.After),
 		Change: change(difference),

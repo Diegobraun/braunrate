@@ -650,7 +650,7 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 			}
 		}
 		for _, rule := range built.SLO {
-			metrics[rule.Metrica] = true
+			metrics[rule.Metric] = true
 			scopes[rule.Scope] = true
 		}
 	}

@@ -16,32 +16,32 @@ import (
 const distinctValuesCap = 1024
 
 type Variety struct {
-	Name      string `json:"nome"`
-	Distinct  int64  `json:"valores_distintos"`
-	Uses      int64  `json:"usos"`
-	Available int64  `json:"valores_disponiveis"`
-	Capped    bool   `json:"limitado_pelo_teto"`
+	Name      string `json:"name"`
+	Distinct  int64  `json:"distinctValues"`
+	Uses      int64  `json:"uses"`
+	Available int64  `json:"availableValues"`
+	Capped    bool   `json:"cappedByLimit"`
 	// Range is what a count of distinct values cannot say: a thousand different
 	// ids that all belong to one customer exercise one slice of the target, and
 	// the count alone reads as full coverage (ADR 0007).
-	Range *Range `json:"faixa,omitempty"`
+	Range *Range `json:"range,omitempty"`
 	// Shapes carries the body shapes themselves, not a count of them: "2 formas"
 	// tells nobody which two, and the difference between them is the whole point.
-	Shapes   []string `json:"formas_observadas,omitempty"`
-	Sentence string   `json:"frase"`
+	Shapes   []string `json:"observedShapes,omitempty"`
+	Sentence string   `json:"sentence"`
 	// O que o protocolo dono desta dimensao diz sobre ela ter colapsado. A
 	// medicao decide se avisa e com que gravidade; o dominio vem de quem sabe.
-	Collapse *protocol.Collapse `json:"colapso,omitempty"`
+	Collapse *protocol.Collapse `json:"collapse,omitempty"`
 }
 
 // Range describes where the values landed. Numbers get the interval they
 // covered; text gets the prefix they all share, which is how a single customer,
 // tenant or region hides behind values that are all different.
 type Range struct {
-	Kind   string  `json:"tipo"`
-	Min    float64 `json:"minimo,omitempty"`
-	Max    float64 `json:"maximo,omitempty"`
-	Prefix string  `json:"prefixo_comum,omitempty"`
+	Kind   string  `json:"kind"`
+	Min    float64 `json:"min,omitempty"`
+	Max    float64 `json:"max,omitempty"`
+	Prefix string  `json:"commonPrefix,omitempty"`
 }
 
 const (

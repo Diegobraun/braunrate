@@ -47,7 +47,7 @@ func Evaluate(rules []scenario.SLORule, document metrics.Document, baseline *Bas
 func evaluateRule(rule scenario.SLORule, document metrics.Document, byStep map[string]metrics.StepResult, baseline *Baseline) Evaluation {
 	evaluation := Evaluation{
 		Step:    targetName(rule),
-		Metrica: rule.Metrica,
+		Metric: rule.Metric,
 		Rule:    rule.Text,
 		Limit:   rule.Limit,
 		Unit:    rule.Unit,
@@ -75,7 +75,7 @@ func evaluateRule(rule scenario.SLORule, document metrics.Document, byStep map[s
 		if !exists {
 			evaluation.NoData = true
 			evaluation.Passed = false
-			evaluation.Sentence = fmt.Sprintf("Sem dados: o passo %q não produziu nenhuma requisição, então a regra %q não pode ser verificada.", rule.Step, rule.Text)
+			evaluation.Sentence = fmt.Sprintf("No data: the step %q produced no requests, so the rule %q cannot be checked.", rule.Step, rule.Text)
 			return evaluation
 		}
 		distribution = step.Latency
@@ -87,7 +87,7 @@ func evaluateRule(rule scenario.SLORule, document metrics.Document, byStep map[s
 		return evaluation
 	}
 
-	switch rule.Metrica {
+	switch rule.Metric {
 	case "p50":
 		evaluation.Obtained = distribution.P50
 	case "p75":
@@ -102,15 +102,15 @@ func evaluateRule(rule scenario.SLORule, document metrics.Document, byStep map[s
 		evaluation.Obtained = distribution.P999
 	case "max":
 		evaluation.Obtained = distribution.Max
-	case "erros":
+	case "errors":
 		if count > 0 {
 			evaluation.Obtained = float64(errors) / float64(count) * 100
 		}
-	case "sucesso":
+	case "success":
 		if count > 0 {
 			evaluation.Obtained = float64(successes) / float64(count) * 100
 		}
-	case "vazao", "taxa_efetiva":
+	case "throughput":
 		evaluation.Obtained = document.Overall.EffectiveRate
 	}
 
@@ -126,15 +126,15 @@ func evaluateRegression(rule scenario.SLORule, evaluation Evaluation, baseline *
 	if baseline == nil {
 		evaluation.NoData = true
 		evaluation.Passed = true
-		evaluation.Sentence = fmt.Sprintf("Sem base: a regra %q precisa de uma execução anterior. Rode com -baseline=execucao-anterior.json.", rule.Text)
+		evaluation.Sentence = fmt.Sprintf("No baseline: the rule %q needs a previous run. Run with -baseline=previous-run.json.", rule.Text)
 		return evaluation
 	}
 
-	difference, found := differenceOf(baseline.Comparison, rule.Metrica)
+	difference, found := differenceOf(baseline.Comparison, rule.Metric)
 	if !found {
 		evaluation.NoData = true
 		evaluation.Passed = true
-		evaluation.Sentence = fmt.Sprintf("Sem base: %q não existe nas duas execuções, então a regra %q não pode ser verificada.", rule.Metrica, rule.Text)
+		evaluation.Sentence = fmt.Sprintf("No baseline: %q does not exist in both runs, so the rule %q cannot be checked.", rule.Metric, rule.Text)
 		return evaluation
 	}
 
@@ -144,15 +144,15 @@ func evaluateRegression(rule scenario.SLORule, evaluation Evaluation, baseline *
 	if blocking := blockingCaveats(baseline.Comparison); len(blocking) > 0 {
 		evaluation.Untrustworthy = true
 		evaluation.Passed = true
-		evaluation.Sentence = fmt.Sprintf("Sem veredito: %s está %s que a base, mas a comparação com %s não é confiável (%s), então a regra %q não reprova.",
-			readableName(rule.Metrica), changeText(evaluation.Obtained), baseline.Path, strings.Join(blocking, "; "), rule.Text)
+		evaluation.Sentence = fmt.Sprintf("No verdict: %s is %s than the baseline, but the comparison with %s is not trustworthy (%s), so the rule %q does not fail the build.",
+			readableName(rule.Metric), changeText(evaluation.Obtained), baseline.Path, strings.Join(blocking, "; "), rule.Text)
 		return evaluation
 	}
 
 	if difference.Direction == comparison.DirectionSame {
 		evaluation.Passed = true
-		evaluation.Sentence = fmt.Sprintf("Passou: %s ficou dentro do ruído em relação à base (variação abaixo de %.0f%% não é lida como regressão).",
-			readableName(rule.Metrica), comparison.AcceptedNoise*100)
+		evaluation.Sentence = fmt.Sprintf("Passed: %s stayed within the noise against the baseline (a change below %.0f%% is not read as a regression).",
+			readableName(rule.Metric), comparison.AcceptedNoise*100)
 		return evaluation
 	}
 	evaluation.Sentence = phraseRegression(evaluation, rule, difference, baseline.Path)
@@ -160,18 +160,21 @@ func evaluateRegression(rule scenario.SLORule, evaluation Evaluation, baseline *
 }
 
 func differenceOf(compared comparison.Comparison, metric string) (comparison.Difference, bool) {
-	prefix, percentile, _ := strings.Cut(metric, "_")
+	prefix, percentile, found := splitRegressionMetric(metric)
+	if !found {
+		return comparison.Difference{}, false
+	}
 	var byPercentile map[string]comparison.Difference
 	switch prefix {
-	case "jornada":
+	case "journey":
 		byPercentile = compared.JourneyPercentiles
 	case "global":
 		byPercentile = compared.OverallPercentiles
 	default:
 		return comparison.Difference{}, false
 	}
-	difference, found := byPercentile[percentile]
-	return difference, found
+	difference, has := byPercentile[percentile]
+	return difference, has
 }
 
 // Improvement reads as zero worsening, not as a negative that would pass any
@@ -195,9 +198,9 @@ func blockingCaveats(compared comparison.Comparison) []string {
 
 func changeText(percentage float64) string {
 	if percentage == 0 {
-		return "igual ou melhor"
+		return "the same or better"
 	}
-	return fmt.Sprintf("%.1f%% pior", percentage)
+	return fmt.Sprintf("%.1f%% worse", percentage)
 }
 
 func compare(obtained float64, operator scenario.Operator, limit float64) bool {
@@ -222,42 +225,53 @@ func targetName(rule scenario.SLORule) string {
 	case scenario.ScopeOverall:
 		return "global"
 	case scenario.ScopeJourney:
-		return "jornada"
+		return "journey"
 	case scenario.ScopeRegression:
-		return "regressao"
+		return "regression"
 	default:
 		return rule.Step
 	}
 }
 
 // The noun form, for the sentences that talk about the metric instead of
-// reporting a value: "o tempo de resposta de 95% das respostas esta 12% pior
-// que a base".
+// reporting a value: "the response time of 95% of the responses is 12% worse
+// than the baseline".
 func readableName(metric string) string {
 	switch metric {
-	case "erros":
-		return "taxa de erro"
-	case "sucesso":
-		return "taxa de sucesso"
-	case "vazao", "taxa_efetiva":
-		return "taxa efetiva"
+	case "errors":
+		return "the error rate"
+	case "success":
+		return "the success rate"
+	case "throughput":
+		return "the effective rate"
 	case "max":
-		return "o pior tempo de resposta"
+		return "the worst response time"
 	}
-	if prefix, percentile, found := strings.Cut(metric, "_"); found {
-		if prefix == "jornada" {
-			return "o tempo de resposta de " + share(percentile) + " das jornadas"
+	if prefix, percentile, found := splitRegressionMetric(metric); found {
+		if prefix == "journey" {
+			return "the response time of " + share(percentile) + " of the journeys"
 		}
-		return "o tempo de resposta de " + share(percentile) + " das respostas"
+		return "the response time of " + share(percentile) + " of the responses"
 	}
-	return "o tempo de resposta de " + share(metric) + " das respostas"
+	return "the response time of " + share(metric) + " of the responses"
+}
+
+// journeyP95 is one word to the reader and two to the code: the scope it
+// compares against, and the percentile it reads inside that scope.
+func splitRegressionMetric(metric string) (string, string, bool) {
+	for _, prefix := range []string{"journey", "global"} {
+		if rest, found := strings.CutPrefix(metric, prefix); found && rest != "" {
+			return prefix, strings.ToLower(rest), true
+		}
+	}
+	return "", "", false
 }
 
 // "p95" is the term of the trade and means nothing to someone who never ran a
 // load test — and this is the line that decides whether the CI passes.
 func share(percentile string) string {
 	if trimmed := strings.TrimPrefix(percentile, "p"); trimmed != percentile {
-		return strings.Replace(trimmed, ".", ",", 1) + "%"
+		return trimmed + "%"
 	}
 	return percentile
 }
@@ -270,8 +284,8 @@ func format(value float64, unit string) string {
 		return fmt.Sprintf("%.2f%%", value)
 	case "/s":
 		return fmt.Sprintf("%.0f/s", value)
-	case "% pior":
-		return fmt.Sprintf("%.0f%% pior", value)
+	case "% worse":
+		return fmt.Sprintf("%.0f%% worse", value)
 	default:
 		return fmt.Sprintf("%.2f", value)
 	}
@@ -281,55 +295,56 @@ func phraseEvaluation(evaluation Evaluation, rule scenario.SLORule) string {
 	var target string
 	switch rule.Scope {
 	case scenario.ScopeOverall:
-		target = "o cenário inteiro"
+		target = "the whole scenario"
 	case scenario.ScopeJourney:
-		target = "a jornada inteira"
+		target = "the whole journey"
 	default:
 		target = fmt.Sprintf("%q", evaluation.Step)
 	}
-	comparison := "acima do limite de"
+	comparison := "above the limit of"
 	if rule.Operator == scenario.OpGreater || rule.Operator == scenario.OpGreaterOrEqual {
-		comparison = "abaixo do mínimo de"
+		comparison = "below the minimum of"
 	}
 	observed := observedPhrase(evaluation)
 	if evaluation.Passed {
-		within := "dentro do limite de"
+		within := "within the limit of"
 		if rule.Operator == scenario.OpGreater || rule.Operator == scenario.OpGreaterOrEqual {
-			within = "no mínimo de"
+			within = "at the minimum of"
 		}
-		return fmt.Sprintf("Passou: %s %s, %s %s.",
+		return fmt.Sprintf("Passed: %s %s, %s %s.",
 			target, observed, within, format(evaluation.Limit, evaluation.Unit))
 	}
-	return fmt.Sprintf("Falhou: %s %s, %s %s.",
+	return fmt.Sprintf("Failed: %s %s, %s %s.",
 		target, observed, comparison, format(evaluation.Limit, evaluation.Unit))
 }
 
 // A percentile reads as a share of the requests, not as a quantity something
-// "had": "respondeu 95% em ate 6 ms" is the sentence the vocabulary fixes, and
+// "had": "answered 95% within 6 ms" is the sentence the vocabulary fixes, and
 // it is the line that decides whether the CI passes.
 func observedPhrase(evaluation Evaluation) string {
 	value := format(evaluation.Obtained, evaluation.Unit)
-	if evaluation.Unit == "ms" && strings.HasPrefix(evaluation.Metrica, "p") {
-		return fmt.Sprintf("respondeu %s em até %s", share(evaluation.Metrica), value)
+	if evaluation.Unit == "ms" && strings.HasPrefix(evaluation.Metric, "p") {
+		return fmt.Sprintf("answered %s within %s", share(evaluation.Metric), value)
 	}
-	return fmt.Sprintf("teve %s de %s", readableName(evaluation.Metrica), value)
+	return fmt.Sprintf("had %s of %s", readableName(evaluation.Metric), value)
 }
 
-// The base is named because the report travels alone: pasted into a ticket,
-// "pior que a base" does not say which base, and nobody can check it.
+// The baseline is named because the report travels alone: pasted into a
+// ticket, "worse than the baseline" does not say which one, and nobody can
+// check it.
 func phraseRegression(evaluation Evaluation, rule scenario.SLORule, difference comparison.Difference, base string) string {
-	verb, side := "Falhou", "acima"
+	verb, side := "Failed", "above"
 	if evaluation.Passed {
-		verb, side = "Passou", "dentro"
+		verb, side = "Passed", "within"
 	}
-	return fmt.Sprintf("%s: %s ficou %s que %s, %s do limite de %s (de %.0f ms para %.0f ms).",
-		verb, readableName(rule.Metrica), changeText(evaluation.Obtained), baseName(base), side,
+	return fmt.Sprintf("%s: %s came out %s than %s, %s the limit of %s (from %.0f ms to %.0f ms).",
+		verb, readableName(rule.Metric), changeText(evaluation.Obtained), baseName(base), side,
 		format(rule.Limit, rule.Unit), difference.Before, difference.After)
 }
 
 func baseName(path string) string {
 	if strings.TrimSpace(path) == "" {
-		return "a base"
+		return "the baseline"
 	}
 	return path
 }
@@ -339,7 +354,7 @@ func baseName(path string) string {
 // because a line per step would turn the useful part into noise.
 func undeclared(rules []scenario.SLORule, document metrics.Document, baseline *Baseline) []string {
 	if len(rules) == 0 {
-		return []string{"nenhum critério declarado — o cenário roda e reporta, mas não serve de gate"}
+		return []string{"no criterion declared — the scenario runs and reports, but does not work as a gate"}
 	}
 	declared := map[scenario.SLOScope]bool{}
 	declaredStep := map[string]bool{}
@@ -352,19 +367,19 @@ func undeclared(rules []scenario.SLORule, document metrics.Document, baseline *B
 
 	var missing []string
 	if !declared[scenario.ScopeJourney] && document.Journey.Started > 0 && len(document.Steps) > 1 {
-		missing = append(missing, "jornada: sem critério declarado — o gate mede passo isolado e deixa de fora o tempo que o usuário espera")
+		missing = append(missing, "journey: no criterion declared — the gate measures isolated steps and leaves out the wait the user feels")
 	}
 	if !declared[scenario.ScopeOverall] {
-		missing = append(missing, "global: sem critério declarado — taxa de erro, taxa de sucesso e taxa efetiva não entram no gate")
+		missing = append(missing, "global: no criterion declared — error rate, success rate and effective rate stay out of the gate")
 	}
 	if line, had := stepsWithoutRule(document, declaredStep); had {
 		missing = append(missing, line)
 	}
 	switch {
 	case !declared[scenario.ScopeRegression]:
-		missing = append(missing, "regressao: sem critério declarado — o gate aprova sem comparar com a execução anterior")
+		missing = append(missing, "regression: no criterion declared — the gate approves without comparing against the previous run")
 	case baseline == nil:
-		missing = append(missing, "regressao: declarada, mas nenhuma base foi passada em -baseline")
+		missing = append(missing, "regression: declared, but no baseline was passed in -baseline")
 	}
 	return missing
 }
@@ -379,7 +394,7 @@ func stepsWithoutRule(document metrics.Document, declaredStep map[string]bool) (
 	if len(without) == 0 {
 		return "", false
 	}
-	return fmt.Sprintf("passos sem critério declarado (%d de %d): %s",
+	return fmt.Sprintf("steps with no criterion declared (%d of %d): %s",
 		len(without), len(document.Steps), shortList(without)), true
 }
 
@@ -388,12 +403,12 @@ func shortList(names []string) string {
 	if len(names) <= shown {
 		return strings.Join(names, ", ")
 	}
-	return fmt.Sprintf("%s e mais %d", strings.Join(names[:shown], ", "), len(names)-shown)
+	return fmt.Sprintf("%s and %d more", strings.Join(names[:shown], ", "), len(names)-shown)
 }
 
 func phrase(verdict Verdict) string {
 	if len(verdict.Evaluations) == 0 {
-		return "Sem SLO declarado: nada foi verificado."
+		return "No SLO declared: nothing was checked."
 	}
 	var failures []string
 	for _, evaluation := range verdict.Evaluations {
@@ -403,9 +418,9 @@ func phrase(verdict Verdict) string {
 	}
 	if len(failures) == 0 {
 		if len(verdict.Evaluations) == 1 {
-			return "Passou: a única regra de SLO foi atendida."
+			return "Passed: the single SLO rule was met."
 		}
-		return fmt.Sprintf("Passou: as %d regras de SLO foram atendidas.", len(verdict.Evaluations))
+		return fmt.Sprintf("Passed: all %d SLO rules were met.", len(verdict.Evaluations))
 	}
 	return strings.Join(failures, " ")
 }
@@ -421,7 +436,7 @@ var latencyMetrics = []string{"p50", "p75", "p90", "p95", "p99", "p99.9", "max"}
 // do is refuse to approve. A run with 98% of errors was passing a latency
 // criterion with the p95 of an error page.
 func refuseLatencyOverFailures(rule scenario.SLORule, evaluation Evaluation, sampled, worked int64) (Evaluation, bool) {
-	if !slices.Contains(latencyMetrics, rule.Metrica) {
+	if !slices.Contains(latencyMetrics, rule.Metric) {
 		return evaluation, false
 	}
 	if sampled <= 0 || worked*2 >= sampled {
@@ -430,7 +445,7 @@ func refuseLatencyOverFailures(rule scenario.SLORule, evaluation Evaluation, sam
 	evaluation.NoData = true
 	evaluation.Passed = false
 	evaluation.Sentence = fmt.Sprintf(
-		"Não avaliada: %s teve %.0f%% de falha, então a %s acima é sobretudo o tempo de falhar, não o tempo do trabalho. A regra %q não pode ser verificada sobre esta amostra, e sem verificação o gate não aprova.",
-		targetName(rule), float64(sampled-worked)/float64(sampled)*100, readableName(rule.Metrica), rule.Text)
+		"Not evaluated: %s failed %.0f%% of the time, so %s above is mostly the time to fail, not the time to do the work. The rule %q cannot be checked over this sample, and with no check the gate does not approve.",
+		targetName(rule), float64(sampled-worked)/float64(sampled)*100, readableName(rule.Metric), rule.Text)
 	return evaluation, true
 }

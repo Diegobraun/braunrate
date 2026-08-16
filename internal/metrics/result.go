@@ -12,68 +12,68 @@ import (
 // Version 2 added the serialized histogram every percentile is a projection of.
 // Version 1 is still read — the numbers it already carries are the numbers it
 // always carried — and only summing needs the histogram.
-const ResultFormatVersion = "2"
+const ResultFormatVersion = "3"
 
 // ReadableResultFormats is what this binary can open. A format outside the list
 // is refused by name instead of being read into fields that do not mean what
 // they used to.
-var ReadableResultFormats = []string{"1", "2"}
+var ReadableResultFormats = []string{"3"}
 
 type Document struct {
-	FormatVersion string        `json:"versao_do_formato"`
-	Tool          string        `json:"ferramenta"`
-	Version       string        `json:"versao"`
-	Environment   Environment   `json:"ambiente"`
-	Run           Run           `json:"execucao"`
-	Scheduling    Scheduling    `json:"agendamento"`
-	Journey       Journey       `json:"jornada"`
-	Steps         []StepResult  `json:"passos"`
+	FormatVersion string        `json:"formatVersion"`
+	Tool          string        `json:"tool"`
+	Version       string        `json:"version"`
+	Environment   Environment   `json:"environment"`
+	Run           Run           `json:"run"`
+	Scheduling    Scheduling    `json:"scheduling"`
+	Journey       Journey       `json:"journey"`
+	Steps         []StepResult  `json:"steps"`
 	Overall       OverallResult `json:"global"`
-	Sanity        Sanity        `json:"sanidade"`
+	Sanity        Sanity        `json:"sanity"`
 	SLO           Verdict       `json:"slo"`
-	Variety       []Variety     `json:"variedade_observada"`
-	Warnings      []Warning     `json:"avisos"`
-	Series        []Bucket      `json:"series_temporais"`
+	Variety       []Variety     `json:"observedVariety"`
+	Warnings      []Warning     `json:"warnings"`
+	Series        []Bucket      `json:"timeSeries"`
 }
 
 type Environment struct {
-	Host      string `json:"maquina"`
-	OS        string `json:"sistema_operacional"`
-	Arch      string `json:"arquitetura"`
-	Cores     int    `json:"nucleos"`
-	GoVersion string `json:"versao_do_go"`
+	Host      string `json:"host"`
+	OS        string `json:"os"`
+	Arch      string `json:"arch"`
+	Cores     int    `json:"cores"`
+	GoVersion string `json:"goVersion"`
 	// Protocols compiled into this binary. Without it two binaries with the same
 	// version number could produce different results and leave no trace of why
 	// (ADR 0004).
-	Protocols []string `json:"protocolos_compilados,omitempty"`
+	Protocols []string `json:"compiledProtocols,omitempty"`
 }
 
 type Run struct {
-	Spec        string           `json:"cenario"`
-	Target      string           `json:"alvo"`
-	Start       time.Time        `json:"inicio"`
-	End         time.Time        `json:"fim"`
-	DurationMs  int64            `json:"duracao_ms"`
-	Model       string           `json:"modelo_de_chegada"`
-	AppliedPlan []AppliedPhase   `json:"plano_aplicado"`
-	Users       int              `json:"usuarios,omitzero"`
-	ThinkTimeMs int64            `json:"intervalo_entre_iteracoes_ms,omitzero"`
-	MaxInflight int64            `json:"maximo_de_requisicoes_simultaneas"`
-	Seeds       map[string]int64 `json:"sementes_dos_dados"`
+	Spec        string           `json:"scenario"`
+	Target      string           `json:"target"`
+	Start       time.Time        `json:"start"`
+	End         time.Time        `json:"end"`
+	DurationMs  int64            `json:"durationMs"`
+	Model       string           `json:"arrivalModel"`
+	AppliedPlan []AppliedPhase   `json:"appliedPlan"`
+	Users       int              `json:"users,omitzero"`
+	ThinkTimeMs int64            `json:"thinkTimeMs,omitzero"`
+	MaxInflight int64            `json:"maxInflight"`
+	Seeds       map[string]int64 `json:"dataSeeds"`
 	// Variavel de ambiente que decidiu cada semente. Sem isso, uma semente que
 	// veio do ambiente e um numero que ninguem sabe como reproduzir.
-	SeedsFrom    map[string]string `json:"sementes_de_ambiente,omitempty"`
-	Availability Availability      `json:"valores_disponiveis_por_variavel"`
-	AuthObtains  int64             `json:"obtencoes_de_autenticacao"`
-	Brokers      []string          `json:"mensageria,omitempty"`
+	SeedsFrom    map[string]string `json:"seedsFromEnvironment,omitempty"`
+	Availability Availability      `json:"availableValuesByVariable"`
+	AuthObtains  int64             `json:"authObtains"`
+	Brokers      []string          `json:"messaging,omitempty"`
 	// How far behind each watched consumer group was left. The time to produce
 	// says the broker accepted the message; this says whether the service kept
 	// up, and they are different questions.
-	ConsumerLag []protocol.ConsumerLag `json:"atraso_do_consumidor,omitempty"`
+	ConsumerLag []protocol.ConsumerLag `json:"consumerLag,omitempty"`
 	// Declared so the report can show a step that never ran. Without it, a step
 	// that depended on a capture that failed simply vanished from the table and
 	// the reader never learned it existed.
-	DeclaredSteps []string `json:"passos_declarados,omitempty"`
+	DeclaredSteps []string `json:"declaredSteps,omitempty"`
 }
 
 const ClosedModel = "fechado"
@@ -81,29 +81,29 @@ const ClosedModel = "fechado"
 func (d Document) Closed() bool { return d.Run.Model == ClosedModel }
 
 type AppliedPhase struct {
-	Kind       string  `json:"tipo"`
-	From       float64 `json:"de_por_segundo"`
-	To         float64 `json:"ate_por_segundo"`
-	DurationMs int64   `json:"duracao_ms"`
+	Kind       string  `json:"kind"`
+	From       float64 `json:"fromPerSecond"`
+	To         float64 `json:"toPerSecond"`
+	DurationMs int64   `json:"durationMs"`
 }
 
 type Scheduling struct {
-	Sent                   int64        `json:"enviadas"`
-	Completed              int64        `json:"concluidas"`
-	LateDispatches         int64        `json:"despachos_atrasados"`
-	DroppedByInflightLimit int64        `json:"descartadas_por_limite_de_voo"`
-	LostSamples            int64        `json:"amostras_perdidas"`
-	PeakInflight           int64        `json:"pico_em_voo"`
-	LateThresholdMs        float64      `json:"limiar_de_atraso_ms"`
-	Skew                   Distribution `json:"desvio_de_agendamento"`
+	Sent                   int64        `json:"sent"`
+	Completed              int64        `json:"completed"`
+	LateDispatches         int64        `json:"lateDispatches"`
+	DroppedByInflightLimit int64        `json:"droppedByInflightLimit"`
+	LostSamples            int64        `json:"lostSamples"`
+	PeakInflight           int64        `json:"peakInflight"`
+	LateThresholdMs        float64      `json:"lateThresholdMs"`
+	Skew                   Distribution `json:"schedulingSkew"`
 }
 
 type Journey struct {
-	Started        int64        `json:"iniciadas"`
-	Completed      int64        `json:"completas"`
-	Latency        Distribution `json:"latencia_corrigida,omitzero"`
-	ServiceLatency Distribution `json:"latencia_de_servico,omitzero"`
-	Sentence       string       `json:"frase"`
+	Started        int64        `json:"started"`
+	Completed      int64        `json:"completed"`
+	Latency        Distribution `json:"correctedLatency,omitzero"`
+	ServiceLatency Distribution `json:"serviceLatency,omitzero"`
+	Sentence       string       `json:"sentence"`
 }
 
 // Present exactly when the JSON carries it: the corrected field is omitted when
@@ -116,22 +116,22 @@ func (j Journey) Reported() Distribution {
 }
 
 type StepResult struct {
-	Name           string           `json:"nome"`
-	LatencyKind    string           `json:"tipo_de_latencia"`
-	Key            string           `json:"chave"`
-	Protocol       string           `json:"protocolo"`
-	Count          int64            `json:"contagem"`
-	Successes      int64            `json:"sucessos"`
-	Errors         int64            `json:"erros"`
+	Name           string           `json:"name"`
+	LatencyKind    string           `json:"latencyKind"`
+	Key            string           `json:"key"`
+	Protocol       string           `json:"protocol"`
+	Count          int64            `json:"count"`
+	Successes      int64            `json:"successes"`
+	Errors         int64            `json:"errors"`
 	Bytes          int64            `json:"bytes"`
-	ErrorsByClass  map[string]int64 `json:"erros_por_classe"`
-	StatusByCode   map[string]int64 `json:"status_por_codigo"`
-	Details        map[string]int64 `json:"detalhes_de_erro"`
-	Latency        Distribution     `json:"latencia_corrigida,omitzero"`
-	ServiceLatency Distribution     `json:"latencia_de_servico,omitzero"`
+	ErrorsByClass  map[string]int64 `json:"errorsByClass"`
+	StatusByCode   map[string]int64 `json:"statusByCode"`
+	Details        map[string]int64 `json:"errorDetails"`
+	Latency        Distribution     `json:"correctedLatency,omitzero"`
+	ServiceLatency Distribution     `json:"serviceLatency,omitzero"`
 	// Proporcao que o cenario pediu para esta alternativa do mix. Zero quando o
 	// cenario nao declara mix, e ai todo passo roda em toda iteracao.
-	DeclaredShare float64 `json:"proporcao_declarada,omitempty"`
+	DeclaredShare float64 `json:"declaredShare,omitempty"`
 }
 
 func (s StepResult) Reported() Distribution {
@@ -142,13 +142,13 @@ func (s StepResult) Reported() Distribution {
 }
 
 type OverallResult struct {
-	Count          int64        `json:"contagem"`
-	Successes      int64        `json:"sucessos"`
-	Errors         int64        `json:"erros"`
-	ErrorRate      float64      `json:"taxa_de_erro"`
-	EffectiveRate  float64      `json:"taxa_efetiva_por_segundo"`
-	Latency        Distribution `json:"latencia_corrigida,omitzero"`
-	ServiceLatency Distribution `json:"latencia_de_servico,omitzero"`
+	Count          int64        `json:"count"`
+	Successes      int64        `json:"successes"`
+	Errors         int64        `json:"errors"`
+	ErrorRate      float64      `json:"errorRate"`
+	EffectiveRate  float64      `json:"effectiveRatePerSecond"`
+	Latency        Distribution `json:"correctedLatency,omitzero"`
+	ServiceLatency Distribution `json:"serviceLatency,omitzero"`
 }
 
 func (o OverallResult) Reported() Distribution {
@@ -167,10 +167,10 @@ const (
 )
 
 type Warning struct {
-	Kind     string   `json:"tipo"`
-	Severity Severity `json:"gravidade"`
-	Message  string   `json:"mensagem"`
-	Evidence string   `json:"evidencia"`
+	Kind     string   `json:"kind"`
+	Severity Severity `json:"severity"`
+	Message  string   `json:"message"`
+	Evidence string   `json:"evidence"`
 }
 
 // Valid has a single source of truth, the sanity check. The loop over warnings
