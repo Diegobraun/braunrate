@@ -49,7 +49,11 @@ func Comparison(out io.Writer, c comparison.Comparison) error {
 		write("  Nada: mesmo cenario, mesmo alvo, mesma maquina, mesmo plano de carga e mesma versao.")
 	}
 	for _, caveat := range c.Caveats {
-		write("  - %s", caveat)
+		if caveat.Blocking {
+			write("  - %s (isso sozinho explica a diferenca)", caveat.Text)
+			continue
+		}
+		write("  - %s", caveat.Text)
 	}
 	write("  Duas execucoes nao dao intervalo de confianca: variacao abaixo de %.0f%% e tratada como ruido.", comparison.AcceptedNoise*100)
 	write("")
