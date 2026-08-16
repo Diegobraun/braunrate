@@ -61,6 +61,7 @@ func (c Spec) Validate() error {
 	}
 
 	problems = append(problems, checkBrokers(&c)...)
+	problems = append(problems, checkSLOSteps(&c)...)
 
 	for _, phase := range c.Load.Phases {
 		if phase.For <= 0 {

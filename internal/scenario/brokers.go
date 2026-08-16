@@ -56,3 +56,24 @@ func brokerTarget(target string) bool {
 	}
 	return !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://")
 }
+
+// A rule naming a step that does not exist fails only at the end of the run,
+// with the whole load already spent. Both lists are in the file.
+func checkSLOSteps(spec *Spec) []string {
+	names := make([]string, 0, len(spec.Steps))
+	declared := map[string]bool{}
+	for _, step := range spec.Steps {
+		declared[step.Name] = true
+		names = append(names, step.Name)
+	}
+
+	var problems []string
+	for _, rule := range spec.SLO {
+		if rule.Scope != ScopeStep || declared[rule.Step] {
+			continue
+		}
+		problems = append(problems, fmt.Sprintf("o slo %q nao casa com nenhum passo do cenario\n%s",
+			rule.Step, suggest(rule.Step, names)))
+	}
+	return problems
+}

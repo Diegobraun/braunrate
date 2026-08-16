@@ -215,3 +215,52 @@ cenario:
 		t.Errorf("aguardar por http foi cobrado por um broker que nao usa: %v", problem)
 	}
 }
+
+// A rule naming a step that does not exist only failed at the end of the run,
+// with the whole load already spent.
+func TestSLONamingAStepThatDoesNotExistIsRefused(t *testing.T) {
+	spec, err := scenario.Parse([]byte(`
+nome: x
+alvo: http://127.0.0.1:8090
+carga:
+  perfis:
+    - patamar: { taxa: 1/s, durante: 1s }
+cenario:
+  - nome: consultar produtos
+    http: GET /produtos
+slo:
+  - consultar: { p95: < 200ms }
+`))
+	if err != nil {
+		t.Fatalf("o cenario nao deveria falhar na leitura: %v", err)
+	}
+	problem := spec.Validate()
+	if problem == nil {
+		t.Fatal("slo apontando para passo inexistente foi aprovado")
+	}
+	if !strings.Contains(problem.Error(), "consultar produtos") {
+		t.Errorf("a mensagem nao diz qual passo existe: %v", problem)
+	}
+}
+
+// An unnamed step reports under its aggregation key, and that is the name a
+// rule has to use.
+func TestSLOMatchesTheAggregationKeyOfAnUnnamedStep(t *testing.T) {
+	spec, err := scenario.Parse([]byte(`
+nome: x
+alvo: http://127.0.0.1:8090
+carga:
+  perfis:
+    - patamar: { taxa: 1/s, durante: 1s }
+cenario:
+  - http: GET /produtos
+slo:
+  - GET /produtos: { p95: < 200ms }
+`))
+	if err != nil {
+		t.Fatalf("o cenario nao deveria falhar na leitura: %v", err)
+	}
+	if problem := spec.Validate(); problem != nil {
+		t.Fatalf("slo pela chave de agregacao foi recusado: %v", problem)
+	}
+}
