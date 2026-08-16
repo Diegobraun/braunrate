@@ -46,7 +46,7 @@ func Comparison(out io.Writer, c comparison.Comparison) error {
 
 	write("O que pode explicar a diferenca sem ser o servico")
 	if len(c.Caveats) == 0 {
-		write("  Nada: mesmo cenario, mesmo alvo, mesma maquina, mesmo plano de carga e mesma versao.")
+		write("  %s", noCaveatSentence)
 	}
 	for _, caveat := range c.Caveats {
 		if caveat.Blocking {
@@ -70,3 +70,8 @@ func change(difference comparison.Difference) string {
 	}
 	return magnitude + " pior"
 }
+
+// "Nada" was an absolute claim over five fields it had checked. Replacing the
+// whole CSV between two runs changed the p95 by 15x and the comparison still
+// said nothing but the service could explain it.
+const noCaveatSentence = "Nada do que da para comparar: cenario, alvo, maquina, plano de carga e versao sao os mesmos. O conteudo dos arquivos de dados nao entra nesta lista — se ele mudou entre as duas, a diferenca pode ser dele."

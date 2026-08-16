@@ -29,3 +29,29 @@ func TestCaveatIsPrintedAsASentence(t *testing.T) {
 		t.Fatalf("a comparacao nao disse que o alvo mudou:\n%s", text)
 	}
 }
+
+// "Nada" was an absolute claim over the five fields the comparison checks.
+// Replacing the whole CSV between two runs changed the p95 by 15x and the
+// comparison still said nothing but the service could explain it.
+func TestNoCaveatSaysWhatItCompared(t *testing.T) {
+	before := sampleDocument()
+	after := sampleDocument()
+	before.Variety, after.Variety = nil, nil
+	before.Run.AuthObtains, after.Run.AuthObtains = 0, 0
+	compared := comparison.Compare(before, after)
+	if len(compared.Caveats) != 0 {
+		t.Fatalf("as duas execucoes deveriam sair sem ressalva: %+v", compared.Caveats)
+	}
+
+	var terminal strings.Builder
+	if err := report.Comparison(&terminal, compared); err != nil {
+		t.Fatalf("nao gerou a comparacao: %v", err)
+	}
+	text := terminal.String()
+	if strings.Contains(text, "Nada: mesmo cenario") {
+		t.Error("a comparacao afirma que nada explica a diferenca, sobre cinco campos que ela checou")
+	}
+	if !strings.Contains(text, "dados") {
+		t.Error("a comparacao nao avisa que o conteudo dos dados fica de fora do que ela compara")
+	}
+}

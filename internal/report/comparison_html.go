@@ -202,7 +202,7 @@ var comparisonTemplate = template.Must(template.Must(template.Must(
 
 <h2>O que pode explicar a diferenca sem ser o servico</h2>
 <ul class="frases">
-  {{if not .Caveats}}<li>Nada: mesmo cenario, mesmo alvo, mesma maquina, mesmo plano de carga e mesma versao.</li>{{end}}
+  {{if not .Caveats}}<li>Nada do que da para comparar: cenario, alvo, maquina, plano de carga e versao sao os mesmos. O conteudo dos arquivos de dados nao entra nesta lista — se ele mudou entre as duas, a diferenca pode ser dele.</li>{{end}}
   {{range .Caveats}}<li>{{.Text}}{{if .Blocking}} <strong>(isso sozinho explica a diferenca)</strong>{{end}}</li>{{end}}
   <li>{{.Noise}}</li>
 </ul>
