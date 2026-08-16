@@ -295,6 +295,11 @@ func environmentSentences(document metrics.Document) []string {
 			document.Environment.Arch, document.Environment.Cores),
 		fmt.Sprintf("braunrate %s (%s), gerador e alvo medidos como declarado acima", document.Version, document.Environment.GoVersion),
 	}
+	// Two binaries with the same version number can carry different protocols,
+	// and without this line the difference would leave no trace (ADR 0004).
+	if len(document.Environment.Protocols) > 0 {
+		sentences = append(sentences, "Protocolos compilados neste binario: "+strings.Join(document.Environment.Protocols, ", ")+".")
+	}
 	for _, broker := range document.Run.Brokers {
 		sentences = append(sentences, "Mensageria: "+broker+".")
 	}

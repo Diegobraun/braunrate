@@ -25,7 +25,7 @@ Consequencias praticas:
 3. **Protocolo fora-de-arvore e suportado por build reprodutivel**, nao por carregamento dinamico. O processo, a documentar na Fase 7:
    - o autor cria um modulo Go que importa `braunrate/protocolo` e registra a implementacao em `init()`;
    - um arquivo `braunrate.build.yaml` declara os modulos extras e suas versoes;
-   - `braunrate construir` gera um binario com os protocolos declarados, fixando versoes via `go.sum` — o build e reprodutivel e auditavel;
+   - `braunrate build` gera um binario com os protocolos declarados, fixando versoes via `go.sum` — o build e reprodutivel e auditavel;
    - o binario resultante reporta, em `braunrate version` e no bloco de ambiente do relatorio, quais protocolos foram compilados e em que versao.
 4. **Isso vai no README como limitacao conhecida**, na secao de escopo, junto com o que esta fora. Nunca como surpresa depois da adocao. Texto obrigatorio: protocolo fora da lista exige rebuild.
 
@@ -44,6 +44,6 @@ Como Avro e Schema Registry estao em **"desejavel (depois)"** no backlog do estu
 
 ## Consequencias
 
-- `braunrate construir` entra no escopo da Fase 7, com documentacao do processo de protocolo fora-de-arvore.
-- O bloco de ambiente do relatorio passa a listar protocolos compilados e versoes — sem isso, dois binarios com o mesmo numero de versao poderiam produzir resultados diferentes sem rastro.
+- `braunrate build` **nao entrou na Fase 7 nem na Fase 8** e continua pendente, com o processo de protocolo fora-de-arvore ainda por documentar. O nome esta em ingles pela emenda do [ADR 0010](0010-idioma-do-codigo.md).
+- O bloco de ambiente do relatorio lista os protocolos compilados — sem isso, dois binarios com o mesmo numero de versao poderiam produzir resultados diferentes sem rastro. **Feito na revisao da Fase 8**; a versao de cada protocolo so faz sentido quando houver protocolo fora-de-arvore, e ate la todos vem do mesmo modulo.
 - A interface de protocolo vira contrato publico versionado a partir da v1.

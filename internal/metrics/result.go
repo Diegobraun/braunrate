@@ -34,6 +34,10 @@ type Environment struct {
 	Arch      string `json:"arquitetura"`
 	Cores     int    `json:"nucleos"`
 	GoVersion string `json:"versao_do_go"`
+	// Protocols compiled into this binary. Without it two binaries with the same
+	// version number could produce different results and leave no trace of why
+	// (ADR 0004).
+	Protocols []string `json:"protocolos_compilados,omitempty"`
 }
 
 type Run struct {
@@ -172,6 +176,7 @@ func (d Document) Valid() bool {
 
 type DocumentInput struct {
 	Version          string
+	Protocols        []string
 	Spec             string
 	Target           string
 	Model            string
@@ -204,6 +209,7 @@ func BuildDocument(collector *Collector, input DocumentInput) Document {
 			Arch:      runtime.GOARCH,
 			Cores:     runtime.NumCPU(),
 			GoVersion: runtime.Version(),
+			Protocols: input.Protocols,
 		},
 		Run: Run{
 			Spec:          input.Spec,

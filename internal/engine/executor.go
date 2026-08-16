@@ -175,6 +175,7 @@ func (executor *Executor) Execute(runContext context.Context) metrics.Document {
 	load := executor.scenario.Load
 	return metrics.BuildDocument(collector, metrics.DocumentInput{
 		Version:          executor.options.Version,
+		Protocols:        protocol.Registered(),
 		Spec:             executor.scenario.Name,
 		Target:           executor.scenario.Target,
 		Model:            string(load.Model),

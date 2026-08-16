@@ -86,3 +86,23 @@ func TestReportWithoutAWatchedGroupHasNoLagSection(t *testing.T) {
 		}
 	}
 }
+
+// Two binaries with the same version number can carry different protocols. The
+// report has to leave a trace of which ones, or a result that differs from
+// another has no explanation to point at (ADR 0004).
+func TestReportSaysWhichProtocolsTheBinaryCarries(t *testing.T) {
+	document := sampleDocument()
+	document.Environment.Protocols = []string{"http", "kafka"}
+
+	var terminal strings.Builder
+	if err := report.Summary(&terminal, document, slo.Verdict{}); err != nil {
+		t.Fatalf("nao gerou o terminal: %v", err)
+	}
+	html := generate(t, document)
+
+	for name, output := range map[string]string{"terminal": terminal.String(), "html": html} {
+		if !strings.Contains(output, "http, kafka") {
+			t.Fatalf("o %s nao disse quais protocolos o binario carrega", name)
+		}
+	}
+}
