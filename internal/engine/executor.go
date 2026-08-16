@@ -25,7 +25,7 @@ type Options struct {
 	LateThreshold    time.Duration
 	Clock            Clock
 	DataRoot         string
-	OnProgress       func(metrics.Snapshot, float64, time.Duration)
+	OnProgress       ProgressFunc
 	ProgressInterval time.Duration
 	OnStep           func(Observation)
 }
@@ -42,6 +42,10 @@ func DefaultOptions() Options {
 
 // Observation is what debug mode shows: one user, one iteration, everything
 // visible. The execution path is the same one the load uses.
+// ProgressFunc is named so the CLI and the server can pass the same thing
+// without each spelling the signature out.
+type ProgressFunc = func(metrics.Snapshot, float64, time.Duration)
+
 type Observation struct {
 	Step     string
 	Key      string

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -13,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Diegobraun/braunrate/internal/engine"
 	"github.com/Diegobraun/braunrate/internal/importer"
 	"github.com/Diegobraun/braunrate/internal/metrics"
 	"github.com/Diegobraun/braunrate/internal/protocol"
@@ -25,8 +23,8 @@ import (
 	"github.com/Diegobraun/braunrate/internal/recorder"
 	"github.com/Diegobraun/braunrate/internal/report"
 	"github.com/Diegobraun/braunrate/internal/report/comparison"
+	"github.com/Diegobraun/braunrate/internal/runner"
 	"github.com/Diegobraun/braunrate/internal/scenario"
-	"github.com/Diegobraun/braunrate/internal/slo"
 	"github.com/Diegobraun/braunrate/internal/testsupport"
 )
 
@@ -104,25 +102,19 @@ func execute(args []string) int {
 
 	if len(positional) < 1 {
 		fmt.Fprintln(os.Stderr, "informe o arquivo de cenario")
-		return 2
+		return runner.ExitBadFile
 	}
 	scenarioPath := positional[0]
 
-	c, err := scenario.ParseFile(scenarioPath)
+	c, plan, err := runner.Load(scenarioPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "erro no cenario: %v\n", err)
-		return 2
-	}
-	if err := c.Validate(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return 2
+		return faultExit(err)
 	}
 
-	options := engine.DefaultOptions()
-	options.Version = version
+	options := runner.DefaultOptions(version)
 	options.MaxInflight = *maxInflight
-	options.DataRoot = filepath.Dir(scenarioPath)
 	options.LateThreshold = *lateThreshold
+	options.BaselinePath = *baselinePath
 	if !*quiet {
 		closed := c.Load.Closed()
 		options.OnProgress = func(snapshot metrics.Snapshot, targetRate float64, remaining time.Duration) {
@@ -134,73 +126,59 @@ func execute(args []string) int {
 		}
 	}
 
+	if c.Load.Closed() {
+		fmt.Fprintf(os.Stderr, "executando %q contra %s: %d usuarios em laco fechado durante %s\n",
+			c.Name, c.Target, c.Load.Users, plan.Duration())
+	} else {
+		fmt.Fprintf(os.Stderr, "executando %q contra %s: %s iteracoes em %s\n",
+			c.Name, c.Target, humanize(plan.TotalRequests()), plan.Duration())
+	}
+
 	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	m, err := engine.New(c, options)
+	result, err := runner.Execute(runContext, scenarioPath, options)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return 2
+		return faultExit(err)
 	}
-	if c.Load.Closed() {
-		fmt.Fprintf(os.Stderr, "executando %q contra %s: %d usuarios em laco fechado durante %s\n",
-			c.Name, c.Target, c.Load.Users, m.Plan().Duration())
-	} else {
-		fmt.Fprintf(os.Stderr, "executando %q contra %s: %s iteracoes em %s\n",
-			c.Name, c.Target, humanize(m.Plan().TotalRequests()), m.Plan().Duration())
-	}
-
-	document := m.Execute(runContext)
-	protocol.CloseAll()
 	if !*quiet {
 		fmt.Fprintln(os.Stderr)
 	}
-	var baseline *slo.Baseline
-	if *baselinePath != "" {
-		before, err := readDocument(*baselinePath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			return 2
-		}
-		baseline = &slo.Baseline{Comparison: comparison.Compare(before, document), Path: *baselinePath}
-	}
-	if document.Valid() {
-		document.SLO = slo.Evaluate(c.SLO, document, baseline)
-	}
+
 	// A failed write to stdout does not change what happened to the target, so
 	// the verdict below stands; what cannot happen is the report vanishing in
 	// silence.
-	if err := report.Summary(os.Stdout, document, document.SLO); err != nil {
+	if err := report.Summary(os.Stdout, result.Document, result.Document.SLO); err != nil {
 		fmt.Fprintf(os.Stderr, "nao consegui escrever o resumo: %v\n", err)
 	}
 
-	if *resultPath != "" {
-		if err := writeJSON(*resultPath, document); err != nil {
+	for _, output := range []struct {
+		path  string
+		write func(string, metrics.Document) error
+	}{{*resultPath, runner.WriteJSON}, {*htmlPath, runner.WriteHTML}, {*csvPath, runner.WriteCSV}} {
+		if output.path == "" {
+			continue
+		}
+		if err := output.write(output.path, result.Document); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
-			return 1
+			return runner.ExitSLO
 		}
 	}
 	if *htmlPath != "" {
-		if err := writeHTML(*htmlPath, document); err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			return 1
-		}
 		fmt.Fprintf(os.Stderr, "relatorio em %s\n", *htmlPath)
 	}
-	if *csvPath != "" {
-		if err := writeCSVFile(*csvPath, document); err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			return 1
-		}
-	}
 
-	if !document.Valid() {
-		return 3
+	return result.Exit
+}
+
+// The exit code of a failure is decided in the runner, so the CLI and the
+// server never disagree about what a broken scenario is worth.
+func faultExit(err error) int {
+	fmt.Fprintf(os.Stderr, "%v\n", err)
+	if fault, is := err.(runner.Fault); is {
+		return fault.Exit
 	}
-	if !document.SLO.Passed {
-		return 1
-	}
-	return 0
+	return runner.ExitBadFile
 }
 
 // The standard flag package stops reading options at the first positional
@@ -221,69 +199,6 @@ func parseArguments(set *flag.FlagSet, args []string) []string {
 	}
 }
 
-func writeJSON(path string, document metrics.Document) error {
-	content, err := json.MarshalIndent(document, "", "  ")
-	if err != nil {
-		return fmt.Errorf("erro ao serializar resultado: %v", err)
-	}
-	if err := os.WriteFile(path, content, 0o644); err != nil {
-		return fmt.Errorf("erro ao gravar resultado: %v", err)
-	}
-	return nil
-}
-
-func writeHTML(path string, document metrics.Document) error {
-	file, err := os.Create(path)
-	if err != nil {
-		return fmt.Errorf("erro ao criar %s: %v", path, err)
-	}
-	if err := report.HTML(file, document); err != nil {
-		_ = file.Close()
-		return fmt.Errorf("erro ao gerar o relatorio HTML: %v", err)
-	}
-	// Close reports the write the operating system had not flushed yet. Deferred
-	// and discarded, a full disk produced a truncated file and a message saying
-	// the report was ready.
-	if err := file.Close(); err != nil {
-		return fmt.Errorf("erro ao fechar %s, o relatorio pode estar incompleto: %v", path, err)
-	}
-	return nil
-}
-
-func writeCSVFile(path string, document metrics.Document) error {
-	file, err := os.Create(path)
-	if err != nil {
-		return fmt.Errorf("erro ao criar %s: %v", path, err)
-	}
-	if err := report.CSV(file, document); err != nil {
-		_ = file.Close()
-		return fmt.Errorf("erro ao gerar o CSV: %v", err)
-	}
-	if err := file.Close(); err != nil {
-		return fmt.Errorf("erro ao fechar %s, o CSV pode estar incompleto: %v", path, err)
-	}
-	return nil
-}
-
-func readDocument(path string) (metrics.Document, error) {
-	var document metrics.Document
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return document, fmt.Errorf("nao consegui ler %s: %v", path, err)
-	}
-	if err := json.Unmarshal(content, &document); err != nil {
-		return document, fmt.Errorf("%s nao e um resultado do braunrate: %v", path, err)
-	}
-	if document.Tool != "braunrate" {
-		return document, fmt.Errorf("%s nao foi gerado pelo braunrate; use o arquivo de -result", path)
-	}
-	if document.FormatVersion != metrics.VersaoDoFormatoDeResultado {
-		return document, fmt.Errorf("%s esta no formato de resultado %q e esta versao le o formato %q",
-			path, document.FormatVersion, metrics.VersaoDoFormatoDeResultado)
-	}
-	return document, nil
-}
-
 func reportCommand(args []string) int {
 	set := flag.NewFlagSet("report", flag.ExitOnError)
 	htmlPath := set.String("html", "", "arquivo HTML a gerar")
@@ -295,7 +210,7 @@ func reportCommand(args []string) int {
   braunrate report saida.json -html relatorio.html`)
 		return 2
 	}
-	document, err := readDocument(positional[0])
+	document, err := runner.ReadDocument(positional[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 2
@@ -305,14 +220,14 @@ func reportCommand(args []string) int {
 		*htmlPath = "relatorio.html"
 	}
 	if *htmlPath != "" {
-		if err := writeHTML(*htmlPath, document); err != nil {
+		if err := runner.WriteHTML(*htmlPath, document); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
 		}
 		fmt.Printf("relatorio em %s\n", *htmlPath)
 	}
 	if *csvPath != "" {
-		if err := writeCSVFile(*csvPath, document); err != nil {
+		if err := runner.WriteCSV(*csvPath, document); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
 		}
@@ -327,12 +242,12 @@ func compare(args []string) int {
   braunrate compare antes.json depois.json`)
 		return 2
 	}
-	before, err := readDocument(args[0])
+	before, err := runner.ReadDocument(args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 2
 	}
-	after, err := readDocument(args[1])
+	after, err := runner.ReadDocument(args[1])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 2
@@ -360,28 +275,13 @@ func debug(args []string) int {
 
 	if len(positional) < 1 {
 		fmt.Fprintln(os.Stderr, "informe o arquivo de cenario")
-		return 2
+		return runner.ExitBadFile
 	}
 	scenarioPath := positional[0]
 
-	c, err := scenario.ParseFile(scenarioPath)
+	c, _, err := runner.Load(scenarioPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "erro no cenario: %v\n", err)
-		return 2
-	}
-	if err := c.Validate(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return 2
-	}
-
-	options := engine.DefaultOptions()
-	options.Version = version
-	options.DataRoot = filepath.Dir(scenarioPath)
-
-	m, err := engine.New(c, options)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return 2
+		return faultExit(err)
 	}
 
 	fmt.Printf("depurando %q contra %s: 1 usuario, 1 iteracao, sem carga\n", c.Name, c.Target)
@@ -392,40 +292,36 @@ func debug(args []string) int {
 	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	observations, vars, err := m.Debug(runContext)
-	protocol.CloseAll()
+	iteration, err := runner.Debug(runContext, scenarioPath, version)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "\nnao consegui chegar ao primeiro passo: %v\n", err)
-		return 1
+		fmt.Fprintf(os.Stderr, "\n%v\n", err)
+		return faultExit(err)
 	}
 
-	failed := false
-	for index, observation := range observations {
+	for index, observation := range iteration.Observations {
 		if err := report.Debug(os.Stdout, index+1, observation, *showBody); err != nil {
 			fmt.Fprintf(os.Stderr, "nao consegui escrever a depuracao: %v\n", err)
-			return 2
-		}
-		if observation.Class != protocol.Success {
-			failed = true
+			return runner.ExitBadFile
 		}
 	}
-	if err := report.IterationVars(os.Stdout, vars); err != nil {
+	if err := report.IterationVars(os.Stdout, iteration.Vars); err != nil {
 		fmt.Fprintf(os.Stderr, "nao consegui escrever a depuracao: %v\n", err)
-		return 2
+		return runner.ExitBadFile
 	}
 
 	fmt.Println()
-	if failed {
-		fmt.Printf("A iteracao parou no passo %d. Corrija e rode de novo; a carga so vale depois que a iteracao passa.\n", len(observations))
-		return 1
-	}
-	if len(observations) < len(c.Steps) {
-		fmt.Println("A iteracao nao chegou ao fim.")
-		return 1
+	if !iteration.Complete() {
+		if len(iteration.Observations) < len(c.Steps) && !iteration.Failed() {
+			fmt.Println("A iteracao nao chegou ao fim.")
+		} else {
+			fmt.Printf("A iteracao parou no passo %d. Corrija e rode de novo; a carga so vale depois que a iteracao passa.\n",
+				len(iteration.Observations))
+		}
+		return runner.ExitSLO
 	}
 	fmt.Printf("Iteracao completa: %d passo(s), tudo certo. Para rodar com carga:\n  braunrate execute %s\n",
-		len(observations), scenarioPath)
-	return 0
+		len(iteration.Observations), scenarioPath)
+	return runner.ExitPassed
 }
 
 // The curl command arrives as a single argument full of quotes, and people
@@ -634,41 +530,16 @@ func splitList(value string) []string {
 func validate(args []string) int {
 	if len(args) < 1 {
 		fmt.Fprintln(os.Stderr, "informe o arquivo de cenario")
-		return 2
+		return runner.ExitBadFile
 	}
-	c, err := scenario.ParseFile(args[0])
+	c, plan, err := runner.Load(args[0])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "erro no cenario: %v\n", err)
-		return 2
+		return faultExit(err)
 	}
-	if err := c.Validate(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return 2
+	for _, line := range runner.Describe(c, plan) {
+		fmt.Println(line)
 	}
-	plan := engine.CompilePlan(c.Load)
-	if c.Load.Closed() {
-		fmt.Printf("Cenario valido: %q, %d passo(s), %d usuarios em laco fechado durante %s.\n",
-			c.Name, len(c.Steps), c.Load.Users, plan.Duration())
-	} else {
-		fmt.Printf("Cenario valido: %q, %d passo(s), %d iteracoes em %s.\n",
-			c.Name, len(c.Steps), plan.TotalRequests(), plan.Duration())
-	}
-	if warning, closed := scenario.ClosedModelWarning(c); closed {
-		fmt.Println(warning)
-	}
-	if len(c.SLO) == 0 {
-		fmt.Println("Sem slo declarado: a execucao nunca vai falhar por lentidao. Adicione um bloco 'slo' para virar gate de CI.")
-	}
-	for _, broker := range scenario.DescribeMessaging(c.Messaging) {
-		fmt.Printf("Mensageria: %s\n", broker)
-	}
-	if len(c.Requires) > 0 {
-		fmt.Printf("Depende de infraestrutura externa: %s. Sem isso a execucao nao roda.\n", strings.Join(c.Requires, ", "))
-	}
-	for _, warning := range scenario.GateWarnings(c) {
-		fmt.Println(warning)
-	}
-	return 0
+	return runner.ExitPassed
 }
 
 func serveTarget(args []string) int {
