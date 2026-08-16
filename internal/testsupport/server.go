@@ -56,8 +56,10 @@ func (server *Server) Start(address string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", server.handle)
 	mux.HandleFunc("/auth/token", server.wrap(server.handleToken))
-	mux.HandleFunc("/pedidos", server.wrap(server.requireToken(server.handleOrder)))
-	mux.HandleFunc("/pedidos/", server.wrap(server.requireToken(server.handleOrder)))
+	// /pedidos e o passo que o 'braunrate new' escreve: exigir token aqui fazia
+	// new, target e execute devolverem 401 no primeiro contato de quem chega.
+	mux.HandleFunc("/pedidos", server.wrap(server.handleOrder))
+	mux.HandleFunc("/pedidos/", server.wrap(server.handleOrder))
 	mux.HandleFunc("/faturas/", server.wrap(server.requireToken(server.handlePayment)))
 	mux.HandleFunc("/graphql", server.wrap(server.requireToken(server.handleGraphQL)))
 	mux.HandleFunc("/saude", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })

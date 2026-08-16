@@ -287,6 +287,15 @@ O alvo de teste embutido, para quem ainda não tem serviço para apontar. `-raw`
 sobe um alvo mínimo que responde sem interpretar a requisição, para medir o teto
 do gerador; medir o teto contra o alvo completo mediria o par gerador+alvo.
 
+| Rota | Credencial |
+|---|---|
+| `/pedidos`, `/pedidos/{id}` | não pede: é o passo que o `braunrate new` escreve, e ele roda de primeira |
+| `/faturas/{id}`, `/graphql` | pedem token obtido em `POST /auth/token` |
+| `/auth/token`, `/saude` | não pedem |
+
+> **Dica** Para exercitar a jornada autenticada, aponte um passo para `/faturas`
+> e declare o bloco `autenticacao` — é o que os exemplos do repositório fazem.
+
 ## `version`
 
 ```bash

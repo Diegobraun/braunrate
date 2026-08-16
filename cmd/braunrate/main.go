@@ -891,7 +891,8 @@ func serveTarget(args []string) int {
 		return portInUse("target", "-address", *address, err)
 	}
 	fmt.Fprintf(os.Stderr, "alvo de teste em %s (responde em %s)\n", server.Address(), *latency)
-	fmt.Fprintf(os.Stderr, "\nEm outro terminal, aponte um cenário para cá:\n  braunrate execute examples/ci.yaml\n"+
+	fmt.Fprintf(os.Stderr, "\nEm outro terminal, escreva um cenário e rode contra este alvo:\n"+
+		"  braunrate new cenario.yaml\n  braunrate debug cenario.yaml\n"+
 		"Se você só quer ver a ferramenta funcionando, não precisa deste comando:\n  braunrate demo\n\n")
 
 	var processor *testsupport.Processor
