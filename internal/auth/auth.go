@@ -45,18 +45,23 @@ func (manager *Manager) Header(runContext context.Context, values *runtime.Value
 		return "Authorization", "Basic " + credential, nil
 	}
 
-	if err := manager.ensureToken(runContext, values); err != nil {
-		return "", "", err
-	}
+	// Credencial que ja esta no ambiente — 'tipo: cabecalho' com uma chave de
+	// API — nao tem login para fazer: sem este desvio o gerenciador ia buscar um
+	// bloco 'obter' que o cenario nunca declarou.
+	if manager.config.Obtain != nil {
+		if err := manager.ensureToken(runContext, values); err != nil {
+			return "", "", err
+		}
 
-	manager.mu.Lock()
-	obtained := make(map[string]string, len(manager.values))
-	for name, value := range manager.values {
-		obtained[name] = value
-	}
-	manager.mu.Unlock()
+		manager.mu.Lock()
+		obtained := make(map[string]string, len(manager.values))
+		for name, value := range manager.values {
+			obtained[name] = value
+		}
+		manager.mu.Unlock()
 
-	values.SetAll(obtained)
+		values.SetAll(obtained)
+	}
 
 	name, model, found := strings.Cut(manager.config.Header, ":")
 	if !found {

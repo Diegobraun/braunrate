@@ -122,3 +122,26 @@ func TestBasicAuthMakesNoRequest(t *testing.T) {
 		t.Errorf("cabecalho = %q: %q", name, value)
 	}
 }
+
+// Chave de API ja esta no ambiente, entao nao ha login para fazer. Sem o desvio,
+// o gerenciador procurava o bloco 'obter' que este cenario nunca declara, e o
+// comando terminava em panico em vez de mensagem.
+func TestAStaticHeaderCredentialMakesNoRequest(t *testing.T) {
+	clock := &testClock{now: time.Unix(1_700_000_000, 0)}
+	execute := func(context.Context, scenario.Step, *runtime.Values) (protocol.Response, error) {
+		t.Fatal("credencial fixa não deveria fazer requisição")
+		return protocol.Response{}, nil
+	}
+
+	config := scenario.Auth{Kind: scenario.AuthHeader, Header: "X-API-Key: ${API_KEY}"}
+	manager := auth.New(config, execute, clock)
+
+	values := runtime.New(0, 0, map[string]string{"API_KEY": "abc123"})
+	name, value, err := manager.Header(context.Background(), values)
+	if err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if name != "X-API-Key" || value != "abc123" {
+		t.Errorf("cabecalho = %q: %q", name, value)
+	}
+}
