@@ -211,3 +211,80 @@ func TestCookieThatNoResponseProducedIsMaskedPairByPair(t *testing.T) {
 		t.Fatal("o cookie que nao foi correlacionado foi versionado com o valor da gravacao")
 	}
 }
+
+// Grouping the same route into one step is right when the identifier varies. It
+// is a loss when the call repeated identically, because then the repetition was
+// the operation — and "5 requisicoes viraram 4 passos" does not say which one
+// disappeared.
+func TestIdenticalRepeatedCallSaysTheRepetitionIsNotInTheScenario(t *testing.T) {
+	body := `{"conta":"12345","valor":100.5}`
+	headers := map[string]string{"Idempotency-Key": "7f3a-2b1c"}
+	script, _ := Build([]Entry{
+		entry("POST", "http://api.local/transferencias", body, headers, 201, "application/json", `{"id":"tra-1"}`),
+		entry("POST", "http://api.local/transferencias", body, headers, 200, "application/json", `{"id":"tra-1"}`),
+	}, "cenario")
+
+	if len(script.Steps) != 1 {
+		t.Fatalf("esperava 1 passo, vieram %d", len(script.Steps))
+	}
+	var said string
+	for _, warning := range script.Warnings {
+		if strings.Contains(warning, "post transferencias") {
+			said = warning
+		}
+	}
+	if said == "" {
+		t.Fatalf("a repeticao sumiu sem ser nomeada; os avisos foram %q", script.Warnings)
+	}
+	if !strings.Contains(said, "idempotencia") {
+		t.Fatalf("o aviso nao diz o que se perde: %q", said)
+	}
+}
+
+// The same route with different identifiers is the case grouping exists for,
+// and warning there would teach the reader to skip the block that carries the
+// warnings that matter.
+func TestRouteWithVaryingIdentifiersIsNotWarnedAbout(t *testing.T) {
+	script, _ := Build([]Entry{
+		entry("GET", "http://api.local/pedidos/9912", "", nil, 200, "application/json", `{}`),
+		entry("GET", "http://api.local/pedidos/8123", "", nil, 200, "application/json", `{}`),
+	}, "cenario")
+
+	for _, warning := range script.Warnings {
+		if strings.Contains(warning, "virou um passo so") {
+			t.Fatalf("avisou sobre o agrupamento que e o certo: %q", warning)
+		}
+	}
+}
+
+// Every operation of a GraphQL service arrives at the same address. Grouped by
+// route, three operations become one step and a mutation disappears from the
+// scenario without anything saying so.
+func TestEachGraphQLOperationBecomesItsOwnStep(t *testing.T) {
+	call := func(query string) Entry {
+		return entry("POST", "http://api.local/graphql",
+			`{"query":`+quote(query)+`,"variables":{"id":"ped-1"}}`, nil, 200, "application/json", `{"data":{}}`)
+	}
+	script, _ := Build([]Entry{
+		call("query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }"),
+		call("mutation PagarFatura($id: ID!) { pagarFatura(id: $id) { status } }"),
+	}, "cenario")
+
+	if len(script.Steps) != 2 {
+		t.Fatalf("esperava um passo por operacao, vieram %d", len(script.Steps))
+	}
+	if script.Steps[0].GraphQL == nil || script.Steps[0].GraphQL.Operation != "ConsultarPedido" {
+		t.Fatalf("o primeiro passo nao saiu como graphql: %+v", script.Steps[0])
+	}
+	if script.Steps[1].GraphQL == nil || script.Steps[1].GraphQL.Operation != "PagarFatura" {
+		t.Fatalf("a mutation nao virou passo proprio: %+v", script.Steps[1])
+	}
+	rendered := importer.RenderYAML(script)
+	if !strings.Contains(rendered.YAML, "- graphql ConsultarPedido: { p95: < 500ms }") {
+		t.Fatalf("o slo nao aponta a chave que o relatorio usa:\n%s", rendered.YAML)
+	}
+}
+
+func quote(text string) string {
+	return `"` + strings.ReplaceAll(text, `"`, `\"`) + `"`
+}

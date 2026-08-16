@@ -3,6 +3,7 @@ package recorder
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -17,7 +18,42 @@ type DataFile struct {
 type group struct {
 	method  string
 	subject string
+	graphql *graphqlCall
 	entries []Entry
+}
+
+type graphqlCall struct {
+	operation string
+	query     string
+	variables string
+}
+
+var graphqlOperation = regexp.MustCompile(`(?s)\b(query|mutation|subscription)\s+([A-Za-z_][A-Za-z0-9_]*)`)
+
+// Every GraphQL operation of a service arrives at the same address. Grouping by
+// route puts the cheapest query and the most expensive mutation on the same
+// row, and drops all but the first — which is what ADR 0006 says the unit of
+// measure is not.
+func readGraphQL(entry Entry) *graphqlCall {
+	if entry.Body == "" || !strings.EqualFold(entry.Method, "POST") {
+		return nil
+	}
+	var envelope struct {
+		Query     string          `json:"query"`
+		Variables json.RawMessage `json:"variables"`
+	}
+	if err := json.Unmarshal([]byte(entry.Body), &envelope); err != nil || strings.TrimSpace(envelope.Query) == "" {
+		return nil
+	}
+	parts := graphqlOperation.FindStringSubmatch(envelope.Query)
+	if parts == nil {
+		return nil
+	}
+	variables := strings.TrimSpace(string(envelope.Variables))
+	if variables == "" || variables == "null" {
+		variables = "{}"
+	}
+	return &graphqlCall{operation: parts[2], query: envelope.Query, variables: variables}
 }
 
 // Build turns what passed through the proxy into a scenario. Nothing here is
@@ -53,7 +89,7 @@ func Build(entries []Entry, dataPrefix string) (importer.Script, []DataFile) {
 		}
 		body := apply(representative.Body, substitutions[index])
 
-		script.Steps = append(script.Steps, importer.ImportedStep{
+		step := importer.ImportedStep{
 			Name:           current.method + " " + current.subject,
 			Method:         strings.ToUpper(current.method),
 			Path:           path,
@@ -61,7 +97,11 @@ func Build(entries []Entry, dataPrefix string) (importer.Script, []DataFile) {
 			Body:           body,
 			ExpectedStatus: representative.Status,
 			Captures:       captures[index],
-		})
+		}
+		if current.graphql != nil {
+			step = asGraphQL(step, representative, substitutions[index])
+		}
+		script.Steps = append(script.Steps, step)
 		script.Warnings = append(script.Warnings, used...)
 	}
 
@@ -77,9 +117,37 @@ func Build(entries []Entry, dataPrefix string) (importer.Script, []DataFile) {
 		}
 	}
 
+	script.Warnings = append(script.Warnings, repetitionNotices(groups)...)
 	script.Warnings = append(script.Warnings,
 		"a sequencia gravada e uma passagem so: o mix de producao tem outras proporcoes entre as rotas, e nenhuma medicao aqui sabe disso")
 	return script, files
+}
+
+// Grouping the same route into one step is right when the identifier varies:
+// it gives one row per operation and the ids become data. It is a loss when the
+// call repeated identically, because then the repetition was the thing being
+// measured — a resend, an idempotency key, a cache — and "5 requisicoes viraram
+// 4 passos" does not say which one disappeared.
+func repetitionNotices(groups []group) []string {
+	var notices []string
+	for _, current := range groups {
+		if len(current.entries) < 2 || !identical(current.entries) {
+			continue
+		}
+		notices = append(notices, fmt.Sprintf(
+			"o passo %q foi gravado %d vezes com a mesma chamada e virou um passo so: se a repeticao era o que voce queria medir (reenvio, idempotencia, cache), ela nao esta no cenario",
+			current.method+" "+current.subject, len(current.entries)))
+	}
+	return notices
+}
+
+func identical(entries []Entry) bool {
+	for _, entry := range entries[1:] {
+		if entry.URL.String() != entries[0].URL.String() || entry.Body != entries[0].Body {
+			return false
+		}
+	}
+	return true
 }
 
 // Two requests to the same route are the same step: keeping one step per
@@ -90,11 +158,17 @@ func groupByRoute(entries []Entry) []group {
 	position := map[string]int{}
 	for _, entry := range entries {
 		method := strings.ToLower(entry.Method)
-		key := method + " " + importer.Resource(entry.URL.Path)
+		subject := importer.Resource(entry.URL.Path)
+		key := method + " " + subject
+		call := readGraphQL(entry)
+		if call != nil {
+			key = "graphql " + call.operation
+			subject = call.operation
+		}
 		index, seen := position[key]
 		if !seen {
 			position[key] = len(groups)
-			groups = append(groups, group{method: method, subject: importer.Resource(entry.URL.Path), entries: []Entry{entry}})
+			groups = append(groups, group{method: method, subject: subject, graphql: call, entries: []Entry{entry}})
 			continue
 		}
 		groups[index].entries = append(groups[index].entries, entry)
@@ -158,6 +232,29 @@ func candidatesOf(response Entry) []candidate {
 		found = append(found, flatten(response.ResponseBody)...)
 	}
 	return found
+}
+
+// The call is read again from the substituted body so that a correlated value
+// reaches the variables as ${variavel} and not as the identifier of the
+// recorded session.
+func asGraphQL(step importer.ImportedStep, representative Entry, substitutions []substitution) importer.ImportedStep {
+	substituted := representative
+	substituted.Body = apply(representative.Body, substitutions)
+	call := readGraphQL(substituted)
+	if call == nil {
+		return step
+	}
+	step.Body = ""
+	step.Name = ""
+	step.GraphQL = &importer.ImportedGraphQL{
+		Operation: call.operation,
+		Query:     call.query,
+		Variables: call.variables,
+		Path:      representative.URL.Path,
+	}
+	delete(step.Headers, "Content-Type")
+	delete(step.Headers, "Accept")
+	return step
 }
 
 func cookieCandidates(response Entry) []candidate {

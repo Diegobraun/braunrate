@@ -20,6 +20,17 @@ type ImportedStep struct {
 	FollowRedirects bool
 	ExpectedStatus  int
 	Captures        []ImportedCapture
+	GraphQL         *ImportedGraphQL
+}
+
+// A GraphQL step is not an HTTP step with a body: the report aggregates it by
+// operation, and every operation of a service arrives at the same address. As
+// an HTTP step the cheapest query and the most expensive mutation share a row.
+type ImportedGraphQL struct {
+	Operation string
+	Query     string
+	Variables string
+	Path      string
 }
 
 // Suggested marks what was inferred rather than read: the comment goes into the
@@ -77,6 +88,25 @@ func maskCookies(header string, vars map[string]string) (string, []string) {
 		pairs[index] = name + "=${" + local + "}"
 	}
 	return strings.Join(pairs, "; "), notices
+}
+
+// The GraphQL step goes into the file without a name so the report keys it by
+// operation, which is what makes one row per operation instead of one row per
+// address. The SLO has to point at that same key.
+func reportKey(step ImportedStep) string {
+	if step.GraphQL != nil {
+		return "graphql " + step.GraphQL.Operation
+	}
+	return step.Name
+}
+
+func sortedNames(headers map[string]string) []string {
+	names := make([]string, 0, len(headers))
+	for name := range headers {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 func sanitizeName(text string) string {
@@ -203,22 +233,34 @@ func RenderYAML(script Script) Import {
 
 	for _, step := range steps {
 		simple := step.Body == "" && len(step.Headers) == 0 && !step.FollowRedirects
-		if simple {
+		switch {
+		case step.GraphQL != nil:
+			write("  - graphql:")
+			write("      consulta: |")
+			for _, line := range strings.Split(strings.TrimSpace(step.GraphQL.Query), "\n") {
+				write("        %s", line)
+			}
+			write("      variaveis: %s", step.GraphQL.Variables)
+			if step.GraphQL.Path != "" && step.GraphQL.Path != "/graphql" {
+				write("      caminho: %s", step.GraphQL.Path)
+			}
+			if len(step.Headers) > 0 {
+				write("      cabecalhos:")
+				for _, name := range sortedNames(step.Headers) {
+					write("        %s: %q", name, step.Headers[name])
+				}
+			}
+		case simple:
 			write("  - http: %s %s", step.Method, step.Path)
 			write("    nome: %s", step.Name)
-		} else {
+		default:
 			write("  - nome: %s", step.Name)
 			write("    http:")
 			write("      metodo: %s", step.Method)
 			write("      caminho: %s", step.Path)
 			if len(step.Headers) > 0 {
 				write("      cabecalhos:")
-				names := make([]string, 0, len(step.Headers))
-				for name := range step.Headers {
-					names = append(names, name)
-				}
-				sort.Strings(names)
-				for _, name := range names {
+				for _, name := range sortedNames(step.Headers) {
 					write("        %s: %q", name, step.Headers[name])
 				}
 			}
@@ -246,7 +288,7 @@ func RenderYAML(script Script) Import {
 	write("")
 	write("slo:")
 	for _, step := range steps {
-		write("  - %s: { p95: < 500ms }", step.Name)
+		write("  - %s: { p95: < 500ms }", reportKey(step))
 	}
 	write("  - global: { erros: < 1 }")
 
