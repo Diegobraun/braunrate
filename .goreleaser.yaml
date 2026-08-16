@@ -74,7 +74,11 @@ changelog:
       order: 99
 
 release:
-  draft: false
+  # A release nasce em rascunho e so e promovida depois que o binario publicado
+  # foi baixado, conferido pelo checksum e executado. O workflow repete o
+  # --draft na linha de comando: a garantia nao pode depender de ninguem
+  # lembrar de nao mexer aqui.
+  draft: true
   prerelease: auto
   header: |
     Baixe o arquivo do seu sistema, confira o checksum em `checksums.txt` e

@@ -15,7 +15,10 @@ jobs:
   portao:
     uses: ./.github/workflows/ci.yml
 
-  publicar:
+  # A release nasce em rascunho. Rascunho nao aparece na pagina de releases e
+  # nao tem URL de download publica: enquanto a conferencia nao passar, nao ha
+  # arquivo que alguem possa baixar.
+  publicar-rascunho:
     needs: portao
     runs-on: ubuntu-latest
     permissions:
@@ -34,15 +37,17 @@ jobs:
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: '~> v2'
-          args: release --clean
+          # O --draft repete o que o .goreleaser.yaml ja diz, de proposito.
+          args: release --clean --draft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # O binario publicado e baixado da release, conferido pelo checksum e
-  # executado. Sem este job, "funciona" seria uma suposicao sobre um artefato
-  # que ninguem abriu.
-  conferir-o-publicado:
-    needs: publicar
+  # O binario e baixado do rascunho, conferido pelo checksum e executado. Sem
+  # este job, "funciona" seria uma suposicao sobre um artefato que ninguem
+  # abriu — e a suposicao ja esteve errada uma vez, quando o empacotamento
+  # deixou de fora todos os cenarios da raiz de examples/.
+  conferir-o-rascunho:
+    needs: publicar-rascunho
     strategy:
       fail-fast: false
       matrix:
@@ -57,16 +62,50 @@ jobs:
             artefato: windows_amd64
             extensao: zip
     runs-on: ${{ matrix.runner }}
+    permissions:
+      # Rascunho so e listado para quem tem acesso de escrita. Com
+      # contents: read a listagem volta vazia, o job falha, e a mensagem nao
+      # tem nada a ver com a causa — conferido em repositorio descartavel.
+      contents: write
     steps:
-      - name: baixar da release e conferir o checksum
+      # A garantia deste desenho em uma linha: enquanto a conferencia nao
+      # passar, nao existe release publicada com esta tag. A API de release por
+      # tag nao devolve rascunho, entao ela responder 200 aqui seria o furo.
+      - name: nao existe release publicada com esta tag ainda
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${GITHUB_REF_NAME}" > /dev/null 2>&1; then
+            echo "a release ${GITHUB_REF_NAME} ja esta publicada antes da conferencia"
+            exit 1
+          fi
+          echo "confirmado: nenhuma release publicada com a tag ${GITHUB_REF_NAME}"
+
+      # Rascunho nao tem URL de download publica e nem aparece na API por tag:
+      # 'gh release download <tag>' responde "release not found". O caminho e
+      # achar a release pelo id na listagem e baixar cada arquivo pelo id dele.
+      - name: baixar do rascunho e conferir o checksum
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           versao="${GITHUB_REF_NAME#v}"
           arquivo="braunrate_${versao}_${{ matrix.artefato }}.${{ matrix.extensao }}"
-          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
-          curl -fsSL -o "$arquivo" "$base/$arquivo"
-          curl -fsSL -o checksums.txt "$base/checksums.txt"
+          rascunho=$(gh api "repos/${GITHUB_REPOSITORY}/releases" --paginate \
+            --jq "[.[] | select(.tag_name==\"${GITHUB_REF_NAME}\")][0].id")
+          if [ -z "$rascunho" ] || [ "$rascunho" = "null" ]; then
+            echo "nao achei rascunho para a tag ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+          for nome in "$arquivo" checksums.txt; do
+            asset=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${rascunho}/assets" \
+              --jq ".[] | select(.name==\"${nome}\") | .id")
+            gh api -H "Accept: application/octet-stream" \
+              "repos/${GITHUB_REPOSITORY}/releases/assets/${asset}" > "$nome"
+          done
           grep " $arquivo\$" checksums.txt > checksum-deste.txt
           # macOS nao tem sha256sum e Linux nao tem shasum garantido.
           if command -v sha256sum > /dev/null; then
@@ -87,7 +126,7 @@ jobs:
             tar xzf "$arquivo"
           fi
 
-      - name: o binario publicado se identifica com a tag
+      - name: o binario se identifica com a tag
         shell: bash
         run: |
           set -euo pipefail
@@ -95,7 +134,7 @@ jobs:
           "$binario" version
           "$binario" version | grep -q "braunrate ${GITHUB_REF_NAME#v}"
 
-      - name: o binario publicado mede de verdade
+      - name: o binario mede de verdade
         shell: bash
         run: |
           set -euo pipefail
@@ -107,3 +146,37 @@ jobs:
           # A versao viaja dentro do documento de resultado, e e por ela que a
           # comparacao entre duas execucoes decide se tem veredito.
           grep -q "\"versao\": \"${GITHUB_REF_NAME#v}\"" resultado.json
+
+  # So aqui a release deixa de ser rascunho. O que o usuario baixa da pagina de
+  # releases e, sempre, um artefato que ja foi baixado e executado.
+  promover:
+    needs: conferir-o-rascunho
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: publicar a release conferida
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isDraft,tagName
+
+  # Conferencia reprovada descarta o rascunho: ninguem viu, e o mesmo tag pode
+  # ser disparado de novo sem colidir com uma release ja existente. A tag em si
+  # nao e apagada — apaga-la e decisao de pessoa, nao de workflow.
+  descartar-o-rascunho:
+    needs: [publicar-rascunho, conferir-o-rascunho]
+    if: failure() && needs.publicar-rascunho.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: apagar a release em rascunho
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "a conferencia reprovou; o rascunho $GITHUB_REF_NAME vai ser descartado"
+          gh release delete "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --yes

@@ -96,7 +96,9 @@ go build -o braunrate ./cmd/braunrate
 
 ### Plataformas
 
-Seis alvos publicados. Tres deles a publicacao baixa da release, confere o checksum e executa antes de fechar o workflow; os outros tres saem compilados e empacotados pela mesma configuracao, sem ninguem rodar:
+A release nasce em rascunho, que nao aparece na pagina de releases e nao tem URL de download. So depois que o binario e baixado desse rascunho, conferido pelo checksum e executado e que ela vira publica. Conferencia reprovada descarta o rascunho, e nao ha janela em que alguem baixe artefato quebrado.
+
+Seis alvos publicados. Tres deles sao baixados e executados antes da promocao; os outros tres saem compilados e empacotados pela mesma configuracao, sem ninguem rodar:
 
 | Plataforma | Publicada | Executada na publicacao |
 |---|---|---|
