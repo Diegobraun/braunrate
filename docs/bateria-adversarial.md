@@ -1462,3 +1462,245 @@ unico campo do YAML que nao aceita.
 reprodutibilidade e deliberada e vale; o que falta e a saida de emergencia para o
 caso em que o valor gerado e uma chave que o alvo lembra. Vai para a lista com essa
 tensao explicita, porque a decisao e de produto.
+
+---
+---
+
+# Relatorio final
+
+## 1. Achados que afetam a confianca no numero — corrigidos, com teste que reprova o codigo anterior
+
+Onze correcoes, cada uma no seu commit. As seis primeiras sao as que mudariam uma
+decisao tomada a partir do relatorio.
+
+### 1.1 O gate aprovava latencia num alvo 98% quebrado — `9ae1d03`
+Falhas rapidas enchem a amostra e todo quantil deixa de descrever trabalho. Uma
+execucao com 98% de erro passava num `p95: < 200ms` com o p95 de uma pagina de erro,
+exit 0. Enquanto as requisicoes que funcionaram forem maioria o percentil continua
+valendo; abaixo disso o gate nao aprova e diz por que. Vale igual para a jornada,
+cujo histograma registra tambem as interrompidas. **4 testes, 2 reprovam o codigo
+anterior.**
+
+### 1.2 `taxa: 100` sem unidade era lida como 100/s — `71eebdc`
+Quem quis dizer por minuto recebeu sessenta vezes a carga, sem aviso, e o relatorio
+inteiro descrevia uma carga que ninguem pediu. **2 testes, 1 reprova o anterior.**
+
+### 1.3 `padrao(BR-######)` inline devolvia vazio, em silencio — `7ccc7cb`
+O formato chega de duas formas e so uma era lida. Campo em branco saia para o alvo e
+nada ligava o 404 ao gerador. **3 testes, os 3 reprovam o anterior.**
+
+### 1.4 Coluna que nao existe no CSV interpolava para vazio — `858d8a8`
+`${clientes.identificador}` virava string vazia no meio do caminho. A regra de
+variavel nao declarada checava o nome da fonte e parava ali. **2 testes, 1 reprova o
+anterior.** Junto: `debug` imprimia o mesmo erro duas vezes.
+
+### 1.5 Credencial literal em `variaveis:` era aceita — `71eebdc`
+`variaveis: { senha: p4ssw0rd }` passava e ia para o repositorio, enquanto o
+importador de curl ja mascarava exatamente esses nomes. **3 testes, 1 reprova o
+anterior em cinco nomes.**
+
+### 1.6 O atraso do consumidor afirmava a causa que nao apurou — `46f36f4`
+Matei o consumidor no meio da execucao e o relatorio disse que a fila cresceu mais
+rapido do que ele consumiu. **1 teste, reprova o anterior no terminal e no HTML.**
+Saida publicada no README corrigida junto.
+
+### 1.7 A comparacao afirmava que nada explicava a diferenca — `f9f833a`
+Troquei o CSV inteiro entre duas execucoes, o p95 mudou 15 vezes, e a comparacao
+continuou dizendo "Nada: mesmo cenario, mesmo alvo...". **1 teste, reprova o
+anterior.**
+
+### 1.8 `validate` aprovava passo de broker sem endereco — `eef5b3a`
+### 1.9 `validate` aprovava slo apontando passo inexistente — `6a2bec2`
+Os dois: o portao barato do CI aprovava o que ja da para ler no arquivo que nao roda.
+O segundo so falhava **no fim da execucao**, com a carga inteira gasta. **4 testes,
+2 reprovam o anterior.**
+
+### 1.10 Corpo declarado como `{}` virava aviso de campo vazio — `eee9e74`
+Dois passos legitimos saiam como defeito e ensinavam o leitor a pular o bloco onde
+mora a invalidacao. **2 testes, 1 reprova o anterior.**
+
+### 1.11 A frase de regressao nao dizia contra qual base comparou — `7c5ebac`
+O relatorio viaja sozinho; colado num ticket, "pior que a base" nao da para conferir.
+**1 teste.**
+
+**Suite verde, lint zero e os cinco exemplos publicados validando a cada commit.**
+
+---
+
+## 2. Achados que bloqueiam o uso
+
+Em ordem de quantas pessoas param na porta.
+
+| # | achado | quem para |
+|---|---|---|
+| 2.1 | **Nao existe configuracao de TLS para HTTP** (2.6.a) | qualquer homologacao com CA interna ou certificado autoassinado. Nao ha `tls:` no topo, no passo, nem flag. Kafka e AMQP tem; HTTP, que e o protocolo principal e o unico que o `import curl` produz, nao |
+| 2.2 | **Memoria cresce 10 MB por minuto de execucao** (2.11.a) | teste de resistencia. 4 horas pedem ~2,4 GB. Causa medida: um histograma HDR de 168 KB por segundo de execucao, retido ate o fim. Independente da taxa |
+| 2.3 | **Nao ha mix ponderado de operacoes** (1.4.a) | teste de capacidade com mais de uma rota. O contorno — tres processos — e exatamente o que o modo servidor recusa como medicao invalida (4.8.a) |
+| 2.4 | **A semente e fixa e nao aceita ambiente** (4.10.a) | qualquer alvo que deduplique por chave: a segunda execucao do dia manda as chaves da primeira |
+| 2.5 | **Nao ha caminho de entrada para jornada de varios passos** (1.1.b) | o publico de QA que nao escreve codigo. `import curl` traduz uma requisicao; jornada de negocio tem seis |
+
+---
+
+## 3. Achados que atrasam
+
+| # | achado | custo |
+|---|---|---|
+| 3.1 | **Atraso do consumidor nao pode virar criterio de aceite** (1.3.a) | numa cadeia assincrona, a pergunta de aceite fica sem gate. Ha paliativo: `execucao.atraso_do_consumidor` esta no JSON |
+| 3.2 | **Cauda que e mistura de populacoes nao e sinalizada** (1.5.a) | manda a investigacao para GC e vizinho barulhento quando eram duas populacoes declaradas no CSV |
+| 3.3 | **A coluna de exemplo corta a mensagem onde esta a causa** (2.6.b) | um `debug` a cada falha de mensagem longa. Aconteceu tres vezes nesta bateria: TLS, broker e CSV esgotado |
+| 3.4 | **`validate` aprova cenario cujo arquivo de dados nao existe** (3.11.a) | terceiro caso da familia; este ficou de fora porque `validate` teria que tocar o disco, e isso e decisao |
+| 3.5 | **Argumento a mais e ignorado em silencio** (1.4.b) | `compare a b c` compara dois; `report a b` usa um; `new --help` cria arquivo |
+| 3.6 | **`${SENHA:-segredo}` continua aceito em corpo de passo** (3.5.a) | os tres exemplos publicados usam essa forma, que a regra de credencial de broker recusa com todas as letras |
+| 3.7 | **A contagem de usos e por iteracao, nao por ocorrencia** (4.10) | `novo_a_cada: uso` e indistinguivel do padrao no bloco que existe para provar semantica de valor |
+| 3.8 | **O titulo de uma linha nao carrega as ressalvas do corpo** (bloco 5) | "Passou" com 33% de erro, com o consumidor morto, ou com a latencia do alvo subindo 25 vezes |
+
+---
+
+## 4. Mensagens classificadas
+
+Vinte e quatro mensagens vistas em execucao real.
+
+**Ensina** (diz o que fazer) — 17. O padrao e consistente: nome proximo vira
+sugestao, lista completa depois, exemplo minimo fecha. As tres melhores:
+
+```
+409 ja existe uma execucao em andamento. Duas execucoes na mesma maquina disputam a
+CPU que precisa despachar no instante agendado, e nenhuma das duas mede o que se
+propos a medir. Espere a atual terminar, ou suba o servidor com -concurrent se a
+contaminacao for aceitavel neste caso.
+```
+
+```
+erro no cenario: c01.yaml:14:47: mapa em linha que nao fecha. Dentro de { } o YAML
+trata '{' e '}' como estrutura, e ${variavel} carrega os dois.
+    ponha o valor entre aspas, por exemplo:
+      kafka: { topico: pedidos, chave: "${pedidos.id}" }
+```
+
+```
+nao conheco a execucao "r999". As execucoes vivem na memoria deste processo e somem
+quando ele reinicia; /runs lista as que existem agora
+```
+
+Todas as tres dizem **por que**, nao so o que.
+
+**Aponta** (diz que esta errado, nao o que fazer) — 5:
+- indentacao YAML: repassa o texto do parser
+- 404 de rota desconhecida no servidor: `404 page not found`, em ingles, sem JSON — a unica saida do produto que nao e portugues ensinado
+- a coluna de exemplo truncada (3.3)
+- `espera:` com corpo de `aguardar:` responde "verificacao desconhecida: http"
+- o exemplo de aspas para dois-pontos nao cobre valor que ja tem aspas duplas (4.5)
+
+**Abandona** (nao diz, ou aceita) — 4, **das quais 3 foram corrigidas nesta bateria**:
+`taxa` sem unidade, credencial literal, coluna inexistente. Sobra `new --help`, que
+cria arquivo.
+
+---
+
+## 5. Custo de montar uma jornada
+
+| jornada | comandos | arquivos a mao | montada so pelos caminhos de entrada? |
+|---|---|---|---|
+| 1.1 e-commerce, 6 passos | 5 | 1 (5 dos 6 passos) | nao |
+| 1.2 banco com idempotencia | 3 | 1 | nao |
+| 1.3 cadeia assincrona | 3 | 1 (34 linhas) | nao |
+| 1.4 mix 60/30/10 | 7 | 3 | **nao executavel como pedido** |
+| 1.5 ramificacao por dado | 2 | 2 | nao |
+
+**Nenhuma das cinco.** O `import curl` cobriu um passo de trinta e um no total. O
+`new` cobriu a forma do arquivo e nada de `mensageria`, `kafka` ou `aguardar` — para
+a cadeia assincrona a saida do `new` foi descartada inteira.
+
+O que salvou o custo baixo foi eu conhecer o codigo. Uma pessoa de fora precisa
+descobrir sozinha a forma de `captura:`, de `${variavel}`, de `verificar:`, do bloco
+`mensageria` e do passo `aguardar`. O `new` comenta so o caso de um passo HTTP.
+
+**O contraste**: depois que o arquivo existe, o custo por execucao e quase zero.
+`debug` mostra a jornada inteira com capturas e corpo, e `execute` responde as tres
+perguntas de confianca sem que ninguem pergunte. O atrito esta **todo** na primeira
+meia hora.
+
+---
+
+## 6. O que continua descoberto — roteiro da sessao com o QA de verdade
+
+Esta secao vale mais que as outras. Ela e a lista do que **esta bateria nao pode
+medir**, porque quem a executou conhece o codigo por dentro.
+
+### 6.1 O que so uma pessoa de fora responde
+
+1. **O segundo passo.** Ela cria o cenario de um passo pelo `import curl`. O segundo
+   passo precisa do id que o primeiro devolveu. **O que ela faz?** Procura no README,
+   procura na mensagem, chuta, ou desiste? Esse e o momento exato do achado 1.1.b, e
+   e o unico que nao da para simular.
+2. **Onde ela procura documentacao.** Nao pergunte. Observe se ela abre o navegador,
+   se roda `--help`, ou se le o comentario do `new`.
+3. **O que ela entende por "invalido".** Mostre o relatorio 5.3 sem contexto e peca
+   para explicar em voz alta. A frase de abertura foi escrita para essa pessoa; e
+   preciso saber se ela chega.
+4. **Se ela ve o bloco "Confiabilidade da medicao".** Ele responde a pergunta mais
+   cara ("isso e a ferramenta?"). Se o olho pula, o valor e zero.
+5. **Se ela nota as linhas `--` do SLO.** E o que separa relatorio de carimbo.
+6. **O que ela faz com "Passou" e 33% de erro** (2.9). Aceita? Estranha? Nao ve?
+
+### 6.2 O que eu nao consegui exercitar
+
+7. **Renovacao de token em execucao longa.** O alvo embutido devolve token constante,
+   entao `renovar_apos: 25m` nao e observavel: os trinta minutos reportaram
+   "1 unico valor de token", que esta correto e nao prova nada. Precisa de alvo que
+   emita token novo e expire o antigo.
+8. **Broker morrendo no meio.** Nao derrubei o Redpanda por ser servico de terceiro
+   nesta maquina. Testei o consumidor morrendo (2.8), nao o broker.
+9. **AMQP.** Nenhum cenario desta bateria usou. Kafka foi coberto em cinco.
+10. **Autenticacao de broker** (SCRAM, TLS, AWS MSK IAM). O broker local nao tem
+    autenticacao. As regras de credencial estao cobertas por teste, nao por execucao.
+11. **HTTPS com certificado valido.** Testei o caso que falha (2.6). O caminho feliz
+    de TLS nunca rodou nesta bateria.
+12. **`import jmx`.** Nao exercitei nenhum plano do JMeter, e ele e a ponte com a
+    ferramenta que se quer substituir.
+13. **`record`.** O gravador por proxy nao foi usado — e ele e o terceiro caminho de
+    entrada, o unico que eu nao avaliei no custo da secao 5.
+14. **Windows e Linux.** Tudo aqui e macOS arm64. `lsof`, RSS e limites de descritor
+    se comportam diferente.
+15. **Execucao acima de 30 minutos.** A curva de memoria e linear no intervalo
+    medido; onde ela encontra o limite da maquina, nao sei.
+
+### 6.3 As tres decisoes de desenho que a sessao deve destravar
+
+16. **Separar histograma de sucesso e de falha?** A correcao do 2.4.a impede o gate
+    de aprovar amostra dominada por falhas, mas o percentil continua misturando as
+    duas. Separar custa um histograma por passo e muda numero publicado.
+17. **Fechar o balde da serie temporal, ou baixar a precisao dele?** Medido: 3 para 2
+    digitos custa um decimo da memoria e mexe so no p50/p99 por segundo. Fechar o
+    balde no fim do segundo resolve inteiro e e mais trabalho.
+18. **Sinalizar mistura de populacoes?** (1.5.a) A ferramenta sabe que
+    `${clientes.rota}` tem 2 valores e sabe que p50 e p95 estao a 20x. A alternativa
+    obvia — agregar por caminho resolvido — e a que o ADR 0002 recusa com razao.
+
+### 6.4 Como conduzir
+
+Nao demonstre. Entregue o binario, um alvo e uma pergunta de negocio ("quanto aguenta
+o fechamento de pedido?"), e **cronometre em silencio** ate o primeiro relatorio
+valido. O numero que interessa nao e se ela consegue: e quantos minutos, e em qual
+linha ela para.
+
+---
+
+## Contagem
+
+**17 commits**: 11 correcoes com teste, 6 de registro. **27 testes novos**, 9 deles
+provados contra o codigo anterior antes de existir a correcao.
+
+**Achados de gravidade alta: 6** — o gate aprovando alvo 98% quebrado, a taxa sem
+unidade, o `padrao` inline vazio, a coluna de CSV inexistente, a credencial literal e
+a memoria crescendo por minuto de execucao. Os cinco primeiros afetam diretamente o
+numero ou o veredito; o sexto impede o caso de uso de resistencia.
+
+O que mais me convenceu nao foi nenhuma correcao: foi o bloco 2.12. Uma ferramenta de
+carga que acusa a propria saturacao em vez de reportar lentidao inventada do alvo tem
+a propriedade mais dificil de conseguir e mais facil de perder. Essa esta la, e esta
+coberta.
+
+O que mais me preocupa nao e nenhum achado isolado: e que quatro dos cinco itens que
+bloqueiam adocao (TLS, mix ponderado, memoria em execucao longa, semente) so aparecem
+depois que a pessoa ja escolheu a ferramenta e montou o primeiro cenario.
