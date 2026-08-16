@@ -22,7 +22,7 @@ Consequencias praticas:
 
 1. **A v1 traz compilados**: HTTP/REST, GraphQL, Kafka, AMQP e `aguardar`. Cobrem o backlog essencial e importante do estudo (§8).
 2. **O registro de protocolos e uma interface pequena e estavel** (ADR 0003 §3): `executar(passo, contexto) -> resultado`, esquema de configuracao, chave de agregacao, classificacao de erro e metricas proprias. Protocolo novo nao toca em agendador, histograma, formato de resultado nem relatorio.
-3. **Protocolo fora-de-arvore e suportado por build reprodutivel**, nao por carregamento dinamico. O processo, a documentar na Fase 7:
+3. ~~**Protocolo fora-de-arvore e suportado por build reprodutivel**, nao por carregamento dinamico.~~ **Cancelado em 2026-08-16 pelo [ADR 0017](0017-superficie-publica-de-execucao.md)**: a interface que o comando estenderia continua em `internal/` e so vira contrato publico na v1, entao `braunrate build` geraria um binario com exatamente os protocolos que ja vem. Protocolo fora da lista exige mudanca neste repositorio. O texto original, para registro:
    - o autor cria um modulo Go que importa `braunrate/protocolo` e registra a implementacao em `init()`;
    - um arquivo `braunrate.build.yaml` declara os modulos extras e suas versoes;
    - `braunrate build` gera um binario com os protocolos declarados, fixando versoes via `go.sum` — o build e reprodutivel e auditavel;
@@ -44,6 +44,6 @@ Como Avro e Schema Registry estao em **"desejavel (depois)"** no backlog do estu
 
 ## Consequencias
 
-- `braunrate build` **nao entrou na Fase 7 nem na Fase 8** e continua pendente, com o processo de protocolo fora-de-arvore ainda por documentar. O nome esta em ingles pela emenda do [ADR 0010](0010-idioma-do-codigo.md).
+- `braunrate build` **nao entrou na Fase 7 nem na Fase 8 e nao vai existir**: cancelado pelo [ADR 0017](0017-superficie-publica-de-execucao.md), que registra as tres razoes e o criterio que reabre a decisao.
 - O bloco de ambiente do relatorio lista os protocolos compilados — sem isso, dois binarios com o mesmo numero de versao poderiam produzir resultados diferentes sem rastro. **Feito na revisao da Fase 8**; a versao de cada protocolo so faz sentido quando houver protocolo fora-de-arvore, e ate la todos vem do mesmo modulo.
 - A interface de protocolo vira contrato publico versionado a partir da v1.

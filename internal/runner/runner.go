@@ -93,6 +93,17 @@ func Execute(runContext context.Context, path string, options Options) (Result, 
 	if err != nil {
 		return Result{}, err
 	}
+	return ExecuteSpec(runContext, spec, filepath.Dir(path), options)
+}
+
+// ExecuteSpec e o mesmo caminho a partir de um cenario ja construido, que e o
+// que o cenario escrito em Go tem na mao. Duas montagens diferentes aqui
+// significariam um veredito para quem escreve YAML e outro para quem escreve
+// Go, que e exatamente o que o ADR 0009 proibe.
+func ExecuteSpec(runContext context.Context, spec scenario.Spec, dataRoot string, options Options) (Result, error) {
+	if err := spec.Validate(); err != nil {
+		return Result{}, badFile(err, "%v", err)
+	}
 	if err := RequireEnvironment(spec); err != nil {
 		return Result{}, err
 	}
@@ -101,7 +112,7 @@ func Execute(runContext context.Context, path string, options Options) (Result, 
 	engineOptions.Version = options.Version
 	engineOptions.MaxInflight = options.MaxInflight
 	engineOptions.LateThreshold = options.LateThreshold
-	engineOptions.DataRoot = filepath.Dir(path)
+	engineOptions.DataRoot = dataRoot
 	engineOptions.OnProgress = options.OnProgress
 
 	executor, err := engine.New(spec, engineOptions)

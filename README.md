@@ -47,7 +47,7 @@ Esta e a primeira das tres execucoes reais que sustentam a tese. Cada uma expoe 
 
 ## Estado
 
-**Fase 8 concluida** — motor de chegada aberta, HTTP, GraphQL, Kafka, RabbitMQ e passo `aguardar`, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `debug`, `import curl`, `import jmx` e `record`), relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes), variedade observada, **cenario em Go equivalente ao YAML travado por teste** (executavel so de dentro do modulo), modelo fechado declarado, **autenticacao de broker com a credencial fora do arquivo** e **modo servidor local sem logica propria**.
+**Fase 8 concluida** — motor de chegada aberta, HTTP, GraphQL, Kafka, RabbitMQ e passo `aguardar`, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `debug`, `import curl`, `import jmx` e `record`), relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes), variedade observada, **cenario em Go equivalente ao YAML travado por teste**, executavel de um modulo de fora, modelo fechado declarado, **autenticacao de broker com a credencial fora do arquivo** e **modo servidor local sem logica propria**.
 
 Decisao da Fase 0: **Go**, sustentada por dois criterios apenas — RSS sob carga (30 MB contra 597 MB do Java com G1, a 10.000/s) e binario unico estatico, que para o publico de QA significa instalar baixando um arquivo. Startup, precisao de agendamento e modo de falha apareceram na primeira analise com peso que nao aguentam, e estao marcados como nao-criterio no ADR. Numeros, metodologia e limites em [medicoes-fase0.md](docs/medicoes-fase0.md); a decisao com os pesos de cada criterio em [ADR 0001](docs/adr/0001-linguagem-e-runtime.md).
 
@@ -287,14 +287,14 @@ Quando o cenario passa do que o YAML expressa — laco sobre uma lista, decisao 
 ```go
 // Scenario is the same journey of examples/jornada-autenticada.yaml, written in
 // Go: same engine, same metrics, same result document.
-func Scenario(alvo string) (scenario.Spec, error) {
+func Scenario(alvo string) (braunrate.Scenario, error) {
 	return dsl.New("Jornada de cobranca").
 		Target(alvo).
 		Auth(dsl.WithToken(
 			dsl.POST("/auth/token").Body(map[string]any{"usuario": "ana", "senha": "${SENHA:-segredo}"}),
 			dsl.Capture("token", "$.access_token"),
 		).RefreshAfter(25*time.Minute)).
-		DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(scenario.ConsumeCircular)).
+		DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(dsl.Circular)).
 		Ramp(dsl.PerSecond(50), dsl.PerSecond(300), 5*time.Second).
 		Plateau(dsl.PerSecond(300), 5*time.Second).
 		Step(dsl.GET("/pedidos/${assinantes.id}"),
@@ -318,7 +318,29 @@ func Scenario(alvo string) (scenario.Spec, error) {
 
 Esse trecho nao e ilustracao: ele vive em [`examples/cenario-em-go/cenario.go`](examples/cenario-em-go/cenario.go), o CI compila, roda contra o alvo embutido e confere o proprio SLO, e um teste reprova o build se o README derivar do arquivo.
 
-**Limitacao conhecida, e ela e grande:** `dsl` e publico, mas o motor vive em `internal/`, entao **de um modulo de fora nao ha como executar o cenario em Go**. Hoje a DSL serve para quem trabalha dentro deste repositorio. Como fechar isso — expor um pacote fino de execucao, tirar de `internal/` o que a DSL precisa, ou assumir que o publico dev usa YAML — e o que o [ADR 0015](docs/adr/0015-superficie-publica-da-dsl.md) tem que decidir, e ate la o README nao promete o contrario.
+### Rodando de dentro do seu modulo
+
+O cenario montado pela DSL roda pela superficie publica, sem precisar deste repositorio:
+
+```go
+import (
+	"github.com/Diegobraun/braunrate"
+	"github.com/Diegobraun/braunrate/dsl"
+)
+
+resultado, err := braunrate.Run(context.Background(), spec, braunrate.Options{})
+if err != nil {
+	return err
+}
+_ = braunrate.Summary(os.Stdout, resultado)
+os.Exit(braunrate.ExitCode(resultado))   // 0 passou, 1 slo reprovou, 3 medicao invalida
+```
+
+E o mesmo caminho do CLI: mesma validacao, mesmo motor, mesma avaliacao de SLO, mesmo relatorio. Um teste compila um modulo de fora deste contra essa superficie, porque publicar API e descobrir que ela nao serve quando alguem tentar ja aconteceu vezes demais aqui.
+
+Ate a v1 esses tipos **nao estao congelados**: eles seguem a versao que ja os governa — `Result` acompanha `versao_do_formato`, hoje `2` —, entao campo novo entra sem aviso e campo que sair ou mudar de nome sai com a versao mudando junto ([ADR 0017](docs/adr/0017-superficie-publica-de-execucao.md)).
+
+**Limitacao declarada:** protocolo novo continua exigindo mudanca neste repositorio — contribuicao ou fork. A interface de protocolo vive em `internal/` e so vira contrato publico na v1. O `braunrate build` que o [ADR 0004](docs/adr/0004-extensao-de-protocolo.md) previa foi cancelado, com o motivo no [ADR 0017](docs/adr/0017-superficie-publica-de-execucao.md).
 
 **Migrar de YAML para Go nao e reescrever.** A DSL nao interpreta nada por conta propria: `"$.ultimaFatura.id"`, `"> 10"` e `"< 150ms"` sao lidos pelas mesmas funcoes que leem o YAML, e cada protocolo aplica seus padroes num lugar so. Um teste compara a estrutura inteira dos dois caminhos, caso a caso, e falha se um protocolo registrado, uma chave de topo, uma forma de cenario ou uma opcao de protocolo ficar sem caso de equivalencia:
 
@@ -1056,7 +1078,7 @@ Um exemplo de `curl` por rota, com a resposta real, esta em [docs/api-servidor.m
 | AWS MSK com IAM pela cadeia padrao da AWS, sem chave no cenario | pronto, sem CI |
 | Segredo literal no cenario reprova a validacao, e a saida nunca mostra credencial | pronto |
 | Variedade observada, com resultado invalido quando a carga concentra | pronto |
-| Cenario em Go, com equivalencia YAML x DSL travada por teste | parcial: so roda de dentro deste modulo ([ADR 0015](docs/adr/0015-superficie-publica-da-dsl.md)) |
+| Cenario em Go, com equivalencia YAML x DSL travada por teste | pronto, executavel de um modulo de fora ([ADR 0017](docs/adr/0017-superficie-publica-de-execucao.md)) |
 | `import jmx`: requisicao, cabecalho, CSV e correlacao do plano do JMeter | parcial, declarado |
 
 ## Por que existe
@@ -1071,7 +1093,7 @@ Tres razoes, nesta ordem:
 
 **Dentro:** HTTP/HTTPS e REST; GraphQL de primeira classe; Kafka e RabbitMQ (produzir e consumir); passo `aguardar` com timeout; correlacao, variaveis e fluxo de autenticacao; CSV com politica de consumo e geracao sintetica com semente; perfis de carga (rampa, patamar, pico, taxa constante) e modelo fechado declarado; SLO com codigo de saida; relatorio HTML autocontido, JSON, CSV e resumo de terminal; comparacao entre execucoes; importador de `.jmx` para o subconjunto comum; gravador de trafego HTTP; modo servidor local sem logica propria; autenticacao de broker (SASL/PLAIN, SCRAM, TLS com CA propria, mTLS e AWS MSK com IAM), sempre com a credencial fora do arquivo.
 
-**Limitacao conhecida:** protocolo fora da lista acima exige recompilar o binario — a mesma friccao que o k6 tem. E consequencia da escolha de Go ([ADR 0004](docs/adr/0004-extensao-de-protocolo.md)), esta declarada aqui de proposito, e o processo de build reprodutivel para protocolo fora-de-arvore sera documentado. Avro e Schema Registry sao mais fracos em Go que na JVM e ficam para depois da v1.
+**Limitacao conhecida:** protocolo fora da lista acima exige **mudanca neste repositorio** — contribuicao ou fork —, nao um build local com plugin. A interface de protocolo vive em `internal/` e so vira contrato publico versionado na v1; o `braunrate build` que o [ADR 0004](docs/adr/0004-extensao-de-protocolo.md) previa foi cancelado, com as tres razoes no [ADR 0017](docs/adr/0017-superficie-publica-de-execucao.md). E a mesma friccao que o k6 tem, e e consequencia da escolha de Go. Avro e Schema Registry sao mais fracos em Go que na JVM e ficam para depois da v1.
 
 **Limitacao conhecida:** um unico token para a execucao inteira, com a consequencia declarada no relatorio ([ADR 0005](docs/adr/0005-identidade-e-token.md)). E a latencia dos passos seguintes ao primeiro e tempo de servico, nao latencia corrigida — a leitura honesta da jornada esta no bloco "A jornada inteira".
 
@@ -1101,6 +1123,7 @@ Tres razoes, nesta ordem:
 - [ADR 0014 — autenticacao de mensageria](docs/adr/0014-autenticacao-de-mensageria.md)
 - [ADR 0015 — superficie publica da DSL](docs/adr/0015-superficie-publica-da-dsl.md)
 - [ADR 0016 — mix ponderado de operacoes](docs/adr/0016-mix-ponderado-de-operacoes.md)
+- [ADR 0017 — superficie publica de execucao](docs/adr/0017-superficie-publica-de-execucao.md)
 - [API do modo servidor](docs/api-servidor.md) — um exemplo de curl por rota
 - [Schema do cenario](docs/braunrate.schema.json) — autocompletar e validacao no editor
 - [Exemplo de relatorio HTML](docs/exemplo-relatorio.html) — saida real de uma execucao que falhou o SLO

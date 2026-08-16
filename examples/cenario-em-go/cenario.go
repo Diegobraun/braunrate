@@ -10,21 +10,21 @@ package cenarioemgo
 import (
 	"time"
 
+	"github.com/Diegobraun/braunrate"
 	"github.com/Diegobraun/braunrate/dsl"
-	"github.com/Diegobraun/braunrate/internal/scenario"
 )
 
 // README:inicio
 // Scenario is the same journey of examples/jornada-autenticada.yaml, written in
 // Go: same engine, same metrics, same result document.
-func Scenario(alvo string) (scenario.Spec, error) {
+func Scenario(alvo string) (braunrate.Scenario, error) {
 	return dsl.New("Jornada de cobranca").
 		Target(alvo).
 		Auth(dsl.WithToken(
 			dsl.POST("/auth/token").Body(map[string]any{"usuario": "ana", "senha": "${SENHA:-segredo}"}),
 			dsl.Capture("token", "$.access_token"),
 		).RefreshAfter(25*time.Minute)).
-		DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(scenario.ConsumeCircular)).
+		DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(dsl.Circular)).
 		Ramp(dsl.PerSecond(50), dsl.PerSecond(300), 5*time.Second).
 		Plateau(dsl.PerSecond(300), 5*time.Second).
 		Step(dsl.GET("/pedidos/${assinantes.id}"),

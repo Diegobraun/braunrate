@@ -76,7 +76,22 @@ func (builder *Builder) Variable(name, value string) *Builder {
 
 type DataOption func(*scenario.DataSource)
 
-func Consume(policy scenario.ConsumePolicy) DataOption {
+// Os apelidos existem para que um modulo de fora consiga nomear o que a DSL
+// pede: internal/ nao e alcancavel de fora, e sem eles Consume e TargetTLS
+// seriam funcoes publicas com argumento inconstruivel.
+type (
+	ConsumePolicy = scenario.ConsumePolicy
+	TLS           = messaging.TLS
+)
+
+const (
+	Circular      = scenario.ConsumeCircular
+	Sequential    = scenario.ConsumeSequential
+	Random        = scenario.ConsumeRandom
+	UniquePerUser = scenario.ConsumeUniquePerUser
+)
+
+func Consume(policy ConsumePolicy) DataOption {
 	return func(source *scenario.DataSource) { source.Consume = policy }
 }
 
@@ -473,7 +488,7 @@ func (authenticator *BrokerAuth) CA(path string) *BrokerAuth {
 // TargetTLS declares the settings for reaching an HTTPS target whose
 // certificate the machine does not trust on its own — a private CA, or a client
 // certificate the target demands.
-func (builder *Builder) TargetTLS(settings messaging.TLS) *Builder {
+func (builder *Builder) TargetTLS(settings TLS) *Builder {
 	settings.Enabled = true
 	builder.scenario.TLS = &settings
 	return builder

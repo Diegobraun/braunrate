@@ -1,6 +1,6 @@
 # ADR 0015 — Superficie publica da DSL: o que um projeto de fora consegue fazer
 
-- **Status**: aceito
+- **Status**: parcialmente substituido pelo [ADR 0017](0017-superficie-publica-de-execucao.md) em 2026-08-16 — o diagnostico e a escolha da porta (opcao A) continuam valendo; o item 3 da decisao, que adiava qualquer superficie publica para a v1, foi revogado
 - **Data**: 2026-08-16
 - **Contexto de decisao**: revisao no fim da Fase 8
 - **Relacionados**: [ADR 0002](0002-modelo-de-cenario.md), [ADR 0004](0004-extensao-de-protocolo.md), [ADR 0009](0009-equivalencia-entre-yaml-e-dsl.md), [ADR 0010](0010-idioma-do-codigo.md)
