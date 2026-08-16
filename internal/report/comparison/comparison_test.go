@@ -113,3 +113,47 @@ func TestNewStepIsMarkedInsteadOfCountedAsRegression(t *testing.T) {
 		t.Error("passo que so existe na execucao nova precisa ser marcado como novo")
 	}
 }
+
+// The sentence used to name saturation whatever the run had reported. A cause
+// on the screen that the run never found is a wrong answer to "why".
+func TestReasonForNotComparingIsTheOneTheRunReported(t *testing.T) {
+	before := document(10, 5)
+	after := document(20, 10)
+	after.Sanity = metrics.Sanity{
+		Checked: true, Valid: false,
+		Findings: []metrics.SanityFinding{{
+			Kind:    "jornada_incompleta",
+			Message: "nenhuma jornada chegou ao fim, entao o cenario nao exercitou a sequencia que declarou",
+		}},
+	}
+
+	c := comparison.Compare(before, after)
+	if strings.Contains(c.Sentence, "saturou") {
+		t.Errorf("a frase inventou saturacao onde a execucao reportou outra coisa: %q", c.Sentence)
+	}
+	if !strings.Contains(c.Sentence, "nenhuma jornada chegou ao fim") {
+		t.Errorf("a frase nao disse o motivo que a execucao registrou: %q", c.Sentence)
+	}
+}
+
+// A caveat that only says the two runs used a token does not explain the whole
+// difference; claiming it does is claiming more than the comparison knows.
+func TestOnlyBlockingCaveatIsSaidToExplainTheDifferenceAlone(t *testing.T) {
+	before := document(10, 5)
+	after := document(10, 5)
+	before.Run.AuthObtains, after.Run.AuthObtains = 1, 1
+
+	c := comparison.Compare(before, after)
+	if len(c.Caveats) != 1 || c.Caveats[0].Blocking {
+		t.Fatalf("esperava uma ressalva nao impeditiva: %+v", c.Caveats)
+	}
+	if strings.Contains(c.Sentence, "sozinha") {
+		t.Errorf("ressalva que nao impede foi anunciada como suficiente: %q", c.Sentence)
+	}
+
+	after.Run.Target = "http://outra-maquina:8080"
+	blocked := comparison.Compare(before, after)
+	if !strings.Contains(blocked.Sentence, "sozinha") {
+		t.Errorf("ressalva impeditiva deixou de ser anunciada como tal: %q", blocked.Sentence)
+	}
+}

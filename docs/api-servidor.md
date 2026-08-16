@@ -201,7 +201,7 @@ curl -s http://127.0.0.1:8080/runs/r001/comparison/r002
 {
   "antes": { "cenario": "Fumaca de CI", "alvo": "http://127.0.0.1:8080", "inicio": "16/08/2026 06:20" },
   "depois": { "cenario": "Fumaca de CI", "alvo": "http://127.0.0.1:8080", "inicio": "16/08/2026 06:21" },
-  "frase": "Sem mudanca que valha leitura: jornada inteira (95%): 7 ms contra 7 ms — diferenca dentro do ruido de duas execucoes. Com 1 ressalva(s) que podem explicar a diferenca sozinhas.",
+  "frase": "Sem mudanca que valha leitura: jornada inteira (95%): 7 ms contra 7 ms — diferenca dentro do ruido de duas execucoes. Com 1 ressalva sobre o que mudou fora do servico.",
   "comparavel": true,
   "ressalvas": [
     {

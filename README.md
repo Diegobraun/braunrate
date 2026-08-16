@@ -830,15 +830,15 @@ Isso nasceu de um bug nosso: a autenticacao congelava os dados da primeira itera
 ```
 $ braunrate compare antes.json depois.json
 
-Ficou mais lento: jornada inteira (95%): 71 vezes mais lento — de 10 ms para 675 ms. Com 2 ressalva(s) que podem explicar a diferenca sozinhas.
+Ficou mais lento: jornada inteira (95%): 71 vezes mais lento — de 10 ms para 675 ms. Com 1 ressalva que pode explicar a diferenca sozinha.
 
 Por passo
   passo                        95% antes  95% depois         variacao
-  consultar pedido                4.9 ms      598 ms        123x pior
-  pagar fatura                    4.8 ms       43 ms        8.9x pior
+  consultar pedido                8.4 ms      598 ms         71x pior
+  pagar fatura                  0.601 ms       43 ms         71x pior
 
 O que pode explicar a diferenca sem ser o servico
-  - as execucoes usaram versoes diferentes do braunrate: 0.2.0 e 0.3.0
+  - as execucoes usaram versoes diferentes do braunrate: 0.2.0 e 0.3.0 (isso sozinho explica a diferenca)
   - as duas execucoes usaram um token para tudo; cache ou sharding por identidade afeta as duas do mesmo jeito, mas nao some da comparacao
   Duas execucoes nao dao intervalo de confianca: variacao abaixo de 5% e tratada como ruido.
 ```

@@ -4,6 +4,16 @@ Registro das decisoes tomadas durante o trabalho autonomo da noite de 2026-08-16
 Ordenado por risco: primeiro o que muda o que o usuario ve, o que contraria ADR
 existente e o que e caro de reverter; depois o resto.
 
+## Conserto — a frase da comparacao parava de afirmar mais do que ela sabe
+
+Alternativa considerada: deixar como estava, porque nenhum teste reclamava.
+
+Por que esta: duas frases afirmavam coisa que a comparacao nao tinha apurado. "Nao da para comparar ... porque o gerador saturou" era dito para qualquer execucao invalida, inclusive as que reportaram jornada incompleta ou passo 100% falho — cause errada na tela. E "Com N ressalvas que podem explicar a diferenca sozinhas" era dito de toda ressalva, quando o campo `impede_comparacao` existe justamente para separar as que explicam das que so mudaram.
+
+Reversibilidade: barato — duas funcoes em `comparison.go`, com teste cobrindo cada uma.
+
+Toca o usuario: sim, no texto. A frase de execucao invalida passa a citar o achado que a execucao registrou; a de ressalva nao impeditiva vira "Com 1 ressalva sobre o que mudou fora do servico". Saidas publicadas no README e em `docs/api-servidor.md` foram regeradas com o texto novo.
+
 ## Item 7 — comparacao que nao vale nao mostra tabela nenhuma
 
 Alternativa considerada: mostrar os numeros com um aviso em cima, como o relatorio de execucao invalida faz.

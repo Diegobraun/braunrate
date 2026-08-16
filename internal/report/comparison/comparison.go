@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/Diegobraun/braunrate/internal/metrics"
 	"github.com/Diegobraun/braunrate/internal/texto"
@@ -286,7 +287,7 @@ func compareErrors(before, after metrics.Document) CountDifference {
 
 func phrase(compared Comparison, before, after metrics.Document) string {
 	if !compared.Comparable {
-		return "Nao da para comparar: pelo menos uma das execucoes tem resultado invalido porque o gerador saturou."
+		return invalidPhrase(before, after)
 	}
 
 	main := compared.Journey
@@ -306,11 +307,50 @@ func phrase(compared Comparison, before, after metrics.Document) string {
 	if compared.Error.After != compared.Error.Before {
 		sentence += " " + compared.Error.Sentence
 	}
-	if len(compared.Caveats) > 0 {
+	// Only a blocking caveat explains the difference by itself. Saying it of
+	// every caveat made the sentence claim more than the comparison knows, and
+	// the field that tells the two apart exists exactly for this.
+	var blocking int64
+	for _, caveat := range compared.Caveats {
+		if caveat.Blocking {
+			blocking++
+		}
+	}
+	switch {
+	case blocking > 0:
 		sentence += fmt.Sprintf(" Com %s que %s explicar a diferenca sozinha%s.",
-			texto.Count(int64(len(compared.Caveats)), "ressalva", "ressalvas"),
-			texto.Pick(int64(len(compared.Caveats)), "pode", "podem"),
-			texto.Pick(int64(len(compared.Caveats)), "", "s"))
+			texto.Count(blocking, "ressalva", "ressalvas"),
+			texto.Pick(blocking, "pode", "podem"),
+			texto.Pick(blocking, "", "s"))
+	case len(compared.Caveats) > 0:
+		sentence += fmt.Sprintf(" Com %s sobre o que mudou fora do servico.",
+			texto.Count(int64(len(compared.Caveats)), "ressalva", "ressalvas"))
 	}
 	return sentence
+}
+
+// The reason a comparison does not stand is in the sanity check of whichever
+// run failed it. Naming saturation for every case put a cause on the screen
+// that the run had not reported.
+func invalidPhrase(before, after metrics.Document) string {
+	var reasons []string
+	if !before.Valid() {
+		reasons = append(reasons, "a anterior "+firstFinding(before))
+	}
+	if !after.Valid() {
+		reasons = append(reasons, "a nova "+firstFinding(after))
+	}
+	return "Nao da para comparar, porque uma das execucoes nao vale como medicao: " + strings.Join(reasons, "; ") + "."
+}
+
+func firstFinding(document metrics.Document) string {
+	for _, finding := range document.Sanity.Findings {
+		return finding.Message
+	}
+	for _, warning := range document.Warnings {
+		if warning.Severity == metrics.SeverityHigh {
+			return warning.Message
+		}
+	}
+	return "tem resultado invalido"
 }
