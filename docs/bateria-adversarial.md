@@ -542,3 +542,231 @@ cinco, com estrutura que so o codigo-fonte ou os exemplos do repositorio ensinam
 Duas correcoes entraram com teste que reprova o codigo anterior: o gerador `padrao`
 inline (alta) e o aviso de corpo vazio (media). Uma terceira entrou por consequencia
 do 1.3.b: `validate` deixa de aprovar passo de broker sem endereco.
+
+---
+
+## Bloco 2 — O que quebra na vida real
+
+Doze modos de falha que aparecem em homologacao de verdade. Alvos dedicados por
+porta, para nao interferirem entre si.
+
+### 2.1 — Alvo fora do ar antes da execucao
+**Correto.** exit 3, resultado invalidado, causa nomeada.
+
+```
+Resultado invalido: a execucao nao mediu o que se propos a medir.
+  - nenhuma jornada chegou ao fim ...  100 jornadas iniciadas, 0 completas
+  - o passo "consultar" falhou em 100% das requisicoes ...  100 requisicoes, 100 erros (rede: 100)
+
+Erros
+  consultar                  falha de rede                             100   connection refused
+```
+
+### 2.2 — Alvo morre no meio da execucao
+**Correto.** 50% de erro, exit 1 pelo criterio de erro declarado, `connection refused`
+com quantidade exata (300 de 600).
+
+### 2.3, 2.4 — Alvo degradado: falha rapida com resposta lenta no que sobra
+**Aqui saiu o pior achado da bateria.** Ver 2.4.a abaixo.
+
+### 2.5 — Host que nao resolve
+**Correto.** exit 3, `no such host`.
+
+### 2.6 — Certificado nao confiavel
+**Bloqueia adocao.** Ver 2.6.a.
+
+---
+
+#### Achado 2.4.a — o gate aprovava latencia num alvo 98% quebrado
+**Gravidade**: ALTA — afeta confianca no numero, e o veredito era verde
+
+**Aconteceu**: alvo que responde 503 instantaneo em 98% das requisicoes e 200 em
+300ms nos 2% restantes. Cenario com um criterio so: `- consultar: { p95: < 200ms }`.
+
+```
+Passou: a unica regra de SLO foi atendida.
+
+  500 requisicoes em 10s, 50 por segundo, 98.00% de erro
+  Metade das respostas em ate 0.424 ms; 95% em ate 1.4 ms; 99% em ate 301 ms
+
+SLO
+  ok    Passou: "consultar" teve latencia p95 de 1 ms, dentro do limite de 200 ms.
+exit=0
+```
+
+Em CI isso sobe. O p95 de 1 ms e o tempo de servir uma pagina de erro.
+
+**Por que a verificacao de sanidade nao pegou**: ela invalida passo com **100%** de
+erro — "a latencia acima e o tempo que o alvo levou para recusar, nao o tempo do
+trabalho", diz o proprio comentario no codigo. O principio nao tem penhasco em 100%.
+Com 98%, dez jornadas completas em quinhentas, nada disparou.
+
+**Por que o p95 e nao so o p50**: as falhas sao rapidas e ocupam a base da
+distribuicao. Com 90% de falha os sucessos ainda ocupam de p90 para cima e o p95
+reprovou corretamente (307 ms). Com 98% eles ocupam so de p98 para cima, e o p95 cai
+inteiro dentro das falhas. Nao existe percentil seguro: existe a fracao de sucesso
+que o empurra para fora.
+
+**Corrigido agora**: enquanto as requisicoes que funcionaram forem **maioria** da
+amostra, o percentil continua descrevendo-as e nada muda. Abaixo disso o criterio de
+latencia nao e avaliado, e o gate nao aprova o que nao verificou:
+
+```
+Nao avaliada: consultar teve 98% de falha, entao a latencia p95 acima e sobretudo o
+tempo de falhar, nao o tempo do trabalho. A regra "p95: < 200ms" nao pode ser
+verificada sobre esta amostra, e sem verificacao o gate nao aprova.
+exit=1
+```
+
+Vale igual para a jornada: o histograma de jornada registra tambem as que foram
+interrompidas, entao um cenario que aborta no primeiro passo em 1 ms aprovaria um
+`jornada: { p95: < 2s }` que ninguem esperou.
+
+Quatro testes; os dois que provam o defeito reprovam o codigo anterior:
+
+```
+--- FAIL: TestLatencyRuleIsNotApprovedOverASampleOfFailures (0.00s)
+    slo_test.go:138: o gate aprovou latencia num passo que falhou em 98% das requisicoes
+--- FAIL: TestJourneyRuleIsNotApprovedWhenMostJourneysAbort (0.00s)
+    slo_test.go:205: o gate aprovou a jornada com 490 de 500 jornadas interrompidas
+```
+
+Os outros dois travam o contrario: 30% de erro continua avaliando latencia
+normalmente, e criterio de **erro** continua sendo avaliado justamente quando tudo
+falha — se ele tambem parasse, nao sobraria criterio nenhum.
+
+**O que nao foi mudado, de proposito**: o percentil continua sendo calculado sobre
+todas as requisicoes. Separar sucesso de falha exigiria um segundo histograma por
+passo e mudaria numero ja publicado; e uma decisao de desenho para a sessao com o
+QA, nao para uma correcao de bateria.
+
+---
+
+#### Achado 2.6.a — nao existe configuracao de TLS para HTTP
+**Gravidade**: ALTA para adocao — homologacao com CA interna nao pode ser testada
+
+Alvo HTTPS com certificado autoassinado:
+
+```
+$ braunrate debug tls.yaml
+  problema:   falha de rede
+              Get "https://127.0.0.1:8443/produtos": tls: failed to verify certificate:
+              x509: certificate signed by unknown authority
+```
+
+Nao ha saida. Nao existe `tls:` no topo do cenario:
+
+```
+erro no cenario: tls-ca.yaml:4:1: chave desconhecida no topo do cenario: "tls"
+    disponiveis: nome, alvo, requer, variaveis, autenticacao, mensageria, dados, carga, cenario, slo
+```
+
+Nem no passo, nem flag de linha de comando. O cliente HTTP compartilhado
+(`internal/protocol/transport/client.go`) nao tem nenhum campo de TLS alem do
+timeout de handshake.
+
+**A assimetria**: Kafka e AMQP tem `tls: { ca, certificado, chave }` com leitura de
+arquivo. HTTP, que e o protocolo principal e o unico que o `import curl` produz, nao
+tem nada.
+
+**Por que bloqueia**: a maioria dos ambientes de homologacao corporativos serve
+HTTPS com CA interna. Para essa pessoa a ferramenta nao roda — e a mensagem que ela
+recebe e o texto cru do Go, que nao diz que a ferramenta nao tem por onde resolver.
+Uma recusa que dissesse "nao ha como declarar CA hoje" custaria menos que uma que
+parece problema do certificado dela.
+
+**Nao corrigido**: recurso novo. Primeiro item da lista de bloqueio de adocao.
+
+---
+
+#### Achado 2.6.b — a coluna de exemplo corta a mensagem justo onde esta a causa
+**Gravidade**: media — obriga um `debug` a cada falha de rede de mensagem longa
+
+Mesma falha, sob carga:
+
+```
+Erros
+  passo                      o que aconteceu                    quantidade   exemplo
+  consultar                  falha de rede                              30   Get "https://127.0.0.1:8443/produtos": tls:…
+```
+
+O corte preserva a URL — que ja esta no cabecalho do relatorio — e joga fora
+`failed to verify certificate: x509: certificate signed by unknown authority`, que e
+a unica parte acionavel. Cortar pela esquerda, ou cortar o prefixo repetido, daria a
+mesma largura com a informacao certa.
+
+---
+
+### 2.7 — Broker inalcancavel
+**Correto.** exit 3, `dial tcp 127.0.0.1:9199: connect: connection refused`, passo
+nomeado, e a mensagem manda rodar `debug`. Custo: a execucao gasta os 10s inteiros
+falhando antes de dizer isso — num cenario de 30 minutos, gastaria 30 minutos.
+
+### 2.8 — Consumidor morre no meio
+**Afirmava causa nao apurada. Corrigido.** Ver 2.8.a.
+
+### 2.9 — Alvo corta conexao em um terco das requisicoes
+**Correto na classificacao, discutivel no veredito.**
+
+```
+Passou: a unica regra de SLO foi atendida.
+  500 requisicoes em 10s, 50 por segundo, 33.40% de erro
+  consultar    falha de rede    167    connection reset
+```
+
+`connection reset` sai como classe propria. A palavra "Passou" com um terco das
+requisicoes falhando so se sustenta porque nenhum criterio de erro foi declarado — e
+o relatorio diz isso na linha seguinte (`global: sem criterio declarado`). Correto
+pela letra; ver bloco 5 sobre o que o titulo comunica.
+
+### 2.10 — Resposta que nao e JSON onde havia captura
+**Exemplar.** O `debug` mostra o corpo e explica:
+
+```
+  resposta:   status 200, 81 bytes
+  corpo:      <html><head><title>502 Bad Gateway</title></head><body><h1>502</h1></body></html>
+  problema:   nao consegui capturar "pedidoId" com $.pedido.id: a resposta nao e JSON valido
+```
+
+Sob carga, exit 3, e o segundo passo aparece explicitamente como ausente da medicao:
+
+```
+  - o passo "usar captura" foi declarado e nao registrou nenhuma amostra; ele ficou de fora da medicao
+    passos com amostra: consultar
+```
+
+### 2.11 — Alvo que nunca responde
+**Correto, com e sem timeout declarado.** Com `timeout: 1s`, classe `tempo esgotado`
+e `timeout: 50` no resumo por classe. Sem timeout nenhum, o cliente padrao corta em
+30s: uma execucao de 5s levou 35s no total e terminou — nao trava.
+
+---
+
+#### Achado 2.8.a — o atraso do consumidor afirmava a causa que nao apurou
+**Gravidade**: media — nao afeta o numero, afirma o que nao verificou
+
+**Aconteceu**: matei o processador aos 8 segundos de uma execucao de 20s a 200/s.
+
+```
+Atraso do consumidor
+  grupo processador em pedidos-eventos: no pior momento 2.399 mensagens atras; no fim, 2.399 mensagens
+  O consumidor terminou a execucao para tras: a fila cresceu mais rapido do que ele consumiu.
+```
+
+O consumidor nao ficou para tras: ele deixou de existir. A medicao e a distancia
+entre a ponta do topico e o offset comitado do grupo; consumidor lento, consumidor
+parado e consumidor em rebalanceamento produzem exatamente o mesmo numero.
+
+**Corrigido agora** — a frase passa a dizer a distancia e recusar o diagnostico:
+
+```
+  O consumidor terminou a execucao para tras. O atraso diz a distancia, nao a causa:
+  consumidor lento, parado ou em rebalanceamento produzem o mesmo numero.
+```
+
+Teste `TestLagSentenceDoesNotClaimACauseItDidNotCheck`, provado contra o codigo
+anterior no terminal e no HTML. Saida publicada no README corrigida junto.
+
+**O que continua aberto**: a execucao terminou **verde, exit 0**, com o consumidor
+morto ha 12 segundos. E o achado 1.3.a de novo, agora com um alvo que nao existe
+mais.
