@@ -9,6 +9,7 @@ type CaptureOrigin string
 const (
 	CaptureJSON   CaptureOrigin = "json"
 	CaptureHeader CaptureOrigin = "cabecalho"
+	CaptureCookie CaptureOrigin = "cookie"
 	CaptureRegex  CaptureOrigin = "regex"
 	CaptureBody   CaptureOrigin = "corpo"
 	CaptureStatus CaptureOrigin = "status"

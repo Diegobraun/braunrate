@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Diegobraun/braunrate/internal/importer"
 )
 
 func entry(method, address, body string, headers map[string]string, status int, contentType, response string) Entry {
@@ -162,5 +164,50 @@ func TestRecordedStatusIsTheOneThatCameBack(t *testing.T) {
 
 	if script.Steps[0].ExpectedStatus != 201 {
 		t.Fatalf("o passo saiu esperando %d, e o alvo respondeu 201", script.Steps[0].ExpectedStatus)
+	}
+}
+
+// A session cookie is born in Set-Cookie and comes back in Cookie, which is the
+// most common correlation of a web application. Reading only the body meant
+// every journey replayed the one session that was recorded — the identity bug
+// of phase 4, arriving through the recorder.
+func TestSessionCookieBecomesCaptureAndIsSentBackCorrelated(t *testing.T) {
+	login := entry("POST", "http://api.local/entrar", `{"usuario":"ana"}`, nil, 200,
+		"application/json", `{"usuario":"ana"}`)
+	login.ResponseCookies = []string{"sessao=8f3a1c2b4d; Path=/; HttpOnly"}
+
+	script, _ := Build([]Entry{
+		login,
+		entry("GET", "http://api.local/perfil", "", map[string]string{"Cookie": "sessao=8f3a1c2b4d"}, 200,
+			"application/json", `{"usuario":"ana"}`),
+	}, "cenario")
+
+	captures := script.Steps[0].Captures
+	if len(captures) != 1 || captures[0].Variable != "sessao" || captures[0].Expression != "cookie:sessao" {
+		t.Fatalf("o cookie de sessao nao virou captura: %+v", captures)
+	}
+	if got := script.Steps[1].Headers["Cookie"]; got != "sessao=${sessao}" {
+		t.Fatalf("o segundo passo continuou com a sessao gravada: %q", got)
+	}
+}
+
+// The pair that no recorded response produced is not a correlation, and leaving
+// it literal versions somebody's session.
+func TestCookieThatNoResponseProducedIsMaskedPairByPair(t *testing.T) {
+	login := entry("POST", "http://api.local/entrar", "", nil, 200, "application/json", `{"ok":true}`)
+	login.ResponseCookies = []string{"sessao=8f3a1c2b4d; Path=/"}
+
+	script, _ := Build([]Entry{
+		login,
+		entry("GET", "http://api.local/perfil", "", map[string]string{"Cookie": "sessao=8f3a1c2b4d; rastreio=abc123"}, 200,
+			"application/json", `{}`),
+	}, "cenario")
+	rendered := importer.RenderYAML(script)
+
+	if !strings.Contains(rendered.YAML, "sessao=${sessao}; rastreio=${cookie_rastreio}") {
+		t.Fatalf("o cabecalho Cookie nao saiu mascarado por par:\n%s", rendered.YAML)
+	}
+	if strings.Contains(rendered.YAML, "abc123") {
+		t.Fatal("o cookie que nao foi correlacionado foi versionado com o valor da gravacao")
 	}
 }

@@ -117,10 +117,7 @@ func correlate(groups []group) (map[int][]importer.ImportedCapture, map[int][]su
 
 	for producer := range groups {
 		response := groups[producer].entries[0]
-		if !strings.Contains(strings.ToLower(response.ContentType), "json") {
-			continue
-		}
-		for _, candidate := range flatten(response.ResponseBody) {
+		for _, candidate := range candidatesOf(response) {
 			if claimed[candidate.value] {
 				continue
 			}
@@ -134,7 +131,7 @@ func correlate(groups []group) (map[int][]importer.ImportedCapture, map[int][]su
 				continue
 			}
 			claimed[candidate.value] = true
-			variable := variableName(candidate.path, groups[producer].subject, captures)
+			variable := variableName(candidate.name, groups[producer].subject, captures)
 			captures[producer] = append(captures[producer], importer.ImportedCapture{
 				Variable: variable, Expression: candidate.path, Suggested: true,
 			})
@@ -148,7 +145,32 @@ func correlate(groups []group) (map[int][]importer.ImportedCapture, map[int][]su
 
 type candidate struct {
 	path  string
+	name  string
 	value string
+}
+
+// A session cookie is the most common correlation of a web application, and it
+// is born in a response header instead of a body: reading only the body means
+// every recorded journey reuses the one session that was recorded.
+func candidatesOf(response Entry) []candidate {
+	found := cookieCandidates(response)
+	if strings.Contains(strings.ToLower(response.ContentType), "json") {
+		found = append(found, flatten(response.ResponseBody)...)
+	}
+	return found
+}
+
+func cookieCandidates(response Entry) []candidate {
+	var found []candidate
+	for _, header := range response.ResponseCookies {
+		pair, _, _ := strings.Cut(header, ";")
+		name, value, split := strings.Cut(strings.TrimSpace(pair), "=")
+		if !split || value == "" {
+			continue
+		}
+		found = append(found, candidate{path: "cookie:" + name, name: name, value: value})
+	}
+	return found
 }
 
 // Only leaf strings and numbers become candidates, and only from a certain
@@ -180,12 +202,12 @@ func flatten(body []byte) []candidate {
 			}
 		case string:
 			if len(typed) >= 4 {
-				found = append(found, candidate{path, typed})
+				found = append(found, candidate{path: path, name: leaf(path), value: typed})
 			}
 		case float64:
 			text := strings.TrimSuffix(fmt.Sprintf("%v", typed), ".0")
 			if len(text) >= 4 {
-				found = append(found, candidate{path, text})
+				found = append(found, candidate{path: path, name: leaf(path), value: text})
 			}
 		}
 	}
@@ -214,9 +236,13 @@ func uses(entry Entry, value string) bool {
 	return entry.Body != "" && strings.Contains(entry.Body, value)
 }
 
-func variableName(path, subject string, taken map[int][]importer.ImportedCapture) string {
+func leaf(path string) string {
 	parts := strings.Split(path, ".")
-	name := sanitize(parts[len(parts)-1])
+	return parts[len(parts)-1]
+}
+
+func variableName(candidateName, subject string, taken map[int][]importer.ImportedCapture) string {
+	name := sanitize(candidateName)
 	if name == "" {
 		name = "valor"
 	}

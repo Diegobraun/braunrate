@@ -52,6 +52,8 @@ func Extract(capture scenario.Capture, response protocol.Response) (string, erro
 			}
 		}
 		return "", CaptureError{capture.Variable, capture.Expression, "cabecalho ausente na resposta"}
+	case scenario.CaptureCookie:
+		return extractCookie(capture, response)
 	case scenario.CaptureRegex:
 		compiled, err := compile(capture.Expression)
 		if err != nil {
@@ -72,6 +74,26 @@ func Extract(capture scenario.Capture, response protocol.Response) (string, erro
 	default:
 		return "", CaptureError{capture.Variable, capture.Expression, "origem de captura desconhecida"}
 	}
+}
+
+// A response can carry more than one Set-Cookie, and only the pair matters: the
+// attributes that follow it (Path, HttpOnly, Max-Age) describe the browser's
+// duty, and sending them back as if they were cookies is what capturing the raw
+// header would do.
+func extractCookie(capture scenario.Capture, response protocol.Response) (string, error) {
+	for name, values := range response.Headers {
+		if !strings.EqualFold(name, "Set-Cookie") {
+			continue
+		}
+		for _, value := range values {
+			pair, _, _ := strings.Cut(value, ";")
+			cookie, content, found := strings.Cut(strings.TrimSpace(pair), "=")
+			if found && strings.EqualFold(strings.TrimSpace(cookie), capture.Expression) {
+				return strings.TrimSpace(content), nil
+			}
+		}
+	}
+	return "", CaptureError{capture.Variable, capture.Expression, "a resposta nao trouxe esse cookie em Set-Cookie"}
 }
 
 // JSONPath here is the subset that covers the common case: dotted paths and

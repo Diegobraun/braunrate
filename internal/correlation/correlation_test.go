@@ -146,3 +146,34 @@ func TestAssertionUsesResolvedVariable(t *testing.T) {
 		t.Errorf("assercao com variavel deveria passar: %v", err)
 	}
 }
+
+// Capturing the raw Set-Cookie would send "sessao=abc; Path=/; HttpOnly" back in
+// the Cookie header, which is three cookies, two of them invented.
+func TestCookieCaptureTakesOnlyThePairValue(t *testing.T) {
+	capture, err := scenario.ParseCapture("sessao", "cookie:sessao")
+	if err != nil {
+		t.Fatalf("nao entendeu a expressao de cookie: %v", err)
+	}
+	response := protocol.Response{Headers: map[string][]string{
+		"Set-Cookie": {"rastreio=zzz; Path=/", "sessao=8f3a1c2b4d; Path=/; HttpOnly; Max-Age=600"},
+	}}
+
+	value, err := correlation.Extract(capture, response)
+	if err != nil {
+		t.Fatalf("nao capturou o cookie: %v", err)
+	}
+	if value != "8f3a1c2b4d" {
+		t.Fatalf("capturou %q, e o valor do cookie e 8f3a1c2b4d", value)
+	}
+}
+
+func TestCookieThatDidNotComeBackSaysSo(t *testing.T) {
+	capture, _ := scenario.ParseCapture("sessao", "cookie:sessao")
+	_, err := correlation.Extract(capture, protocol.Response{Headers: map[string][]string{}})
+	if err == nil {
+		t.Fatal("capturou um cookie que a resposta nao trouxe")
+	}
+	if !strings.Contains(err.Error(), "Set-Cookie") {
+		t.Fatalf("a mensagem nao diz onde ele deveria estar: %v", err)
+	}
+}

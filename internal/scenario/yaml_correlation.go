@@ -56,6 +56,12 @@ func ParseCapture(name, text string) (Capture, error) {
 	case strings.HasPrefix(expression, "cabecalho:"):
 		capture.Origin = CaptureHeader
 		capture.Expression = strings.TrimSpace(strings.TrimPrefix(expression, "cabecalho:"))
+	// Um cookie e um cabecalho com estrutura: "cabecalho:Set-Cookie" devolveria
+	// "sessao=abc; Path=/; HttpOnly", e mandar isso de volta em Cookie: manda
+	// tres cookies, dois deles inventados.
+	case strings.HasPrefix(expression, "cookie:"):
+		capture.Origin = CaptureCookie
+		capture.Expression = strings.TrimSpace(strings.TrimPrefix(expression, "cookie:"))
 	case strings.HasPrefix(expression, "/") && strings.HasSuffix(expression, "/") && len(expression) > 2:
 		capture.Origin = CaptureRegex
 		capture.Expression = expression[1 : len(expression)-1]
@@ -64,8 +70,9 @@ func ParseCapture(name, text string) (Capture, error) {
 			"    use uma destas formas:\n"+
 			"      %s: $.caminho.no.json      captura de um campo do corpo JSON\n"+
 			"      %s: cabecalho:X-Request-Id captura de um cabecalho da resposta\n"+
+			"      %s: cookie:sessao         captura o valor de um cookie do Set-Cookie\n"+
 			"      %s: /token=([a-z0-9]+)/    captura pelo primeiro grupo da expressao regular",
-			name, name, name, name)
+			name, name, name, name, name)
 	}
 	return capture, nil
 }

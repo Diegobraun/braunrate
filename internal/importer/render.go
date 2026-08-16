@@ -52,7 +52,43 @@ var secretHeaders = map[string]string{
 	"authorization": "TOKEN",
 	"x-api-key":     "API_KEY",
 	"api-key":       "API_KEY",
-	"cookie":        "COOKIE",
+}
+
+// Cookie is masked pair by pair, not as one string: masking the whole header
+// would throw away the session the recorder just correlated, and keeping the
+// whole header would version the cookies it did not correlate.
+func maskCookies(header string, vars map[string]string) (string, []string) {
+	var notices []string
+	pairs := strings.Split(header, ";")
+	for index, pair := range pairs {
+		pairs[index] = strings.TrimSpace(pair)
+		name, value, split := strings.Cut(pairs[index], "=")
+		if !split || strings.HasPrefix(value, "${") {
+			continue
+		}
+		local := "cookie_" + strings.ToLower(sanitizeName(name))
+		environment := strings.ToUpper(local)
+		if _, announced := vars[local]; !announced {
+			vars[local] = environment
+			notices = append(notices, fmt.Sprintf(
+				"o cookie %q nao nasceu em nenhuma resposta gravada e virou ${%s}: rode com %s=... no ambiente, para nao versionar sessao",
+				name, local, environment))
+		}
+		pairs[index] = name + "=${" + local + "}"
+	}
+	return strings.Join(pairs, "; "), notices
+}
+
+func sanitizeName(text string) string {
+	var out strings.Builder
+	for _, char := range strings.ToLower(text) {
+		if char >= 'a' && char <= 'z' || char >= '0' && char <= '9' {
+			out.WriteRune(char)
+			continue
+		}
+		out.WriteRune('_')
+	}
+	return strings.Trim(out.String(), "_")
 }
 
 // The body leaks the same way the header does: a recorded login carries the
@@ -98,6 +134,12 @@ func RenderYAML(script Script) Import {
 	for index := range steps {
 		withoutSecret := map[string]string{}
 		for name, value := range steps[index].Headers {
+			if strings.EqualFold(name, "Cookie") {
+				masked, notices := maskCookies(value, vars)
+				withoutSecret[name] = masked
+				importResult.Warnings = append(importResult.Warnings, notices...)
+				continue
+			}
 			variable, secret := secretHeaders[strings.ToLower(name)]
 			if !secret || alreadyInterpolated(value) {
 				withoutSecret[name] = value

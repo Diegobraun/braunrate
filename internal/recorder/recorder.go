@@ -18,13 +18,14 @@ import (
 )
 
 type Entry struct {
-	Method       string
-	URL          *url.URL
-	Headers      map[string]string
-	Body         string
-	Status       int
-	ResponseBody []byte
-	ContentType  string
+	Method          string
+	URL             *url.URL
+	Headers         map[string]string
+	Body            string
+	Status          int
+	ResponseBody    []byte
+	ResponseCookies []string
+	ContentType     string
 }
 
 type Options struct {
@@ -239,13 +240,14 @@ func (recorder *Recorder) record(request *http.Request, body []byte, response *h
 	}
 
 	recorder.entries = append(recorder.entries, Entry{
-		Method:       request.Method,
-		URL:          cloneURL(request.URL),
-		Headers:      headers,
-		Body:         string(body),
-		Status:       response.StatusCode,
-		ResponseBody: answer,
-		ContentType:  response.Header.Get("Content-Type"),
+		Method:          request.Method,
+		URL:             cloneURL(request.URL),
+		Headers:         headers,
+		Body:            string(body),
+		Status:          response.StatusCode,
+		ResponseBody:    answer,
+		ResponseCookies: response.Header.Values("Set-Cookie"),
+		ContentType:     response.Header.Get("Content-Type"),
 	})
 }
 

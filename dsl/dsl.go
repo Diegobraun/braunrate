@@ -210,7 +210,7 @@ func Name(name string) StepOption {
 }
 
 // Capture takes the same expression the YAML takes: "$.invoice.id",
-// "cabecalho:X-Id" or "/regex/".
+// "cabecalho:X-Id", "cookie:sessao" or "/regex/".
 func Capture(variable, expression string) StepOption {
 	return func(step *scenario.Step) error {
 		capture, err := scenario.ParseCapture(variable, expression)

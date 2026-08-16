@@ -315,10 +315,11 @@
             "oneOf": [
               {
                 "type": "string",
-                "description": "Caminho JSON, cabecalho ou expressao regular.",
+                "description": "Caminho JSON, cabecalho, cookie ou expressao regular.",
                 "examples": [
                   "$.ultimaFatura.id",
-                  "cabecalho:Location"
+                  "cabecalho:Location",
+                  "cookie:sessao"
                 ]
               },
               {

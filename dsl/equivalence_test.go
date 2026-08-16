@@ -76,6 +76,7 @@ cenario:
       faturaId: $.ultimaFatura.id
       requisicao: cabecalho:X-Request-Id
       sessao: /sessao=([a-z0-9]+)/
+      cookieDeSessao: cookie:sessao
       codigo: status
       inteiro: corpo
       opcional: { de: $.talvez, padrao: vazio }
@@ -124,6 +125,7 @@ slo:
 					dsl.Capture("faturaId", "$.ultimaFatura.id"),
 					dsl.Capture("requisicao", "cabecalho:X-Request-Id"),
 					dsl.Capture("sessao", "/sessao=([a-z0-9]+)/"),
+					dsl.Capture("cookieDeSessao", "cookie:sessao"),
 					dsl.Capture("codigo", "status"),
 					dsl.Capture("inteiro", "corpo"),
 					dsl.CaptureWithDefault("opcional", "$.talvez", "vazio"),
@@ -595,8 +597,8 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 	}
 
 	missing(t, "origem de captura", []scenario.CaptureOrigin{
-		scenario.CaptureJSON, scenario.CaptureHeader, scenario.CaptureRegex,
-		scenario.CaptureBody, scenario.CaptureStatus,
+		scenario.CaptureJSON, scenario.CaptureHeader, scenario.CaptureCookie,
+		scenario.CaptureRegex, scenario.CaptureBody, scenario.CaptureStatus,
 	}, origins)
 	missing(t, "tipo de assercao", []scenario.AssertionKind{
 		scenario.AssertBodyContains, scenario.AssertJSON, scenario.AssertRegex,
