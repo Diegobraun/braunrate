@@ -187,7 +187,7 @@ func TestFixedPartitionKeyInvalidatesResult(t *testing.T) {
 
 	var found bool
 	for _, warning := range document.Warnings {
-		if warning.Kind != "variedade_ausente" || !strings.Contains(warning.Message, "particao") {
+		if warning.Kind != "variedade_ausente" || !strings.Contains(warning.Message, "partição") {
 			continue
 		}
 		found = true

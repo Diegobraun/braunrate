@@ -22,6 +22,7 @@ import (
 // tabela inteira daria alarme falso e o teste seria desligado.
 var forbiddenInUserText = []string{
 	"latencia",
+	"latência",
 	"percentil",
 	"quantil",
 	"throughput",
