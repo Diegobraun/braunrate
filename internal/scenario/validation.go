@@ -16,8 +16,8 @@ func validTarget(target string) bool {
 	if address, err := url.Parse(target); err == nil && address.Scheme != "" && address.Host != "" {
 		return true
 	}
-	maquina, port, found := strings.Cut(target, ":")
-	if !found || maquina == "" || port == "" {
+	hostname, port, found := strings.Cut(target, ":")
+	if !found || hostname == "" || port == "" {
 		return false
 	}
 	for _, char := range port {
@@ -130,7 +130,7 @@ func readRequirements(no *yaml.Node) ([]string, error) {
 	for _, item := range no.Content {
 		if !slices.Contains(KnownRequirements, item.Value) {
 			return nil, nodeError(item, "dependencia desconhecida: %q\n%s",
-				item.Value, sugerir(item.Value, KnownRequirements))
+				item.Value, suggest(item.Value, KnownRequirements))
 		}
 		requirements = append(requirements, item.Value)
 	}

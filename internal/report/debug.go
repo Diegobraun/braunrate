@@ -26,20 +26,20 @@ func Debug(out io.Writer, number int, observation engine.Observation, showBody b
 	lines := describeConfig(observation.Config)
 	write("  requisicao: %s", lines[0])
 	for _, line := range lines[1:] {
-		write("              %s", encurtar(line))
+		write("              %s", shorten(line))
 	}
 
 	if observation.Response.Status > 0 {
 		write("  resposta:   status %d, %d bytes", observation.Response.Status, observation.Response.Bytes)
 	}
 	if showBody && len(observation.Response.Body) > 0 {
-		write("  corpo:      %s", encurtar(string(observation.Response.Body)))
+		write("  corpo:      %s", shorten(string(observation.Response.Body)))
 	}
 
 	if len(observation.Captured) > 0 {
 		write("  capturou:")
 		for _, name := range sortNames(observation.Captured) {
-			write("    %s = %s", name, encurtar(observation.Captured[name]))
+			write("    %s = %s", name, shorten(observation.Captured[name]))
 		}
 	}
 
@@ -57,7 +57,7 @@ func IterationVars(out io.Writer, vars map[string]string) error {
 	output.writef("")
 	output.writef("variaveis no fim da iteracao")
 	for _, name := range sortNames(vars) {
-		output.writef("  %s = %s", name, encurtar(vars[name]))
+		output.writef("  %s = %s", name, shorten(vars[name]))
 	}
 	return output.err
 }
@@ -72,7 +72,7 @@ func describeConfig(config protocol.Config) []string {
 	return []string{config.AggregationKey()}
 }
 
-func encurtar(text string) string {
+func shorten(text string) string {
 	text = strings.TrimSpace(strings.ReplaceAll(text, "\n", " "))
 	if len(text) > bodyLimit {
 		return text[:bodyLimit] + "…"

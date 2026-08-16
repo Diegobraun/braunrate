@@ -182,13 +182,13 @@ type DocumentInput struct {
 }
 
 func BuildDocument(collector *Collector, input DocumentInput) Document {
-	maquina, _ := os.Hostname()
+	hostname, _ := os.Hostname()
 	document := Document{
 		FormatVersion: VersaoDoFormatoDeResultado,
 		Tool:          "braunrate",
 		Version:       input.Version,
 		Environment: Environment{
-			Host:      maquina,
+			Host:      hostname,
 			OS:        runtime.GOOS,
 			Arch:      runtime.GOARCH,
 			Cores:     runtime.NumCPU(),

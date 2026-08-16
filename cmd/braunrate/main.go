@@ -94,9 +94,9 @@ func execute(args []string) int {
 	csvPath := set.String("csv", "", "arquivo CSV com uma linha por passo")
 	maxInflight := set.Int64("max-concurrent", 20000, "maximo de requisicoes simultaneas antes de desistir de disparar")
 	lateThreshold := set.Duration("late-threshold", 10*time.Millisecond, "atraso de disparo a partir do qual o gerador e considerado saturado")
-	silencioso := set.Bool("quiet", false, "nao imprime progresso")
+	quiet := set.Bool("quiet", false, "nao imprime progresso")
 	baselinePath := set.String("baseline", "", "resultado de uma execucao anterior, para as regras de regressao")
-	positional := analisar(set, args)
+	positional := parseArguments(set, args)
 
 	if len(positional) < 1 {
 		fmt.Fprintln(os.Stderr, "informe o arquivo de cenario")
@@ -119,7 +119,7 @@ func execute(args []string) int {
 	options.MaxInflight = *maxInflight
 	options.DataRoot = filepath.Dir(scenarioPath)
 	options.LateThreshold = *lateThreshold
-	if !*silencioso {
+	if !*quiet {
 		closed := c.Load.Closed()
 		options.OnProgress = func(snapshot metrics.Snapshot, targetRate float64, remaining time.Duration) {
 			if closed {
@@ -143,12 +143,12 @@ func execute(args []string) int {
 			c.Name, c.Target, c.Load.Users, m.Plan().Duration())
 	} else {
 		fmt.Fprintf(os.Stderr, "executando %q contra %s: %s iteracoes em %s\n",
-			c.Name, c.Target, humanizar(m.Plan().TotalRequests()), m.Plan().Duration())
+			c.Name, c.Target, humanize(m.Plan().TotalRequests()), m.Plan().Duration())
 	}
 
 	document := m.Execute(runContext)
 	protocol.CloseAll()
-	if !*silencioso {
+	if !*quiet {
 		fmt.Fprintln(os.Stderr)
 	}
 	var baseline *slo.Baseline
@@ -203,7 +203,7 @@ func execute(args []string) int {
 // argument, so "executar cenario.yaml -html x.html" ignored the option
 // silently. Here the list is walked to the end, and options hold before or
 // after the file.
-func analisar(set *flag.FlagSet, args []string) []string {
+func parseArguments(set *flag.FlagSet, args []string) []string {
 	var positional []string
 	for {
 		if err := set.Parse(args); err != nil {
@@ -284,7 +284,7 @@ func reportCommand(args []string) int {
 	set := flag.NewFlagSet("report", flag.ExitOnError)
 	htmlPath := set.String("html", "", "arquivo HTML a gerar")
 	csvPath := set.String("csv", "", "arquivo CSV a gerar")
-	positional := analisar(set, args)
+	positional := parseArguments(set, args)
 
 	if len(positional) < 1 {
 		fmt.Fprintln(os.Stderr, `informe o resultado gravado, por exemplo:
@@ -345,14 +345,14 @@ func compare(args []string) int {
 	return 0
 }
 
-func humanizar(value int64) string {
+func humanize(value int64) string {
 	return fmt.Sprintf("%d", value)
 }
 
 func debug(args []string) int {
 	set := flag.NewFlagSet("debug", flag.ExitOnError)
 	showBody := set.Bool("body", true, "mostra o corpo das respostas")
-	positional := analisar(set, args)
+	positional := parseArguments(set, args)
 
 	if len(positional) < 1 {
 		fmt.Fprintln(os.Stderr, "informe o arquivo de cenario")

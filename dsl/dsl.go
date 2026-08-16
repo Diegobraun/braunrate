@@ -367,9 +367,9 @@ func (builder *Builder) Build() (scenario.Spec, error) {
 }
 
 func messages(errors []error) []string {
-	textos := make([]string, 0, len(errors))
+	texts := make([]string, 0, len(errors))
 	for _, err := range errors {
-		textos = append(textos, err.Error())
+		texts = append(texts, err.Error())
 	}
-	return textos
+	return texts
 }

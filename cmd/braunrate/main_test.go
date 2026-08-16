@@ -21,7 +21,7 @@ func TestFlagWorksBeforeAndAfterFile(t *testing.T) {
 	for _, args := range testCases {
 		set := flag.NewFlagSet("executar", flag.ContinueOnError)
 		html := set.String("html", "", "arquivo HTML")
-		positional := analisar(set, args)
+		positional := parseArguments(set, args)
 
 		if len(positional) != 1 || positional[0] != "cenario.yaml" {
 			t.Fatalf("%v: o arquivo de cenario nao foi lido: %v", args, positional)

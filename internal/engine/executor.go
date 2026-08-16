@@ -259,8 +259,8 @@ func (executor *Executor) declaredSteps() []string {
 func (executor *Executor) scenarioWarnings() []metrics.Warning {
 	var warnings []metrics.Warning
 	for _, step := range executor.scenario.Steps {
-		polling, sonda := step.Config.(interface{ PollInterval() time.Duration })
-		if !sonda {
+		polling, polls := step.Config.(interface{ PollInterval() time.Duration })
+		if !polls {
 			continue
 		}
 		interval := polling.PollInterval()

@@ -42,8 +42,8 @@ type Collector struct {
 	JourneysStarted   int64
 	JourneysCompleted int64
 
-	input  chan Sample
-	pronto chan struct{}
+	input    chan Sample
+	finished chan struct{}
 }
 
 func NewCollector(start time.Time, lateThreshold time.Duration) *Collector {
@@ -60,16 +60,16 @@ func NewCollectorWithCapacity(start time.Time, lateThreshold time.Duration, capa
 		start:          start,
 		LateThreshold:  lateThreshold,
 		input:          make(chan Sample, capacity),
-		pronto:         make(chan struct{}),
+		finished:       make(chan struct{}),
 	}
-	go collector.consumir()
+	go collector.consume()
 	return collector
 }
 
 // A single goroutine writes to the histograms: HDR is not safe for concurrent
 // writes, and a mutex on the hot path becomes contention at high rates.
-func (collector *Collector) consumir() {
-	defer close(collector.pronto)
+func (collector *Collector) consume() {
+	defer close(collector.finished)
 	for sample := range collector.input {
 		collector.apply(sample)
 	}
@@ -192,7 +192,7 @@ func (collector *Collector) RecordInflightDrop() {
 
 func (collector *Collector) Close() {
 	close(collector.input)
-	<-collector.pronto
+	<-collector.finished
 	collector.mu.Lock()
 	defer collector.mu.Unlock()
 	for _, bucket := range collector.buckets {

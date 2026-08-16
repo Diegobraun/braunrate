@@ -8,11 +8,11 @@ import (
 )
 
 type compiledPhase struct {
-	initialRate   float64
-	finalRate     float64
-	duration      time.Duration
-	start         time.Duration
-	acumuladoAtes float64
+	initialRate      float64
+	finalRate        float64
+	duration         time.Duration
+	start            time.Duration
+	accumulatedUntil float64
 }
 
 type Plan struct {
@@ -34,11 +34,11 @@ func CompilePlan(plan scenario.LoadPlan) Plan {
 
 	for _, phase := range plan.Phases {
 		current := compiledPhase{
-			initialRate:   phase.InitialRate(),
-			finalRate:     phase.FinalRate(),
-			duration:      phase.For,
-			start:         start,
-			acumuladoAtes: accumulated,
+			initialRate:      phase.InitialRate(),
+			finalRate:        phase.FinalRate(),
+			duration:         phase.For,
+			start:            start,
+			accumulatedUntil: accumulated,
 		}
 		accumulated += countInPhase(current, phase.For)
 		start += phase.For
@@ -79,7 +79,7 @@ func (plan Plan) RateAt(instant time.Duration) float64 {
 func (plan Plan) InstantOf(index int64) time.Duration {
 	target := float64(index)
 	for position, phase := range plan.phases {
-		inPhase := target - phase.acumuladoAtes
+		inPhase := target - phase.accumulatedUntil
 		last := position == len(plan.phases)-1
 		if !last && inPhase >= countInPhase(phase, phase.duration) {
 			continue

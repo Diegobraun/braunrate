@@ -128,7 +128,7 @@ func Parse(content []byte) (Spec, error) {
 			spec.SLO = rules
 		default:
 			return spec, nodeError(key, "chave desconhecida no topo do cenario: %q\n%s",
-				key.Value, sugerir(key.Value, TopKeys))
+				key.Value, suggest(key.Value, TopKeys))
 		}
 	}
 
@@ -202,7 +202,7 @@ func readLoad(node *yaml.Node) (LoadPlan, error) {
 		key := node.Content[index]
 		value := node.Content[index+1]
 		if !slices.Contains(loadKeys, key.Value) {
-			return plan, nodeError(key, "chave desconhecida em carga: %q\n%s", key.Value, sugerir(key.Value, loadKeys))
+			return plan, nodeError(key, "chave desconhecida em carga: %q\n%s", key.Value, suggest(key.Value, loadKeys))
 		}
 		nodes[key.Value] = value
 	}
@@ -313,7 +313,7 @@ func readPhase(node *yaml.Node) (Phase, error) {
 		phase.Kind = PhaseConstant
 	default:
 		return phase, nodeError(kindNode, "tipo de perfil desconhecido: %q\n%s\nexemplo: - patamar: { taxa: 300/s, durante: 5m }",
-			kindNode.Value, sugerir(kindNode.Value, []string{"rampa", "patamar", "pico", "constante"}))
+			kindNode.Value, suggest(kindNode.Value, []string{"rampa", "patamar", "pico", "constante"}))
 	}
 
 	if body.Kind != yaml.MappingNode {
@@ -343,7 +343,7 @@ func readPhase(node *yaml.Node) (Phase, error) {
 			phase.For = duration
 		default:
 			return phase, nodeError(key, "chave desconhecida no perfil %q: %q\n%s", kindNode.Value, key.Value,
-				sugerir(key.Value, []string{"de", "ate", "taxa", "durante"}))
+				suggest(key.Value, []string{"de", "ate", "taxa", "durante"}))
 		}
 	}
 	if phase.Kind == PhaseRamp && phase.From == 0 && phase.To == 0 {
@@ -432,7 +432,7 @@ func readStep(node *yaml.Node) (Step, error) {
 		default:
 			if _, exists := protocol.Lookup(key.Value); !exists {
 				return step, nodeError(key, "nao reconheco %q como tipo de passo\n%s",
-					key.Value, sugerir(key.Value, append(protocol.Registered(), StepKeys...)))
+					key.Value, suggest(key.Value, append(protocol.Registered(), StepKeys...)))
 			}
 			if step.Protocol != "" {
 				return step, nodeError(key, "o passo declara mais de um protocolo: %q e %q", step.Protocol, key.Value)
@@ -460,7 +460,7 @@ func readStep(node *yaml.Node) (Step, error) {
 	return step, nil
 }
 
-func sugerir(received string, valid []string) string {
+func suggest(received string, valid []string) string {
 	best, shortestDistance := "", 1<<30
 	for _, valid := range valid {
 		distance := editDistance(strings.ToLower(received), strings.ToLower(valid))

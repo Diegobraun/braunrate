@@ -150,8 +150,8 @@ func buildPage(document metrics.Document) htmlPage {
 	page.Plan = planSentences(document)
 	page.Environment = environmentSentences(document)
 
-	if desenho, hasData := drawSeries(document.Series); hasData {
-		page.Chart = desenho
+	if drawing, hasData := drawSeries(document.Series); hasData {
+		page.Chart = drawing
 		page.HasChart = true
 	}
 	return page
