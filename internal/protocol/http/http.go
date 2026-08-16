@@ -71,7 +71,9 @@ func (config *Config) Describe() []string {
 	for _, name := range names {
 		lines = append(lines, fmt.Sprintf("%s: %s", name, transport.MaskSecret(name, config.Headers[name])))
 	}
-	if config.ContentType != "" {
+	// A declared header wins over the one inferred from the body, so printing
+	// both showed a Content-Type that never went on the wire.
+	if config.ContentType != "" && !hasHeader(config.Headers, "Content-Type") {
 		lines = append(lines, "Content-Type: "+config.ContentType)
 	}
 	if len(config.Body) > 0 {
@@ -253,4 +255,13 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		Class:   class,
 		Detail:  detail,
 	}
+}
+
+func hasHeader(headers map[string]string, name string) bool {
+	for declared := range headers {
+		if strings.EqualFold(declared, name) {
+			return true
+		}
+	}
+	return false
 }
