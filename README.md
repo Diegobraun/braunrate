@@ -661,7 +661,7 @@ Execucao real a 200/s contra um grupo que leva 40 ms por mensagem:
 ```
 Atraso do consumidor
   grupo demo-lag-grupo em demo-lag: no pior momento 885 mensagens atras; no fim, 885 mensagens
-  O consumidor terminou a execucao para tras: a fila cresceu mais rapido do que ele consumiu.
+  O consumidor terminou a execucao para tras. O atraso diz a distancia, nao a causa: consumidor lento, parado ou em rebalanceamento produzem o mesmo numero.
 ```
 
 Produzir levou 1,4 ms na metade das mensagens. **O broker aceitou tudo depressa e o servico ficou 885 mensagens atras.** Os dois numeros sao lidos do broker (marca d'agua alta menos offset confirmado do grupo), nunca contados deste lado: mensagem que este gerador nao enviou tambem pesa no servico. Se nao der para ler o offset, o relatorio diz que nao conseguiu medir — zero ali afirmaria que o consumidor estava em dia.

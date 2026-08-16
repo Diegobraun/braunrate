@@ -106,3 +106,25 @@ func TestReportSaysWhichProtocolsTheBinaryCarries(t *testing.T) {
 		}
 	}
 }
+
+// The measurement is a distance, not a diagnosis. A consumer that was killed in
+// the middle of the run produces the same number as one that could not keep up,
+// and the sentence used to name the second as if it had been established.
+func TestLagSentenceDoesNotClaimACauseItDidNotCheck(t *testing.T) {
+	document := documentWithLag(protocol.ConsumerLag{
+		Group: "processador", Topic: "pedidos-eventos", Max: 2399, Final: 2399, Readings: 12,
+	})
+
+	var terminal strings.Builder
+	if err := report.Summary(&terminal, document, slo.Verdict{}); err != nil {
+		t.Fatalf("nao gerou o terminal: %v", err)
+	}
+	for name, output := range map[string]string{"terminal": terminal.String(), "html": generate(t, document)} {
+		if strings.Contains(output, "cresceu mais rapido do que ele consumiu") {
+			t.Errorf("o %s afirmou a causa do atraso sem ter apurado qual foi", name)
+		}
+		if !strings.Contains(output, "nao a causa") {
+			t.Errorf("o %s nao avisa que o numero nao diz a causa", name)
+		}
+	}
+}

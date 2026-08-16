@@ -19,8 +19,12 @@ func lagSentences(lag protocol.ConsumerLag) (headline, note string) {
 	}
 	headline = fmt.Sprintf("no pior momento %s atras; no fim, %s",
 		messages(lag.Max), messages(lag.Final))
+	// The measurement is the distance between the high watermark and the
+	// committed offset. Why the distance grew — a consumer that could not keep
+	// up, one that stopped, one that was rebalancing — is not in it, and the
+	// sentence used to name the first of the three as if it had been checked.
 	if lag.Final > 0 {
-		note = "O consumidor terminou a execucao para tras: a fila cresceu mais rapido do que ele consumiu."
+		note = "O consumidor terminou a execucao para tras. O atraso diz a distancia, nao a causa: consumidor lento, parado ou em rebalanceamento produzem o mesmo numero."
 	}
 	return headline, note
 }
