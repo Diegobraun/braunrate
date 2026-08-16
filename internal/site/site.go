@@ -180,7 +180,7 @@ func renderMarkdown(source string) (string, error) {
 			// O destaque de sintaxe sai com as cores dentro do proprio HTML. Uma
 			// folha de estilo de terceiro viria de CDN, e a regra de nao buscar
 			// nada da rede vale para o site como ja vale para o relatorio.
-			highlighting.NewHighlighting(highlighting.WithCustomStyle(styles.Get("github"))),
+			highlighting.NewHighlighting(highlighting.WithCustomStyle(styles.Get("github-dark"))),
 		),
 		goldmark.WithParserOptions(parser.WithAttribute()),
 	)
@@ -221,10 +221,10 @@ func layout(page Page, pages []Page, index int, body, version string) string {
 <body>
 <header>
   <a class="marca" href="index.html">braunrate</a>
-  <span class="versão">%s</span>
+  <span class="versao">%s</span>
   <a class="repositorio" href="https://github.com/Diegobraun/braunrate">GitHub</a>
 </header>
-<div class="página">
+<div class="pagina">
   <nav class="secoes" aria-label="Seções">
 %s  </nav>
   <main>
@@ -232,7 +232,7 @@ func layout(page Page, pages []Page, index int, body, version string) string {
 %s    </article>
 %s  </main>
 %s</div>
-<script src="página.js"></script>
+<script src="pagina.js"></script>
 </body>
 </html>
 `, html.EscapeString(title), html.EscapeString(page.Summary), html.EscapeString(version),

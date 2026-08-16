@@ -21,14 +21,6 @@
     --texto: #e8ecf2; --suave: #98a2b3; --borda: #232a35; --borda-forte: #2f3846;
     --marca: #6aa6ff; --passou: #4ad07f; --falhou: #ff6b5e; --atencao: #f0b429;
   }
-  /* O tema de destaque de sintaxe e claro; no escuro o fundo do bloco muda e o
-     texto do codigo precisa acompanhar. */
-  pre code, pre code span { color: #e8ecf2 !important; }
-  pre code .k, pre code .kd, pre code .kn, pre code .nt { color: #ff7b72 !important; }
-  pre code .s, pre code .s1, pre code .s2, pre code .l { color: #a5d6ff !important; }
-  pre code .c, pre code .c1, pre code .cm { color: #8b949e !important; font-style: italic; }
-  pre code .m, pre code .mi, pre code .mf { color: #79c0ff !important; }
-  pre code .nf, pre code .na { color: #d2a8ff !important; }
 }
 
 * { box-sizing: border-box; }
@@ -133,10 +125,13 @@ code {
   border-radius: 5px; padding: .1em .35em;
 }
 .bloco { position: relative; margin: 0 0 20px; }
-.bloco pre {
-  margin: 0; background: var(--fundo-codigo); border: 1px solid var(--borda);
+/* Bloco de codigo escuro nos dois temas: as cores do destaque de sintaxe vem
+   dentro do proprio HTML, e uma paleta so evita manter duas. */
+.bloco pre, .bloco pre[style] {
+  margin: 0; background: #0d1117 !important; border: 1px solid var(--borda-forte);
   border-radius: 8px; padding: 14px 16px; overflow-x: auto;
 }
+.bloco pre code { color: #e6edf3; }
 pre code {
   background: none; border: 0; padding: 0; font-size: 13.5px; line-height: 1.6;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
