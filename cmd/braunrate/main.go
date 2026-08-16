@@ -607,7 +607,12 @@ func serveTarget(args []string) int {
 	input := set.String("input", "pedidos", "topico consumido pelo processador")
 	out := set.String("output", "pedidos-processados", "topico publicado pelo processador")
 	processorDelay := set.Duration("processor-delay", 20*time.Millisecond, "quanto o processador demora por mensagem")
+	raw := set.Bool("raw", false, "alvo minimo: responde sem interpretar a requisicao, para medir o teto do gerador")
 	_ = set.Parse(args)
+
+	if *raw {
+		return serveRawTarget(*address)
+	}
 
 	server := testsupport.New(testsupport.Options{
 		Latency:     *latency,
@@ -649,6 +654,27 @@ func serveTarget(args []string) int {
 		_ = processor.Close()
 		fmt.Fprintf(os.Stderr, "\nmensagens processadas: %d", processor.Processed())
 	}
+	fmt.Fprintf(os.Stderr, "\natendidas: %d\n", server.Served())
+	return 0
+}
+
+// O alvo minimo existe para medir o gerador, nao para exercitar cenario: ele
+// nao roteia, nao le metodo e responde 200 a qualquer coisa. Medir o teto contra
+// o alvo completo mede o par gerador+alvo, que e a ressalva que a Fase 0 ja
+// tinha registrado e nunca teve como remover.
+func serveRawTarget(address string) int {
+	server := testsupport.NewRaw()
+	if err := server.Start(address); err != nil {
+		fmt.Fprintf(os.Stderr, "erro ao subir alvo minimo: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(os.Stderr, "alvo minimo em %s: responde 200 sem interpretar a requisicao\n", server.Address())
+	fmt.Fprintln(os.Stderr, "use so para medir o teto do gerador — ele nao valida rota, metodo nem corpo")
+
+	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	<-runContext.Done()
+	_ = server.Close()
 	fmt.Fprintf(os.Stderr, "\natendidas: %d\n", server.Served())
 	return 0
 }

@@ -57,6 +57,7 @@ Decisao da Fase 0: **Go**, sustentada por dois criterios apenas — RSS sob carg
 go build -o braunrate ./cmd/braunrate
 
 braunrate target -latency=5ms &                # alvo de teste embutido
+braunrate target -raw &                        # alvo minimo, so para medir o teto do gerador
 braunrate validate examples/http-basico.yaml   # valida sem executar
 braunrate debug examples/http-basico.yaml      # uma iteracao, tudo visivel
 braunrate execute examples/http-basico.yaml    # executa e resume no terminal

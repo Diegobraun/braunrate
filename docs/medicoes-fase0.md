@@ -220,6 +220,89 @@ Nos pontos de 30.000/s e 40.000/s houve execucoes do Go que **nao produziram sai
 
 **Nao identificamos a causa dessa travada.** Fica declarada assim: o Go sustenta **30.000/s** de forma reproduzivel (4 de 5 execucoes somando as duas baterias) e **40.000/s de forma nao confiavel** (2 de 5). Acima de ~30.000/s, com o alvo local ja consumindo 2,1 nucleos dos 10, o que se mede e o par gerador+alvo, nao o gerador.
 
+#### Causa identificada e travada reproduzida com o agendador de verdade (2026-08-16)
+
+Duas pendencias carregadas desde a Fase 0 e a Fase 1 fecham juntas: **um alvo mais
+barato**, para que o numero seja do gerador, e **a reproducao da travada** com o
+agendador que existe hoje, e nao com o prototipo.
+
+**O alvo mais barato** e `braunrate target -raw`: um servidor que nao interpreta a
+requisicao, nao aloca por chamada e nao formata resposta — conta os fins de
+cabecalho que chegaram e escreve uma resposta pronta para cada um. Nao roteia, nao
+le metodo, nao valida nada, e dizer isso e parte de usa-lo.
+
+Ele move o eixo. Mac darwin/arm64, 10 nucleos, patamar de 10 s, alvo e gerador na
+mesma maquina, CPU do processo alvo medida em segundos:
+
+| taxa | alvo completo | CPU do alvo | alvo minimo | CPU do alvo |
+|---|---|---|---|---|
+| 10.000/s | sustentou, 281 atrasados, desvio p99 0,33 ms | 4,7 s | sustentou, 0 atrasados, desvio p99 0,09 ms | 2,8 s |
+| 20.000/s | sustentou, 440 atrasados, desvio p99 0,67 ms | 10,4 s | sustentou | 5,8 s |
+| 30.000/s | **colapsou** (exit 3) | 13,0 s | sustentou, 0 atrasados, **desvio p99 0,21 ms** | 10,1 s |
+| 35.000/s | — | — | **colapsou** (exit 3) | 1,7 s |
+| 40.000/s | — | — | **colapsou** (exit 3) | 11,5 s |
+
+O alvo minimo custa cerca de **metade** da CPU por requisicao e sobe o teto medivel
+de ~20.000/s para **30.000/s**, com 300.000 requisicoes, zero erro e zero despacho
+atrasado em duas repeticoes.
+
+**A causa da travada, que a Fase 0 nao identificou, e o orcamento de portas
+efemeras.** No colapso, o rastro e sempre o mesmo:
+
+```
+rede    10.790  Get "http://127.0.0.1:8099/pedidos/1": dial tcp: connect: can't assign requested address
+timeout  4.203  Get "http://127.0.0.1:8099/pedidos/1": dial tcp: connect: operation timed out
+pico em voo 20.000 (o teto), 368.743 requisicoes descartadas por limite de voo
+```
+
+Contando sockets durante uma execucao de 40.000/s com a maquina limpa:
+
+```
+t=2s   2.878 ESTABLISHED   13.482 SYN_SENT
+t=12s  3.109 ESTABLISHED   13.253 SYN_SENT
+```
+
+Sao **16.361 sockets**, e a faixa efemera desta maquina
+(`net.inet.ip.portrange` 49152–65535) tem **16.384**. A fila de aceite do alvo
+(`kern.ipc.somaxconn` = 128) nao absorve a rajada de conexoes novas, elas ficam em
+`SYN_SENT`, o cliente abre mais para compensar, e o orcamento de portas acaba. Dali
+para frente e espiral: sem porta nao ha discagem, sem discagem a fila em voo bate no
+teto, e 90% das requisicoes agendadas nao saem.
+
+**E por isso que a travada nao tem taxa fixa.** A mesma execucao de 30.000/s
+sustenta ou colapsa conforme quantas portas estao livres quando ela comeca:
+
+| `TIME_WAIT` antes | 30.000/s |
+|---|---|
+| 6 | sustentou: 300.000 enviadas, 0 atrasados, desvio p99 0,21 ms |
+| 4 | sustentou: 300.000 enviadas, 1.180 atrasados, desvio p99 0,74 ms |
+| milhares, de execucoes anteriores | colapsou nas duas tentativas |
+
+O `MSL` desta maquina e de 15 s, entao uma execucao alta deixa a seguinte estreitada
+por mais tempo do que dura o intervalo entre elas. A contaminacao entre execucoes que
+a Fase 0 suspeitou esta confirmada, e ela e a explicacao inteira: **nao ha travada do
+runtime, ha falta de porta.**
+
+**O que mudou desde a Fase 0, e importa mais que o numero:** o prototipo travava sem
+produzir saida. A ferramenta de hoje **declara**. Toda execucao colapsada saiu com
+exit 3, com as duas frases da verificacao de sanidade:
+
+```
+- o gerador atingiu o limite de requisicoes em voo e deixou de enviar requisicoes agendadas; o resultado nao vale
+- o gerador nao sustentou a taxa alvo: despachos sairam depois do instante agendado; o resultado nao vale
+```
+
+Nenhuma delas foi lida como veredito sobre o alvo, que e o que a regra existe para
+impedir.
+
+**O que continua sem medida.** O teto de despacho do gerador acima de 30.000/s
+**nao foi medido e nao da para medir nesta maquina**: o caminho de socket acaba
+antes da CPU. Medir isso exige mais portas efemeras (`sysctl`, o que muda o ambiente
+da medicao), ou um alvo em outra maquina, ou um protocolo sem conexao por
+requisicao. Fica declarado como nao medido, e nao como 30.000/s ser o limite do
+gerador — o que se sabe e que **em 30.000/s o gerador dispara na hora certa, com
+0,21 ms de desvio no p99, e o que quebra acima disso nao e ele.**
+
 ### 4. Concorrencia
 
 Com alvo de 1 s de latencia, o pico de requisicoes simultaneas sustentado foi de **5.250 no Java** e **10.121 no Go**. Acima disso os dois batem no teto de descritores da maquina. O modelo de concorrencia dos dois runtimes da conta; quem limita e o sistema operacional — com a diferenca de que o Java chega la com 741 MB de RSS e o Go com 259 MB no mesmo ponto de 5.000 usuarios.

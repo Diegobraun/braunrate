@@ -24,7 +24,34 @@ A tabela e o que a bateria produziu. Quais destes numeros efetivamente sustentam
 | RSS sob carga a 10.000/s | 596,8 MB (G1) / 2.003,8 MB (ZGC) | 30,1 MB | 20x a 66x |
 | Startup ate apto a gerar carga | 587,2 ± 27,8 ms | 42,8 ± 0,9 ms | 14x |
 | Custo marginal de CPU por requisicao | 122 us | 76 us | 1,6x |
-| Modo de falha ao saturar | espiral: 364 mil a 970 mil requisicoes em voo, 686 mil `Too many open files`, RSS 1,6 GB | degradacao com 0 erros ate o teto; acima dele a execucao as vezes nao conclui, sem causa identificada | comparacao invalida: nenhum dos dois prototipos tinha limite de voo explicito |
+| Modo de falha ao saturar | espiral: 364 mil a 970 mil requisicoes em voo, 686 mil `Too many open files`, RSS 1,6 GB | degradacao com 0 erros ate o teto; acima dele a execucao as vezes nao concluia — **causa identificada em 2026-08-16: orcamento de portas efemeras**, ver abaixo | comparacao invalida: nenhum dos dois prototipos tinha limite de voo explicito |
+
+### A travada acima de 30.000/s: causa identificada, e o que o numero quer dizer (2026-08-16)
+
+A linha de "taxa maxima sustentada" e a de "modo de falha" carregavam desde a Fase 0
+uma execucao que as vezes nao concluia, sem causa. Refeita com o agendador de verdade
+e com um alvo que custa quase nada (`braunrate target -raw`), a causa apareceu: **a
+faixa de portas efemeras desta maquina tem 16.384 portas, e no colapso o gerador
+mantem 16.361 sockets, 13 mil deles em `SYN_SENT`** porque a fila de aceite do alvo
+(`somaxconn` = 128) nao absorve a rajada de conexoes. Sem porta livre nao ha discagem,
+a fila em voo bate no teto e 90% do que estava agendado nao sai.
+
+Isso explica por que a travada nunca teve taxa fixa: a mesma execucao de 30.000/s
+sustenta com a maquina limpa e colapsa com milhares de `TIME_WAIT` de uma execucao
+anterior. Os numeros e o rastro estao em
+[medicoes-fase0.md](../medicoes-fase0.md#3-colapso-do-go-em-taxa-alta--o-que-sabemos-e-o-que-nao-sabemos).
+
+**O que muda no que esta escrito acima**: nada no numero — 30.000/s continua sendo o
+que se sustenta de forma reproduzivel, agora com 0 despachos atrasados e 0,21 ms de
+desvio no p99 contra o alvo minimo. O que muda e a leitura: **30.000/s nao e o teto do
+gerador, e o teto do caminho de socket desta maquina.** O teto de despacho continua
+sem medida, e medi-lo exige mudar o ambiente (mais portas efemeras) ou tirar o alvo da
+maquina — o que fica declarado como nao feito.
+
+E o que mudou de verdade desde a Fase 0 nao e o numero: o prototipo travava sem
+produzir saida, e a ferramenta de hoje sai com codigo 3 dizendo que o gerador nao
+sustentou a taxa e que o resultado nao vale. A execucao que nao mede continua nao
+aprovando nada.
 
 ### Qual coletor produziu cada numero
 
