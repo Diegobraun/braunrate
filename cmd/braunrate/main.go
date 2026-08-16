@@ -497,7 +497,7 @@ func debug(args []string) int {
 		if c.Auth == nil && refusedForCredentials(iteration) {
 			fmt.Print(`
 O alvo recusou por credencial, e o cenário não declara autenticação nenhuma.
-Declare de onde vem o token e o braunrate obtem uma vez e reaproveita em todas
+Declare de onde vem o token e o braunrate obtém uma vez e reaproveita em todas
 as jornadas:
 
   autenticacao:
@@ -784,7 +784,7 @@ func serve(args []string) int {
 	httpServer := server.New(options)
 	listener, err := httpServer.Bind()
 	if err != nil {
-		return portInUse("serve", *address, err)
+		return portInUse("serve", "-addr", *address, err)
 	}
 	for _, line := range httpServer.StartupWarning() {
 		fmt.Fprintln(os.Stderr, line)
@@ -796,13 +796,15 @@ func serve(args []string) int {
 	return runner.ExitPassed
 }
 
-func portInUse(command, address string, err error) int {
+// A porta ocupada e o primeiro erro de quem sobe dois processos, e "bind:
+// address already in use" nao diz o que fazer a quem nunca escolheu porta.
+func portInUse(command, flagName, address string, err error) int {
 	if !errors.Is(err, syscall.EADDRINUSE) {
 		fmt.Fprintf(os.Stderr, "não consegui escutar em %s: %v\n", address, err)
 		return runner.ExitBadFile
 	}
 	fmt.Fprintf(os.Stderr, "%s já está ocupado por outro processo. Escolha outra porta:\n"+
-		"  braunrate %s -addr 127.0.0.1:8081\n", address, command)
+		"  braunrate %s %s 127.0.0.1:8081\n", address, command, flagName)
 	return runner.ExitBadFile
 }
 
@@ -831,7 +833,7 @@ func userInterface(args []string) int {
 	httpServer := server.New(options)
 	listener, err := httpServer.Bind()
 	if err != nil {
-		return portInUse("ui", *address, err)
+		return portInUse("ui", "-addr", *address, err)
 	}
 	for _, line := range httpServer.StartupWarning() {
 		fmt.Fprintln(os.Stderr, line)
@@ -886,8 +888,7 @@ func serveTarget(args []string) int {
 		FreezeFor:   *freezeFor,
 	})
 	if err := server.Start(*address); err != nil {
-		fmt.Fprintf(os.Stderr, "erro ao subir alvo: %v\n", err)
-		return 1
+		return portInUse("target", "-address", *address, err)
 	}
 	fmt.Fprintf(os.Stderr, "alvo de teste em %s (responde em %s)\n", server.Address(), *latency)
 	fmt.Fprintf(os.Stderr, "\nEm outro terminal, aponte um cenário para cá:\n  braunrate execute examples/ci.yaml\n"+
@@ -932,8 +933,7 @@ func serveTarget(args []string) int {
 func serveRawTarget(address string) int {
 	server := testsupport.NewRaw()
 	if err := server.Start(address); err != nil {
-		fmt.Fprintf(os.Stderr, "erro ao subir alvo mínimo: %v\n", err)
-		return 1
+		return portInUse("target -raw", "-address", address, err)
 	}
 	fmt.Fprintf(os.Stderr, "alvo mínimo em %s: responde 200 sem interpretar a requisição\n", server.Address())
 	fmt.Fprintln(os.Stderr, "use só para medir o teto do gerador — ele não valida rota, metodo nem corpo")

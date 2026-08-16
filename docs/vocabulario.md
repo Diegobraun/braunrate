@@ -1,36 +1,36 @@
-# Vocabulario
+# Vocabulário
 
-O publico do braunrate inclui quem nunca fez teste de carga. Quem ve tres nomes
-para a mesma coisa conclui que sao tres coisas — e passa a duvidar do numero em
+O público do braunrate inclui quem nunca fez teste de carga. Quem vê três nomes
+para a mesma coisa conclui que são três coisas — e passa a duvidar do número em
 vez de duvidar do texto.
 
-**Uma palavra por conceito, no terminal, no site e na interface.** Esta tabela e
-criterio de aceitacao para todo texto que o usuario le.
+**Uma palavra por conceito, no terminal, no site e na interface.** Esta tabela é
+critério de aceitação para todo texto que o usuário lê.
 
 | Conceito | Termo oficial | Nunca use |
 |---|---|---|
-| Requisicoes por segundo que o gerador dispara | **taxa** | throughput, vazao, RPS, carga por segundo |
-| Tempo ate a resposta chegar | **tempo de resposta** | latencia, response time |
-| p95, p99 | **95% das respostas em ate X** | percentil, quantil, p95 solto |
-| Limite declarado que vira codigo de saida | **criterio de aceite** (`slo` no YAML) | threshold, gate, SLA |
-| Execucao que nao mediu o que se propos | **resultado invalido** | falha, erro, teste quebrado |
-| Gerador nao conseguiu manter a taxa | **o gerador nao sustentou a taxa** | saturacao, back-pressure |
-| Sequencia de passos de uma iteracao | **jornada** | cenario, fluxo, transacao |
-| O arquivo `.yaml` | **cenario** | plano, teste, script |
-| Sistema sendo testado | **alvo** | SUT, servidor, aplicacao |
+| Requisições por segundo que o gerador dispara | **taxa** | throughput, vazão, RPS, carga por segundo |
+| Tempo até a resposta chegar | **tempo de resposta** | latência, response time |
+| p95, p99 | **95% das respostas em até X** | percentil, quantil, p95 solto |
+| Limite declarado que vira código de saída | **critério de aceite** (`slo` no YAML) | threshold, gate, SLA |
+| Execução que não mediu o que se propôs | **resultado inválido** | falha, erro, teste quebrado |
+| Gerador não conseguiu manter a taxa | **o gerador não sustentou a taxa** | saturacao, back-pressure |
+| Sequência de passos de uma iteração | **jornada** | cenário, fluxo, transacao |
+| O arquivo `.yaml` | **cenário** | plano, teste, script |
+| Sistema sendo testado | **alvo** | SUT, servidor, aplicação |
 
-## Onde a regra nao vale
+## Onde a regra não vale
 
-Jargao tecnico continua existindo onde ele e preciso e o leitor e o programa:
+Jargão técnico continua existindo onde ele é preciso e o leitor é o programa:
 
-- **chaves do JSON de resultado** (`latencia_corrigida`, `p95_ms`) — o formato e
-  contrato de maquina, e renomear campo quebra quem ja le o arquivo;
-- **codigo, nomes de tipo e ADRs** — leitor e quem trabalha no braunrate;
-- **chaves do YAML ja publicadas** — mudar o formato do cenario esta fora de
-  escopo de experiencia de uso. Onde uma chave contradiz a tabela, a
-  divergencia esta registrada em [decisoes-experiencia.md](decisoes-experiencia.md).
+- **chaves do JSON de resultado** (`latencia_corrigida`, `p95_ms`) — o formato é
+  contrato de máquina, e renomear campo quebra quem já lê o arquivo;
+- **código, nomes de tipo e ADRs** — leitor é quem trabalha no braunrate;
+- **chaves do YAML já publicadas** — mudar o formato do cenário está fora de
+  escopo de experiência de uso. Onde uma chave contradiz a tabela, a
+  divergência está registrada em [decisoes-experiencia.md](decisoes-experiencia.md).
 
 ## Termo novo
 
-Escolha um, acrescente aqui, e use em toda parte. Termo novo sem registro e
+Escolha um, acrescente aqui, e use em toda parte. Termo novo sem registro é
 divergencia esperando acontecer.

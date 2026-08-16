@@ -119,7 +119,7 @@ func TestABusyPortSaysHowToChooseAnother(t *testing.T) {
 		t.Fatal("escutei numa porta ocupada")
 	}
 
-	message := captureStderr(t, func() { portInUse("ui", address, err) })
+	message := captureStderr(t, func() { portInUse("ui", "-addr", address, err) })
 	for _, expected := range []string{address + " já está ocupado", "braunrate ui -addr"} {
 		if !strings.Contains(message, expected) {
 			t.Errorf("a mensagem não traz %q:\n%s", expected, message)
