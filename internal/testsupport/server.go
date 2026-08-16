@@ -44,7 +44,7 @@ func (server *Server) Address() string {
 	return fmt.Sprintf("http://%s", server.listener.Addr().String())
 }
 
-func (server *Server) Atendidas() int64 { return server.served.Load() }
+func (server *Server) Served() int64 { return server.served.Load() }
 
 func (server *Server) Start(address string) error {
 	listener, err := net.Listen("tcp", address)

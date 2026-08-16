@@ -416,13 +416,13 @@ func maximum(a, b int) int {
 	return b
 }
 
-var htmlTemplate = template.Must(template.Must(template.New("relatorio").Parse(estiloDaPagina)).Parse(`<!DOCTYPE html>
+var htmlTemplate = template.Must(template.Must(template.New("report").Parse(pageStyle)).Parse(`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}} — braunrate</title>
-{{template "estilo"}}
+{{template "style"}}
 </head>
 <body>
 <main>

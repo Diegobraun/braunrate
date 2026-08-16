@@ -649,6 +649,6 @@ func serveTarget(args []string) int {
 		_ = processor.Close()
 		fmt.Fprintf(os.Stderr, "\nmensagens processadas: %d", processor.Processed())
 	}
-	fmt.Fprintf(os.Stderr, "\natendidas: %d\n", server.Atendidas())
+	fmt.Fprintf(os.Stderr, "\natendidas: %d\n", server.Served())
 	return 0
 }

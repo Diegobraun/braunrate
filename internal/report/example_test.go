@@ -54,8 +54,8 @@ func TestPublishedExampleStaysARealRun(t *testing.T) {
 	if document.Overall.Count == 0 || len(document.Series) == 0 {
 		t.Error("o exemplo precisa vir de uma execucao com carga, nao de um documento montado a mao")
 	}
-	if document.FormatVersion != metrics.VersaoDoFormatoDeResultado {
+	if document.FormatVersion != metrics.ResultFormatVersion {
 		t.Errorf("o exemplo esta no formato %q e o atual e %q: regenere a execucao",
-			document.FormatVersion, metrics.VersaoDoFormatoDeResultado)
+			document.FormatVersion, metrics.ResultFormatVersion)
 	}
 }

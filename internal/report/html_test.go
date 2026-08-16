@@ -13,7 +13,7 @@ import (
 func sampleDocument() metrics.Document {
 	start := time.Date(2026, 8, 15, 22, 0, 0, 0, time.UTC)
 	return metrics.Document{
-		FormatVersion: metrics.VersaoDoFormatoDeResultado,
+		FormatVersion: metrics.ResultFormatVersion,
 		Tool:          "braunrate",
 		Version:       "0.3.0",
 		Environment:   metrics.Environment{Host: "maquina-de-teste", OS: "darwin", Arch: "arm64", Cores: 10},

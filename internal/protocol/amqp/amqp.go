@@ -81,7 +81,7 @@ type Protocol struct {
 
 type conn struct {
 	link     *amqp.Connection
-	canais   chan *amqp.Channel
+	channels chan *amqp.Channel
 	confirms bool
 }
 
@@ -95,9 +95,9 @@ func (implementation *Protocol) Close() error {
 	implementation.mu.Lock()
 	defer implementation.mu.Unlock()
 	for address, open := range implementation.conns {
-		close(open.canais)
-		for canal := range open.canais {
-			_ = canal.Close()
+		close(open.channels)
+		for channel := range open.channels {
+			_ = channel.Close()
 		}
 		_ = open.link.Close()
 		delete(implementation.conns, address)
@@ -226,11 +226,11 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		return protocol.Response{Class: protocol.ErrNetwork, Detail: summarize(err.Error())}
 	}
 
-	canal, err := open.pegarCanal()
+	channel, err := open.takeChannel()
 	if err != nil {
 		return protocol.Response{Class: protocol.ErrNetwork, Detail: summarize(err.Error())}
 	}
-	defer open.devolverCanal(canal)
+	defer open.returnChannel(channel)
 
 	if config.Timeout > 0 {
 		var cancel context.CancelFunc
@@ -254,9 +254,9 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		}
 	}
 
-	confirmation, err := canal.PublishWithDeferredConfirmWithContext(runContext, config.Exchange, config.Route, false, false, delivery)
+	confirmation, err := channel.PublishWithDeferredConfirmWithContext(runContext, config.Exchange, config.Route, false, false, delivery)
 	if err != nil {
-		return protocol.Response{Class: classificar(err), Detail: summarize(err.Error())}
+		return protocol.Response{Class: classify(err), Detail: summarize(err.Error())}
 	}
 
 	// Without waiting for the confirmation the measured time would be the
@@ -265,7 +265,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 	if config.Confirm && confirmation != nil {
 		accepts, err := confirmation.WaitContext(runContext)
 		if err != nil {
-			return protocol.Response{Class: classificar(err), Detail: summarize(err.Error())}
+			return protocol.Response{Class: classify(err), Detail: summarize(err.Error())}
 		}
 		if !accepts {
 			return protocol.Response{
@@ -294,20 +294,20 @@ func (implementation *Protocol) conexaoDe(address string, config *Config, broker
 	if err != nil {
 		return nil, err
 	}
-	created := &conn{link: link, canais: make(chan *amqp.Channel, 64), confirms: config.Confirm}
+	created := &conn{link: link, channels: make(chan *amqp.Channel, 64), confirms: config.Confirm}
 
 	if config.Queue != "" {
-		canal, err := link.Channel()
+		channel, err := link.Channel()
 		if err != nil {
 			_ = link.Close()
 			return nil, err
 		}
-		if _, err := canal.QueueDeclare(config.Queue, true, false, false, false, nil); err != nil {
-			_ = canal.Close()
+		if _, err := channel.QueueDeclare(config.Queue, true, false, false, false, nil); err != nil {
+			_ = channel.Close()
 			_ = link.Close()
 			return nil, fmt.Errorf("nao consegui declarar a fila %q: %v", config.Queue, err)
 		}
-		_ = canal.Close()
+		_ = channel.Close()
 	}
 
 	implementation.conns[key] = created
@@ -317,36 +317,36 @@ func (implementation *Protocol) conexaoDe(address string, config *Config, broker
 // An AMQP channel is not safe for concurrent use, so each request takes one
 // from the pool and returns it; opening a channel per message would put an
 // extra round trip inside the measurement.
-func (conn *conn) pegarCanal() (*amqp.Channel, error) {
+func (conn *conn) takeChannel() (*amqp.Channel, error) {
 	select {
-	case canal := <-conn.canais:
-		if canal != nil && !canal.IsClosed() {
-			return canal, nil
+	case channel := <-conn.channels:
+		if channel != nil && !channel.IsClosed() {
+			return channel, nil
 		}
 	default:
 	}
 
-	canal, err := conn.link.Channel()
+	channel, err := conn.link.Channel()
 	if err != nil {
 		return nil, err
 	}
 	if conn.confirms {
-		if err := canal.Confirm(false); err != nil {
-			_ = canal.Close()
+		if err := channel.Confirm(false); err != nil {
+			_ = channel.Close()
 			return nil, err
 		}
 	}
-	return canal, nil
+	return channel, nil
 }
 
-func (conn *conn) devolverCanal(canal *amqp.Channel) {
-	if canal == nil || canal.IsClosed() {
+func (conn *conn) returnChannel(channel *amqp.Channel) {
+	if channel == nil || channel.IsClosed() {
 		return
 	}
 	select {
-	case conn.canais <- canal:
+	case conn.channels <- channel:
 	default:
-		_ = canal.Close()
+		_ = channel.Close()
 	}
 }
 
@@ -364,7 +364,7 @@ func classOf(kind string) protocol.ErrorClass {
 	return protocol.ErrAuthorization
 }
 
-func classificar(err error) protocol.ErrorClass {
+func classify(err error) protocol.ErrorClass {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return protocol.ErrTimeout
 	}

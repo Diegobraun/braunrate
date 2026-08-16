@@ -146,16 +146,16 @@ func classOf(direction string) string {
 }
 
 var comparisonTemplate = template.Must(template.Must(template.Must(
-	template.New("comparacao").Parse(estiloDaPagina)).
-	Parse(estiloDaComparacao)).
+	template.New("comparison").Parse(pageStyle)).
+	Parse(comparisonStyle)).
 	Parse(`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}}: antes e depois — braunrate</title>
-{{template "estilo"}}
-{{template "estilo-comparacao"}}
+{{template "style"}}
+{{template "comparison-style"}}
 </head>
 <body>
 <main>
@@ -216,7 +216,7 @@ var comparisonTemplate = template.Must(template.Must(template.Must(
 </html>
 `))
 
-const estiloDaComparacao = `{{define "estilo-comparacao"}}
+const comparisonStyle = `{{define "comparison-style"}}
 <style>
 td.pior { color: var(--falhou); font-weight: 600; }
 td.melhor { color: var(--passou); font-weight: 600; }

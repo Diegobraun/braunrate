@@ -338,7 +338,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 	}
 
 	if err := writer.WriteMessages(runContext, message); err != nil {
-		return protocol.Response{Class: classificar(err), Detail: detailOf(err, broker)}
+		return protocol.Response{Class: classify(err), Detail: detailOf(err, broker)}
 	}
 
 	partition := implementation.partitionOf(brokers, config.Topic, message.Key)
@@ -539,7 +539,7 @@ func targetBrokers(target string) []string {
 	return strings.Split(address, ",")
 }
 
-func classificar(err error) protocol.ErrorClass {
+func classify(err error) protocol.ErrorClass {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return protocol.ErrTimeout
 	}

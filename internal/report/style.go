@@ -2,7 +2,7 @@ package report
 
 // The comparison page and the run report share one stylesheet: two pages of the
 // same tool that look like two tools make the reader wonder which one is right.
-const estiloDaPagina = `{{define "estilo"}}
+const pageStyle = `{{define "style"}}
 <style>
 :root {
   --fundo: #ffffff; --texto: #14181f; --suave: #5b6472; --borda: #e2e6ec;

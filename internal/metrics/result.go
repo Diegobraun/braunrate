@@ -9,7 +9,7 @@ import (
 	"github.com/Diegobraun/braunrate/internal/protocol"
 )
 
-const VersaoDoFormatoDeResultado = "1"
+const ResultFormatVersion = "1"
 
 type Document struct {
 	FormatVersion string        `json:"versao_do_formato"`
@@ -195,7 +195,7 @@ type DocumentInput struct {
 func BuildDocument(collector *Collector, input DocumentInput) Document {
 	hostname, _ := os.Hostname()
 	document := Document{
-		FormatVersion: VersaoDoFormatoDeResultado,
+		FormatVersion: ResultFormatVersion,
 		Tool:          "braunrate",
 		Version:       input.Version,
 		Environment: Environment{
