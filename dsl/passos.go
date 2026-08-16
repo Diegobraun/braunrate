@@ -282,6 +282,15 @@ func AguardarKafka(topico string) *PassoAguardar {
 	return &PassoAguardar{configuracao: configuracao}
 }
 
+// Espera por HTTP existe para o sistema que so mostra o efeito por API: sem
+// isto, a cadeia ponta a ponta nao se mede nele.
+func AguardarHTTP(caminho string) *PassoAguardar {
+	configuracao := aguardar.Padrao()
+	configuracao.Fonte = "http"
+	configuracao.Caminho = caminho
+	return &PassoAguardar{configuracao: configuracao}
+}
+
 func AguardarAMQP(fila string) *PassoAguardar {
 	configuracao := aguardar.Padrao()
 	configuracao.Fonte = "amqp"
@@ -303,6 +312,26 @@ func (p *PassoAguardar) Campo(campo string) *PassoAguardar {
 
 func (p *PassoAguardar) Enderecos(enderecos ...string) *PassoAguardar {
 	p.configuracao.Enderecos = enderecos
+	return p
+}
+
+func (p *PassoAguardar) AteJSON(caminho, valor string) *PassoAguardar {
+	p.configuracao.Ate = aguardar.Condicao{Caminho: caminho, Valor: valor}
+	return p
+}
+
+func (p *PassoAguardar) AteStatus(status int) *PassoAguardar {
+	p.configuracao.Ate = aguardar.Condicao{Status: status}
+	return p
+}
+
+func (p *PassoAguardar) AteCorpoContem(trecho string) *PassoAguardar {
+	p.configuracao.Ate = aguardar.Condicao{CorpoContem: trecho}
+	return p
+}
+
+func (p *PassoAguardar) Intervalo(intervalo time.Duration) *PassoAguardar {
+	p.configuracao.Intervalo = intervalo
 	return p
 }
 

@@ -25,7 +25,8 @@ Medir mensageria com a cabeca de HTTP produz numero bonito e inutil:
 5. **A assinatura abre antes da carga, sem grupo de consumo.** O offset de cada particao e lido no momento da abertura e a leitura segue dali. Grupo de consumo negocia particao com o broker no primeiro `poll`, e a mensagem produzida durante a negociacao se perde: o timeout resultante seria do braunrate, nao do servico. Foi um defeito real, encontrado quando os testes rodaram contra o Kafka oficial em vez de so contra o Redpanda.
 6. **Mensagem que chega antes da espera nao se perde.** A assinatura guarda chegadas recentes; sem isso, a resposta rapida perderia a corrida contra o registro da espera e viraria timeout — acusando lentidao que nao existe.
 7. **Concentracao de particao e resultado invalido**, pela regra do [ADR 0007](0007-variedade-observada.md): se o topico tem N particoes e a execucao usou 1, o resultado nao representa producao.
-8. **Timeout do `aguardar` e erro, com explicacao**: diz qual valor era esperado, onde, e por quanto tempo se esperou.
+8. **Quando o efeito so aparece por API, a espera e por sondagem, com a granularidade declarada.** `aguardar: { http: ..., ate: ... }` repete a consulta ate a condicao valer. Sondagem mede em degraus do intervalo, entao o numero e sempre maior ou igual ao real — e por isso o relatorio imprime o intervalo usado em vez de deixar o degrau passar por latencia do alvo. Sem `ate` o passo e recusado: a primeira resposta encerraria a espera e mediria o tempo de responder, nao o tempo ate o efeito.
+9. **Timeout do `aguardar` e erro, com explicacao**: diz qual valor era esperado, onde, e por quanto tempo se esperou.
 
 ## Alternativas descartadas
 

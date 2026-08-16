@@ -192,7 +192,32 @@ func (m *Motor) Executar(ctx context.Context) metrica.Documento {
 		Sementes:          m.sementes(),
 		Disponibilidade:   m.disponibilidade(),
 		Autenticacoes:     m.obtencoesDeAutenticacao(),
+		AvisosDoCenario:   m.avisosDoCenario(),
 	})
+}
+
+// Espera por sondagem mede em degraus do intervalo: o numero e sempre maior ou
+// igual ao real, e quem le precisa saber disso antes de comparar com um SLO.
+func (m *Motor) avisosDoCenario() []metrica.Aviso {
+	var avisos []metrica.Aviso
+	for _, passo := range m.cenario.Passos {
+		sondagem, sonda := passo.Configuracao.(interface{ IntervaloDeSondagem() time.Duration })
+		if !sonda {
+			continue
+		}
+		intervalo := sondagem.IntervaloDeSondagem()
+		if intervalo <= 0 {
+			continue
+		}
+		avisos = append(avisos, metrica.Aviso{
+			Tipo:      "espera_por_sondagem",
+			Gravidade: metrica.GravidadeBaixa,
+			Mensagem: fmt.Sprintf("o passo %q espera sondando a cada %s: a latencia dele tem essa granularidade e fica maior que a real, nunca menor",
+				passo.Nome, intervalo),
+			Evidencia: passo.ChaveDeAgregacao(),
+		})
+	}
+	return avisos
 }
 
 // Cada chegada agendada e uma iteracao inteira do cenario: e o que faz o valor
@@ -221,7 +246,7 @@ func (m *Motor) executarIteracao(ctx context.Context, usuarioVirtual int64, agen
 			coletor.Registrar(metrica.Amostra{
 				Passo: "autenticacao", Chave: "autenticacao", Protocolo: "http",
 				InstanteAgendado: agendado, InstanteDeEnvio: agendado, InstanteDeTermino: m.opcoes.Relogio.Agora(),
-				Classe: protocolo.ErroDeConfigacao, Detalhe: err.Error(),
+				Classe: protocolo.ErroDeAutenticacao, Detalhe: fmt.Sprintf("%v — alvo %s", err, m.cenario.Alvo),
 			})
 			return
 		}

@@ -399,6 +399,27 @@ Em 15.000/s o desvio de agendamento ficou em 0,001 ms tipico e 0,56 ms no pior c
 
 Se o gerador nao sustentar a producao, o resultado sai **invalido com codigo de saida 3**, exatamente como em HTTP — a deteccao de back-pressure acontece no escalonador, antes de qualquer protocolo, e esta coberta por teste com Kafka de verdade (`TestGeradorSaturadoProduzindoInvalidaOResultado`).
 
+### Quando o efeito so aparece por API
+
+Nem todo sistema assincrono publica o resultado num topico: muitos so mostram o efeito numa consulta. Para esses, `aguardar` sonda ate a condicao valer:
+
+```yaml
+  - kafka:
+      topico: pedidos
+      chave: "${pedidos.id}"
+      valor: { pedido: "${pedidos.id}" }
+
+  - aguardar:
+      http: { caminho: "/pedidos/${pedidos.id}" }
+      ate: { $.status: PROCESSADO }     # ou { status: 200 }, ou { corpo_contem: PAGO }
+      intervalo: 200ms
+      timeout: 30s
+```
+
+**A granularidade e declarada, nao escondida.** Medir por sondagem so mede em degraus do intervalo: o valor sai sempre maior ou igual ao real, nunca menor. Por isso o relatorio traz a linha *"o passo X espera sondando a cada 200ms: a latencia dele tem essa granularidade e fica maior que a real, nunca menor"*, e `braunrate depurar` mostra o mesmo antes de qualquer carga. Intervalo menor mede mais fino e pesa mais no alvo — a escolha e de quem escreve, com o efeito impresso.
+
+Sem `ate` o passo e recusado: a primeira resposta encerraria a espera e a medicao seria do tempo de responder, nao do tempo ate o efeito acontecer.
+
 RabbitMQ segue a mesma forma:
 
 ```yaml

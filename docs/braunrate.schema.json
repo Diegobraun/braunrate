@@ -766,6 +766,26 @@
             }
           }
         },
+        "http": {
+          "type": [
+            "object",
+            "string"
+          ],
+          "additionalProperties": false,
+          "description": "Sonda uma requisicao ate a condicao 'ate' valer. Para sistema que so mostra o efeito por API.",
+          "properties": {
+            "caminho": {
+              "type": "string",
+              "examples": [
+                "/pedidos/${pedidos.id}"
+              ]
+            },
+            "url": {
+              "type": "string",
+              "description": "Mesmo que caminho."
+            }
+          }
+        },
         "chave": {
           "type": "string",
           "description": "Valor que identifica a mensagem desta iteracao.",
@@ -787,6 +807,30 @@
         "timeout": {
           "$ref": "#/$defs/duracao",
           "default": "30s"
+        },
+        "ate": {
+          "type": "object",
+          "description": "Condicao que encerra a espera por http: status, corpo_contem ou um caminho JSON com o valor esperado.",
+          "examples": [
+            {
+              "$.status": "PROCESSADO"
+            },
+            {
+              "status": 200
+            }
+          ],
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "intervalo": {
+          "$ref": "#/$defs/duracao",
+          "default": "500ms",
+          "description": "De quanto em quanto tempo sondar. A latencia medida tem essa granularidade."
         }
       }
     }

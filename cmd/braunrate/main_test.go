@@ -2,7 +2,12 @@ package main
 
 import (
 	"flag"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/Diegobraun/braunrate/cenario"
+	_ "github.com/Diegobraun/braunrate/protocolo/http"
 )
 
 // A opcao colada depois do arquivo era ignorada em silencio: o relatorio nao
@@ -24,5 +29,33 @@ func TestOpcaoValeAntesEDepoisDoArquivo(t *testing.T) {
 		if *html != "relatorio.html" {
 			t.Errorf("%v: a opcao foi ignorada", argumentos)
 		}
+	}
+}
+
+// De uma pasta vazia nao havia caminho ate o primeiro cenario: todo comando
+// recebia um arquivo e nenhum criava um.
+func TestNovoGeraCenarioQueValidaEQueNaoSobrescreve(t *testing.T) {
+	raiz := t.TempDir()
+	destino := filepath.Join(raiz, "cenario.yaml")
+
+	if codigo := novo([]string{destino}); codigo != 0 {
+		t.Fatalf("novo devolveu %d", codigo)
+	}
+	conteudo, err := os.ReadFile(destino)
+	if err != nil {
+		t.Fatalf("o arquivo nao foi criado: %v", err)
+	}
+	c, err := cenario.Carregar(conteudo)
+	if err != nil {
+		t.Fatalf("o cenario de partida nao carrega:\n%v", err)
+	}
+	if err := c.Validar(); err != nil {
+		t.Fatalf("o cenario de partida nao e valido: %v", err)
+	}
+	if len(c.SLO) == 0 {
+		t.Error("o cenario de partida precisa mostrar como se declara slo")
+	}
+	if codigo := novo([]string{destino}); codigo == 0 {
+		t.Error("novo sobre arquivo existente nao pode sobrescrever em silencio")
 	}
 }

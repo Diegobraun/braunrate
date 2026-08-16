@@ -136,6 +136,7 @@ type EntradaDoDocumento struct {
 	Sementes          map[string]int64
 	Disponibilidade   Disponibilidade
 	Autenticacoes     int64
+	AvisosDoCenario   []Aviso
 }
 
 func MontarDocumento(c *Coletor, entrada EntradaDoDocumento) Documento {
@@ -208,7 +209,7 @@ func MontarDocumento(c *Coletor, entrada EntradaDoDocumento) Documento {
 	documento.Jornada.Frase = frasearJornada(documento.Jornada)
 
 	documento.Variedade = c.Variedades(entrada.Disponibilidade)
-	documento.Avisos = avaliarAvisos(c, documento)
+	documento.Avisos = append(avaliarAvisos(c, documento), entrada.AvisosDoCenario...)
 	return documento
 }
 

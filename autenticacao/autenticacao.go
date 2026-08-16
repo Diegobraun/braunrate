@@ -77,7 +77,7 @@ func (g *Gerenciador) garantirToken(ctx context.Context, valores *contexto.Conte
 	valoresDaObtencao := contexto.Novo(0, 0, entrada)
 	resposta, err := g.executar(ctx, *g.configuracao.Obter, valoresDaObtencao)
 	if err != nil {
-		return fmt.Errorf("nao consegui obter a autenticacao: %w", err)
+		return fmt.Errorf("nao consegui obter a autenticacao (%s): %w", g.configuracao.Obter.ChaveDeAgregacao(), err)
 	}
 	if resposta.Status >= 400 {
 		return fmt.Errorf("a requisicao de autenticacao respondeu %d; confira usuario, senha e caminho em 'autenticacao.obter'", resposta.Status)

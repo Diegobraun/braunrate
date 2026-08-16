@@ -208,6 +208,12 @@ cenario:
       campo: $.pedido
       timeout: 10s
 
+  - aguardar:
+      http: { caminho: "/pedidos/${pedidos.id}" }
+      ate: { $.status: PROCESSADO }
+      intervalo: 200ms
+      timeout: 30s
+
 slo:
   - kafka produzir pedidos-cadeia: { p95: < 100ms }
 `,
@@ -228,6 +234,10 @@ slo:
 					Chave("${pedidos.id}").
 					Campo("$.pedido").
 					Timeout(10*time.Second)).
+				Passo(dsl.AguardarHTTP("/pedidos/${pedidos.id}").
+					AteJSON("$.status", "PROCESSADO").
+					Intervalo(200*time.Millisecond).
+					Timeout(30*time.Second)).
 				SLO("kafka produzir pedidos-cadeia", "p95", "< 100ms").
 				Construir()
 		},

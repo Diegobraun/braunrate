@@ -47,6 +47,8 @@ func main() {
 		os.Exit(gerarRelatorio(os.Args[2:]))
 	case "comparar":
 		os.Exit(comparar(os.Args[2:]))
+	case "novo":
+		os.Exit(novo(os.Args[2:]))
 	case "importar":
 		os.Exit(importar(os.Args[2:]))
 	case "alvo":
@@ -64,6 +66,7 @@ func uso() {
 	fmt.Fprintf(os.Stderr, `braunrate %s
 
 uso:
+  braunrate novo [cenario.yaml]         cria um cenario de partida, comentado
   braunrate depurar <cenario.yaml>      um usuario, uma iteracao, tudo visivel
   braunrate executar <cenario.yaml> [opcoes]
   braunrate validar <cenario.yaml>
@@ -377,6 +380,25 @@ func depurar(argumentos []string) int {
 // O comando curl chega como um argumento so, cheio de aspas, e a pessoa cola
 // a opcao antes ou depois dele; o flag padrao para de ler no primeiro
 // argumento posicional e perderia a opcao colada no fim.
+func novo(argumentos []string) int {
+	destino := "cenario.yaml"
+	if len(argumentos) > 0 && !strings.HasPrefix(argumentos[0], "-") {
+		destino = argumentos[0]
+	}
+	if _, err := os.Stat(destino); err == nil {
+		fmt.Fprintf(os.Stderr, "%s ja existe; escolha outro nome:\n  braunrate novo outro-cenario.yaml\n", destino)
+		return 2
+	}
+	if err := os.WriteFile(destino, []byte(importador.Esqueleto()), 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "nao consegui gravar %s: %v\n", destino, err)
+		return 1
+	}
+
+	fmt.Fprintf(os.Stderr, "cenario de partida em %s: troque o alvo e o caminho pelo seu servico.\n", destino)
+	fmt.Fprintf(os.Stderr, "\nProximo passo, antes de qualquer carga:\n  braunrate depurar %s\n", destino)
+	return 0
+}
+
 func importar(argumentos []string) int {
 	saida := ""
 	var resto []string

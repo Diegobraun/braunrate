@@ -12,8 +12,15 @@ type Veredito = metrica.Veredito
 
 type Avaliacao = metrica.Avaliacao
 
+// Execucao em que nenhuma jornada chegou ao fim nao pode passar, mesmo sem SLO
+// declarado que a pegue: o cenario nao mediu o que se propos a medir, e um
+// veredito verde ali e afirmacao errada, nao falta de criterio.
 func Avaliar(regras []cenario.RegraDeSLO, documento metrica.Documento) Veredito {
 	veredito := Veredito{Passou: true}
+	if avaliacao, houve := jornadaNuncaCompletou(documento); houve {
+		veredito.Passou = false
+		veredito.Avaliacoes = append(veredito.Avaliacoes, avaliacao)
+	}
 	porPasso := map[string]metrica.ResultadoDePasso{}
 	for _, passo := range documento.Passos {
 		porPasso[passo.Nome] = passo
@@ -29,6 +36,23 @@ func Avaliar(regras []cenario.RegraDeSLO, documento metrica.Documento) Veredito 
 
 	veredito.Frase = frasear(veredito)
 	return veredito
+}
+
+func jornadaNuncaCompletou(documento metrica.Documento) (Avaliacao, bool) {
+	if documento.Jornada.Iniciadas == 0 || documento.Jornada.Completas > 0 {
+		return Avaliacao{}, false
+	}
+	return Avaliacao{
+		Passo:   "jornada",
+		Metrica: "completas",
+		Regra:   "toda jornada precisa chegar ao fim",
+		Obtido:  0,
+		Limite:  float64(documento.Jornada.Iniciadas),
+		Unidade: "jornadas",
+		Passou:  false,
+		Frase: fmt.Sprintf("Falhou: nenhuma das %d jornadas chegou ao fim, entao o cenario nao mediu o que se propos a medir. Rode 'braunrate depurar' para ver onde a iteracao para.",
+			documento.Jornada.Iniciadas),
+	}, true
 }
 
 func avaliarRegra(regra cenario.RegraDeSLO, documento metrica.Documento, porPasso map[string]metrica.ResultadoDePasso) Avaliacao {
@@ -167,6 +191,9 @@ func frasear(veredito Veredito) string {
 		}
 	}
 	if len(falhas) == 0 {
+		if len(veredito.Avaliacoes) == 1 {
+			return "Passou: a unica regra de SLO foi atendida."
+		}
 		return fmt.Sprintf("Passou: as %d regras de SLO foram atendidas.", len(veredito.Avaliacoes))
 	}
 	return strings.Join(falhas, " ")

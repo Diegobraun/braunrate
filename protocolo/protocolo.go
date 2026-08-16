@@ -22,6 +22,10 @@ const (
 	ErroDeSaturacao  ClasseDeErro = "saturacao"
 	ErroDeGraphQL    ClasseDeErro = "graphql"
 	ErroDeMensageria ClasseDeErro = "mensageria"
+
+	// Falha ao autenticar tem classe propria porque cair em "configuracao"
+	// mandava procurar defeito no cenario quando o alvo e que estava fora do ar.
+	ErroDeAutenticacao ClasseDeErro = "autenticacao"
 )
 
 type Configuracao interface {

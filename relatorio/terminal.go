@@ -167,6 +167,7 @@ var nomeDeClasse = map[string]string{
 	"assercao":     "conteudo fora do esperado",
 	"correlacao":   "nao consegui capturar um valor",
 	"configuracao": "erro de configuracao do cenario",
+	"autenticacao": "nao consegui autenticar",
 	"saturacao":    "gerador saturado",
 	"graphql":      "erro no corpo da resposta GraphQL (com status 200)",
 }

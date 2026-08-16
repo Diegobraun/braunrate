@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	nethttp "net/http"
 	"strings"
 	"sync"
 	"time"
@@ -25,11 +26,18 @@ type Configuracao struct {
 	Esperado  string
 	Campo     string
 	Timeout   time.Duration
+
+	Caminho   string
+	Ate       Condicao
+	Intervalo time.Duration
 }
 
 func (c *Configuracao) Protocolo() string { return "aguardar" }
 
 func (c *Configuracao) ChaveDeAgregacao() string {
+	if c.Fonte == "http" {
+		return "aguardar " + c.Caminho
+	}
 	return "aguardar " + c.Topico
 }
 
@@ -38,24 +46,42 @@ func (c *Configuracao) Resolver(resolver func(string) string) protocolo.Configur
 	copia.Topico = resolver(c.Topico)
 	copia.Esperado = resolver(c.Esperado)
 	copia.Campo = resolver(c.Campo)
+	copia.Caminho = resolver(c.Caminho)
+	copia.Ate.Valor = resolver(c.Ate.Valor)
+	copia.Ate.CorpoContem = resolver(c.Ate.CorpoContem)
 	return &copia
 }
 
 func (c *Configuracao) Descrever() []string {
+	if c.Fonte == "http" {
+		intervalo := c.Intervalo
+		if intervalo <= 0 {
+			intervalo = intervaloPadrao
+		}
+		return []string{
+			fmt.Sprintf("aguardar em GET %s ate %s", c.Caminho, c.Ate.descrever()),
+			fmt.Sprintf("sondando a cada %s, desiste depois de %s", intervalo, c.Timeout),
+			"a latencia medida tem a granularidade da sondagem",
+		}
+	}
 	onde := "chave da mensagem"
 	if c.Campo != "" {
 		onde = c.Campo
 	}
-	return []string{
+	linhas := []string{
 		fmt.Sprintf("aguardar em %s %s por %s = %q", c.Fonte, c.Topico, onde, c.Esperado),
 		"desiste depois de " + c.Timeout.String(),
-		"enderecos: " + strings.Join(c.Enderecos, ", "),
 	}
+	if len(c.Enderecos) > 0 {
+		linhas = append(linhas, "enderecos: "+strings.Join(c.Enderecos, ", "))
+	}
+	return linhas
 }
 
 type Protocolo struct {
 	mutex       sync.Mutex
 	assinaturas map[string]*assinatura
+	http        *nethttp.Client
 }
 
 func Novo(protocolo.Opcoes) *Protocolo {
@@ -93,6 +119,32 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocolo.Configuracao, error) {
 			if err := lerFonte(configuracao, valor); err != nil {
 				return nil, err
 			}
+		case "http":
+			configuracao.Fonte = "http"
+			if err := lerFonteHTTP(configuracao, valor); err != nil {
+				return nil, err
+			}
+		case "ate":
+			if valor.Kind != yaml.MappingNode {
+				return nil, errors.New(`ate precisa ser um mapa, por exemplo:
+      ate: { $.status: PROCESSADO }
+      ate: { status: 200 }`)
+			}
+			bruto := map[string]string{}
+			for i := 0; i+1 < len(valor.Content); i += 2 {
+				bruto[valor.Content[i].Value] = valor.Content[i+1].Value
+			}
+			condicao, err := lerCondicao("ate", bruto)
+			if err != nil {
+				return nil, err
+			}
+			configuracao.Ate = condicao
+		case "intervalo":
+			duracao, err := time.ParseDuration(valor.Value)
+			if err != nil {
+				return nil, fmt.Errorf("intervalo invalido: %q (use 200ms, 1s)", valor.Value)
+			}
+			configuracao.Intervalo = duracao
 		case "chave":
 			configuracao.Esperado = valor.Value
 		case "campo":
@@ -106,7 +158,7 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocolo.Configuracao, error) {
 			}
 			configuracao.Timeout = duracao
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo aguardar: %q (use kafka, amqp, chave, campo, igual_a ou timeout)", chave.Value)
+			return nil, fmt.Errorf("chave desconhecida no passo aguardar: %q (use kafka, amqp, http, chave, campo, igual_a, ate, intervalo ou timeout)", chave.Value)
 		}
 	}
 
@@ -123,6 +175,9 @@ func Padrao() *Configuracao {
 // A correlacao obrigatoria vale igual na DSL: sem ela a medicao pegaria a
 // primeira mensagem que aparecesse e mediria o consumidor mais rapido.
 func Validar(configuracao *Configuracao) error {
+	if configuracao.Fonte == "http" {
+		return validarHTTP(configuracao)
+	}
 	if configuracao.Fonte == "" {
 		return errors.New(`o passo aguardar precisa dizer onde esperar, por exemplo:
   - aguardar:
@@ -135,6 +190,46 @@ Sem isso, qualquer mensagem serviria e a medicao mediria o consumidor mais rapid
   - aguardar:
       kafka: { topico: pedidos-processados }
       chave: "${pedidoId}"`)
+	}
+	return nil
+}
+
+// Sondar sem condicao mediria a primeira resposta, e nao o efeito: o passo
+// terminaria antes de o sistema fazer o que tinha de fazer.
+func validarHTTP(configuracao *Configuracao) error {
+	if configuracao.Caminho == "" {
+		return errors.New(`o passo aguardar por http precisa do caminho, por exemplo:
+  - aguardar:
+      http: { caminho: "/pedidos/${pedidos.id}" }
+      ate: { $.status: PROCESSADO }`)
+	}
+	if configuracao.Ate.vazia() {
+		return errors.New(`o passo aguardar por http precisa de 'ate': sem condicao, a primeira resposta encerraria a espera
+e a medicao seria do tempo de responder, nao do tempo ate o efeito acontecer:
+  - aguardar:
+      http: { caminho: "/pedidos/${pedidos.id}" }
+      ate: { $.status: PROCESSADO }`)
+	}
+	return nil
+}
+
+func lerFonteHTTP(configuracao *Configuracao, no *yaml.Node) error {
+	if no.Kind == yaml.ScalarNode {
+		configuracao.Caminho = no.Value
+		return nil
+	}
+	if no.Kind != yaml.MappingNode {
+		return errors.New("aguardar.http precisa ser o caminho ou um mapa com 'caminho'")
+	}
+	for indice := 0; indice+1 < len(no.Content); indice += 2 {
+		chave := no.Content[indice]
+		valor := no.Content[indice+1]
+		switch chave.Value {
+		case "caminho", "url":
+			configuracao.Caminho = valor.Value
+		default:
+			return fmt.Errorf("chave desconhecida em aguardar.http: %q (use caminho)", chave.Value)
+		}
 	}
 	return nil
 }
@@ -175,7 +270,7 @@ func lerFonte(configuracao *Configuracao, no *yaml.Node) error {
 // depois que a primeira mensagem ja foi produzida.
 func (p *Protocolo) Preparar(_ context.Context, requisicao protocolo.Requisicao) error {
 	configuracao, ok := requisicao.Configuracao.(*Configuracao)
-	if !ok {
+	if !ok || configuracao.Fonte == "http" {
 		return nil
 	}
 	_, err := p.assinar(configuracao, requisicao.URLBase)
@@ -186,6 +281,10 @@ func (p *Protocolo) Executar(ctx context.Context, requisicao protocolo.Requisica
 	configuracao, ok := requisicao.Configuracao.(*Configuracao)
 	if !ok {
 		return protocolo.Resposta{Classe: protocolo.ErroDeConfigacao, Detalhe: "configuracao nao e de aguardar"}
+	}
+
+	if configuracao.Fonte == "http" {
+		return p.esperarPorHTTP(ctx, requisicao, configuracao)
 	}
 
 	assinada, err := p.assinar(configuracao, requisicao.URLBase)
