@@ -50,7 +50,7 @@ func openCSV(source scenario.DataSource, root string) (Source, error) {
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("não consegui abrir o arquivo de dados %q: %w", source.File, err)
+		return nil, fmt.Errorf("I could not open the data file %q: %w", source.File, err)
 	}
 	defer func() { _ = file.Close() }()
 
@@ -58,10 +58,10 @@ func openCSV(source scenario.DataSource, root string) (Source, error) {
 	reader.TrimLeadingSpace = true
 	lines, err := reader.ReadAll()
 	if err != nil {
-		return nil, fmt.Errorf("arquivo de dados %q inválido: %w", source.File, err)
+		return nil, fmt.Errorf("invalid data file %q: %w", source.File, err)
 	}
 	if len(lines) < 2 {
-		return nil, fmt.Errorf("arquivo de dados %q precisa de cabeçalho e pelo menos uma linha", source.File)
+		return nil, fmt.Errorf("the data file %q needs a header row and at least one line", source.File)
 	}
 
 	seed := source.Seed
@@ -110,7 +110,7 @@ func (csvSource *csvSource) Next(virtualUser int64) (map[string]string, error) {
 		index = csvSource.position.Add(1) - 1
 		if index >= total {
 			csvSource.exhausted.Store(true)
-			return nil, fmt.Errorf("os dados de %q acabaram na linha %d; use consumo circular para repetir do início", csvSource.name, total)
+			return nil, fmt.Errorf("the data of %q ran out at line %d; use circular consume to start over", csvSource.name, total)
 		}
 	default:
 		index = (csvSource.position.Add(1) - 1) % total
@@ -136,7 +136,7 @@ type syntheticSource struct {
 
 func newSyntheticSource(source scenario.DataSource) (Source, error) {
 	if len(source.Fields) == 0 {
-		return nil, fmt.Errorf("a fonte de dados %q não tem arquivo nem campos para gerar", source.Name)
+		return nil, fmt.Errorf("the data source %q has neither a file nor fields to generate", source.Name)
 	}
 	seed := source.Seed
 	if seed == 0 {
@@ -208,38 +208,38 @@ func generate(generator scenario.Generator, random *rand.Rand, sequence int64) (
 	case "uuid":
 		return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x", random.Uint32(), random.Intn(0xffff),
 			random.Intn(0xffff), random.Intn(0xffff), random.Int63n(0xffffffffffff)), nil
-	case "sequencia":
+	case "sequence":
 		return strconv.FormatInt(sequence, 10), nil
-	case "numero":
+	case "number":
 		minimum, maximum := 0.0, 100.0
 		if len(args) == 2 {
 			var err error
 			if minimum, err = strconv.ParseFloat(args[0], 64); err != nil {
-				return "", fmt.Errorf("primeiro argumento de numero() inválido: %q", args[0])
+				return "", fmt.Errorf("invalid first argument of number(): %q", args[0])
 			}
 			if maximum, err = strconv.ParseFloat(args[1], 64); err != nil {
-				return "", fmt.Errorf("segundo argumento de numero() inválido: %q", args[1])
+				return "", fmt.Errorf("invalid second argument of number(): %q", args[1])
 			}
 		}
 		if maximum <= minimum {
-			return "", fmt.Errorf("numero(%v,%v) precisa de máximo maior que mínimo", minimum, maximum)
+			return "", fmt.Errorf("number(%v,%v) needs a maximum greater than the minimum", minimum, maximum)
 		}
 		return strconv.FormatFloat(minimum+random.Float64()*(maximum-minimum), 'f', 2, 64), nil
-	case "inteiro":
+	case "integer":
 		minimum, maximum := int64(0), int64(100)
 		if len(args) == 2 {
 			minimum, _ = strconv.ParseInt(args[0], 10, 64)
 			maximum, _ = strconv.ParseInt(args[1], 10, 64)
 		}
 		if maximum <= minimum {
-			return "", fmt.Errorf("inteiro(%d,%d) precisa de máximo maior que mínimo", minimum, maximum)
+			return "", fmt.Errorf("integer(%d,%d) needs a maximum greater than the minimum", minimum, maximum)
 		}
 		return strconv.FormatInt(minimum+random.Int63n(maximum-minimum), 10), nil
-	case "nome":
+	case "name":
 		return names[random.Intn(len(names))] + " " + lastNames[random.Intn(len(lastNames))], nil
 	case "email":
 		return fmt.Sprintf("%s.%d@exemplo.com", names[random.Intn(len(names))], sequence), nil
-	case "texto":
+	case "text":
 		size := 12
 		if len(args) == 1 {
 			size, _ = strconv.Atoi(args[0])
@@ -250,10 +250,10 @@ func generate(generator scenario.Generator, random *rand.Rand, sequence int64) (
 			builder.WriteByte(letters[random.Intn(len(letters))])
 		}
 		return builder.String(), nil
-	case "padrao":
+	case "pattern":
 		// The pattern arrives in two shapes, and only one of them was read:
-		// `{ tipo: padrao, formato: "BR-######" }` fills Format, and
-		// `padrao(BR-######)` fills the argument. Reading only Format made the
+		// `{ type: pattern, format: "BR-######" }` fills Format, and
+		// `pattern(BR-######)` fills the argument. Reading only Format made the
 		// second shape produce an empty string with no complaint — the request
 		// went out with a blank field, which is the failure this tool exists to
 		// catch.
@@ -262,8 +262,8 @@ func generate(generator scenario.Generator, random *rand.Rand, sequence int64) (
 			format = strings.Join(args, ",")
 		}
 		if strings.TrimSpace(format) == "" {
-			return "", fmt.Errorf(`padrão sem formato: diga o formato do valor, por exemplo padrao(BR-######) ou { tipo: padrão, formato: "BR-######" }
-    # gera digito, @ gera letra maiuscula; o resto sai como esta`)
+			return "", fmt.Errorf(`pattern with no format: say the shape of the value, for example pattern(BR-######) or { type: pattern, format: "BR-######" }
+    # becomes a digit, @ becomes an uppercase letter; everything else comes out as it is`)
 		}
 		return fromPattern(format, random), nil
 	case "cpf":
@@ -271,8 +271,8 @@ func generate(generator scenario.Generator, random *rand.Rand, sequence int64) (
 	case "cnpj":
 		return brazilianDocument(random, cnpjLength, cnpjWeights), nil
 	default:
-		return "", fmt.Errorf("gerador desconhecido: %q\n"+
-			"    disponíveis: uuid, sequencia, numero, inteiro, nome, email, texto, padrao, cpf, cnpj", name)
+		return "", fmt.Errorf("unknown generator: %q\n"+
+			"    available: uuid, sequence, number, integer, name, email, text, pattern, cpf, cnpj", name)
 	}
 }
 

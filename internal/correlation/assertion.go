@@ -46,12 +46,12 @@ func Evaluate(assertion scenario.Assertion, response protocol.Response, resolve 
 	case scenario.AssertRegex:
 		compiled, err := compile(expected)
 		if err != nil {
-			return AssertionFailure{"expressao regular", expected, "expressao inválida: " + err.Error()}
+			return AssertionFailure{"regular expression", expected, "invalid expression: " + err.Error()}
 		}
 		if compiled.Match(response.Body) {
 			return nil
 		}
-		return AssertionFailure{"corpo da resposta", "casar com /" + expected + "/", "nenhuma ocorrência"}
+		return AssertionFailure{"response body", "match /" + expected + "/", "no match"}
 	case scenario.AssertJSON:
 		return avaliarJSON(assertion, response, expected)
 	default:
@@ -97,10 +97,10 @@ func avaliarJSON(assertion scenario.Assertion, response protocol.Response, expec
 	}
 }
 
-func compareNumbers(assertion scenario.Assertion, obtained float64, esperadoTexto, description string) error {
-	expected, err := strconv.ParseFloat(strings.TrimSpace(esperadoTexto), 64)
+func compareNumbers(assertion scenario.Assertion, obtained float64, expectedText, description string) error {
+	expected, err := strconv.ParseFloat(strings.TrimSpace(expectedText), 64)
 	if err != nil {
-		return AssertionFailure{description, esperadoTexto, "valor esperado não é número"}
+		return AssertionFailure{description, expectedText, "the expected value is not a number"}
 	}
 	obtidoTexto := strconv.FormatFloat(obtained, 'f', -1, 64)
 
@@ -126,5 +126,5 @@ func compareNumbers(assertion scenario.Assertion, obtained float64, esperadoText
 	if operator == "" {
 		operator = "=="
 	}
-	return AssertionFailure{description, operator + " " + esperadoTexto, obtidoTexto}
+	return AssertionFailure{description, operator + " " + expectedText, obtidoTexto}
 }

@@ -29,7 +29,7 @@ func serialize(body any) ([]byte, string, error) {
 	default:
 		content, err := json.Marshal(value)
 		if err != nil {
-			return nil, "", fmt.Errorf("corpo não serializa para JSON: %v", err)
+			return nil, "", fmt.Errorf("the body does not serialize to JSON: %v", err)
 		}
 		return content, "application/json", nil
 	}
@@ -108,7 +108,7 @@ func (step *GraphQLStep) Operation(name string) *GraphQLStep {
 func (step *GraphQLStep) Vars(vars any) *GraphQLStep {
 	content, err := json.Marshal(vars)
 	if err != nil {
-		step.err = fmt.Errorf("variáveis de graphql não serializam para JSON: %v", err)
+		step.err = fmt.Errorf("the graphql variables do not serialize to JSON: %v", err)
 		return step
 	}
 	step.config.Vars = string(content)
@@ -179,10 +179,10 @@ func (step *KafkaStep) Brokers(brokers ...string) *KafkaStep {
 
 func (step *KafkaStep) Acks(acks string) *KafkaStep {
 	switch acks {
-	case "todos", "lider", "nenhum":
+	case "all", "leader", "none":
 		step.config.Acks = acks
 	default:
-		step.err = fmt.Errorf("acks desconhecido: %q (use todos, lider ou nenhum)", acks)
+		step.err = fmt.Errorf("unknown acks: %q (use all, leader or none)", acks)
 	}
 	return step
 }
@@ -196,7 +196,7 @@ func (step *KafkaStep) Timeout(timeout time.Duration) *KafkaStep {
 // key. It concentrates on purpose, and the report says so.
 func (step *KafkaStep) Partition(partition int) *KafkaStep {
 	if partition < 0 {
-		step.err = fmt.Errorf("partição inválida: %d (use um número, como 0 ou 3)", partition)
+		step.err = fmt.Errorf("invalid partition: %d (use a number, like 0 or 3)", partition)
 		return step
 	}
 	step.config.Partition = &partition

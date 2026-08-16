@@ -266,7 +266,7 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 // Default and Validate are the single construction path: the Go DSL refuses
 // the same scenario the YAML refuses, with the same message.
 func Default() *Config {
-	return &Config{Headers: map[string]string{}, Acks: "todos"}
+	return &Config{Headers: map[string]string{}, Acks: "all"}
 }
 
 func Validate(config *Config) error {
@@ -440,9 +440,9 @@ func (implementation *Protocol) writerOf(brokers []string, config *Config, broke
 
 func acksOf(acks string) kafka.RequiredAcks {
 	switch acks {
-	case "nenhum":
+	case "none":
 		return kafka.RequireNone
-	case "lider":
+	case "leader":
 		return kafka.RequireOne
 	default:
 		return kafka.RequireAll

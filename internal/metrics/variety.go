@@ -192,7 +192,7 @@ func phraseVariety(variety Variety) string {
 			distinctValuesCap-1, variety.Name, thousands(variety.Uses), phraseRange(variety.Range))
 	}
 	if variety.Distinct == 1 {
-		return fmt.Sprintf("1 único valor de %s em %s usos", variety.Name, thousands(variety.Uses))
+		return fmt.Sprintf("1 single value of %s across %s uses", variety.Name, thousands(variety.Uses))
 	}
 	return fmt.Sprintf("%d valores distintos de %s em %s usos%s",
 		variety.Distinct, variety.Name, thousands(variety.Uses), phraseRange(variety.Range))
@@ -217,7 +217,7 @@ func phraseRange(interval *Range) string {
 		return ""
 	}
 	if interval.Kind == PrefixRange {
-		return fmt.Sprintf(", todos começando com %q", interval.Prefix)
+		return fmt.Sprintf(", all starting with %q", interval.Prefix)
 	}
 	if interval.Min == interval.Max {
 		return fmt.Sprintf(", todos iguais a %s", number(interval.Min))
@@ -262,14 +262,14 @@ func VarietyWarnings(varieties []Variety) []Warning {
 			warnings = append(warnings, Warning{
 				Kind:     "valor_fixo",
 				Severity: SeverityMedium,
-				Message: fmt.Sprintf("a carga inteira usou o mesmo valor de %s; se o alvo guardar resposta por esse valor, o número fica otimista",
+				Message: fmt.Sprintf("the whole load used the same value of %s; if the target caches by that value, the number comes out optimistic",
 					variety.Name),
 				Evidence: fmt.Sprintf("%s: 1 valor em %s usos", variety.Name, thousands(variety.Uses)),
 			})
 			continue
 		}
 
-		message := fmt.Sprintf("a execução inteira rodou com um único valor de %s, embora a fonte tenha mais; o alvo pode ter respondido de cache, e o resultado não representa a carga declarada",
+		message := fmt.Sprintf("the whole run went with a single value of %s, even though the source has more; the target may have answered from cache, and the result does not represent the declared load",
 			variety.Name)
 		severity := SeverityHigh
 		// Uma concentracao que o cenario pediu nao e o mesmo defeito: ninguem
@@ -283,10 +283,10 @@ func VarietyWarnings(varieties []Variety) []Warning {
 			}
 		}
 
-		evidence := fmt.Sprintf("%s tinha %d valores disponíveis e a execução usou 1, em %s usos",
+		evidence := fmt.Sprintf("%s had %d available values and the run used 1, across %s uses",
 			variety.Name, variety.Available, thousands(variety.Uses))
 		if variety.Available < 0 {
-			evidence = fmt.Sprintf("%s é gerada por iteração e mesmo assim repetiu o mesmo valor em %s usos",
+			evidence = fmt.Sprintf("%s is generated per iteration and still repeated the same value across %s uses",
 				variety.Name, thousands(variety.Uses))
 		}
 		warnings = append(warnings, Warning{

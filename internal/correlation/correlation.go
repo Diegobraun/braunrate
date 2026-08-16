@@ -38,7 +38,7 @@ type CaptureError struct {
 }
 
 func (captureError CaptureError) Error() string {
-	return fmt.Sprintf("não consegui capturar %q com %s: %s", captureError.Variable, captureError.Expression, captureError.Reason)
+	return fmt.Sprintf("I could not capture %q with %s: %s", captureError.Variable, captureError.Expression, captureError.Reason)
 }
 
 func Extract(capture scenario.Capture, response protocol.Response) (string, error) {
@@ -57,11 +57,11 @@ func Extract(capture scenario.Capture, response protocol.Response) (string, erro
 	case scenario.CaptureRegex:
 		compiled, err := compile(capture.Expression)
 		if err != nil {
-			return "", CaptureError{capture.Variable, capture.Expression, "expressao regular inválida: " + err.Error()}
+			return "", CaptureError{capture.Variable, capture.Expression, "invalid regular expression: " + err.Error()}
 		}
 		found := compiled.FindSubmatch(response.Body)
 		if found == nil {
-			return "", CaptureError{capture.Variable, capture.Expression, "nenhuma ocorrência no corpo"}
+			return "", CaptureError{capture.Variable, capture.Expression, "no match in the body"}
 		}
 		if len(found) > 1 {
 			return string(found[1]), nil
@@ -93,7 +93,7 @@ func extractCookie(capture scenario.Capture, response protocol.Response) (string
 			}
 		}
 	}
-	return "", CaptureError{capture.Variable, capture.Expression, "a resposta não trouxe esse cookie em Set-Cookie"}
+	return "", CaptureError{capture.Variable, capture.Expression, "the response did not carry that cookie in Set-Cookie"}
 }
 
 // JSONPath here is the subset that covers the common case: dotted paths and
@@ -103,9 +103,9 @@ func extractFromJSON(capture scenario.Capture, response protocol.Response) (stri
 	result := gjson.GetBytes(response.Body, path)
 	if !result.Exists() {
 		if !gjson.ValidBytes(response.Body) {
-			return "", CaptureError{capture.Variable, capture.Expression, "a resposta não é JSON válido"}
+			return "", CaptureError{capture.Variable, capture.Expression, "the response is not valid JSON"}
 		}
-		return "", CaptureError{capture.Variable, capture.Expression, "caminho não encontrado no corpo da resposta"}
+		return "", CaptureError{capture.Variable, capture.Expression, "path not found in the response body"}
 	}
 	return result.String(), nil
 }

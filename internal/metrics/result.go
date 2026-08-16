@@ -316,8 +316,8 @@ func ClosedLoopWarning(document Document) (string, bool) {
 	if !document.Closed() {
 		return "", false
 	}
-	return fmt.Sprintf("Este teste usou %d usuários em laço fechado. Se o alvo travar, os usuários param de pedir "+
-		"e o atraso não aparece nos números. O tempo de resposta abaixo pode estar melhor do que o usuário real sente.",
+	return fmt.Sprintf("This test used %d users in a closed loop. If the target freezes, the users stop asking "+
+		"and the delay never shows up in the numbers. The response time below may look better than what a real user feels.",
 		document.Run.Users), true
 }
 
@@ -369,8 +369,8 @@ func evaluateWarnings(collector *Collector, document Document) []Warning {
 		warnings = append(warnings, Warning{
 			Kind:     "gerador_saturado",
 			Severity: SeverityHigh,
-			Message:  "o gerador atingiu o limite de requisições em voo e deixou de enviar requisições agendadas; o resultado não vale",
-			Evidence: fmt.Sprintf("%d requisições descartadas, pico de %d em voo", scheduling.DroppedByInflightLimit, scheduling.PeakInflight),
+			Message:  "the generator hit the in-flight limit and stopped sending scheduled requests; the result does not hold",
+			Evidence: fmt.Sprintf("%d requests dropped, peak of %d in flight", scheduling.DroppedByInflightLimit, scheduling.PeakInflight),
 		})
 	}
 
@@ -380,14 +380,14 @@ func evaluateWarnings(collector *Collector, document Document) []Warning {
 			warnings = append(warnings, Warning{
 				Kind:     "gerador_saturado",
 				Severity: SeverityHigh,
-				Message:  "o gerador não sustentou a taxa alvo: despachos sairam depois do instante agendado; o resultado não vale",
+				Message:  "the generator did not sustain the target rate: dispatches went out after their scheduled instant; the result does not hold",
 				Evidence: fmt.Sprintf("%.2f%% dos despachos atrasaram mais de %.1f ms (desvio p99 de %.1f ms)", proportion*100, scheduling.LateThresholdMs, scheduling.Skew.P99),
 			})
 		} else if scheduling.LateDispatches > 0 {
 			warnings = append(warnings, Warning{
 				Kind:     "gerador_com_atraso_pontual",
 				Severity: SeverityLow,
-				Message:  "houve atraso pontual de despacho, abaixo de 1% das requisições",
+				Message:  "there was occasional dispatch delay, below 1% of the requests",
 				Evidence: fmt.Sprintf("%d despachos atrasados de %d (desvio p99 de %.1f ms)", scheduling.LateDispatches, scheduling.Sent, scheduling.Skew.P99),
 			})
 		}
@@ -397,7 +397,7 @@ func evaluateWarnings(collector *Collector, document Document) []Warning {
 		warnings = append(warnings, Warning{
 			Kind:     "amostras_perdidas",
 			Severity: SeverityHigh,
-			Message:  "o coletor de métrica não acompanhou o volume e perdeu amostras; a distribuição está incompleta",
+			Message:  "the metric collector did not keep up with the volume and lost samples; the distribution is incomplete",
 			Evidence: fmt.Sprintf("%d amostras perdidas", scheduling.LostSamples),
 		})
 	}
@@ -434,9 +434,9 @@ func detectTargetDegradation(document Document) (Warning, bool) {
 		}
 	}
 	if first > 0 && worst >= 3*first {
-		message := "o tempo de resposta do alvo cresceu ao longo da execução enquanto o despacho continuou pontual; a degradação é do alvo, não do gerador"
+		message := "the target response time grew over the run while dispatch stayed on time; the degradation belongs to the target, not to the generator"
 		if document.Closed() {
-			message = "o tempo de resposta do alvo cresceu ao longo da execução; no laço fechado isso também derruba a carga, então a queda de taxa é parte do mesmo evento, não um segundo achado"
+			message = "the target response time grew over the run; in a closed loop that also drags the load down, so the drop in rate is part of the same event, not a second finding"
 		}
 		return Warning{
 			Kind:     "alvo_degradado",
@@ -459,7 +459,7 @@ func ReadableClass(class protocol.ErrorClass) string {
 	case protocol.ErrAssertion:
 		return "assercao funcional"
 	case protocol.ErrCorrelation:
-		return "correlação perdida"
+		return "lost correlation"
 	case protocol.ErrSaturation:
 		return "saturacao do gerador"
 	case protocol.ErrGraphQL:
@@ -475,14 +475,14 @@ func phraseJourney(journey Journey, closed bool) string {
 	}
 	counted := "contados do instante em que deveriam ter comecado"
 	if closed {
-		counted = "contados de quando o usuário virtual começou a jornada, que é só depois de ter terminado a anterior"
+		counted = "counted from when the virtual user started the journey, which is only after finishing the previous one"
 	}
 	latency := journey.Reported()
 	if journey.Completed < journey.Started {
-		return fmt.Sprintf("%d de %d jornadas chegaram ao fim; metade delas levou até %.0f ms e 95%% até %.0f ms, %s.",
+		return fmt.Sprintf("%d of %d journeys reached the end; half of them took up to %.0f ms and 95%% up to %.0f ms, %s.",
 			journey.Completed, journey.Started, latency.P50, latency.P95, counted)
 	}
-	return fmt.Sprintf("Todas as %d jornadas chegaram ao fim; metade levou até %.0f ms e 95%% até %.0f ms, %s.",
+	return fmt.Sprintf("All %d journeys reached the end; half took up to %.0f ms and 95%% up to %.0f ms, %s.",
 		journey.Started, latency.P50, latency.P95, counted)
 }
 

@@ -63,7 +63,7 @@ func describeShape(path string, value any, into *[]string) {
 		}
 		*into = append(*into, path+": texto")
 	case float64:
-		*into = append(*into, path+": número")
+		*into = append(*into, path+": number")
 	case bool:
 		*into = append(*into, path+": booleano")
 	case nil:
@@ -142,7 +142,7 @@ func emptyFieldWarnings(variety Variety) []Warning {
 	return []Warning{{
 		Kind:     "corpo_com_campo_vazio",
 		Severity: SeverityMedium,
-		Message:  fmt.Sprintf("o corpo de %q saiu com campo vazio; se isso não for proposital, o alvo exercitou um caminho que produção não ve", step),
+		Message:  fmt.Sprintf("the body of %q went out with an empty field; unless that is on purpose, the target exercised a path production never sees", step),
 		Evidence: strings.Join(empty, " | "),
 	}}
 }

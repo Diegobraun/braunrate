@@ -147,7 +147,7 @@ type Field struct {
 
 func Generator(recipe string) Field { return Field{recipe: recipe} }
 
-func Pattern(format string) Field { return Field{recipe: "padrao", format: format} }
+func Pattern(format string) Field { return Field{recipe: "pattern", format: format} }
 
 func (field Field) NewPerUse() Field {
 	field.perUse = true
@@ -213,7 +213,7 @@ func (builder *Builder) Step(request Request, options ...StepOption) *Builder {
 
 func buildStep(request Request, options ...StepOption) (scenario.Step, error) {
 	if request == nil {
-		return scenario.Step{}, errors.New("passo sem requisição")
+		return scenario.Step{}, errors.New("step with no request")
 	}
 	protocolName, config, err := request.build()
 	if err != nil {
@@ -332,11 +332,11 @@ func (builder *Builder) OverallSLO(metric, limit string) *Builder {
 }
 
 func (builder *Builder) JourneySLO(metric, limit string) *Builder {
-	return builder.SLO("jornada", metric, limit)
+	return builder.SLO("journey", metric, limit)
 }
 
 func (builder *Builder) RegressionSLO(metric, limit string) *Builder {
-	return builder.SLO("regressao", metric, limit)
+	return builder.SLO("regression", metric, limit)
 }
 
 type Authenticator struct {
@@ -349,7 +349,7 @@ func WithToken(request Request, options ...StepOption) *Authenticator {
 	if err != nil {
 		return &Authenticator{err: err}
 	}
-	step.Name = "obter autenticação"
+	step.Name = "obtain auth"
 	return &Authenticator{auth: scenario.Auth{Kind: scenario.AuthToken, Obtain: &step}}
 }
 
@@ -382,11 +382,11 @@ func (builder *Builder) Auth(authenticator *Authenticator) *Builder {
 	}
 	auth := authenticator.auth
 	if auth.Kind == scenario.AuthToken && auth.Obtain == nil {
-		builder.note(errors.New("autenticação por token precisa da requisição que devolve o token"))
+		builder.note(errors.New("token auth needs the request that returns the token"))
 		return builder
 	}
 	if auth.Kind == scenario.AuthBasic && (auth.User == "" || auth.Password == "") {
-		builder.note(errors.New("autenticação básica precisa de usuário e senha"))
+		builder.note(errors.New("basic auth needs a user and a password"))
 		return builder
 	}
 	if auth.Header == "" && auth.Kind != scenario.AuthBasic {
@@ -400,7 +400,7 @@ func (builder *Builder) Build() (scenario.Spec, error) {
 	built := builder.scenario
 	built.Target = scenario.Interpolate(built.Target, built.Vars)
 	if len(builder.errors) > 0 {
-		return built, fmt.Errorf("cenário inválido:\n  - %s", strings.Join(messages(builder.errors), "\n  - "))
+		return built, fmt.Errorf("invalid scenario:\n  - %s", strings.Join(messages(builder.errors), "\n  - "))
 	}
 	if err := built.Validate(); err != nil {
 		return built, err
@@ -437,7 +437,7 @@ func BrokerAt(addresses ...string) *BrokerAuth {
 func (authenticator *BrokerAuth) credential(kind messaging.Kind, user, passwordVar string) *BrokerAuth {
 	name, reference := scenario.EnvironmentVariable(passwordVar)
 	if !reference {
-		authenticator.err = fmt.Errorf("a senha do broker precisa ser referência a variável de ambiente, como \"${KAFKA_SENHA}\", e veio %q", passwordVar)
+		authenticator.err = fmt.Errorf("the broker password has to be a reference to an environment variable, like \"${KAFKA_PASSWORD}\", and got %q", passwordVar)
 		return authenticator
 	}
 	authenticator.broker.Auth = messaging.Auth{
