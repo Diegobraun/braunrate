@@ -47,7 +47,10 @@ func Debug(out io.Writer, number int, observation engine.Observation, showBody b
 		write("  problema:   %s", failure)
 	}
 	if observation.Class != protocol.Success && len(observation.Failures) == 0 {
-		write("  problema:   %s", classNames[string(observation.Class)])
+		write("  problema:   %s", className(string(observation.Class)))
+		if observation.Response.Detail != "" {
+			write("              %s", shorten(observation.Response.Detail))
+		}
 	}
 	return output.err
 }

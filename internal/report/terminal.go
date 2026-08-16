@@ -217,19 +217,26 @@ var classNames = map[string]string{
 	"correlacao":   "nao consegui capturar um valor",
 	"configuracao": "erro de configuracao do cenario",
 	"autenticacao": "nao consegui autenticar",
+	"autorizacao":  "credencial aceita, sem permissao nesse recurso",
+	"mensageria":   "o broker recusou a mensagem",
 	"saturacao":    "gerador saturado",
 	"graphql":      "erro no corpo da resposta GraphQL (com status 200)",
+}
+
+// A class with no entry here used to print an empty line, which says less than
+// the raw name of the class.
+func className(class string) string {
+	if name := classNames[class]; name != "" {
+		return name
+	}
+	return class
 }
 
 func errorsByClass(document metrics.Document) []errorLine {
 	total := map[string]int64{}
 	for _, step := range document.Steps {
 		for class, count := range step.ErrorsByClass {
-			name := classNames[class]
-			if name == "" {
-				name = class
-			}
-			total[name] += count
+			total[className(class)] += count
 		}
 	}
 	lines := make([]errorLine, 0, len(total))

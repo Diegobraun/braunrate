@@ -33,6 +33,13 @@ const (
 	ErrAuthorization ErrorClass = "autorizacao"
 )
 
+// ErrorClasses exists so the report can be checked against the whole list: a
+// class the report has no phrase for used to print an empty line.
+var ErrorClasses = []ErrorClass{
+	ErrNetwork, ErrTimeout, ErrStatus, ErrAssertion, ErrCorrelation,
+	ErrConfig, ErrSaturation, ErrGraphQL, ErrMessaging, ErrAuth, ErrAuthorization,
+}
+
 type Config interface {
 	Protocol() string
 	AggregationKey() string
