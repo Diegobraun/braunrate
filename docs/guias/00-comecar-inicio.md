@@ -13,6 +13,9 @@ nenhum antes:
 braunrate demo
 ```
 
+Ainda não tem o binário? [Instalação](instalacao.html) é baixar um arquivo e
+descompactar; não há runtime para instalar.
+
 A demonstração sobe um serviço de mentira na sua máquina, roda um cenário contra
 ele e explica cada número enquanto eles aparecem. Depois,
 [Primeiros 15 minutos](primeiros-15-minutos.html) leva do zero até o primeiro
