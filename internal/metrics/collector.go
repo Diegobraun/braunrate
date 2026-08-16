@@ -11,6 +11,16 @@ import (
 
 const bucketDuration = time.Second
 
+// A bucket keeps a full HDR histogram while it can still receive samples, and
+// the report reads two quantiles of it. Holding every one of them until the end
+// of the run made memory grow about 10 MB per minute, independent of the rate,
+// which closed the endurance case: a four hour run asked for gigabytes of
+// histograms nobody would read. A bucket that fell this far behind the newest
+// one is reduced to what the report consumes and the histogram is released.
+// The window is twice the default client timeout, so a request that takes as
+// long as the tool allows still lands in an open bucket.
+const bucketRetention = 60 * time.Second
+
 type Bucket struct {
 	StartEpochMs int64   `json:"inicio_epoch_ms"`
 	Sent         int64   `json:"enviadas"`
@@ -19,13 +29,19 @@ type Bucket struct {
 	TargetRate   float64 `json:"taxa_alvo"`
 	LatencyP50Ms float64 `json:"latencia_p50_ms"`
 	LatencyP99Ms float64 `json:"latencia_p99_ms"`
-	histogram    *hdrhistogram.Histogram
+	// Samples that arrived after this bucket was closed. They are in the step
+	// aggregate and in the counters above; what they missed are the two
+	// quantiles, and dropping them without saying so would be a number quietly
+	// computed over less than it claims.
+	LateSamples int64 `json:"amostras_fora_da_janela,omitempty"`
+	histogram   *hdrhistogram.Histogram
 }
 
 type Collector struct {
 	mu             sync.Mutex
 	aggregates     map[string]*Aggregate
 	buckets        map[int64]*Bucket
+	newestBucketMs int64
 	schedulingSkew *hdrhistogram.Histogram
 
 	start                  time.Time
@@ -94,7 +110,11 @@ func (collector *Collector) apply(sample Sample) {
 		bucket.Errors++
 	}
 	if !sample.FinishedAt.IsZero() {
-		save(bucket.histogram, sample.CorrectedLatency())
+		if bucket.histogram == nil {
+			bucket.LateSamples++
+		} else {
+			save(bucket.histogram, sample.CorrectedLatency())
+		}
 	}
 }
 
@@ -108,7 +128,30 @@ func (collector *Collector) bucketDe(instant time.Time) *Bucket {
 		}
 		collector.buckets[startEpochMs] = bucket
 	}
+	if startEpochMs > collector.newestBucketMs {
+		collector.newestBucketMs = startEpochMs
+		collector.closeBucketsBefore(startEpochMs - bucketRetention.Milliseconds())
+	}
 	return bucket
+}
+
+func (collector *Collector) closeBucketsBefore(limitEpochMs int64) {
+	for key, bucket := range collector.buckets {
+		if key < limitEpochMs {
+			closeBucket(bucket)
+		}
+	}
+}
+
+// Reduces the bucket to what the report reads. Once this runs the histogram is
+// gone and the two quantiles are final.
+func closeBucket(bucket *Bucket) {
+	if bucket.histogram == nil {
+		return
+	}
+	bucket.LatencyP50Ms = float64(bucket.histogram.ValueAtQuantile(50)) / 1000
+	bucket.LatencyP99Ms = float64(bucket.histogram.ValueAtQuantile(99)) / 1000
+	bucket.histogram = nil
 }
 
 func (collector *Collector) Record(sample Sample) {
@@ -196,8 +239,7 @@ func (collector *Collector) Close() {
 	collector.mu.Lock()
 	defer collector.mu.Unlock()
 	for _, bucket := range collector.buckets {
-		bucket.LatencyP50Ms = float64(bucket.histogram.ValueAtQuantile(50)) / 1000
-		bucket.LatencyP99Ms = float64(bucket.histogram.ValueAtQuantile(99)) / 1000
+		closeBucket(bucket)
 	}
 }
 
