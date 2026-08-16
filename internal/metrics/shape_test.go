@@ -65,3 +65,40 @@ func TestBodyThatIsNotJSONStillHasAShape(t *testing.T) {
 		t.Fatalf("corpo em branco precisa aparecer como vazio, e saiu %q", shape)
 	}
 }
+
+// A body the scenario wrote as {} is a declaration. Warning about it filled the
+// report of a healthy run with two warnings that had nothing to say, and a
+// reader who learns to skip that block skips the real ones with it.
+func TestBodyDeclaredEmptyIsNotAnEmptyField(t *testing.T) {
+	shape := metrics.BodyShape([]byte(`{}`))
+	if strings.Contains(shape, ":") {
+		t.Fatalf("a forma do corpo vazio saiu com nome de campo em branco: %q", shape)
+	}
+
+	document := metrics.Document{Variety: []metrics.Variety{{
+		Name: metrics.BodyShapeName + "abrir carrinho", Distinct: 1, Uses: 500,
+		Shapes: []string{shape},
+	}}}
+	if warnings := metrics.VarietyWarnings(document.Variety); len(warnings) != 0 {
+		t.Fatalf("corpo declarado como {} virou aviso: %+v", warnings)
+	}
+	if document.Variety[0].Notable() {
+		t.Fatalf("corpo declarado como {} rendeu linha no relatorio: %q", document.Variety[0].Sentence)
+	}
+}
+
+// The accident still has to be caught: a field that exists and came blank is
+// the shape of an interpolation that resolved to nothing.
+func TestFieldThatCameBlankIsStillWarned(t *testing.T) {
+	document := metrics.Document{Variety: []metrics.Variety{{
+		Name: metrics.BodyShapeName + "criar pedido", Distinct: 1, Uses: 500,
+		Shapes: []string{metrics.BodyShape([]byte(`{"id":"a1","cupom":""}`))},
+	}}}
+	warnings := metrics.VarietyWarnings(document.Variety)
+	if len(warnings) != 1 {
+		t.Fatalf("campo vazio deixou de ser avisado: %+v", warnings)
+	}
+	if !strings.Contains(warnings[0].Evidence, "cupom: vazio") {
+		t.Fatalf("o aviso nao nomeou o campo que veio vazio: %s", warnings[0].Evidence)
+	}
+}

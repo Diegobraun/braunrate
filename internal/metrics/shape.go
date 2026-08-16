@@ -34,6 +34,13 @@ func describeShape(path string, value any, into *[]string) {
 	switch typed := value.(type) {
 	case map[string]any:
 		if len(typed) == 0 {
+			// A body the scenario wrote as {} is a declaration, not an accident,
+			// and it has no field name to blame. Naming it apart from an empty
+			// field is what keeps the warning about the accident.
+			if path == "" {
+				*into = append(*into, "corpo sem campos")
+				return
+			}
 			*into = append(*into, path+": objeto vazio")
 			return
 		}
@@ -98,9 +105,18 @@ func shapesSeen(counter *varietyCounter) []string {
 // A field that arrived empty is the shape difference that is almost never on
 // purpose: it is what an interpolation that resolved to nothing looks like on
 // the wire.
+// Only a named field counts. A body declared as {} in the scenario has no field
+// to blame, and warning about it taught the reader to skip the block where the
+// real warnings live — the same noise ADR 0007 refuses for a source that has a
+// single value.
 func emptyField(shape string) bool {
-	for _, mark := range []string{": vazio", ": nulo", "objeto vazio", "[]: vazia"} {
-		if strings.Contains(shape, mark) {
+	for _, entry := range strings.Split(shape, ", ") {
+		name, kind, separated := strings.Cut(entry, ": ")
+		if !separated || name == "" {
+			continue
+		}
+		switch kind {
+		case "vazio", "nulo", "objeto vazio", "vazia":
 			return true
 		}
 	}
