@@ -1,0 +1,544 @@
+# Bateria adversarial
+
+Avaliacao feita de fora para dentro, na postura de quem recebe a ferramenta para
+decidir se recomenda ao time. Achado vale mais que verde.
+
+> **O que esta bateria nao cobre.** Quem a executou conhece o codigo por dentro e
+> completa caminho que uma pessoa de fora abandonaria. Onde alguem desiste, o que
+> procura e nao acha, o que entende errado — nada disso aparece aqui. A ultima
+> secao lista o que continua descoberto, e ela e o roteiro da sessao com o QA de
+> verdade.
+
+Cada registro responde tres perguntas, nesta ordem: **o numero esta certo**, **a
+ferramenta se explica**, **da para agir**.
+
+Ambiente: Mac darwin/arm64, 10 nucleos, Go 1.26.6, braunrate 0.4.0.
+Alvo embutido em `127.0.0.1:8080`; Redpanda em `127.0.0.1:9092`.
+
+---
+
+## Bloco 1 — Jornadas reais de negocio
+
+### 1.1 — E-commerce: entrar, buscar, carrinho, fechar, consultar status
+**Comportou bem, com dois achados**
+
+**Montagem**: `braunrate new` para ver a forma, `braunrate import curl` do login para
+ter o esqueleto, e depois **os outros cinco passos escritos a mao**.
+**Custo**: 5 comandos, 1 edicao grande (o arquivo inteiro reescrito).
+
+O `import curl` acertou o que importa: viu `"senha"` no corpo e transformou em
+`${senha}` vindo de `${SENHA}`, com o aviso na tela. Ninguem versiona credencial por
+acidente aqui.
+
+O `debug` fecha a jornada de seis passos mostrando cada captura encadeada:
+
+```
+passo 5 — fechar pedido   [ok em 200µs]
+  requisicao: POST /carrinhos/car-67055ead/fechar
+  resposta:   status 201, 58 bytes
+  corpo:      {"pedido": {"id": "ped-3dfd0f9c", "status": "CONFIRMADO"}}
+  capturou:
+    pedidoId = ped-3dfd0f9c
+```
+
+Sob carga, 500 jornadas a 50/s, tudo verde, e a variedade observada prova que a
+cadeia de capturas funcionou de verdade:
+
+```
+  500 valores distintos de carrinhoId em 500 usos, todos comecando com "car-"
+  500 valores distintos de pedidoId em 500 usos, todos comecando com "ped-"
+  1 unico valor de sku em 500 usos
+```
+
+**O numero esta certo**: sim. Cada iteracao abriu o proprio carrinho e fechou o
+proprio pedido — se a captura tivesse congelado, `carrinhoId` apareceria com um
+valor so, que e exatamente o bug de identidade da Fase 4.
+
+---
+
+#### Achado 1.1.a — corpo declarado como `{}` virava aviso de campo vazio
+**Gravidade**: media — nao afeta o numero, corroi o bloco que carrega os avisos que importam
+
+**Aconteceu**: dois passos legitimos (`corpo: {}` num POST que nao tem corpo) saiam
+como defeito, com a evidencia comecando por dois-pontos sem nome de campo:
+
+```
+  Atencao: o corpo de "abrir carrinho" saiu com campo vazio; se isso nao for proposital,
+           o alvo exercitou um caminho que producao nao ve
+            : objeto vazio
+```
+
+**Por que importa**: um relatorio saudavel saia com dois avisos que nao tinham nada a
+dizer. Quem aprende a pular esse bloco pula junto os avisos reais — e esse bloco e
+onde mora a invalidacao de resultado. E a mesma familia do ADR 0007 item 4: nao se
+avisa sobre o que a pessoa declarou.
+
+**Corrigido agora**: corpo sem campos vira `corpo sem campos`, que nao e marca de
+defeito; so campo **com nome** que chegou vazio conta. Testes
+`TestBodyDeclaredEmptyIsNotAnEmptyField` e `TestFieldThatCameBlankIsStillWarned`,
+o primeiro provado contra o codigo anterior:
+
+```
+--- FAIL: TestBodyDeclaredEmptyIsNotAnEmptyField (0.00s)
+    shape_test.go:75: a forma do corpo vazio saiu com nome de campo em branco: ": objeto vazio"
+```
+
+---
+
+#### Achado 1.1.b — nao ha caminho de entrada para jornada de varios passos
+**Gravidade**: media — nao afeta o numero, atrasa quem monta
+
+**Aconteceu**: `import curl` traduz **uma** requisicao. Uma jornada de negocio tem
+cinco ou seis, encadeadas por captura. Nao existe `import curl` que aceite varias
+chamadas, nem `record` que ja saia com as capturas ligadas — entao os outros cinco
+passos foram escritos a mao, com a estrutura copiada do primeiro.
+
+**Por que importa**: a Fase 2.5 promete que se cria cenario funcional sem ler
+documentacao alem das mensagens da ferramenta. Para **um** passo isso e verdade.
+Para uma jornada, a pessoa precisa descobrir sozinha a forma de `captura:`, de
+`${variavel}` e de `verificar:` — o `new` mostra, mas comentado e so para um passo.
+
+**Nao corrigido**: e mudanca de escopo, nao defeito. Entra na lista de bloqueio de
+adocao, e e o primeiro item para observar na sessao com a pessoa de verdade: **o que
+ela faz quando o segundo passo precisa do id que o primeiro devolveu.**
+
+---
+
+### 1.2 — Banco: autenticar, saldo, transferir com idempotencia, repetir, extrato
+**Achou um defeito grave e depois comportou bem**
+
+**Montagem**: escrito a mao (o `import curl` nao ajuda com cinco passos — achado
+1.1.b). **Custo**: 3 comandos, 2 edicoes.
+
+O que a jornada exercita e o valor **estavel dentro da jornada**: a chave de
+idempotencia dos passos 3 e 4 tem que ser a mesma, e nova na jornada seguinte. E o
+que o `debug` mostra, e o que a variedade confirma sob carga:
+
+```
+passo 4 — repetir transferencia   [ok em 100µs]
+  requisicao: POST /transferencias
+              Idempotency-Key: 2ad3f3c5-6e97-2f73-b612-6b688be1656a
+  resposta:   status 200, 96 bytes
+  corpo:      {"transferencia": {"id": "tra-a9a33783", ...}, "repetida": true}
+```
+
+```
+  400 valores distintos de contas.chave em 400 usos
+  400 valores distintos de contas.numero em 400 usos
+```
+
+Um unico erro em 2.000 requisicoes, e ele era do mock (chave repetida de uma
+execucao anterior, que ficou na memoria dele). A ferramenta nomeou com precisao:
+
+```
+Erros
+  passo                      o que aconteceu                    quantidade   exemplo
+  transferir                 status HTTP inesperado                      1   esperava status 201, recebeu 200
+```
+
+**Da para agir**: sim. Passo, classe, quantidade e um exemplo concreto na mesma
+linha — foi o que permitiu descartar em segundos que o defeito fosse da ferramenta.
+
+---
+
+#### Achado 1.2.a — `padrao(...)` na forma inline gerava vazio, em silencio
+**Gravidade**: ALTA — afeta confianca no numero
+
+**Aconteceu**: a jornada quebrou no passo 2, e o `debug` mostrou por que:
+
+```
+passo 1 — autenticar   [ok em 5.1ms]
+  requisicao: POST /auth/login
+              corpo: {"senha":"segredo","usuario":""}
+
+passo 2 — consultar saldo   [FALHOU em 1.5ms]
+  requisicao: GET /contas//saldo
+  resposta:   status 404
+```
+
+Isolado num cenario so de geradores, o defeito e este:
+
+```
+  amostra.declarado = BR-662044          # { tipo: padrao, formato: "BR-######" }
+  amostra.inline_padrao =                # padrao(BR-######)
+  amostra.inline_inteiro = 11
+  amostra.inline_uuid = 8755a4cd-4d52-eda6-a794-b044930d26ac
+  amostra.inline_texto = pwjbaubm
+  amostra.inline_cpf = 04160952674
+```
+
+Todo gerador inline funciona **menos** `padrao(...)`. A causa: o formato chega de
+dois jeitos — `formato:` no mapa e argumento entre parenteses — e o codigo lia so o
+primeiro. Sem argumento lido, `fromPattern("")` devolve string vazia, sem erro.
+
+**Por que e grave**: e a familia que a ferramenta existe para matar. Valor em branco
+sai para o alvo, o alvo responde 404 ou 401, e nada na saida liga uma coisa a outra.
+Numa jornada de um passo so, contra um alvo tolerante, isso **passa verde**: a
+verificacao de sanidade so pega depois, pela variedade colapsada, e ai a mensagem
+fala de variedade, nao do gerador quebrado. Foi o proprio `debug` que salvou aqui —
+mas `debug` e opcional.
+
+**Corrigido agora**: o gerador le o argumento inline, e `padrao()` sem formato
+nenhum passa a recusar ensinando as duas formas. Tres testes, os tres provados
+contra o codigo anterior:
+
+```
+--- FAIL: TestInlinePatternProducesTheValueAndNotSilence (0.00s)
+    generators_test.go:231: padrao(BR-######) devolveu vazio: valor em branco sai para o alvo sem ninguem ser avisado
+--- FAIL: TestBothShapesOfThePatternAgree (0.00s)
+--- FAIL: TestInlinePatternWithoutFormatSaysWhatIsMissing (0.00s)
+```
+
+**O que isso diz sobre a suite**: havia teste para `{ tipo: padrao }` sem formato e
+teste para `padrao` com `Format` preenchido. Nao havia teste da forma inline, que e
+a que os proprios exemplos e mensagens sugerem. Duas formas de declarar a mesma
+coisa, uma coberta.
+
+---
+
+### 1.3 — Cadeia assincrona: criar por HTTP, evento no Kafka, esperar o status virar, conferir atraso
+**A medicao mais honesta da bateria ate aqui, e o unico numero que ninguem pode barrar**
+
+**Montagem**: `braunrate new` (saida **inteiramente descartada**: nao mostra
+`mensageria`, nem `kafka`, nem `aguardar`), depois 34 linhas escritas a mao.
+**Custo**: 3 comandos, 1 escrita completa.
+
+Alvo: mock HTTP em 8090, Redpanda em 9092, e um processador em Go que consome
+`pedidos-eventos` no grupo `processador` e vira o pedido para PROCESSADO — de
+proposito mais lento que o produtor.
+
+O `debug` fecha os tres passos e, no terceiro, **declara a propria imprecisao antes
+de alguem perguntar**:
+
+```
+passo 3 — esperar processamento   [ok em 503.4ms]
+  requisicao: aguardar em GET /pedidos/ped-a7cbfc17 ate $.pedido.status = "PROCESSADO"
+              sondando a cada 500ms, desiste depois de 30s
+              a latencia medida tem a granularidade da sondagem
+```
+
+O processamento real leva 3ms; o passo mede 503ms. A ferramenta nao finge que 503
+e o tempo do sistema — e a mesma frase reaparece no relatorio de carga, nao so no
+`debug`:
+
+```
+  Atencao: o passo "esperar processamento" espera sondando a cada 500ms: a latencia dele
+           tem essa granularidade e fica maior que a real, nunca menor
+```
+
+**O numero esta certo**: sim, e o motivo e essa frase. Um numero que so pode errar
+para cima, dizendo que so pode errar para cima, e utilizavel. O mesmo numero sem a
+frase seria uma mentira de duas ordens de grandeza.
+
+#### O atraso do consumidor mede o que promete
+
+Com o produtor a 400/s contra um consumidor de ~200/s:
+
+```
+Atraso do consumidor
+  grupo processador em pedidos-eventos: no pior momento 1.751 mensagens atras; no fim, 1.751 mensagens
+  O consumidor terminou a execucao para tras: a fila cresceu mais rapido do que ele consumiu.
+```
+
+E o pico nao e o valor final disfarcado — com carga de 400/s por 5s seguida de 10/s
+por 20s, a fila enche e drena, e os dois numeros se separam:
+
+```
+  grupo processador em pedidos-eventos: no pior momento 886 mensagens atras; no fim, 0 mensagens
+```
+
+A segunda frase, a de terminar para tras, sumiu sozinha. O JSON traz `atraso_maximo`,
+`atraso_no_fim`, `atraso_maximo_por_particao` e `leituras`.
+
+#### A concentracao de particao esta certa nos dois sentidos
+
+Testei os dois casos que a ferramenta precisa separar. Topico de 3 particoes com
+chave que varia:
+
+```
+  3 valores distintos de kafka.particao.eventos-particionado em 400 usos, entre 0 e 2
+```
+
+Mesmo topico, chave constante — resultado **invalidado**, exit 3:
+
+```
+Resultado invalido: a execucao nao mediu o que se propos a medir.
+  - toda a carga caiu numa particao so de eventos-particionado; o resto do cluster ficou
+    parado e o numero nao representa producao. Faca a chave da mensagem variar por iteracao
+    kafka.particao.eventos-particionado tinha 3 valores disponiveis e a execucao usou 1, em 400 usos
+```
+
+E num topico que **de fato** tem uma particao so, a mesma concentracao sai como
+linha neutra de ambiente, sem aviso. Distinguir "voce colapsou a chave" de "o topico
+e assim" e o que separa um aviso util de um alarme que se aprende a ignorar.
+
+---
+
+#### Achado 1.3.a — o atraso do consumidor nao pode virar criterio de aceite
+**Gravidade**: media-alta — nao afeta o numero, mas o veredito ignora o unico numero que importa nesta jornada
+
+**Aconteceu**: a execucao a 400/s termina com o consumidor 1.751 mensagens atras, o
+relatorio diz isso com todas as letras, e o veredito e:
+
+```
+Passou: a unica regra de SLO foi atendida.
+```
+
+Exit 0. Em CI, isso sobe.
+
+Tentei declarar o criterio:
+
+```
+slo:
+  - atraso: { processador: < 100 }
+```
+
+```
+erro no cenario: lag-slo.yaml:33:28: metrica de slo desconhecida: "processador"
+    disponiveis: p50, p75, p90, p95, p99, p99.9, max, erros, sucesso, taxa_efetiva
+```
+
+**Por que importa**: numa cadeia assincrona, latencia de resposta e taxa de erro sao
+os numeros faceis, e nenhum dos dois reprova um pipeline que nao acompanha. A
+pergunta de aceite e "o consumidor aguenta o pico?" — a ferramenta responde e nao
+deixa ninguem barrar pela resposta. Pior, o bloco de SLO lista o que ficou sem
+criterio (`passos sem criterio declarado`, `regressao`) e **o atraso nao aparece nem
+nessa lista**: quem le nao descobre que deixou de gatear alguma coisa.
+
+**Nao corrigido**: e recurso novo, e nada novo entra antes da sessao com o QA. O
+paliativo existe e funciona — `execucao.atraso_do_consumidor` esta no JSON, entao da
+para gatear por fora com `jq`. Por isso "atrasa", nao "bloqueia". Primeiro item de
+recurso da lista priorizada.
+
+---
+
+#### Achado 1.3.b — `validate` diz "Cenario valido" para um cenario que nao tem como rodar
+**Gravidade**: media — `validate` e o portao barato do CI, e ele aprova o que `debug` reprova
+
+**Aconteceu**: tirei o bloco `mensageria` do cenario, deixando um passo Kafka sem
+broker em lugar nenhum — nem no passo, nem em `mensageria`, e com `alvo` HTTP.
+
+```
+$ braunrate validate sem-mensageria.yaml
+Cenario valido: "Pedido assincrono", 3 passos, 400 iteracoes em 10s.
+exit=0
+```
+
+```
+$ braunrate debug sem-mensageria.yaml
+passo 2 — publicar evento   [FALHOU em 0s]
+  problema:   erro de configuracao do cenario
+              sem broker: declare 'brokers' no passo ou aponte o alvo do cenario para kafka://host:9092
+exit=1
+```
+
+**Por que importa**: os tres fatos que provam a impossibilidade sao estaticos — o
+passo nao tem `brokers`, nao existe `mensageria.kafka`, e o `alvo` nao e `kafka://`.
+`validate` tem os tres na mao e ainda assim assina embaixo. E a mesma familia do
+A8 (variavel nao declarada), que ja e recusada na validacao. A mensagem do `debug`
+ensina bem; ela so chega no portao errado.
+
+**Corrigido agora** — ver commit; a regra do A8 passa a valer tambem para broker.
+
+---
+
+### 1.4 — GraphQL com mix de operacoes 60/30/10
+**Nao executavel como pedido. O contorno funciona e custa tres relatorios que ninguem consegue somar**
+
+**Montagem tentada**: um cenario, tres passos, `peso: 60 / 30 / 10`.
+
+```
+$ braunrate validate mix.yaml
+erro no cenario: mix.yaml:8:5: a chave "peso" ainda nao existe: mix ponderado de operacoes entra junto com o GraphQL
+exit=2
+```
+
+O GraphQL ja entrou — esta na lista de protocolos compilados de todo relatorio
+desta bateria. A mensagem promete um marco que ja passou.
+
+**Montagem que rodou**: tres cenarios separados a 60/s, 30/s e 10/s, tres processos
+simultaneos. **Custo**: 3 arquivos escritos a mao, 7 comandos.
+
+```
+Mix - consulta leve      1.200 requisicoes em 20s, 60 por segundo, 0% de erro
+Mix - consulta pesada      600 requisicoes em 20s, 30 por segundo, 0% de erro
+Mix - mutacao              200 requisicoes em 19.9s, 10 por segundo, 0% de erro
+```
+
+A proporcao sai exata e cada processo respeita a propria taxa. O GraphQL agrega por
+nome de operacao, que e o que permite ler passo a passo:
+
+```
+passo 1 — graphql RelatorioMensal   [ok em 9.1ms]
+  requisicao: query RelatorioMensal em POST /graphql
+              variaveis: {"mes":"1"}
+```
+
+**O numero esta certo**: cada um dos tres esta. O numero do mix nao existe.
+
+---
+
+#### Achado 1.4.a — nao ha mix ponderado, e a mensagem que recusa aponta o marco errado
+**Gravidade**: media-alta — bloqueia o cenario mais comum de teste de capacidade
+
+**O estado real**: `peso` e recusado; `escolher:`, que o [ADR 0002](adr/0002-modelo-de-cenario.md)
+promete para a Fase 4 como o lugar certo do peso, **nao existe em lugar nenhum do
+codigo**. E `docs/estudo-ferramentas.md` lista "suporte a mix ponderado de operacoes
+(60% consulta leve, 30% pesada, 10% mutacao)" como requisito, com esses numeros.
+
+Tres textos, tres estados diferentes:
+- ADR 0002: entra na Fase 4, com `escolher:`, e `peso` solto vira erro apontando `escolher:`
+- a mensagem do codigo: entra junto com o GraphQL (que ja entrou), e nao cita `escolher:`
+- o estudo de ferramentas: e requisito
+
+**Por que importa**: nao e so a falta do recurso. E a mensagem que manda a pessoa
+esperar por um marco que ja passou — quem le conclui que a proxima versao resolve, e
+nao ha proxima versao para isso. Uma recusa que ensina o caminho errado custa mais
+que uma recusa seca.
+
+**O contorno e real e tem preco**: tres processos dao a proporcao exata, mas
+- nao existe p95 do mix; existem tres p95, e capacidade se decide pelo do conjunto
+- cada relatorio aprova o proprio SLO sozinho; nada reprova a soma
+- `compare` recebe duas execucoes, nao tres, e `report` recebe uma
+
+**Nao corrigido**: recurso novo, e nada novo entra antes da sessao com o QA. A
+mensagem, essa, e correcao de texto e nao de comportamento — mas mexe no que a
+pessoa le, e por isso vai na lista, nao no commit de hoje.
+
+---
+
+#### Achado 1.4.b — argumento a mais e ignorado em silencio
+**Gravidade**: media — a ferramenta faz menos do que foi pedida e nao diz
+
+Tres comandos, o mesmo padrao:
+
+```
+$ braunrate report mix-leve.json mix-pesada.json
+relatorio em relatorio.html          # so o primeiro arquivo entrou; nada avisa
+exit=0
+
+$ braunrate compare mix-leve.json mix-pesada.json mix-mutacao.json
+  antes:  Mix - consulta leve ...    # o terceiro sumiu sem uma palavra
+  depois: Mix - consulta pesada ...
+
+$ braunrate new --help
+cenario de partida em cenario.yaml   # a flag foi ignorada e um arquivo foi criado
+```
+
+**Por que importa**: quem passa tres arquivos para `compare` acredita que comparou
+tres. O relatorio nao mente sobre o que mediu — ele so nao diz que mediu menos do que
+foi pedido. E o `new --help`, especifico, e a unica forma da ferramenta criar arquivo
+quando a pessoa estava pedindo ajuda. (Ele nao sobrescreve: com `cenario.yaml` ja
+existente, recusa e sugere outro nome.)
+
+---
+
+#### O que se comportou bem: comparar duas execucoes que nao se comparam
+
+`compare` entre dois cenarios diferentes nao finge:
+
+```
+O que pode explicar a diferenca sem ser o servico
+  - os cenarios sao diferentes: "Mix - consulta leve" e "Mix - mutacao" (isso sozinho explica a diferenca)
+  - os planos de carga sao diferentes: patamar ate 60/s por 20s e patamar ate 10/s por 20s (isso sozinho explica a diferenca)
+  Duas execucoes nao dao intervalo de confianca: variacao abaixo de 5% e tratada como ruido.
+```
+
+E a tabela por passo marca `(nao existe mais)` e `(passo novo)` em vez de exibir
+"100% melhor" solto.
+
+---
+
+### 1.5 — Ramificacao por dado: pessoa fisica e pessoa juridica no mesmo cenario
+**Roda. O relatorio junta duas populacoes numa linha so e nao avisa**
+
+Nao existe passo condicional (`escolher:` do ADR 0002 nao existe no codigo — achado
+1.4.a). O contorno honesto e por dado: a rota vem do CSV.
+
+```csv
+id,tipo,rota,limite
+1,pf,pessoas,5000
+2,pj,empresas,90000
+```
+
+```yaml
+  - nome: consultar limite
+    http: { metodo: GET, caminho: /${clientes.rota}/${clientes.id}/limite }
+    verificar:
+      status: 200
+      json: { $.tipo: "${clientes.tipo}" }
+```
+
+**Custo**: 2 arquivos escritos a mao, 2 comandos. Roda de primeira, verde, exit 0.
+
+No alvo, pessoa juridica custa 20ms a mais que pessoa fisica — de proposito. O
+relatorio:
+
+```
+Por passo
+  passo                          requisicoes    metade       95%       99%     99,9%      pior   erros
+  consultar limite           (1)        500    1.6 ms     31 ms     32 ms     33 ms     33 ms       0
+```
+
+Uma linha. E a ferramenta **sabe** que a rota variou, porque diz isso na variedade:
+
+```
+  2 valores distintos de clientes.rota em 500 usos
+  2 valores distintos de clientes.tipo em 500 usos
+```
+
+Rodei os dois lados separados para ver o que a linha unica escondia:
+
+```
+pf     Metade das respostas em ate 1.1 ms; 95% em ate 1.9 ms; 99% em ate 2.8 ms
+pj     Metade das respostas em ate 29 ms;  95% em ate 31 ms;  99% em ate 32 ms
+```
+
+**O numero esta certo**: sim, os percentis do conjunto estao corretos. **A leitura,
+nao.** Quem le "metade 1.6 ms, 95% 31 ms" conclui cauda ruim num servico rapido, e
+vai procurar contencao, GC ou vizinho barulhento. Nao ha cauda: ha duas populacoes,
+uma de 1.9 ms e outra de 31 ms, e a proporcao entre elas foi declarada no CSV. O 31
+ms da linha unica e o p95 de pessoa juridica usando o nome do passo inteiro.
+
+---
+
+#### Achado 1.5.a — cauda que na verdade e mistura de populacoes nao e sinalizada
+**Gravidade**: media-alta — nao afeta o numero, direciona a investigacao para o lugar errado
+
+**Por que a agregacao esta certa e o silencio nao**: agregar pelo caminho do
+template e a decisao correta — resolver `${clientes.id}` daria 10 passos, e com um
+UUID daria 500. O que falta e a frase. A ferramenta tem os dois lados na mao no
+mesmo relatorio: sabe que `${clientes.rota}` tem 2 valores e sabe que p50 e p95 estao
+a 20x de distancia. Nao existe hoje nada que ligue as duas coisas.
+
+Nao existe tambem como declarar criterio por ramo: `- consultar limite: { p95: < 5ms }`
+reprovaria pessoa juridica por ser pessoa juridica, e `< 50ms` aprovaria uma
+regressao de 25x em pessoa fisica.
+
+**Nao corrigido**: sinalizar mistura de populacoes e recurso, e vale a pena discutir
+o desenho com o QA antes — a alternativa obvia (agregar por caminho resolvido)
+e justamente a que o ADR 0002 recusa com razao. Segundo item de recurso da lista.
+
+**O que salva hoje**: a variedade observada esta no mesmo relatorio, tres linhas
+abaixo. Quem sabe procurar, acha. Quem nao sabe, nao tem por que procurar.
+
+---
+
+### Bloco 1 — fechamento
+
+| jornada | executou? | comandos | arquivos escritos a mao | achado mais grave |
+|---|---|---|---|---|
+| 1.1 e-commerce, 6 passos | sim | 5 | 1 (5 dos 6 passos) | 1.1.a media (corrigida) |
+| 1.2 banco com idempotencia | sim | 3 | 1 | **1.2.a ALTA (corrigida)** |
+| 1.3 cadeia assincrona | sim | 3 | 1 (34 linhas) | 1.3.a media-alta |
+| 1.4 mix 60/30/10 | **nao, como pedido** | 7 | 3 | 1.4.a media-alta |
+| 1.5 ramificacao por dado | sim, com contorno | 2 | 2 | 1.5.a media-alta |
+
+Cinco jornadas, **nenhuma** montada so pelos caminhos de entrada da ferramenta. O
+`import curl` cobriu um passo de trinta e um; o `new` cobriu a forma do arquivo e
+nada dos protocolos de mensageria. Todo o resto foi escrito a mao — em quatro das
+cinco, com estrutura que so o codigo-fonte ou os exemplos do repositorio ensinam.
+
+Duas correcoes entraram com teste que reprova o codigo anterior: o gerador `padrao`
+inline (alta) e o aviso de corpo vazio (media). Uma terceira entrou por consequencia
+do 1.3.b: `validate` deixa de aprovar passo de broker sem endereco.
