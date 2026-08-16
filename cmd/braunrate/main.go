@@ -79,7 +79,7 @@ uso:
   braunrate import jmx <plano.jmx>              traduz o subconjunto comum de um plano do JMeter
   braunrate record -output <cenario.yaml>       grava um cenario a partir do que passar pelo proxy
   braunrate report <resultado.json> [opcoes]    gera HTML ou CSV de um resultado ja gravado
-  braunrate compare <antes.json> <depois.json>
+  braunrate compare <antes.json> <depois.json> [-html <arquivo.html>]
   braunrate serve [-addr :8080] [-dir ./cenarios]   os mesmos comandos por HTTP, local
   braunrate target [opcoes]
   braunrate version
@@ -246,17 +246,21 @@ func reportCommand(args []string) int {
 }
 
 func compare(args []string) int {
-	if len(args) < 2 {
+	set := flag.NewFlagSet("compare", flag.ExitOnError)
+	htmlPath := set.String("html", "", "grava a comparacao em HTML autocontido")
+	positional := parseArguments(set, args)
+
+	if len(positional) < 2 {
 		fmt.Fprintln(os.Stderr, `informe as duas execucoes, a antiga primeiro:
   braunrate compare antes.json depois.json`)
 		return 2
 	}
-	before, err := runner.ReadDocument(args[0])
+	before, err := runner.ReadDocument(positional[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 2
 	}
-	after, err := runner.ReadDocument(args[1])
+	after, err := runner.ReadDocument(positional[1])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 2
@@ -266,6 +270,13 @@ func compare(args []string) int {
 	if err := report.Comparison(os.Stdout, result); err != nil {
 		fmt.Fprintf(os.Stderr, "nao consegui escrever a comparacao: %v\n", err)
 		return 2
+	}
+	if *htmlPath != "" {
+		if err := runner.WriteComparisonHTML(*htmlPath, result, after.Version); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 2
+		}
+		fmt.Printf("comparacao em %s\n", *htmlPath)
 	}
 	if !result.Comparable {
 		return 3

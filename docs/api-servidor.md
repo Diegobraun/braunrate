@@ -221,6 +221,21 @@ As ressalvas sao as mesmas do terminal. Comparar modelo aberto com modelo fechad
 }
 ```
 
+## `GET /runs/{before}/comparison/{after}/report`
+
+A mesma comparacao como pagina, para anexar na revisao de codigo:
+
+```bash
+curl -s http://127.0.0.1:8080/runs/r003/comparison/r004/report -o comparacao.html
+```
+
+```
+200 text/html; charset=utf-8 7116 bytes
+<h1 class="passou">Ficou mais rapido: jornada inteira (95%): 8% mais rapido — de 9 ms para 8 ms.
+```
+
+Mesmo veredito e mesmas ressalvas do JSON acima e do terminal — a pagina e uma projecao da mesma comparacao, nao um segundo calculo. Vale a mesma regra do `409`: as duas execucoes precisam ter terminado.
+
 O campo `comparavel` responde outra pergunta: ele fica `false` quando **uma das execucoes tem resultado invalido**, e ai nao ha numero nenhum para comparar. Ressalva que impede e o veredito sobre a leitura; `comparavel` e o veredito sobre os dados.
 
 ---

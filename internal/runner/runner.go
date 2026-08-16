@@ -212,6 +212,21 @@ func WriteHTML(path string, document metrics.Document) error {
 	return nil
 }
 
+func WriteComparisonHTML(path string, result comparison.Comparison, version string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("erro ao criar %s: %v", path, err)
+	}
+	if err := report.ComparisonHTML(file, result, version); err != nil {
+		_ = file.Close()
+		return fmt.Errorf("erro ao gerar a comparacao em HTML: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("erro ao fechar %s, a comparacao pode estar incompleta: %v", path, err)
+	}
+	return nil
+}
+
 func WriteCSV(path string, document metrics.Document) error {
 	file, err := os.Create(path)
 	if err != nil {

@@ -845,6 +845,14 @@ O que pode explicar a diferenca sem ser o servico
 
 A comparacao nunca chama de regressao o que pode ser ruido, lista tudo que mudou fora do servico (maquina, plano de carga, versao, cenario), e se recusa a comparar quando alguma das duas execucoes teve o gerador saturado.
 
+Para anexar na revisao de codigo, `-html` grava a mesma comparacao como pagina autocontida — mesmo veredito, mesmas ressalvas, percentil a percentil:
+
+```bash
+braunrate compare antes.json depois.json -html comparacao.html
+```
+
+Quando uma das duas execucoes nao vale como medicao, a pagina nao mostra tabela nenhuma: nao existe comparacao menor, existe comparacao que nao vale.
+
 ## Modo servidor: os mesmos comandos por HTTP
 
 ```bash

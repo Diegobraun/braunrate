@@ -318,6 +318,19 @@ func TestReportAndComparisonComeFromTheSameProjectionsTheCLIUses(t *testing.T) {
 	if !strings.Contains(string(body), "passos") && !strings.Contains(string(body), "steps") {
 		t.Fatalf("a comparacao nao trouxe os passos: %.300s", body)
 	}
+
+	status, body = call(t, http.MethodGet, base+"/runs/"+before+"/comparison/"+after+"/report")
+	if status != http.StatusOK || !strings.Contains(string(body), "<html") {
+		t.Fatalf("a comparacao em HTML respondeu %d: %.200s", status, body)
+	}
+	if !strings.Contains(string(body), "antes e depois") {
+		t.Fatalf("a pagina de comparacao nao se identifica como comparacao: %.300s", body)
+	}
+	for _, forbidden := range []string{"<script", "src=", "@import", "<link"} {
+		if strings.Contains(string(body), forbidden) {
+			t.Fatalf("a comparacao em HTML deixou de ser autocontida: encontrei %q", forbidden)
+		}
+	}
 }
 
 // A stream that only delivers what comes next shows a run with no beginning to

@@ -61,6 +61,7 @@ func (server *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /runs/{id}/report", server.getReport)
 	mux.HandleFunc("GET /runs/{id}/stream", server.streamRun)
 	mux.HandleFunc("GET /runs/{before}/comparison/{after}", server.compare)
+	mux.HandleFunc("GET /runs/{before}/comparison/{after}/report", server.compareReport)
 	return mux
 }
 
@@ -359,19 +360,41 @@ func (server *Server) streamRun(writer http.ResponseWriter, request *http.Reques
 }
 
 func (server *Server) compare(writer http.ResponseWriter, request *http.Request) {
+	before, after, ok := server.pairToCompare(writer, request)
+	if !ok {
+		return
+	}
+	writeJSON(writer, http.StatusOK, comparison.Compare(before.Document, after.Document))
+}
+
+func (server *Server) compareReport(writer http.ResponseWriter, request *http.Request) {
+	before, after, ok := server.pairToCompare(writer, request)
+	if !ok {
+		return
+	}
+	result := comparison.Compare(before.Document, after.Document)
+	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := report.ComparisonHTML(writer, result, after.Document.Version); err != nil {
+		// The status line is already on the wire, so there is no error to send:
+		// what is left is not pretending the page was complete.
+		_, _ = fmt.Fprintf(writer, "\n<!-- comparacao interrompida: %v -->\n", err)
+	}
+}
+
+func (server *Server) pairToCompare(writer http.ResponseWriter, request *http.Request) (*run, *run, bool) {
 	before, foundBefore := server.runs.get(request.PathValue("before"))
 	after, foundAfter := server.runs.get(request.PathValue("after"))
 	for id, found := range map[string]bool{request.PathValue("before"): foundBefore, request.PathValue("after"): foundAfter} {
 		if !found {
 			writeProblem(writer, http.StatusNotFound, unknownRun(id))
-			return
+			return nil, nil, false
 		}
 	}
 	if before.Status != statusDone || after.Status != statusDone {
 		writeProblem(writer, http.StatusConflict, "so da para comparar execucao terminada; uma das duas ainda nao terminou")
-		return
+		return nil, nil, false
 	}
-	writeJSON(writer, http.StatusOK, comparison.Compare(before.Document, after.Document))
+	return before, after, true
 }
 
 func unknownRun(id string) string {

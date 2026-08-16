@@ -4,6 +4,26 @@ Registro das decisoes tomadas durante o trabalho autonomo da noite de 2026-08-16
 Ordenado por risco: primeiro o que muda o que o usuario ve, o que contraria ADR
 existente e o que e caro de reverter; depois o resto.
 
+## Item 7 — comparacao que nao vale nao mostra tabela nenhuma
+
+Alternativa considerada: mostrar os numeros com um aviso em cima, como o relatorio de execucao invalida faz.
+
+Por que esta: o relatorio de uma execucao invalida ainda tem numeros que descrevem o que aconteceu com o gerador. Uma comparacao entre duas execucoes em que uma nao vale nao tem nada: cada linha seria uma diferenca entre um numero e um numero que nao existe. A pagina mostra a identificacao das duas, as ressalvas e para por ai.
+
+Reversibilidade: barato — e um `{{if .Comparable}}` no template.
+
+Toca o usuario: sim. Quem abrir a comparacao em HTML de um par com execucao invalida ve identificacao e ressalvas, e nenhuma tabela. O terminal ja se comportava assim; a pagina segue o terminal.
+
+## Item 7 — a folha de estilo virou template compartilhado entre as duas paginas
+
+Alternativa considerada: copiar o CSS para o template da comparacao.
+
+Por que esta: duas paginas da mesma ferramenta com aparencia diferente fazem quem le se perguntar qual das duas e a certa. Copia envelhece em dobro.
+
+Reversibilidade: barato — `estiloDaPagina` e um `define` num arquivo so.
+
+Toca o usuario: nao. O HTML gerado e o mesmo, fora duas quebras de linha; `docs/exemplo-relatorio.html` foi regerado.
+
 ## Item 6 — particao declarada deixa de invalidar a execucao e passa a avisar
 
 Alternativa considerada: manter a gravidade alta, que e o que a concentracao numa particao produz hoje quando a chave nao varia.
