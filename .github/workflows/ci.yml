@@ -85,6 +85,6 @@ jobs:
         run: |
           ./braunrate alvo -endereco=127.0.0.1:8080 -latencia=5ms &
           sleep 1
-          ./braunrate executar cenarios/ci.yaml -silencioso -resultado=resultado.json
-          ./braunrate executar cenarios/jornada-autenticada.yaml -silencioso
-          ./braunrate executar cenarios/graphql-cobranca.yaml -silencioso
+          ./braunrate executar examples/ci.yaml -silencioso -resultado=resultado.json
+          ./braunrate executar examples/jornada-autenticada.yaml -silencioso
+          ./braunrate executar examples/graphql-cobranca.yaml -silencioso

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Diegobraun/braunrate/cenario"
-	"github.com/Diegobraun/braunrate/protocolo"
+	"github.com/Diegobraun/braunrate/internal/protocol"
+	"github.com/Diegobraun/braunrate/internal/scenario"
 )
 
 type Taxa float64
@@ -22,22 +22,22 @@ func PorMinuto(valor float64) Taxa  { return Taxa(valor / 60) }
 func PorHora(valor float64) Taxa    { return Taxa(valor / 3600) }
 
 type Requisicao interface {
-	montar() (string, protocolo.Configuracao, error)
+	montar() (string, protocol.Configuracao, error)
 }
 
-type OpcaoDePasso func(*cenario.Passo) error
+type OpcaoDePasso func(*scenario.Passo) error
 
 type Construtor struct {
-	cenario cenario.Cenario
+	cenario scenario.Cenario
 	erros   []error
 }
 
 func Novo(nome string) *Construtor {
-	return &Construtor{cenario: cenario.Cenario{
-		VersaoDoFormato: cenario.VersaoDoFormato,
+	return &Construtor{cenario: scenario.Cenario{
+		VersaoDoFormato: scenario.VersaoDoFormato,
 		Nome:            nome,
 		Variaveis:       map[string]string{},
-		Carga:           cenario.PlanoDeCarga{Modelo: cenario.ChegadaAberta},
+		Carga:           scenario.PlanoDeCarga{Modelo: scenario.ChegadaAberta},
 	}}
 }
 
@@ -53,22 +53,22 @@ func (c *Construtor) Alvo(alvo string) *Construtor {
 }
 
 func (c *Construtor) Variavel(nome, valor string) *Construtor {
-	c.cenario.Variaveis[nome] = cenario.ExpandirDoAmbiente(valor)
+	c.cenario.Variaveis[nome] = scenario.ExpandirDoAmbiente(valor)
 	return c
 }
 
-type OpcaoDeDados func(*cenario.FonteDeDados)
+type OpcaoDeDados func(*scenario.FonteDeDados)
 
-func Consumo(politica cenario.PoliticaDeConsumo) OpcaoDeDados {
-	return func(fonte *cenario.FonteDeDados) { fonte.Consumo = politica }
+func Consumo(politica scenario.PoliticaDeConsumo) OpcaoDeDados {
+	return func(fonte *scenario.FonteDeDados) { fonte.Consumo = politica }
 }
 
 func Semente(semente int64) OpcaoDeDados {
-	return func(fonte *cenario.FonteDeDados) { fonte.Semente = semente }
+	return func(fonte *scenario.FonteDeDados) { fonte.Semente = semente }
 }
 
 func (c *Construtor) DadosDeArquivo(nome, arquivo string, opcoes ...OpcaoDeDados) *Construtor {
-	fonte := cenario.FonteDeDados{Nome: nome, Arquivo: arquivo, Consumo: cenario.ConsumoCircular}
+	fonte := scenario.FonteDeDados{Nome: nome, Arquivo: arquivo, Consumo: scenario.ConsumoCircular}
 	for _, opcao := range opcoes {
 		opcao(&fonte)
 	}
@@ -77,7 +77,7 @@ func (c *Construtor) DadosDeArquivo(nome, arquivo string, opcoes ...OpcaoDeDados
 }
 
 func (c *Construtor) DadosGerados(nome string, campos map[string]string, opcoes ...OpcaoDeDados) *Construtor {
-	fonte := cenario.FonteDeDados{Nome: nome, Consumo: cenario.ConsumoCircular, Campos: map[string]string{}}
+	fonte := scenario.FonteDeDados{Nome: nome, Consumo: scenario.ConsumoCircular, Campos: map[string]string{}}
 	for campo, receita := range campos {
 		fonte.Campos[campo] = receita
 	}
@@ -92,22 +92,22 @@ func (c *Construtor) DadosGerados(nome string, campos map[string]string, opcoes 
 }
 
 func (c *Construtor) Rampa(de, ate Taxa, durante time.Duration) *Construtor {
-	return c.fase(cenario.Fase{Tipo: cenario.FaseRampa, De: float64(de), Ate: float64(ate), Durante: durante})
+	return c.fase(scenario.Fase{Tipo: scenario.FaseRampa, De: float64(de), Ate: float64(ate), Durante: durante})
 }
 
 func (c *Construtor) Patamar(taxa Taxa, durante time.Duration) *Construtor {
-	return c.fase(cenario.Fase{Tipo: cenario.FasePatamar, Ate: float64(taxa), Durante: durante})
+	return c.fase(scenario.Fase{Tipo: scenario.FasePatamar, Ate: float64(taxa), Durante: durante})
 }
 
 func (c *Construtor) Pico(taxa Taxa, durante time.Duration) *Construtor {
-	return c.fase(cenario.Fase{Tipo: cenario.FasePico, Ate: float64(taxa), Durante: durante})
+	return c.fase(scenario.Fase{Tipo: scenario.FasePico, Ate: float64(taxa), Durante: durante})
 }
 
 func (c *Construtor) Constante(taxa Taxa, durante time.Duration) *Construtor {
-	return c.fase(cenario.Fase{Tipo: cenario.FaseConstante, Ate: float64(taxa), Durante: durante})
+	return c.fase(scenario.Fase{Tipo: scenario.FaseConstante, Ate: float64(taxa), Durante: durante})
 }
 
-func (c *Construtor) fase(fase cenario.Fase) *Construtor {
+func (c *Construtor) fase(fase scenario.Fase) *Construtor {
 	c.cenario.Carga.Fases = append(c.cenario.Carga.Fases, fase)
 	return c
 }
@@ -122,18 +122,18 @@ func (c *Construtor) Passo(requisicao Requisicao, opcoes ...OpcaoDePasso) *Const
 	return c
 }
 
-func montarPasso(requisicao Requisicao, opcoes ...OpcaoDePasso) (cenario.Passo, error) {
+func montarPasso(requisicao Requisicao, opcoes ...OpcaoDePasso) (scenario.Passo, error) {
 	if requisicao == nil {
-		return cenario.Passo{}, errors.New("passo sem requisicao")
+		return scenario.Passo{}, errors.New("passo sem requisicao")
 	}
 	nomeDoProtocolo, configuracao, err := requisicao.montar()
 	if err != nil {
-		return cenario.Passo{}, err
+		return scenario.Passo{}, err
 	}
-	passo := cenario.Passo{Protocolo: nomeDoProtocolo, Configuracao: configuracao}
+	passo := scenario.Passo{Protocolo: nomeDoProtocolo, Configuracao: configuracao}
 	for _, opcao := range opcoes {
 		if err := opcao(&passo); err != nil {
-			return cenario.Passo{}, err
+			return scenario.Passo{}, err
 		}
 	}
 	if passo.Nome == "" {
@@ -143,7 +143,7 @@ func montarPasso(requisicao Requisicao, opcoes ...OpcaoDePasso) (cenario.Passo, 
 }
 
 func Nome(nome string) OpcaoDePasso {
-	return func(passo *cenario.Passo) error {
+	return func(passo *scenario.Passo) error {
 		passo.Nome = nome
 		return nil
 	}
@@ -151,8 +151,8 @@ func Nome(nome string) OpcaoDePasso {
 
 // A expressao e a mesma do YAML: "$.fatura.id", "cabecalho:X-Id" ou "/regex/".
 func Capturar(variavel, expressao string) OpcaoDePasso {
-	return func(passo *cenario.Passo) error {
-		captura, err := cenario.MontarCaptura(variavel, expressao)
+	return func(passo *scenario.Passo) error {
+		captura, err := scenario.MontarCaptura(variavel, expressao)
 		if err != nil {
 			return err
 		}
@@ -162,8 +162,8 @@ func Capturar(variavel, expressao string) OpcaoDePasso {
 }
 
 func CapturarComPadrao(variavel, expressao, padrao string) OpcaoDePasso {
-	return func(passo *cenario.Passo) error {
-		captura, err := cenario.MontarCaptura(variavel, expressao)
+	return func(passo *scenario.Passo) error {
+		captura, err := scenario.MontarCaptura(variavel, expressao)
 		if err != nil {
 			return err
 		}
@@ -175,22 +175,22 @@ func CapturarComPadrao(variavel, expressao, padrao string) OpcaoDePasso {
 }
 
 func VerificarStatus(status int) OpcaoDePasso {
-	return func(passo *cenario.Passo) error {
-		passo.Verificacoes = append(passo.Verificacoes, cenario.Verificacao{Tipo: cenario.VerificarStatus, Status: status})
+	return func(passo *scenario.Passo) error {
+		passo.Verificacoes = append(passo.Verificacoes, scenario.Verificacao{Tipo: scenario.VerificarStatus, Status: status})
 		return nil
 	}
 }
 
 func VerificarCorpoContem(trecho string) OpcaoDePasso {
-	return func(passo *cenario.Passo) error {
-		passo.Assercoes = append(passo.Assercoes, cenario.Assercao{Tipo: cenario.AsserirCorpoContem, Valor: trecho})
+	return func(passo *scenario.Passo) error {
+		passo.Assercoes = append(passo.Assercoes, scenario.Assercao{Tipo: scenario.AsserirCorpoContem, Valor: trecho})
 		return nil
 	}
 }
 
 func VerificarCorpoCasa(padrao string) OpcaoDePasso {
-	return func(passo *cenario.Passo) error {
-		passo.Assercoes = append(passo.Assercoes, cenario.Assercao{Tipo: cenario.AsserirRegex, Valor: padrao})
+	return func(passo *scenario.Passo) error {
+		passo.Assercoes = append(passo.Assercoes, scenario.Assercao{Tipo: scenario.AsserirRegex, Valor: padrao})
 		return nil
 	}
 }
@@ -198,25 +198,25 @@ func VerificarCorpoCasa(padrao string) OpcaoDePasso {
 // A comparacao aceita a mesma escrita do YAML: "PAGA", "> 10", "existe",
 // "contem parcial".
 func VerificarJSON(caminho, comparacao string) OpcaoDePasso {
-	return func(passo *cenario.Passo) error {
-		assercao := cenario.MontarComparacao(caminho, comparacao)
-		assercao.Tipo = cenario.AsserirJSON
+	return func(passo *scenario.Passo) error {
+		assercao := scenario.MontarComparacao(caminho, comparacao)
+		assercao.Tipo = scenario.AsserirJSON
 		passo.Assercoes = append(passo.Assercoes, assercao)
 		return nil
 	}
 }
 
 func VerificarCabecalho(nome, valor string) OpcaoDePasso {
-	return func(passo *cenario.Passo) error {
-		passo.Assercoes = append(passo.Assercoes, cenario.Assercao{
-			Tipo: cenario.AsserirCabecalho, Alvo: nome, Operador: cenario.OperadorIgual, Valor: valor,
+	return func(passo *scenario.Passo) error {
+		passo.Assercoes = append(passo.Assercoes, scenario.Assercao{
+			Tipo: scenario.AsserirCabecalho, Alvo: nome, Operador: scenario.OperadorIgual, Valor: valor,
 		})
 		return nil
 	}
 }
 
 func (c *Construtor) SLO(passo, metrica, limite string) *Construtor {
-	regra, err := cenario.MontarRegraDeSLO(passo, metrica, limite)
+	regra, err := scenario.MontarRegraDeSLO(passo, metrica, limite)
 	if err != nil {
 		c.anotar(err)
 		return c
@@ -230,7 +230,7 @@ func (c *Construtor) SLOGlobal(metrica, limite string) *Construtor {
 }
 
 type Autenticador struct {
-	autenticacao cenario.Autenticacao
+	autenticacao scenario.Autenticacao
 	erro         error
 }
 
@@ -240,18 +240,18 @@ func PorToken(requisicao Requisicao, opcoes ...OpcaoDePasso) *Autenticador {
 		return &Autenticador{erro: err}
 	}
 	passo.Nome = "obter autenticacao"
-	return &Autenticador{autenticacao: cenario.Autenticacao{Tipo: cenario.AutenticacaoPorToken, Obter: &passo}}
+	return &Autenticador{autenticacao: scenario.Autenticacao{Tipo: scenario.AutenticacaoPorToken, Obter: &passo}}
 }
 
 func Basica(usuario, senha string) *Autenticador {
-	return &Autenticador{autenticacao: cenario.Autenticacao{
-		Tipo: cenario.AutenticacaoBasica, Usuario: usuario, Senha: senha,
+	return &Autenticador{autenticacao: scenario.Autenticacao{
+		Tipo: scenario.AutenticacaoBasica, Usuario: usuario, Senha: senha,
 	}}
 }
 
 func PorCabecalho(cabecalho string) *Autenticador {
-	return &Autenticador{autenticacao: cenario.Autenticacao{
-		Tipo: cenario.AutenticacaoCabecalho, Cabecalho: cabecalho,
+	return &Autenticador{autenticacao: scenario.Autenticacao{
+		Tipo: scenario.AutenticacaoCabecalho, Cabecalho: cabecalho,
 	}}
 }
 
@@ -271,24 +271,24 @@ func (c *Construtor) Autenticacao(autenticador *Autenticador) *Construtor {
 		return c
 	}
 	autenticacao := autenticador.autenticacao
-	if autenticacao.Tipo == cenario.AutenticacaoPorToken && autenticacao.Obter == nil {
+	if autenticacao.Tipo == scenario.AutenticacaoPorToken && autenticacao.Obter == nil {
 		c.anotar(errors.New("autenticacao por token precisa da requisicao que devolve o token"))
 		return c
 	}
-	if autenticacao.Tipo == cenario.AutenticacaoBasica && (autenticacao.Usuario == "" || autenticacao.Senha == "") {
+	if autenticacao.Tipo == scenario.AutenticacaoBasica && (autenticacao.Usuario == "" || autenticacao.Senha == "") {
 		c.anotar(errors.New("autenticacao basica precisa de usuario e senha"))
 		return c
 	}
-	if autenticacao.Cabecalho == "" && autenticacao.Tipo != cenario.AutenticacaoBasica {
+	if autenticacao.Cabecalho == "" && autenticacao.Tipo != scenario.AutenticacaoBasica {
 		autenticacao.Cabecalho = "Authorization: Bearer ${token}"
 	}
 	c.cenario.Autenticacao = &autenticacao
 	return c
 }
 
-func (c *Construtor) Construir() (cenario.Cenario, error) {
+func (c *Construtor) Construir() (scenario.Cenario, error) {
 	montado := c.cenario
-	montado.Alvo = cenario.Interpolar(montado.Alvo, montado.Variaveis)
+	montado.Alvo = scenario.Interpolar(montado.Alvo, montado.Variaveis)
 	if len(c.erros) > 0 {
 		return montado, fmt.Errorf("cenario invalido:\n  - %s", strings.Join(mensagens(c.erros), "\n  - "))
 	}

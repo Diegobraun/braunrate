@@ -13,20 +13,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Diegobraun/braunrate/alvo"
-	"github.com/Diegobraun/braunrate/cenario"
-	"github.com/Diegobraun/braunrate/comparacao"
-	"github.com/Diegobraun/braunrate/importador"
-	"github.com/Diegobraun/braunrate/metrica"
-	"github.com/Diegobraun/braunrate/motor"
-	"github.com/Diegobraun/braunrate/protocolo"
-	_ "github.com/Diegobraun/braunrate/protocolo/aguardar"
-	_ "github.com/Diegobraun/braunrate/protocolo/amqp"
-	_ "github.com/Diegobraun/braunrate/protocolo/graphql"
-	_ "github.com/Diegobraun/braunrate/protocolo/http"
-	_ "github.com/Diegobraun/braunrate/protocolo/kafka"
-	"github.com/Diegobraun/braunrate/relatorio"
-	"github.com/Diegobraun/braunrate/slo"
+	"github.com/Diegobraun/braunrate/internal/engine"
+	"github.com/Diegobraun/braunrate/internal/importer"
+	"github.com/Diegobraun/braunrate/internal/metrics"
+	"github.com/Diegobraun/braunrate/internal/protocol"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/amqp"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/graphql"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/http"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/kafka"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/wait"
+	"github.com/Diegobraun/braunrate/internal/report"
+	"github.com/Diegobraun/braunrate/internal/report/comparison"
+	"github.com/Diegobraun/braunrate/internal/scenario"
+	"github.com/Diegobraun/braunrate/internal/slo"
+	"github.com/Diegobraun/braunrate/internal/testsupport"
 )
 
 const versao = "0.4.0"
@@ -54,7 +54,7 @@ func main() {
 	case "alvo":
 		os.Exit(servirAlvo(os.Args[2:]))
 	case "versao":
-		fmt.Printf("braunrate %s\nprotocolos compilados: %v\n", versao, protocolo.Registrados())
+		fmt.Printf("braunrate %s\nprotocolos compilados: %v\n", versao, protocol.Registrados())
 		os.Exit(0)
 	default:
 		uso()
@@ -103,7 +103,7 @@ func executar(argumentos []string) int {
 	}
 	arquivoDeCenario := posicionais[0]
 
-	c, err := cenario.CarregarArquivo(arquivoDeCenario)
+	c, err := scenario.CarregarArquivo(arquivoDeCenario)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "erro no cenario: %v\n", err)
 		return 2
@@ -113,21 +113,21 @@ func executar(argumentos []string) int {
 		return 2
 	}
 
-	opcoes := motor.OpcoesPadrao()
+	opcoes := engine.OpcoesPadrao()
 	opcoes.Versao = versao
 	opcoes.MaximoSimultaneas = *maximoSimultaneas
 	opcoes.RaizDeDados = filepath.Dir(arquivoDeCenario)
 	opcoes.LimiarDeAtraso = *limiarDeAtraso
 	if !*silencioso {
-		opcoes.AoProgredir = func(instantaneo metrica.Instantaneo, taxaAlvo float64, restante time.Duration) {
-			fmt.Fprintf(os.Stderr, "\r%s", relatorio.LinhaDeProgresso(instantaneo, taxaAlvo, restante))
+		opcoes.AoProgredir = func(instantaneo metrics.Instantaneo, taxaAlvo float64, restante time.Duration) {
+			fmt.Fprintf(os.Stderr, "\r%s", report.LinhaDeProgresso(instantaneo, taxaAlvo, restante))
 		}
 	}
 
 	ctx, cancelar := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancelar()
 
-	m, err := motor.Novo(c, opcoes)
+	m, err := engine.Novo(c, opcoes)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 2
@@ -136,13 +136,13 @@ func executar(argumentos []string) int {
 		c.Nome, c.Alvo, humanizar(m.Plano().TotalDeRequisicoes()), m.Plano().Duracao())
 
 	documento := m.Executar(ctx)
-	protocolo.EncerrarTodos()
+	protocol.EncerrarTodos()
 	if !*silencioso {
 		fmt.Fprintln(os.Stderr)
 	}
 	veredito := slo.Avaliar(c.SLO, documento)
 	documento.SLO = veredito
-	relatorio.Resumo(os.Stdout, documento, veredito)
+	report.Resumo(os.Stdout, documento, veredito)
 
 	if *arquivoDeResultado != "" {
 		if err := gravarJSON(*arquivoDeResultado, documento); err != nil {
@@ -191,7 +191,7 @@ func analisar(conjunto *flag.FlagSet, argumentos []string) []string {
 	}
 }
 
-func gravarJSON(caminho string, documento metrica.Documento) error {
+func gravarJSON(caminho string, documento metrics.Documento) error {
 	conteudo, err := json.MarshalIndent(documento, "", "  ")
 	if err != nil {
 		return fmt.Errorf("erro ao serializar resultado: %v", err)
@@ -202,32 +202,32 @@ func gravarJSON(caminho string, documento metrica.Documento) error {
 	return nil
 }
 
-func gravarHTML(caminho string, documento metrica.Documento) error {
+func gravarHTML(caminho string, documento metrics.Documento) error {
 	arquivo, err := os.Create(caminho)
 	if err != nil {
 		return fmt.Errorf("erro ao criar %s: %v", caminho, err)
 	}
 	defer arquivo.Close()
-	if err := relatorio.HTML(arquivo, documento); err != nil {
+	if err := report.HTML(arquivo, documento); err != nil {
 		return fmt.Errorf("erro ao gerar o relatorio HTML: %v", err)
 	}
 	return nil
 }
 
-func gravarCSV(caminho string, documento metrica.Documento) error {
+func gravarCSV(caminho string, documento metrics.Documento) error {
 	arquivo, err := os.Create(caminho)
 	if err != nil {
 		return fmt.Errorf("erro ao criar %s: %v", caminho, err)
 	}
 	defer arquivo.Close()
-	if err := relatorio.CSV(arquivo, documento); err != nil {
+	if err := report.CSV(arquivo, documento); err != nil {
 		return fmt.Errorf("erro ao gerar o CSV: %v", err)
 	}
 	return nil
 }
 
-func lerDocumento(caminho string) (metrica.Documento, error) {
-	var documento metrica.Documento
+func lerDocumento(caminho string) (metrics.Documento, error) {
+	var documento metrics.Documento
 	conteudo, err := os.ReadFile(caminho)
 	if err != nil {
 		return documento, fmt.Errorf("nao consegui ler %s: %v", caminho, err)
@@ -238,9 +238,9 @@ func lerDocumento(caminho string) (metrica.Documento, error) {
 	if documento.Ferramenta != "braunrate" {
 		return documento, fmt.Errorf("%s nao foi gerado pelo braunrate; use o arquivo de -resultado", caminho)
 	}
-	if documento.VersaoDoFormato != metrica.VersaoDoFormatoDeResultado {
+	if documento.VersaoDoFormato != metrics.VersaoDoFormatoDeResultado {
 		return documento, fmt.Errorf("%s esta no formato de resultado %q e esta versao le o formato %q",
-			caminho, documento.VersaoDoFormato, metrica.VersaoDoFormatoDeResultado)
+			caminho, documento.VersaoDoFormato, metrics.VersaoDoFormatoDeResultado)
 	}
 	return documento, nil
 }
@@ -299,8 +299,8 @@ func comparar(argumentos []string) int {
 		return 2
 	}
 
-	resultado := comparacao.Comparar(antes, depois)
-	relatorio.Comparacao(os.Stdout, resultado)
+	resultado := comparison.Comparar(antes, depois)
+	report.Comparacao(os.Stdout, resultado)
 	if !resultado.Comparavel {
 		return 3
 	}
@@ -322,7 +322,7 @@ func depurar(argumentos []string) int {
 	}
 	arquivoDeCenario := posicionais[0]
 
-	c, err := cenario.CarregarArquivo(arquivoDeCenario)
+	c, err := scenario.CarregarArquivo(arquivoDeCenario)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "erro no cenario: %v\n", err)
 		return 2
@@ -332,11 +332,11 @@ func depurar(argumentos []string) int {
 		return 2
 	}
 
-	opcoes := motor.OpcoesPadrao()
+	opcoes := engine.OpcoesPadrao()
 	opcoes.Versao = versao
 	opcoes.RaizDeDados = filepath.Dir(arquivoDeCenario)
 
-	m, err := motor.Novo(c, opcoes)
+	m, err := engine.Novo(c, opcoes)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 2
@@ -348,7 +348,7 @@ func depurar(argumentos []string) int {
 	defer cancelar()
 
 	observacoes, variaveis, err := m.Depurar(ctx)
-	protocolo.EncerrarTodos()
+	protocol.EncerrarTodos()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "\nnao consegui chegar ao primeiro passo: %v\n", err)
 		return 1
@@ -356,12 +356,12 @@ func depurar(argumentos []string) int {
 
 	falhou := false
 	for indice, observacao := range observacoes {
-		relatorio.Depuracao(os.Stdout, indice+1, observacao, *mostrarCorpo)
-		if observacao.Classe != protocolo.Sucesso {
+		report.Depuracao(os.Stdout, indice+1, observacao, *mostrarCorpo)
+		if observacao.Classe != protocol.Sucesso {
 			falhou = true
 		}
 	}
-	relatorio.VariaveisDaIteracao(os.Stdout, variaveis)
+	report.VariaveisDaIteracao(os.Stdout, variaveis)
 
 	fmt.Println()
 	if falhou {
@@ -389,7 +389,7 @@ func novo(argumentos []string) int {
 		fmt.Fprintf(os.Stderr, "%s ja existe; escolha outro nome:\n  braunrate novo outro-cenario.yaml\n", destino)
 		return 2
 	}
-	if err := os.WriteFile(destino, []byte(importador.Esqueleto()), 0o644); err != nil {
+	if err := os.WriteFile(destino, []byte(importer.Esqueleto()), 0o644); err != nil {
 		fmt.Fprintf(os.Stderr, "nao consegui gravar %s: %v\n", destino, err)
 		return 1
 	}
@@ -429,7 +429,7 @@ func importar(argumentos []string) int {
 		return 2
 	}
 
-	var importacao importador.Importacao
+	var importacao importer.Importacao
 	var err error
 	if resto[0] == "jmx" {
 		if len(resto) < 2 {
@@ -441,7 +441,7 @@ func importar(argumentos []string) int {
 			fmt.Fprintf(os.Stderr, "nao consegui ler %s: %v\n", resto[1], erroDeLeitura)
 			return 2
 		}
-		importacao, err = importador.DeJMX(conteudo)
+		importacao, err = importer.DeJMX(conteudo)
 	} else {
 		comando := strings.Join(resto[1:], " ")
 		if strings.TrimSpace(comando) == "" {
@@ -452,14 +452,14 @@ func importar(argumentos []string) int {
 			}
 			comando = string(lido)
 		}
-		importacao, err = importador.DeCurl(comando)
+		importacao, err = importer.DeCurl(comando)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 2
 	}
 
-	if _, err := cenario.Carregar([]byte(importacao.YAML)); err != nil {
+	if _, err := scenario.Carregar([]byte(importacao.YAML)); err != nil {
 		fmt.Fprintf(os.Stderr, "gerei um cenario que eu mesmo nao aceito; isso e defeito meu, nao do seu arquivo:\n%v\n", err)
 		return 1
 	}
@@ -491,7 +491,7 @@ func validar(argumentos []string) int {
 		fmt.Fprintln(os.Stderr, "informe o arquivo de cenario")
 		return 2
 	}
-	c, err := cenario.CarregarArquivo(argumentos[0])
+	c, err := scenario.CarregarArquivo(argumentos[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "erro no cenario: %v\n", err)
 		return 2
@@ -500,7 +500,7 @@ func validar(argumentos []string) int {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 2
 	}
-	plano := motor.CompilarPlano(c.Carga)
+	plano := engine.CompilarPlano(c.Carga)
 	fmt.Printf("Cenario valido: %q, %d passo(s), %d iteracoes em %s.\n",
 		c.Nome, len(c.Passos), plano.TotalDeRequisicoes(), plano.Duracao())
 	if len(c.SLO) == 0 {
@@ -522,7 +522,7 @@ func servirAlvo(argumentos []string) int {
 	atrasoDoProcessador := conjunto.Duration("atraso-do-processador", 20*time.Millisecond, "quanto o processador demora por mensagem")
 	_ = conjunto.Parse(argumentos)
 
-	servidor := alvo.Novo(alvo.Opcoes{
+	servidor := testsupport.Novo(testsupport.Opcoes{
 		Latencia:     *latencia,
 		Jitter:       *jitter,
 		CongelarApos: *congelarApos,
@@ -534,9 +534,9 @@ func servirAlvo(argumentos []string) int {
 	}
 	fmt.Fprintf(os.Stderr, "alvo de teste em %s (latencia %s)\n", servidor.Endereco(), *latencia)
 
-	var processador *alvo.Processador
+	var processador *testsupport.Processador
 	if *brokers != "" {
-		processador = alvo.NovoProcessador(alvo.OpcoesDeProcessador{
+		processador = testsupport.NovoProcessador(testsupport.OpcoesDeProcessador{
 			Brokers: strings.Split(*brokers, ","),
 			Entrada: *entrada,
 			Saida:   *saida,

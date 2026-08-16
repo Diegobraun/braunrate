@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Diegobraun/braunrate/cenario"
-	_ "github.com/Diegobraun/braunrate/protocolo/http"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/http"
+	"github.com/Diegobraun/braunrate/internal/scenario"
 )
 
 // A opcao colada depois do arquivo era ignorada em silencio: o relatorio nao
@@ -45,7 +45,7 @@ func TestNovoGeraCenarioQueValidaEQueNaoSobrescreve(t *testing.T) {
 	if err != nil {
 		t.Fatalf("o arquivo nao foi criado: %v", err)
 	}
-	c, err := cenario.Carregar(conteudo)
+	c, err := scenario.Carregar(conteudo)
 	if err != nil {
 		t.Fatalf("o cenario de partida nao carrega:\n%v", err)
 	}

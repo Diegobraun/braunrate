@@ -103,3 +103,7 @@ Tres itens, todos consequencia direta das ressalvas acima:
 1. **Alvo externo ou muito mais barato.** Enquanto o alvo consome 2,1 nucleos da mesma maquina, o teto medido e do par, nao do gerador. Sem isso nao existe numero confiavel acima de ~30.000/s.
 2. **Limite de requisicoes em voo por construcao no motor**, e nos dois lados de qualquer comparacao futura. O comportamento na borda tem que ser resultado de teste, nao acidente de prototipo — foi essa ausencia que invalidou o criterio de modo de falha.
 3. **Reproduzir o travamento do Go acima de 30.000/s** com o agendador de verdade e o alvo novo. Se nao reproduzir, registrar; se reproduzir, investigar antes de seguir.
+
+## Nota de 2026-08-16
+
+Os prototipos e as medicoes brutas que sustentam esta decisao sairam da raiz do repositorio na reorganizacao da Fase 7 e estao preservados na tag [`fase-0-prototipos`](https://github.com/Diegobraun/braunrate/tree/fase-0-prototipos). Os numeros e a metodologia continuam em [medicoes-fase0.md](../medicoes-fase0.md).

@@ -5,21 +5,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Diegobraun/braunrate/cenario"
 	"github.com/Diegobraun/braunrate/dsl"
-	"github.com/Diegobraun/braunrate/protocolo"
-	_ "github.com/Diegobraun/braunrate/protocolo/aguardar"
-	_ "github.com/Diegobraun/braunrate/protocolo/amqp"
-	_ "github.com/Diegobraun/braunrate/protocolo/graphql"
-	_ "github.com/Diegobraun/braunrate/protocolo/http"
-	_ "github.com/Diegobraun/braunrate/protocolo/kafka"
+	"github.com/Diegobraun/braunrate/internal/protocol"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/amqp"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/graphql"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/http"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/kafka"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/wait"
+	"github.com/Diegobraun/braunrate/internal/scenario"
 	"gopkg.in/yaml.v3"
 )
 
 type equivalencia struct {
 	nome string
 	yaml string
-	dsl  func() (cenario.Cenario, error)
+	dsl  func() (scenario.Cenario, error)
 }
 
 // O YAML e a DSL precisam produzir a MESMA estrutura, e nao apenas resultados
@@ -92,7 +92,7 @@ slo:
   - POST /pedidos: { vazao: "> 50/s" }
   - global: { erros: < 0.1 }
 `,
-		dsl: func() (cenario.Cenario, error) {
+		dsl: func() (scenario.Cenario, error) {
 			return dsl.Novo("Jornada autenticada").
 				Alvo("${BASE:-http://127.0.0.1:8080}").
 				Variavel("inquilino", "acme").
@@ -100,7 +100,7 @@ slo:
 					dsl.POST("/auth/token").Corpo(map[string]any{"usuario": "ana", "senha": "segredo"}),
 					dsl.Capturar("token", "$.access_token"),
 				).RenovarApos(25*time.Minute)).
-				DadosDeArquivo("assinantes", "dados/assinantes.csv", dsl.Consumo(cenario.ConsumoCircular)).
+				DadosDeArquivo("assinantes", "dados/assinantes.csv", dsl.Consumo(scenario.ConsumoCircular)).
 				DadosGerados("pedidos", map[string]string{"id": "uuid", "valor": "numero(10,500)"}, dsl.Semente(7)).
 				Rampa(dsl.PorSegundo(10), dsl.PorSegundo(100), 30*time.Second).
 				Patamar(dsl.PorSegundo(100), time.Minute).
@@ -162,7 +162,7 @@ cenario:
 slo:
   - graphql ConsultarPedido: { p99: < 300ms }
 `,
-		dsl: func() (cenario.Cenario, error) {
+		dsl: func() (scenario.Cenario, error) {
 			return dsl.Novo("Cobranca em GraphQL").
 				Alvo("http://127.0.0.1:8080").
 				Patamar(dsl.PorSegundo(50), 20*time.Second).
@@ -217,10 +217,10 @@ cenario:
 slo:
   - kafka produzir pedidos-cadeia: { p95: < 100ms }
 `,
-		dsl: func() (cenario.Cenario, error) {
+		dsl: func() (scenario.Cenario, error) {
 			return dsl.Novo("Cadeia assincrona").
 				Alvo("127.0.0.1:9092").
-				DadosGerados("pedidos", map[string]string{"id": "uuid"}, dsl.Consumo(cenario.ConsumoSequencial)).
+				DadosGerados("pedidos", map[string]string{"id": "uuid"}, dsl.Consumo(scenario.ConsumoSequencial)).
 				Patamar(dsl.PorSegundo(100), 10*time.Second).
 				Passo(dsl.Kafka("pedidos-cadeia").
 					Chave("${pedidos.id}").
@@ -277,10 +277,10 @@ cenario:
       amqp: pedidos-processados
       chave: "${clientes.id}"
 `,
-		dsl: func() (cenario.Cenario, error) {
+		dsl: func() (scenario.Cenario, error) {
 			return dsl.Novo("Publicacao em RabbitMQ").
 				Alvo("amqp://127.0.0.1:5672").
-				DadosDeArquivo("clientes", "dados/clientes.csv", dsl.Consumo(cenario.ConsumoAleatorio)).
+				DadosDeArquivo("clientes", "dados/clientes.csv", dsl.Consumo(scenario.ConsumoAleatorio)).
 				Patamar(dsl.PorSegundo(30), 10*time.Second).
 				Passo(dsl.AMQP("pedidos").
 					Identidade("${clientes.id}").
@@ -318,11 +318,11 @@ carga:
 cenario:
   - http: GET /pedidos
 `,
-		dsl: func() (cenario.Cenario, error) {
+		dsl: func() (scenario.Cenario, error) {
 			return dsl.Novo("Basica").
 				Alvo("http://127.0.0.1:8080").
 				Autenticacao(dsl.Basica("ana", "segredo")).
-				DadosDeArquivo("assinantes", "dados/assinantes.csv", dsl.Consumo(cenario.ConsumoUnicoPorUsuario)).
+				DadosDeArquivo("assinantes", "dados/assinantes.csv", dsl.Consumo(scenario.ConsumoUnicoPorUsuario)).
 				Patamar(dsl.PorSegundo(10), 5*time.Second).
 				Passo(dsl.GET("/pedidos")).
 				Construir()
@@ -345,7 +345,7 @@ carga:
 cenario:
   - http: DELETE /pedidos/1
 `,
-		dsl: func() (cenario.Cenario, error) {
+		dsl: func() (scenario.Cenario, error) {
 			return dsl.Novo("Chave de api").
 				Alvo("http://127.0.0.1:8080").
 				Autenticacao(dsl.PorCabecalho("X-API-Key: ${api_key}")).
@@ -359,7 +359,7 @@ cenario:
 func TestYAMLEDSLProduzemOMesmoCenario(t *testing.T) {
 	for _, caso := range casos {
 		t.Run(caso.nome, func(t *testing.T) {
-			doYAML, err := cenario.Carregar([]byte(caso.yaml))
+			doYAML, err := scenario.Carregar([]byte(caso.yaml))
 			if err != nil {
 				t.Fatalf("o YAML do caso nao carregou: %v", err)
 			}
@@ -395,7 +395,7 @@ func TestTodoProtocoloRegistradoTemCasoDeEquivalencia(t *testing.T) {
 			exercitados[passo.Protocolo] = true
 		}
 	}
-	for _, nome := range protocolo.Registrados() {
+	for _, nome := range protocol.Registrados() {
 		if !exercitados[nome] {
 			t.Errorf("o protocolo %q nao tem caso de equivalencia YAML x DSL", nome)
 		}
@@ -413,7 +413,7 @@ func TestTodaChaveDeTopoTemCasoDeEquivalencia(t *testing.T) {
 			usadas[chave] = true
 		}
 	}
-	for _, chave := range cenario.ChavesDeTopo {
+	for _, chave := range scenario.ChavesDeTopo {
 		if !usadas[chave] {
 			t.Errorf("a chave de topo %q nao aparece em nenhum caso de equivalencia", chave)
 		}
@@ -421,13 +421,13 @@ func TestTodaChaveDeTopoTemCasoDeEquivalencia(t *testing.T) {
 }
 
 func TestTodaFormaDeCenarioTemCasoDeEquivalencia(t *testing.T) {
-	origens := map[cenario.OrigemDaCaptura]bool{}
-	assercoes := map[cenario.TipoDeAssercao]bool{}
-	fases := map[cenario.TipoDeFase]bool{}
-	autenticacoes := map[cenario.TipoDeAutenticacao]bool{}
-	consumos := map[cenario.PoliticaDeConsumo]bool{}
+	origens := map[scenario.OrigemDaCaptura]bool{}
+	assercoes := map[scenario.TipoDeAssercao]bool{}
+	fases := map[scenario.TipoDeFase]bool{}
+	autenticacoes := map[scenario.TipoDeAutenticacao]bool{}
+	consumos := map[scenario.PoliticaDeConsumo]bool{}
 	metricas := map[string]bool{}
-	operadores := map[cenario.Operador]bool{}
+	operadores := map[scenario.Operador]bool{}
 
 	for _, caso := range casos {
 		montado, err := caso.dsl()
@@ -443,7 +443,7 @@ func TestTodaFormaDeCenarioTemCasoDeEquivalencia(t *testing.T) {
 				operadores[assercao.Operador] = true
 			}
 			if len(passo.Verificacoes) > 0 {
-				assercoes[cenario.TipoDeAssercao(cenario.VerificarStatus)] = true
+				assercoes[scenario.TipoDeAssercao(scenario.VerificarStatus)] = true
 			}
 		}
 		for _, fase := range montado.Carga.Fases {
@@ -460,26 +460,26 @@ func TestTodaFormaDeCenarioTemCasoDeEquivalencia(t *testing.T) {
 		}
 	}
 
-	faltando(t, "origem de captura", []cenario.OrigemDaCaptura{
-		cenario.CapturaDeJSON, cenario.CapturaDeCabecalho, cenario.CapturaDeRegex,
-		cenario.CapturaDeCorpo, cenario.CapturaDeStatus,
+	faltando(t, "origem de captura", []scenario.OrigemDaCaptura{
+		scenario.CapturaDeJSON, scenario.CapturaDeCabecalho, scenario.CapturaDeRegex,
+		scenario.CapturaDeCorpo, scenario.CapturaDeStatus,
 	}, origens)
-	faltando(t, "tipo de assercao", []cenario.TipoDeAssercao{
-		cenario.AsserirCorpoContem, cenario.AsserirJSON, cenario.AsserirRegex,
-		cenario.AsserirCabecalho, cenario.TipoDeAssercao(cenario.VerificarStatus),
+	faltando(t, "tipo de assercao", []scenario.TipoDeAssercao{
+		scenario.AsserirCorpoContem, scenario.AsserirJSON, scenario.AsserirRegex,
+		scenario.AsserirCabecalho, scenario.TipoDeAssercao(scenario.VerificarStatus),
 	}, assercoes)
-	faltando(t, "tipo de fase", []cenario.TipoDeFase{
-		cenario.FaseRampa, cenario.FasePatamar, cenario.FasePico, cenario.FaseConstante,
+	faltando(t, "tipo de fase", []scenario.TipoDeFase{
+		scenario.FaseRampa, scenario.FasePatamar, scenario.FasePico, scenario.FaseConstante,
 	}, fases)
-	faltando(t, "tipo de autenticacao", []cenario.TipoDeAutenticacao{
-		cenario.AutenticacaoPorToken, cenario.AutenticacaoBasica, cenario.AutenticacaoCabecalho,
+	faltando(t, "tipo de autenticacao", []scenario.TipoDeAutenticacao{
+		scenario.AutenticacaoPorToken, scenario.AutenticacaoBasica, scenario.AutenticacaoCabecalho,
 	}, autenticacoes)
-	faltando(t, "politica de consumo", []cenario.PoliticaDeConsumo{
-		cenario.ConsumoCircular, cenario.ConsumoSequencial, cenario.ConsumoAleatorio, cenario.ConsumoUnicoPorUsuario,
+	faltando(t, "politica de consumo", []scenario.PoliticaDeConsumo{
+		scenario.ConsumoCircular, scenario.ConsumoSequencial, scenario.ConsumoAleatorio, scenario.ConsumoUnicoPorUsuario,
 	}, consumos)
 	faltando(t, "metrica de slo", []string{"p95", "p99", "max", "erros", "vazao"}, metricas)
-	faltando(t, "operador de comparacao", []cenario.Operador{
-		cenario.OperadorIgual, cenario.OperadorMaior, cenario.OperadorExiste, cenario.OperadorContem,
+	faltando(t, "operador de comparacao", []scenario.Operador{
+		scenario.OperadorIgual, scenario.OperadorMaior, scenario.OperadorExiste, scenario.OperadorContem,
 	}, operadores)
 }
 
@@ -492,7 +492,7 @@ func faltando[T comparable](t *testing.T, assunto string, esperados []T, vistos 
 	}
 }
 
-func semLinhas(c cenario.Cenario) cenario.Cenario {
+func semLinhas(c scenario.Cenario) scenario.Cenario {
 	copia := c
 	copia.Passos = nil
 	for _, passo := range c.Passos {
@@ -525,7 +525,7 @@ func semLinhas(c cenario.Cenario) cenario.Cenario {
 	return copia
 }
 
-func passoSemLinhas(passo cenario.Passo) cenario.Passo {
+func passoSemLinhas(passo scenario.Passo) scenario.Passo {
 	copia := passo
 	copia.Linha = 0
 	copia.Capturas = nil
@@ -541,7 +541,7 @@ func passoSemLinhas(passo cenario.Passo) cenario.Passo {
 	return copia
 }
 
-func diferencas(esperado, obtido cenario.Cenario) []string {
+func diferencas(esperado, obtido scenario.Cenario) []string {
 	var achados []string
 	comparar := func(campo string, a, b any) {
 		if !reflect.DeepEqual(a, b) {

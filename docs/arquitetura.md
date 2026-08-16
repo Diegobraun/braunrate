@@ -126,18 +126,28 @@ O cenario hibrido — `kafka.produzir` seguido de `aguardar` — usa o mesmo con
 
 ```
 braunrate/
-├── cenario/     modelo, validacao, parser YAML, serializacao
-├── dsl/         construtores sobre o mesmo modelo
-├── motor/       plano de carga, agendador, executor, contexto
-├── metrica/     HDR, contadores, series, documento de resultado, merge
-├── protocolo/   registro + http, graphql, kafka, amqp, aguardar
-├── relatorio/   terminal, html, json, csv, markdown, comparacao
-├── dados/       csv com politica de consumo, geracao com semente
-├── slo/         avaliacao e codigo de saida
-└── importador/  jmx -> modelo
+├── cmd/braunrate/       main, wiring, parse de flags
+├── dsl/                 unica API publica: cenario escrito em Go
+├── examples/            cenarios .yaml de exemplo
+├── docs/
+└── internal/            tudo o mais e detalhe de implementacao
+    ├── scenario/        modelo, validacao, parser YAML, serializacao
+    ├── engine/          plano de carga, agendador, executor
+    ├── metrics/         HDR, contadores, series, documento de resultado, merge
+    ├── protocol/        registro + http, graphql, kafka, amqp, wait, transport
+    ├── report/          terminal, html, json, csv, comparison
+    ├── correlation/     captura e assercao
+    ├── runtime/         valores da iteracao e interpolacao
+    ├── auth/            token, basica, cabecalho
+    ├── data/            csv com politica de consumo, geracao com semente
+    ├── slo/             avaliacao e codigo de saida
+    ├── importer/        curl e jmx -> modelo
+    └── testsupport/     alvo de teste embutido
 ```
 
-Dependencia permitida em uma direcao so: `relatorio` e `protocolo` dependem de `metrica` e `cenario`; `motor` depende de `cenario`, `metrica` e do registro de protocolos; `cenario` e `metrica` nao dependem de ninguem acima. Um `import` de `protocolo` dentro de `metrica` e erro de arquitetura, porque e o comeco de metrica especifica de protocolo.
+`internal/` nao e organizacao: e o compilador impedindo que projeto de fora importe o que nao e contrato publico. So `dsl/` e API para quem usa o braunrate como biblioteca.
+
+Dependencia permitida em uma direcao so: `report` e `protocol` dependem de `metrics` e `scenario`; `engine` depende de `scenario`, `metrics` e do registro de protocolos; `scenario` e `metrics` nao dependem de ninguem acima. Um `import` de `protocol` dentro de `metrics` e erro de arquitetura, porque e o comeco de metrica especifica de protocolo.
 
 ## Preparacao para execucao distribuida
 

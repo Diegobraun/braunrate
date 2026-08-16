@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Diegobraun/braunrate/cenario"
 	"github.com/Diegobraun/braunrate/dsl"
-	"github.com/Diegobraun/braunrate/metrica"
-	"github.com/Diegobraun/braunrate/motor"
+	"github.com/Diegobraun/braunrate/internal/engine"
+	"github.com/Diegobraun/braunrate/internal/metrics"
+	"github.com/Diegobraun/braunrate/internal/scenario"
 )
 
 const gemeoEmYAML = `
@@ -41,7 +41,7 @@ func TestCenarioEmGoRodaComOMesmoMotorEAsMesmasChaves(t *testing.T) {
 	}))
 	t.Cleanup(servidor.Close)
 
-	doYAML, err := cenario.Carregar([]byte(fmt.Sprintf(gemeoEmYAML, servidor.URL)))
+	doYAML, err := scenario.Carregar([]byte(fmt.Sprintf(gemeoEmYAML, servidor.URL)))
 	if err != nil {
 		t.Fatalf("yaml nao carregou: %v", err)
 	}
@@ -74,11 +74,11 @@ func TestCenarioEmGoRodaComOMesmoMotorEAsMesmasChaves(t *testing.T) {
 	}
 }
 
-func executar(t *testing.T, c cenario.Cenario) metrica.Documento {
+func executar(t *testing.T, c scenario.Cenario) metrics.Documento {
 	t.Helper()
-	opcoes := motor.OpcoesPadrao()
+	opcoes := engine.OpcoesPadrao()
 	opcoes.RaizDeDados = t.TempDir()
-	m, err := motor.Novo(c, opcoes)
+	m, err := engine.Novo(c, opcoes)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}

@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Diegobraun/braunrate/protocolo"
-	"github.com/Diegobraun/braunrate/protocolo/aguardar"
-	"github.com/Diegobraun/braunrate/protocolo/amqp"
-	"github.com/Diegobraun/braunrate/protocolo/graphql"
-	protocoloHTTP "github.com/Diegobraun/braunrate/protocolo/http"
-	"github.com/Diegobraun/braunrate/protocolo/kafka"
+	"github.com/Diegobraun/braunrate/internal/protocol"
+	"github.com/Diegobraun/braunrate/internal/protocol/amqp"
+	"github.com/Diegobraun/braunrate/internal/protocol/graphql"
+	protocoloHTTP "github.com/Diegobraun/braunrate/internal/protocol/http"
+	"github.com/Diegobraun/braunrate/internal/protocol/kafka"
+	"github.com/Diegobraun/braunrate/internal/protocol/wait"
 )
 
 // O corpo declarado como estrutura vira JSON pelo mesmo caminho do YAML
@@ -79,7 +79,7 @@ func (p *PassoHTTP) SeguirRedirect(seguir bool) *PassoHTTP {
 	return p
 }
 
-func (p *PassoHTTP) montar() (string, protocolo.Configuracao, error) {
+func (p *PassoHTTP) montar() (string, protocol.Configuracao, error) {
 	if p.erro != nil {
 		return "", nil, p.erro
 	}
@@ -130,7 +130,7 @@ func (p *PassoGraphQL) Timeout(timeout time.Duration) *PassoGraphQL {
 	return p
 }
 
-func (p *PassoGraphQL) montar() (string, protocolo.Configuracao, error) {
+func (p *PassoGraphQL) montar() (string, protocol.Configuracao, error) {
 	if p.erro != nil {
 		return "", nil, p.erro
 	}
@@ -192,7 +192,7 @@ func (p *PassoKafka) Timeout(timeout time.Duration) *PassoKafka {
 	return p
 }
 
-func (p *PassoKafka) montar() (string, protocolo.Configuracao, error) {
+func (p *PassoKafka) montar() (string, protocol.Configuracao, error) {
 	if p.erro != nil {
 		return "", nil, p.erro
 	}
@@ -261,7 +261,7 @@ func (p *PassoAMQP) Timeout(timeout time.Duration) *PassoAMQP {
 	return p
 }
 
-func (p *PassoAMQP) montar() (string, protocolo.Configuracao, error) {
+func (p *PassoAMQP) montar() (string, protocol.Configuracao, error) {
 	if p.erro != nil {
 		return "", nil, p.erro
 	}
@@ -272,11 +272,11 @@ func (p *PassoAMQP) montar() (string, protocolo.Configuracao, error) {
 }
 
 type PassoAguardar struct {
-	configuracao *aguardar.Configuracao
+	configuracao *wait.Configuracao
 }
 
 func AguardarKafka(topico string) *PassoAguardar {
-	configuracao := aguardar.Padrao()
+	configuracao := wait.Padrao()
 	configuracao.Fonte = "kafka"
 	configuracao.Topico = topico
 	return &PassoAguardar{configuracao: configuracao}
@@ -285,14 +285,14 @@ func AguardarKafka(topico string) *PassoAguardar {
 // Espera por HTTP existe para o sistema que so mostra o efeito por API: sem
 // isto, a cadeia ponta a ponta nao se mede nele.
 func AguardarHTTP(caminho string) *PassoAguardar {
-	configuracao := aguardar.Padrao()
+	configuracao := wait.Padrao()
 	configuracao.Fonte = "http"
 	configuracao.Caminho = caminho
 	return &PassoAguardar{configuracao: configuracao}
 }
 
 func AguardarAMQP(fila string) *PassoAguardar {
-	configuracao := aguardar.Padrao()
+	configuracao := wait.Padrao()
 	configuracao.Fonte = "amqp"
 	configuracao.Topico = fila
 	return &PassoAguardar{configuracao: configuracao}
@@ -316,17 +316,17 @@ func (p *PassoAguardar) Enderecos(enderecos ...string) *PassoAguardar {
 }
 
 func (p *PassoAguardar) AteJSON(caminho, valor string) *PassoAguardar {
-	p.configuracao.Ate = aguardar.Condicao{Caminho: caminho, Valor: valor}
+	p.configuracao.Ate = wait.Condicao{Caminho: caminho, Valor: valor}
 	return p
 }
 
 func (p *PassoAguardar) AteStatus(status int) *PassoAguardar {
-	p.configuracao.Ate = aguardar.Condicao{Status: status}
+	p.configuracao.Ate = wait.Condicao{Status: status}
 	return p
 }
 
 func (p *PassoAguardar) AteCorpoContem(trecho string) *PassoAguardar {
-	p.configuracao.Ate = aguardar.Condicao{CorpoContem: trecho}
+	p.configuracao.Ate = wait.Condicao{CorpoContem: trecho}
 	return p
 }
 
@@ -340,8 +340,8 @@ func (p *PassoAguardar) Timeout(timeout time.Duration) *PassoAguardar {
 	return p
 }
 
-func (p *PassoAguardar) montar() (string, protocolo.Configuracao, error) {
-	if err := aguardar.Validar(p.configuracao); err != nil {
+func (p *PassoAguardar) montar() (string, protocol.Configuracao, error) {
+	if err := wait.Validar(p.configuracao); err != nil {
 		return "", nil, err
 	}
 	return "aguardar", p.configuracao, nil

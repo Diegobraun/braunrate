@@ -57,10 +57,10 @@ Decisao da Fase 0: **Go**, sustentada por dois criterios apenas — RSS sob carg
 go build -o braunrate ./cmd/braunrate
 
 braunrate alvo -latencia=5ms &                     # alvo de teste embutido
-braunrate validar cenarios/http-basico.yaml        # valida sem executar
-braunrate depurar cenarios/http-basico.yaml        # uma iteracao, tudo visivel
-braunrate executar cenarios/http-basico.yaml       # executa e resume no terminal
-braunrate executar cenarios/http-basico.yaml -html=relatorio.html -resultado=saida.json
+braunrate validar examples/http-basico.yaml        # valida sem executar
+braunrate depurar examples/http-basico.yaml        # uma iteracao, tudo visivel
+braunrate executar examples/http-basico.yaml       # executa e resume no terminal
+braunrate executar examples/http-basico.yaml -html=relatorio.html -resultado=saida.json
 braunrate comparar antes.json depois.json          # o que mudou entre duas execucoes
 ```
 
@@ -86,7 +86,7 @@ cenario:
 
 Codigo de saida: `0` passou, `1` **falhou o SLO**, `2` erro de cenario, `3` **resultado invalido** — o gerador saturou e o numero nao vale.
 
-Cenario com autenticacao, correlacao, dados e SLO — o exemplo completo esta em [`cenarios/jornada-autenticada.yaml`](cenarios/jornada-autenticada.yaml):
+Cenario com autenticacao, correlacao, dados e SLO — o exemplo completo esta em [`examples/jornada-autenticada.yaml`](examples/jornada-autenticada.yaml):
 
 ```yaml
 autenticacao:
@@ -203,7 +203,7 @@ BeanShellPreProcessor (1). Confira se algum deles mudava o que era medido
 **Ver a iteracao antes da carga**, que e onde a correlacao quebrada aparece:
 
 ```
-$ braunrate depurar cenarios/jornada-autenticada.yaml
+$ braunrate depurar examples/jornada-autenticada.yaml
 depurando "Jornada de cobranca" contra http://127.0.0.1:8080: 1 usuario, 1 iteracao, sem carga
 
 passo 1 — consultar pedido   [ok em 3.4ms]
@@ -225,7 +225,7 @@ variaveis no fim da iteracao
   assinantes.id = 1001
 
 Iteracao completa: 2 passo(s), tudo certo. Para rodar com carga:
-  braunrate executar cenarios/jornada-autenticada.yaml
+  braunrate executar examples/jornada-autenticada.yaml
 ```
 
 ## O mesmo cenario em Go
@@ -270,7 +270,7 @@ $ go test ./dsl/ -run TestYAMLEDSL -v
 ## O relatorio
 
 ```bash
-braunrate executar cenarios/jornada-autenticada.yaml -html=relatorio.html -resultado=saida.json -csv=passos.csv
+braunrate executar examples/jornada-autenticada.yaml -html=relatorio.html -resultado=saida.json -csv=passos.csv
 braunrate relatorio saida.json -html=relatorio.html     # gera depois, a partir do resultado gravado
 braunrate comparar ontem.json hoje.json                 # o que mudou entre duas execucoes
 ```

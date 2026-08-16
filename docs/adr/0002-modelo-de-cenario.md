@@ -55,7 +55,7 @@ Consequencia aceita e explicita: um cenario com `ExpressaoDeCodigo` nao volta pa
 A DSL **carrega um cenario YAML existente e o modifica**:
 
 ```
-carregar("cenarios/cobranca.yaml")
+carregar("examples/cobranca.yaml")
   .passo("consultar assinatura").comCabecalho("X-Trace", contexto -> gerarTrace())
   .executar()
 ```
