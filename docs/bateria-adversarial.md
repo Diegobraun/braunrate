@@ -770,3 +770,193 @@ anterior no terminal e no HTML. Saida publicada no README corrigida junto.
 **O que continua aberto**: a execucao terminou **verde, exit 0**, com o consumidor
 morto ha 12 segundos. E o achado 1.3.a de novo, agora com um alvo que nao existe
 mais.
+
+---
+
+## Bloco 3 — Erro humano
+
+Doze erros que quem escreve cenario comete. Cada mensagem classificada em
+**ensina** (diz o que fazer), **aponta** (diz que esta errado) ou **abandona**
+(nao diz, ou pior, aceita).
+
+| # | erro | antes | depois |
+|---|---|---|---|
+| 3.1 | `carrga:` no lugar de `carga:` | ensina | — |
+| 3.2 | `taxa: 100` sem unidade | **abandona: aceitava como 100/s** | ensina (corrigido) |
+| 3.3 | `durante: 30` sem unidade | ensina | — |
+| 3.4 | `${naoexiste}` nao declarada | ensina | — |
+| 3.5 | `variaveis: { senha: p4ssw0rd }` | **abandona: aceitava e ia para o repositorio** | ensina (corrigido) |
+| 3.6 | CSV que nao existe | aponta (e `validate` aprova) | — |
+| 3.7 | coluna que nao existe no CSV | **abandona: interpolava vazio** | ensina (corrigido) |
+| 3.8 | captura sem `$.` | ensina | — |
+| 3.9 | `status: "duzentos"` | ensina | — |
+| 3.10 | indentacao YAML errada | aponta | — |
+| 3.11 | slo apontando passo inexistente | aponta (so no fim da execucao) | ensina na validacao (corrigido) |
+| 3.12 | `braunrate new --help` | **abandona: cria arquivo** | — |
+
+### O que ja ensinava bem
+
+```
+erro no cenario: e01.yaml:3:1: chave desconhecida no topo do cenario: "carrga"
+    voce quis dizer "carga"?
+    disponiveis: nome, alvo, requer, variaveis, autenticacao, mensageria, dados, carga, cenario, slo
+    um cenario minimo tem quatro delas: ...
+```
+
+```
+erro no cenario: e04.yaml:8:25: nao sei de onde vem ${naoexiste}.
+    declare de onde ela vem:
+      variaveis: { naoexiste: valor }                 # fixa no cenario
+      variaveis: { naoexiste: "${NAOEXISTE:-reserva}" }   # do ambiente, com reserva
+      captura: { naoexiste: $.campo }                 # de uma resposta anterior
+      dados: { pedidos: { arquivo: dados.csv } }  # e entao ${pedidos.naoexiste}
+    nome em CAIXA ALTA vem do ambiente sem precisar declarar: ${NAOEXISTE}
+```
+
+Nome proximo vira sugestao, a lista completa vem depois, e o exemplo minimo fecha.
+Tres dos quatro erros mais comuns caem nesse padrao.
+
+---
+
+#### Achado 3.2.a — `taxa: 100` era lida como 100/s, sem aviso
+**Gravidade**: ALTA — afeta o numero, e o numero fica sessenta vezes errado
+
+`readRate` aceita `/s`, `/m` e `/h`. Um numero pelado caia no caso omisso e virava
+por segundo. Quem escreveu `taxa: 100` querendo por minuto recebeu **sessenta vezes
+a carga**, o relatorio saiu inteiro sobre uma carga que ninguem pediu, e nada em
+lugar nenhum disse isso.
+
+**Corrigido agora**:
+
+```
+erro no cenario: e02.yaml:5:24: taxa sem unidade: "100"
+    diga em que intervalo: 100/s (por segundo), 100/m (por minuto) ou 100/h (por hora)
+```
+
+Dois testes, o primeiro provado contra o codigo anterior:
+
+```
+--- FAIL: TestRateWithoutUnitIsRefusedInsteadOfAssumedPerSecond (0.00s)
+    yaml_test.go:244: taxa sem unidade foi aceita: 100 virou 100/s sem ninguem ser avisado
+```
+
+O segundo trava o contrario: `taxa: rapido` continua com "taxa invalida", em vez de
+sugerir `rapido/s`.
+
+---
+
+#### Achado 3.5.a — credencial literal em `variaveis:` era aceita
+**Gravidade**: ALTA — viola a regra de credencial declarada para o projeto
+
+```yaml
+variaveis:
+  senha: p4ssw0rd-de-verdade
+```
+
+```
+Cenario valido: "Teste", 1 passo, 50 iteracoes em 5s.
+exit=0
+```
+
+O importador de curl **ja** mascara exatamente esses nomes antes de escrever o
+arquivo (`secretFields` em `internal/importer/render.go`), e o bloco `mensageria`
+recusa senha literal de broker com mensagem que ensina. Escrito a mao, no bloco que
+todo mundo usa, passava.
+
+**Corrigido agora** — mesma lista de nomes, mesma postura:
+
+```
+erro no cenario: e05.yaml:4:10: senha literal em 'variaveis': credencial nunca vai
+para o arquivo, porque o arquivo vai para o repositorio.
+    troque por:  variaveis: { senha: "${SENHA}" }
+    e rode com:  SENHA=... braunrate execute cenario.yaml
+```
+
+Tres testes; o primeiro cobre `senha`, `password`, `token`, `api_key` e
+`client_secret` e reprova o codigo anterior nos cinco. Os outros dois travam o que
+**nao** pode mudar: credencial vinda do ambiente continua aceita, e variavel comum
+(`usuario: ana`) continua aceitando literal — a regra e sobre segredo, nao sobre
+escrever valor no arquivo.
+
+**O que fica aberto**: `${SENHA:-segredo}` continua aceito em corpo de passo, e os
+tres exemplos publicados usam essa forma. Para credencial de broker a regra do
+projeto ja recusa reserva com todas as letras ("a reserva seria o segredo escrito no
+arquivo"). Estender isso para corpo de passo quebra os tres exemplos e e decisao de
+produto, nao correcao de bateria. Entra na lista.
+
+---
+
+#### Achado 3.7.a — coluna que nao existe no CSV interpolava para vazio
+**Gravidade**: ALTA — mesma familia do 1.2.a, e a terceira ocorrencia dela
+
+```yaml
+dados:
+  clientes: { arquivo: clientes.csv, consumo: circular }   # colunas: id,tipo,rota,limite
+cenario:
+  - http: GET /pessoas/${clientes.identificador}/limite
+```
+
+```
+Cenario valido: "Teste", 1 passo, 30 iteracoes em 3s.
+exit=0
+```
+
+```
+passo 1 — consultar   [FALHOU em 6.7ms]
+  requisicao: GET /pessoas//limite
+```
+
+A regra de variavel nao declarada (A8) checa o **nome da fonte** e para ali: o
+comentario no codigo dizia que as colunas vem do arquivo, "que nao esta aberto neste
+ponto". Verdade na leitura do YAML — mas o arquivo e aberto logo depois, no motor, e
+la a lista de colunas esta pronta.
+
+**Corrigido agora**, no ponto em que as fontes sao abertas:
+
+```
+a fonte de dados "clientes" nao tem o campo "identificador".
+    campos disponiveis: id, limite, rota, tipo
+```
+
+Dois testes, o primeiro provado contra o codigo anterior. Junto veio um defeito que
+so aparece nesse caminho: `debug` imprimia a mesma mensagem de erro duas vezes.
+
+---
+
+#### Achado 3.11.a — `validate` aprova o que ja da para ler que esta errado
+**Gravidade**: media — o portao barato do CI aprova tres coisas diferentes que nao rodam
+
+Tres casos independentes, o mesmo padrao:
+
+| caso | `validate` | quando o erro aparece |
+|---|---|---|
+| passo Kafka sem broker em lugar nenhum (1.3.b) | `Cenario valido` | primeira iteracao |
+| slo apontando passo que nao existe | `Cenario valido` | **no fim da execucao**, carga inteira ja gasta |
+| arquivo CSV que nao existe | `Cenario valido` | ao abrir a fonte |
+
+Os dois primeiros foram corrigidos: os nomes e os enderecos estao todos no arquivo.
+
+```
+cenario invalido:
+  - o slo "consultar" nao casa com nenhum passo do cenario
+    disponiveis: consultar produtos
+```
+
+O terceiro — arquivo que nao existe — nao foi corrigido: `validate` teria que tocar
+o disco, e ha um argumento legitimo de que validar o texto e validar o ambiente sao
+coisas diferentes. E decisao, nao defeito, e vai para a lista.
+
+---
+
+#### Achado 3.12.a — `braunrate new --help` cria um arquivo
+**Gravidade**: baixa — mas e a ferramenta escrevendo no disco de quem pediu ajuda
+
+```
+$ braunrate new --help
+cenario de partida em cenario.yaml: troque o alvo e o caminho pelo seu servico.
+```
+
+A flag e ignorada e o arquivo padrao e criado. Nao sobrescreve (com `cenario.yaml`
+ja existente, recusa e sugere outro nome), entao nao ha perda — mas e a unica forma
+de a ferramenta escrever no disco de alguem que estava pedindo documentacao. Mesma
+familia do 1.4.b: argumento a mais ignorado em silencio.
