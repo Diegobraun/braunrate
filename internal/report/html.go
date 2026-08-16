@@ -18,6 +18,7 @@ type htmlPage struct {
 	Verdict           htmlVerdict
 	Journey           metrics.Journey
 	Steps             []htmlStep
+	Mix               []htmlMixLine
 	HasNeverRan       bool
 	HasServiceLatency bool
 	ClosedLoop        string
@@ -61,6 +62,16 @@ type htmlStep struct {
 	Errors    int64
 	HasError  bool
 	NeverRan  bool
+}
+
+// Peso de 60% que virou 45% na execucao e informacao, nao detalhe. So aparece
+// quando o cenario declara mix.
+type htmlMixLine struct {
+	Name     string
+	Declared string
+	Observed string
+	Count    string
+	Total    string
 }
 
 type htmlError struct {
@@ -135,6 +146,8 @@ func buildPage(document metrics.Document) htmlPage {
 		}
 		page.Steps = append(page.Steps, line)
 	}
+	page.Mix = mixLines(document)
+
 	// A step that never ran used to vanish from the table, and whoever read the
 	// report never found out it existed.
 	for _, name := range metrics.StepsThatNeverRan(document) {
@@ -492,6 +505,15 @@ var htmlTemplate = template.Must(template.Must(template.New("report").Parse(page
 <p class="nota">Passo com traco nunca chegou a executar: a iteracao parou antes dele. O motivo esta em "Erros", no passo que falhou primeiro.</p>
 {{end}}
 {{end}}
+{{- if .Mix}}
+<h2>Mix declarado e observado</h2>
+<table>
+  <tr><th>alternativa</th><th>declarado</th><th>observado</th><th>requisicoes</th></tr>
+  {{range .Mix}}
+  <tr><td>{{.Name}}</td><td>{{.Declared}}</td><td>{{.Observed}}</td><td>{{.Count}} de {{.Total}}</td></tr>
+  {{end}}
+</table>
+{{- end}}
 {{if .ClosedLoop}}
 <p class="nota">(2) tempo de resposta puro. No laco fechado nao existe instante agendado: o usuario virtual so pede de novo depois da resposta anterior, entao nenhum atraso de fila aparece nestes numeros.</p>
 {{else}}
@@ -562,3 +584,31 @@ var htmlTemplate = template.Must(template.Must(template.New("report").Parse(page
 </body>
 </html>
 `))
+
+func mixLines(document metrics.Document) []htmlMixLine {
+	total := int64(0)
+	declared := false
+	for _, step := range document.Steps {
+		total += step.Count
+		if step.DeclaredShare > 0 {
+			declared = true
+		}
+	}
+	if !declared || total == 0 {
+		return nil
+	}
+	var lines []htmlMixLine
+	for _, step := range document.Steps {
+		if step.DeclaredShare <= 0 {
+			continue
+		}
+		lines = append(lines, htmlMixLine{
+			Name:     step.Name,
+			Declared: percentage(step.DeclaredShare * 100),
+			Observed: percentage(float64(step.Count) / float64(total) * 100),
+			Count:    thousands(step.Count),
+			Total:    thousands(total),
+		})
+	}
+	return lines
+}

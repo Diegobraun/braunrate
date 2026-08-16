@@ -358,6 +358,31 @@ gerar:
 
 Os dois lados sao cobertos por teste: `TestGeneratedValueIsStableWithinTheIterationAndNewInTheNext` reprova se a mesma jornada usar dois valores ou se duas jornadas usarem o mesmo, e `TestNewPerUseIsExplicitAndChangesAtEveryOccurrence` reprova se o `novo_a_cada: uso` nao renovar.
 
+### Mix ponderado: a proporcao entre operacoes
+
+Repetir a mesma chamada mede cache, nao sistema. `peso` reparte a taxa declarada em `carga:` entre alternativas, e cada iteracao executa **uma** delas:
+
+```yaml
+cenario:
+  - nome: consultar pedido
+    peso: 60
+    http: { metodo: GET, caminho: "/pedidos/${pedidos.id}" }
+  - nome: criar pedido
+    peso: 10
+    http: { metodo: POST, caminho: /pedidos }
+```
+
+A escolha e por posicao no ciclo, nao sorteio: duas execucoes do mesmo arquivo aplicam o mesmo mix, entao a diferenca entre elas e do alvo e nao do gerador. O relatorio mostra a proporcao que de fato saiu, ao lado da declarada:
+
+```
+Mix declarado e observado
+  consultar pedido             60.0% declarado     60.0% observado (300 de 500)
+  consultar fatura             30.0% declarado     30.0% observado (150 de 500)
+  criar pedido                 10.0% declarado     10.0% observado (50 de 500)
+```
+
+Peso escolhe qual alternativa executar, nao qual passo dentro de uma jornada: um cenario com captura encadeada e uma jornada so, e a validacao recusa peso nele com as duas saidas. O exemplo completo esta em [`examples/mix-de-operacoes.yaml`](examples/mix-de-operacoes.yaml), e o [ADR 0016](docs/adr/0016-mix-ponderado-de-operacoes.md) explica as tres decisoes.
+
 ### Ramificacao por perfil: a coluna decide a rota
 
 Nao existe passo condicional, e nao e falta: qual caminho cada perfil percorre, e em que proporcao, e conhecimento de negocio — nenhuma observacao de trafego revela isso, e quem grava uma passagem grava um perfil. A ramificacao honesta e por dado.
@@ -1055,6 +1080,7 @@ Tres razoes, nesta ordem:
 - [ADR 0013 — gravador de trafego](docs/adr/0013-gravador-de-trafego.md)
 - [ADR 0014 — autenticacao de mensageria](docs/adr/0014-autenticacao-de-mensageria.md)
 - [ADR 0015 — superficie publica da DSL](docs/adr/0015-superficie-publica-da-dsl.md)
+- [ADR 0016 — mix ponderado de operacoes](docs/adr/0016-mix-ponderado-de-operacoes.md)
 - [API do modo servidor](docs/api-servidor.md) — um exemplo de curl por rota
 - [Schema do cenario](docs/braunrate.schema.json) — autocompletar e validacao no editor
 - [Exemplo de relatorio HTML](docs/exemplo-relatorio.html) — saida real de uma execucao que falhou o SLO

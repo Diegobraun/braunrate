@@ -1,0 +1,51 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+#
+# Repetir a mesma chamada mede cache, nao sistema. Aqui cada iteracao executa uma
+# das tres alternativas, na proporcao declarada: a taxa continua sendo a do bloco
+# 'carga', e o peso decide como ela se reparte.
+#
+# A escolha e por posicao no ciclo, nao sorteio: duas execucoes do mesmo arquivo
+# aplicam o mesmo mix, entao a diferenca entre elas e do alvo (ADR 0016).
+nome: Mix de operacoes
+alvo: ${ALVO:-http://127.0.0.1:8080}
+
+autenticacao:
+  tipo: token
+  obter:
+    http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: "${SENHA:-segredo}" } }
+    captura: { token: $.access_token }
+
+dados:
+  pedidos:
+    arquivo: dados/assinantes.csv
+    consumo: circular
+
+carga:
+  perfis:
+    - patamar: { taxa: 100/s, durante: 5s }
+
+cenario:
+  - nome: consultar pedido
+    peso: 60
+    http: { metodo: GET, caminho: "/pedidos/${pedidos.id}" }
+    verificar: { status: 200 }
+
+  - nome: consultar fatura
+    peso: 30
+    http: { metodo: GET, caminho: "/pedidos/${pedidos.id}/fatura" }
+    verificar: { status: 200 }
+
+  - nome: criar pedido
+    peso: 10
+    http: { metodo: POST, caminho: /pedidos, corpo: { assinante: "${pedidos.id}" } }
+    verificar: { status: 201 }
+
+slo:
+  - consultar pedido: { p95: < 200ms }
+  - consultar fatura: { p95: < 200ms }
+  - criar pedido: { p95: < 300ms }
+  - global: { erros: < 1 }
+
+# Nao existe passo com captura aqui, e nao e por acaso: peso escolhe qual
+# alternativa executar, nao qual passo dentro de uma jornada. Um cenario com
+# cadeia de capturas e uma jornada so, e a validacao recusa peso nele.

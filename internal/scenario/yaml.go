@@ -46,7 +46,7 @@ func nodeError(node *yaml.Node, format string, args ...any) error {
 // exists on only one side becomes autocomplete the parser refuses.
 var (
 	TopKeys  = []string{"nome", "alvo", "requer", "variaveis", "autenticacao", "tls", "mensageria", "dados", "carga", "cenario", "slo"}
-	StepKeys = []string{"nome", "captura", "verificar", "espera"}
+	StepKeys = []string{"nome", "peso", "captura", "verificar", "espera"}
 )
 
 func ParseFile(path string) (Spec, error) {
@@ -487,7 +487,11 @@ func readStep(node *yaml.Node) (Step, error) {
 			}
 			step.Captures = captures
 		case "peso":
-			return step, nodeError(key, "a chave %q ainda nao existe: mix ponderado de operacoes entra junto com o GraphQL", key.Value)
+			weight, err := strconv.Atoi(strings.TrimSpace(value.Value))
+			if err != nil || weight <= 0 {
+				return step, nodeError(value, "peso precisa ser um inteiro maior que zero, por exemplo: peso: 60")
+			}
+			step.Weight = weight
 		default:
 			if _, exists := protocol.Lookup(key.Value); !exists {
 				return step, nodeError(key, "nao reconheco %q como tipo de passo\n%s",

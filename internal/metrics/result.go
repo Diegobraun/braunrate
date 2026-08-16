@@ -126,6 +126,9 @@ type StepResult struct {
 	Details        map[string]int64 `json:"detalhes_de_erro"`
 	Latency        Distribution     `json:"latencia_corrigida,omitzero"`
 	ServiceLatency Distribution     `json:"latencia_de_servico,omitzero"`
+	// Proporcao que o cenario pediu para esta alternativa do mix. Zero quando o
+	// cenario nao declara mix, e ai todo passo roda em toda iteracao.
+	DeclaredShare float64 `json:"proporcao_declarada,omitempty"`
 }
 
 func (s StepResult) Reported() Distribution {
@@ -198,6 +201,7 @@ type DocumentInput struct {
 	ScenarioWarnings []Warning
 	Brokers          []string
 	DeclaredSteps    []string
+	DeclaredShares   map[string]float64
 	ConsumerLag      []protocol.ConsumerLag
 	PlannedDuration  time.Duration
 	PlannedRequests  int64
@@ -255,7 +259,9 @@ func BuildDocument(collector *Collector, input DocumentInput) Document {
 	for _, key := range SortKeys(aggregates) {
 		aggregate := aggregates[key]
 		overall.Add(aggregate)
-		document.Steps = append(document.Steps, convertStep(aggregate))
+		step := convertStep(aggregate)
+		step.DeclaredShare = input.DeclaredShares[step.Key]
+		document.Steps = append(document.Steps, step)
 	}
 
 	duration := input.End.Sub(input.Start).Seconds()

@@ -65,6 +65,7 @@ type Executor struct {
 	options       Options
 	sources       []data.Source
 	authenticator *auth.Manager
+	mixOrder      []int
 	collector     atomic.Pointer[metrics.Collector]
 }
 
@@ -79,7 +80,10 @@ func New(spec scenario.Spec, options Options) (*Executor, error) {
 		options.MaxInflight = 20000
 	}
 
-	executor := &Executor{scenario: spec, plan: CompilePlan(spec.Load), options: options}
+	executor := &Executor{
+		scenario: spec, plan: CompilePlan(spec.Load), options: options,
+		mixOrder: scenario.MixOrder(spec),
+	}
 
 	for _, source := range spec.Data {
 		open, err := data.Open(source, options.DataRoot)
@@ -197,6 +201,7 @@ func (executor *Executor) Execute(runContext context.Context) metrics.Document {
 		ScenarioWarnings: executor.scenarioWarnings(),
 		Brokers:          scenario.DescribeMessaging(executor.scenario.Messaging),
 		DeclaredSteps:    executor.declaredSteps(),
+		DeclaredShares:   executor.declaredShares(),
 		ConsumerLag:      consumerLag(),
 		PlannedDuration:  executor.plan.Duration(),
 		PlannedRequests:  executor.plan.TotalRequests(),
@@ -261,6 +266,19 @@ func (executor *Executor) driveClosed(runContext context.Context, collector *met
 		}(int64(user))
 	}
 	group.Wait()
+}
+
+// A proporcao declarada vai pela chave de agregacao, que e por onde o relatorio
+// encontra o passo — em GraphQL ela e a operacao, nao o nome do passo.
+func (executor *Executor) declaredShares() map[string]float64 {
+	if !executor.scenario.HasMix() {
+		return nil
+	}
+	shares := map[string]float64{}
+	for index, step := range executor.scenario.Steps {
+		shares[step.AggregationKey()] = scenario.DeclaredShare(executor.scenario, index)
+	}
+	return shares
 }
 
 func (executor *Executor) declaredSteps() []string {
@@ -352,7 +370,7 @@ func (executor *Executor) runIteration(runContext context.Context, virtualUser, 
 
 	stepInstant := scheduled
 	complete := true
-	for index, step := range executor.scenario.Steps {
+	for index, step := range executor.stepsOf(iteration) {
 		sample, _ := executor.runStep(runContext, step, stepInstant, values, authHeader)
 		if index == 0 && !executor.closed() {
 			sample.LatencyKind = metrics.CorrectedLatency
@@ -368,6 +386,21 @@ func (executor *Executor) runIteration(runContext context.Context, virtualUser, 
 	}
 	collector.RecordJourney(scheduled, stepInstant, complete)
 	collector.RecordUses(values.Uses())
+}
+
+// Com mix declarado, cada iteracao executa uma alternativa, escolhida pela
+// posicao dela no ciclo — nao sorteada. O ADR 0016 diz por que: o gerador ja e
+// deterministico em quando dispara, e faze-lo aleatorio no que dispara poe no
+// numero uma variancia que o alvo nao causou.
+func (executor *Executor) stepsOf(iteration int64) []scenario.Step {
+	if len(executor.mixOrder) == 0 {
+		return executor.scenario.Steps
+	}
+	position := iteration % int64(len(executor.mixOrder))
+	if position < 0 {
+		position += int64(len(executor.mixOrder))
+	}
+	return executor.scenario.Steps[executor.mixOrder[position] : executor.mixOrder[position]+1]
 }
 
 func (executor *Executor) runStep(runContext context.Context, step scenario.Step, scheduled time.Time,

@@ -293,6 +293,14 @@
           "type": "string",
           "description": "Nome do passo no relatorio e nas regras de SLO. Sem nome, vale a chave de agregacao do protocolo."
         },
+        "peso": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Proporcao desta alternativa no mix. Cada iteracao executa uma alternativa. Ou todo passo declara peso, ou nenhum declara, e peso nao convive com captura encadeada.",
+          "examples": [
+            60
+          ]
+        },
         "http": {
           "description": "Forma curta ('GET /caminho') ou objeto com metodo, caminho, cabecalhos, corpo e timeout.",
           "oneOf": [

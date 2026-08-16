@@ -60,6 +60,7 @@ func (c Spec) Validate() error {
 		}
 	}
 
+	problems = append(problems, checkMix(&c)...)
 	problems = append(problems, checkBrokers(&c)...)
 	problems = append(problems, checkSLOSteps(&c)...)
 

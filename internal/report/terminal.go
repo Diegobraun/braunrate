@@ -81,6 +81,13 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 		write("  metade %s | 95%% %s | 99%% %s | pior %s",
 			milliseconds(journey.P50), milliseconds(journey.P95),
 			milliseconds(journey.P99), milliseconds(journey.Max))
+		// Com mix, cada iteracao e uma alternativa: o percentil de jornada passa a
+		// juntar populacoes de custo diferente, e quem le procura cauda onde ha
+		// mistura. A ferramenta sabe disso e diz, em vez de deixar descobrir.
+		if alternatives := mixedAlternatives(document); alternatives > 1 {
+			write("  Cada jornada aqui e uma das %d alternativas do mix, entao estes percentis juntam", alternatives)
+			write("  populacoes de custo diferente. Para ler cada uma, use a tabela por passo.")
+		}
 		write("")
 	}
 
@@ -362,6 +369,48 @@ func writeStepTable(output *lineWriter, document metrics.Document) {
 			write("      esse passo depende do valor capturado antes dele, nao existe instante")
 			write("      agendado proprio. Para a leitura honesta da jornada, use \"A jornada inteira\".")
 		}
+	}
+	write("")
+	writeMix(output, document)
+}
+
+// Peso de 60% que virou 45% na execucao e informacao, nao detalhe: a proporcao
+// e o que faz a carga ser um mix e nao tres cenarios, e uma proporcao que nao
+// se cumpriu muda o que o numero significa. So aparece quando o cenario declara
+// mix — sem mix, todo passo roda em toda iteracao e a proporcao seria 100% em
+// todas as linhas.
+func mixedAlternatives(document metrics.Document) int {
+	declared := 0
+	for _, step := range document.Steps {
+		if step.DeclaredShare > 0 {
+			declared++
+		}
+	}
+	return declared
+}
+
+func writeMix(output *lineWriter, document metrics.Document) {
+	total := int64(0)
+	declared := false
+	for _, step := range document.Steps {
+		total += step.Count
+		if step.DeclaredShare > 0 {
+			declared = true
+		}
+	}
+	if !declared || total == 0 {
+		return
+	}
+	write := output.writef
+	write("Mix declarado e observado")
+	for _, step := range document.Steps {
+		if step.DeclaredShare <= 0 {
+			continue
+		}
+		observed := float64(step.Count) / float64(total)
+		write("  %-26s %6.1f%% declarado   %6.1f%% observado (%s de %s)",
+			trim(step.Name, 26), step.DeclaredShare*100, observed*100,
+			thousands(step.Count), thousands(total))
 	}
 	write("")
 }

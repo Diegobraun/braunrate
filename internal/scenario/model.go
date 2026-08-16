@@ -33,9 +33,12 @@ type Spec struct {
 }
 
 type Step struct {
-	Name       string
-	Protocol   string
-	Config     protocol.Config
+	Name     string
+	Protocol string
+	Config   protocol.Config
+	// Peso da alternativa no mix. Zero quando o cenario nao declara mix, e ai
+	// todo passo roda em toda iteracao. Ver ADR 0016.
+	Weight     int
 	Checks     []Check
 	Captures   []Capture
 	Assertions []Assertion

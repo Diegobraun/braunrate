@@ -388,6 +388,37 @@ cenario:
 		},
 	},
 	{
+		name: "mix ponderado de operacoes",
+		yaml: `
+nome: Mix de operacoes
+alvo: http://127.0.0.1:8080
+
+carga:
+  perfis:
+    - patamar: { taxa: 100/s, durante: 5s }
+
+cenario:
+  - http: GET /pedidos
+    nome: consulta leve
+    peso: 60
+  - http: GET /pedidos/1/detalhe
+    nome: consulta pesada
+    peso: 30
+  - http: { metodo: POST, caminho: /pedidos }
+    nome: criacao
+    peso: 10
+`,
+		dsl: func() (scenario.Spec, error) {
+			return dsl.New("Mix de operacoes").
+				Target("http://127.0.0.1:8080").
+				Plateau(dsl.PerSecond(100), 5*time.Second).
+				Step(dsl.GET("/pedidos"), dsl.Name("consulta leve"), dsl.Weight(60)).
+				Step(dsl.GET("/pedidos/1/detalhe"), dsl.Name("consulta pesada"), dsl.Weight(30)).
+				Step(dsl.POST("/pedidos"), dsl.Name("criacao"), dsl.Weight(10)).
+				Build()
+		},
+	},
+	{
 		name: "alvo https com CA propria",
 		yaml: `
 nome: Homologacao atras de CA propria

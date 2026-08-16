@@ -141,14 +141,6 @@ func TestErrorPointsToLine(t *testing.T) {
 	}
 }
 
-func TestFutureFeatureFailsWithTeachingMessage(t *testing.T) {
-	input := "nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - constante: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n    peso: 3\n"
-	_, err := scenario.Parse([]byte(input))
-	if err == nil || !strings.Contains(err.Error(), "entra junto com o GraphQL") {
-		t.Fatalf("esperava mensagem explicando quando o recurso chega, recebeu %v", err)
-	}
-}
-
 func TestAggregationKeyCarriesNoInterpolatedValue(t *testing.T) {
 	input := `
 nome: agregacao

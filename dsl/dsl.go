@@ -202,6 +202,18 @@ func buildStep(request Request, options ...StepOption) (scenario.Step, error) {
 	return step, nil
 }
 
+// Weight declara a proporcao desta alternativa no mix. Cada iteracao executa
+// uma alternativa; ou todo passo tem peso, ou nenhum tem (ADR 0016).
+func Weight(weight int) StepOption {
+	return func(step *scenario.Step) error {
+		if weight <= 0 {
+			return fmt.Errorf("peso precisa ser um inteiro maior que zero, e veio %d", weight)
+		}
+		step.Weight = weight
+		return nil
+	}
+}
+
 func Name(name string) StepOption {
 	return func(step *scenario.Step) error {
 		step.Name = name
