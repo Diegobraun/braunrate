@@ -358,6 +358,21 @@ gerar:
 
 Os dois lados sao cobertos por teste: `TestGeneratedValueIsStableWithinTheIterationAndNewInTheNext` reprova se a mesma jornada usar dois valores ou se duas jornadas usarem o mesmo, e `TestNewPerUseIsExplicitAndChangesAtEveryOccurrence` reprova se o `novo_a_cada: uso` nao renovar.
 
+### Ramificacao por perfil: a coluna decide a rota
+
+Nao existe passo condicional, e nao e falta: qual caminho cada perfil percorre, e em que proporcao, e conhecimento de negocio — nenhuma observacao de trafego revela isso, e quem grava uma passagem grava um perfil. A ramificacao honesta e por dado.
+
+```yaml
+dados:
+  clientes: { arquivo: dados/clientes.csv, consumo: circular }
+
+cenario:
+  - nome: consultar limite
+    http: { metodo: GET, caminho: /${clientes.rota}/${clientes.id}/limite }
+```
+
+O CSV declara a proporcao pelas linhas que tem, e o exemplo completo esta em [`examples/ramificacao-por-perfil.yaml`](examples/ramificacao-por-perfil.yaml), que o CI roda. O que essa forma ainda nao resolve: os dois perfis caem numa linha so do relatorio, entao um perfil caro aparece como cauda do passo inteiro. A variedade observada mostra que a coluna teve dois valores; ligar as duas coisas nao existe hoje.
+
 ### De onde vem cada `${variavel}`
 
 Quatro origens, e nenhuma outra:
