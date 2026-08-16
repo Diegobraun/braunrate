@@ -102,7 +102,7 @@
     "taxa": {
       "type": "string",
       "description": "Chegadas por unidade de tempo.",
-      "pattern": "^[0-9]+(\\.[0-9]+)?/(s|m|h)$",
+      "pattern": "^(\\$\\{[A-Z][A-Z0-9_]*(:-[^}]*)?\\}|([0-9]+(\\.[0-9]+)?|\\$\\{[A-Z][A-Z0-9_]*(:-[^}]*)?\\})/(s|m|h))$",
       "examples": [
         "300/s",
         "1200/m"
@@ -111,7 +111,7 @@
     "duracao": {
       "type": "string",
       "description": "Duracao no formato do Go.",
-      "pattern": "^[0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h)$",
+      "pattern": "^(\\$\\{[A-Z][A-Z0-9_]*(:-[^}]*)?\\}|[0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h))$",
       "examples": [
         "30s",
         "5m"

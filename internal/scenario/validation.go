@@ -35,7 +35,12 @@ func (c Spec) Validate() error {
 	if strings.TrimSpace(c.Name) == "" {
 		problems = append(problems, "o cenario precisa de um nome")
 	}
-	if strings.TrimSpace(c.Target) == "" {
+	if missing := UnresolvedEnvironment(c.Target); len(missing) > 0 {
+		problems = append(problems, fmt.Sprintf(
+			"o alvo depende da variavel de ambiente %s, que nao esta definida.\n"+
+				"    rode com %s=... , ou declare um padrao no arquivo: alvo: ${%s:-http://127.0.0.1:8080}",
+			strings.Join(missing, ", "), missing[0], missing[0]))
+	} else if strings.TrimSpace(c.Target) == "" {
 		problems = append(problems, "o cenario precisa de um alvo")
 	} else if !validTarget(c.Target) {
 		problems = append(problems, fmt.Sprintf("alvo invalido: %q (use https://api.exemplo.com, kafka://127.0.0.1:9092 ou amqp://usuario:senha@127.0.0.1:5672/)", c.Target))

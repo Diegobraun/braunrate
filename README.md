@@ -460,6 +460,27 @@ cenario:
 
 **Nome em CAIXA ALTA vem do ambiente sem precisar declarar:** `${API_KEY}`, `${KAFKA_SENHA}`. E a mesma forma que o `import curl` e o `record` escrevem sozinhos.
 
+**E vale em qualquer campo escalar do cenario**, nao numa lista de campos escolhidos — alvo, taxa, duracao, topico, fila, nome de passo, cabecalho, caminho de certificado, o que for:
+
+```yaml
+alvo: "${ALVO:-http://127.0.0.1:8080}"
+carga:
+  perfis:
+    - patamar: { taxa: "${TAXA:-100}/s", durante: "${DURACAO:-1m}" }
+cenario:
+  - kafka: { topico: "${TOPICO:-pedidos}", valor: "{}" }
+```
+
+Dentro de `{ }` o valor precisa de aspas, porque o YAML le `{` e `}` como estrutura. O `${NOME:-reserva}` declara o valor que vale quando a variavel nao esta no ambiente; sem reserva, o campo fica com a referencia crua e a validacao diz qual variavel faltou:
+
+```
+erro no cenario: cenario.yaml:5:24: taxa invalida: "${TAXA}/s" (use por exemplo 50/s)
+    a variavel de ambiente TAXA nao esta definida, entao este campo ficou com a referencia crua.
+    rode com TAXA=... , ou declare um padrao no arquivo: ${TAXA:-valor}
+```
+
+Duas excecoes, e as duas porque o texto cru do campo faz parte do que ele significa: **credencial** (`senha`, `token`, `chave`), onde a recusa de segredo literal precisa ver se voce escreveu `${VARIAVEL}` ou o segredo, e **`semente`**, cuja origem o relatorio publica para a execucao poder ser repetida. Nas duas o ambiente e lido do mesmo jeito — so nao antes.
+
 Referencia que nao cai em nenhum desses casos **reprova a validacao**, apontando a coluna da referencia — nao o inicio da linha:
 
 ```

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"testing"
 
@@ -18,6 +19,7 @@ import (
 type schema struct {
 	Properties  map[string]json.RawMessage `json:"properties"`
 	Definitions map[string]struct {
+		Pattern    string                     `json:"pattern"`
 		Properties map[string]json.RawMessage `json:"properties"`
 	} `json:"$defs"`
 }
@@ -44,6 +46,34 @@ func TestPublishedSchemaHasSameStepKeysAsParser(t *testing.T) {
 	read := readSchema(t)
 	expected := append(append([]string{}, StepKeys...), protocol.Registered()...)
 	compareKeys(t, "passo", expected, keysOf(read.Definitions["passo"].Properties))
+}
+
+// O editor le o schema antes de a ferramenta ler o arquivo: um campo que o
+// parser resolve pelo ambiente e o schema marca em vermelho vira a mesma
+// inconsistencia de sempre, agora com o QA vendo o erro antes de rodar.
+func TestPublishedSchemaAcceptsEnvironmentReferencesWhereTheParserDoes(t *testing.T) {
+	read := readSchema(t)
+	accepted := map[string][]string{
+		"taxa":    {"300/s", "1.5/m", "${TAXA}/s", "${TAXA:-100}/s", "${TAXA}"},
+		"duracao": {"30s", "1.5m", "${DURACAO}", "${DURACAO:-1m}"},
+	}
+	for name, values := range accepted {
+		pattern, err := regexp.Compile(read.Definitions[name].Pattern)
+		if err != nil {
+			t.Fatalf("o padrao de %q nao compila: %v", name, err)
+		}
+		for _, value := range values {
+			if !pattern.MatchString(value) {
+				t.Errorf("o parser aceita %s: %q e o schema marca erro", name, value)
+			}
+		}
+	}
+	for name, refused := range map[string]string{"taxa": "300", "duracao": "30"} {
+		pattern := regexp.MustCompile(read.Definitions[name].Pattern)
+		if pattern.MatchString(refused) {
+			t.Errorf("o schema de %s passou a aceitar %q, que nao tem unidade", name, refused)
+		}
+	}
 }
 
 func compareKeys(t *testing.T, where string, parser, schema []string) {

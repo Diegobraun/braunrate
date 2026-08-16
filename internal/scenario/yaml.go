@@ -39,7 +39,11 @@ func nodeError(node *yaml.Node, format string, args ...any) error {
 	if node != nil {
 		line, column = node.Line, node.Column
 	}
-	return ScenarioError{Line: line, Column: column, Message: fmt.Sprintf(format, args...)}
+	return ScenarioError{
+		Line:    line,
+		Column:  column,
+		Message: fmt.Sprintf(format, args...) + missingEnvironmentHint(node),
+	}
 }
 
 // Listed here because the published schema is tested against them: a key that
@@ -76,6 +80,10 @@ func Parse(content []byte) (Spec, error) {
 			"  nome: Consulta de pedidos\n"+
 			"  alvo: http://127.0.0.1:8080")
 	}
+
+	// Antes de ler qualquer campo: ${VARIAVEL} do ambiente vale em todo campo
+	// escalar, e nao em uma lista de campos escolhidos a dedo.
+	expandEnvironment(document)
 
 	spec := Spec{
 		FormatVersion: FormatVersion,
@@ -156,7 +164,7 @@ func Parse(content []byte) (Spec, error) {
 		}
 	}
 
-	spec.Target = Interpolate(spec.Target, spec.Vars)
+	spec.Target = interpolateKnown(spec.Target, spec.Vars)
 	if err := checkReferences(document, &spec); err != nil {
 		return spec, err
 	}
