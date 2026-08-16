@@ -1236,3 +1236,137 @@ e verdade para cada processo isolado, e nao responde a pergunta que o servidor f
 Ou o argumento do servidor vale e o contorno do 1.4 produz numero contaminado, ou o
 argumento e conservador demais. Os dois nao podem estar certos. Isso reforca 1.4.a: o
 mix ponderado nao e conforto, e a unica forma de medir um mix sem contaminar.
+
+---
+
+## Bloco 5 — O resultado convence?
+
+Tres relatorios lidos na postura de quem tem que decidir se sobe para producao
+amanha de manha, sem ter escrito o cenario e sem tempo para abrir o JSON.
+
+### 5.1 — Relatorio que passou (30 minutos, 720 mil requisicoes)
+
+```
+Execucao de trinta minutos — contra http://127.0.0.1:8080
+
+Passou: as 2 regras de SLO foram atendidas.
+
+O que aconteceu
+  720.000 requisicoes em 30m0s, 400 por segundo, 0% de erro
+  Metade das respostas em ate 2.5 ms; 95% em ate 3.0 ms; 99% em ate 3.5 ms; a pior levou 121 ms
+```
+
+**Convence.** Em quatro linhas eu sei o tamanho da amostra, a taxa sustentada, a
+taxa de erro e a cauda. A pior de 121 ms contra p99 de 3,5 ms me diz que existe cauda
+longa e rara — e a informacao que decide se eu ligo para o time de plantao.
+
+```
+SLO
+  ok    Passou: a jornada inteira teve latencia p95 de 6 ms, dentro do limite de 500 ms.
+  ok    Passou: o cenario inteiro teve taxa de erro de 0.00%, dentro do limite de 1.00%.
+  --    passos sem criterio declarado (2 de 2): consultar pedido, criar pedido
+  --    regressao: sem criterio declarado — o gate aprova sem comparar com a execucao anterior
+```
+
+As duas linhas com `--` sao o que separa este relatorio de um carimbo. Ele me diz
+**o que ele nao verificou**, e as duas coisas que faltam sao exatamente as que eu
+perguntaria: nenhum passo tem limite proprio, e ninguem comparou com ontem.
+
+```
+Confiabilidade da medicao
+  Atencao: houve atraso pontual de despacho, abaixo de 1% das requisicoes
+            106 despachos atrasados de 360000 (desvio p99 de 0.0 ms)
+  Atencao: a latencia do alvo cresceu ao longo da execucao enquanto o despacho continuou
+           pontual; a degradacao e do alvo, nao do gerador
+            p99 por segundo passou de 4.2 ms para 104.5 ms
+```
+
+**Aqui o relatorio muda a decisao.** O titulo diz "Passou" e o corpo diz que a
+latencia do alvo subiu 25 vezes ao longo da execucao. Os dois estao certos: o p95
+agregado das trinta minutos cabe no limite, e mesmo assim o servico degradou. Um
+relatorio que so mostrasse o veredito teria escondido a unica coisa que importa aqui.
+
+**O que eu ainda faria de fora**: o `Passou` do titulo nao carrega essa ressalva.
+Quem le so a primeira linha — que e quem cola o resultado no canal do time — nao ve.
+
+### 5.2 — Relatorio que reprovou por SLO
+
+```
+Falhou: a jornada inteira (p95) ficou 1134.8% pior que base2.json, acima do limite de
+20% pior (de 2 ms para 27 ms).
+
+  180 requisicoes em 6s, 30 por segundo, 0% de erro
+```
+
+**Convence, com uma ressalva de leitura.** A primeira linha traz o veredito, a
+metrica, o quanto, o limite, os dois valores e — depois da correcao do 4.7.a — o nome
+do arquivo de base. Nao preciso do comando que gerou o relatorio para conferir.
+
+`0% de erro` na linha seguinte responde a segunda pergunta antes de eu fazer: nao
+quebrou, ficou lento.
+
+```
+Confiabilidade da medicao
+  O gerador disparou todas as requisicoes na hora certa, entao os numeros acima valem.
+```
+
+E a terceira pergunta — "isso e a ferramenta?" — respondida sem eu perguntar. Em
+JMeter essa pergunta custa uma tarde.
+
+**A ressalva**: `1134.8%` e exato e ilegivel. O `braunrate compare` diz a mesma coisa
+como `15 vezes mais lento`, que e a forma que uma pessoa usa. As duas saidas descrevem
+o mesmo fato com unidades diferentes. Nao mudei: o limite e declarado em por cento
+(`< 20`), entao a frase que reprova estar em por cento e coerente com o que a pessoa
+escreveu. Fica registrado como escolha, nao como acerto.
+
+**O que este relatorio nao me contou e devia**: o cenario era o mesmo, mas o
+**conteudo do CSV** tinha mudado — foi o que causou a diferenca de 15 vezes. As
+linhas que provavam isso estavam no relatorio (`1 unico valor de clientes.rota`,
+`4 valores distintos de clientes.id, entre 2 e 9`, contra 6 valores entre 1 e 10 na
+base), no ultimo bloco, sem nenhuma ligacao com o veredito. Corrigido pela metade em
+4.7.a: a ressalva agora diz que dados nao entram na comparacao. Ligar as duas coisas
+continua em aberto.
+
+### 5.3 — Relatorio invalidado
+
+```
+Resultado invalido: a execucao nao mediu o que se propos a medir. Isto nao e veredito
+sobre o alvo — e a medicao que nao vale, e por isso nenhuma regra de SLO foi avaliada.
+
+  - nenhuma jornada chegou ao fim ...  74.890 jornadas iniciadas, 0 completas
+  - o passo "consultar" falhou em 100% das requisicoes ...  74.659 requisicoes, 74.659 erros (timeout: 74.243, rede: 416)
+  - o gerador atingiu o limite de requisicoes em voo e deixou de enviar requisicoes agendadas; o resultado nao vale
+    405110 requisicoes descartadas, pico de 20000 em voo
+  - o gerador nao sustentou a taxa alvo: despachos sairam depois do instante agendado; o resultado nao vale
+    80.43% dos despachos atrasaram mais de 10.0 ms (desvio p99 de 11567.1 ms)
+exit=3
+```
+
+**Este e o melhor dos tres, e e o que decide se eu recomendo a ferramenta.**
+
+A frase de abertura faz a unica coisa que uma ferramenta de medicao **precisa** fazer
+e quase nenhuma faz: separa "o alvo esta ruim" de "eu nao consegui medir". Sem ela,
+esses numeros — 74 mil timeouts — viram um incidente inventado, e alguem passa a
+tarde procurando um bug de performance que nao existe.
+
+Os quatro achados vem em ordem de causa: as jornadas nao fecharam **porque** o passo
+falhou, que falhou **porque** o gerador estourou o limite em voo, que estourou
+**porque** nao sustentou a taxa. E o codigo de saida e proprio (3), diferente de
+falha de SLO (1) — em CI, "nao mediu" e "mediu e reprovou" nao podem cair no mesmo
+balde.
+
+**O que eu mudaria**: a linha de percentis continua sendo impressa
+(`Metade das respostas em ate 0.4 ms`) num relatorio onde nada funcionou. E o tempo
+de falhar, e um leitor apressado pode recortar essa linha. O bloco de invalidacao
+esta acima, o que salva quem le em ordem — mas quem tira print, nao le em ordem.
+
+### Veredito do bloco 5
+
+Os tres relatorios respondem, sem eu perguntar, as tres perguntas que eu faria:
+**o que aconteceu**, **isso vale**, e **o que voces nao verificaram**. A terceira e a
+que nenhuma ferramenta que eu usei em quinze anos responde.
+
+O que falta e mais estreito do que eu esperava: o titulo de uma linha nao carrega as
+ressalvas que o corpo carrega — nem a degradacao do 5.1, nem os 33% de erro do 2.9,
+nem o consumidor morto do 2.8. Quem le o relatorio inteiro e bem servido. Quem cola a
+primeira linha no canal do time, nao.
