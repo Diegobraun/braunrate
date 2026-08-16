@@ -47,7 +47,7 @@ Esta e a primeira das tres execucoes reais que sustentam a tese. Cada uma expoe 
 
 ## Estado
 
-**Fase 7 concluida** — motor de chegada aberta, HTTP, GraphQL, Kafka, RabbitMQ e passo `aguardar`, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `debug`, `import curl`, `import jmx` e `record`), relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes), variedade observada, **cenario em Go equivalente ao YAML travado por teste**, modelo fechado declarado e **autenticacao de broker com a credencial fora do arquivo**.
+**Fase 8 concluida** — motor de chegada aberta, HTTP, GraphQL, Kafka, RabbitMQ e passo `aguardar`, correlacao, autenticacao, dados, assercoes, SLO com codigo de saida, ferramentas de autoria (schema no editor, `debug`, `import curl`, `import jmx` e `record`), relatorio (HTML autocontido, JSON, CSV, comparacao entre execucoes), variedade observada, **cenario em Go equivalente ao YAML travado por teste**, modelo fechado declarado, **autenticacao de broker com a credencial fora do arquivo** e **modo servidor local sem logica propria**.
 
 Decisao da Fase 0: **Go**, sustentada por dois criterios apenas — RSS sob carga (30 MB contra 597 MB do Java com G1, a 10.000/s) e binario unico estatico, que para o publico de QA significa instalar baixando um arquivo. Startup, precisao de agendamento e modo de falha apareceram na primeira analise com peso que nao aguentam, e estao marcados como nao-criterio no ADR. Numeros, metodologia e limites em [medicoes-fase0.md](docs/medicoes-fase0.md); a decisao com os pesos de cada criterio em [ADR 0001](docs/adr/0001-linguagem-e-runtime.md).
 
@@ -63,6 +63,7 @@ braunrate execute examples/http-basico.yaml    # executa e resume no terminal
 braunrate execute examples/http-basico.yaml -html=relatorio.html -result=saida.json
 braunrate compare antes.json depois.json       # o que mudou entre duas execucoes
 braunrate record -output cenario.yaml          # grava navegando por um proxy local
+braunrate serve -dir ./cenarios                # os mesmos comandos por HTTP, local
 ```
 
 Cenario minimo:
@@ -819,6 +820,45 @@ O que pode explicar a diferenca sem ser o servico
 
 A comparacao nunca chama de regressao o que pode ser ruido, lista tudo que mudou fora do servico (maquina, plano de carga, versao, cenario), e se recusa a comparar quando alguma das duas execucoes teve o gerador saturado.
 
+## Modo servidor: os mesmos comandos por HTTP
+
+```bash
+braunrate serve -addr 127.0.0.1:8080 -dir ./cenarios
+```
+
+```
+braunrate serve em http://127.0.0.1:8080, servindo cenarios de ./cenarios
+Sem autenticacao e sem TLS: qualquer um que alcance esta porta pode disparar carga contra os alvos dos cenarios.
+Foi feito para rodar em 127.0.0.1. Expor em outra interface e outra decisao, e ela ainda nao foi tomada.
+```
+
+Validar, depurar, executar, acompanhar, listar, buscar o JSON e o HTML, comparar duas execucoes — **o que a CLI ja faz, e nada alem disso.** Toda rota termina no mesmo `internal/runner` que o terminal usa, e um teste reprova o build se os dois deixarem de produzir o mesmo documento.
+
+```bash
+curl -s -X POST http://127.0.0.1:8080/scenarios/ci.yaml/runs
+```
+
+```json
+{ "id": "r001", "status": "running", "stream": "/runs/r001/stream" }
+```
+
+```bash
+curl -sN http://127.0.0.1:8080/runs/r001/stream
+```
+
+```
+executando "Fumaca de CI" contra http://127.0.0.1:8080: 975 iteracoes em 6s
+carga 200/s | enviadas 576 | concluidas 575 | erros 0 | metade em 5.8 ms | 99% em 7.6 ms | faltam 2s
+carga 0/s | enviadas 975 | concluidas 974 | erros 0 | metade em 5.5 ms | 99% em 7.4 ms | faltam 0s
+passou (codigo 0)
+```
+
+**Uma execucao por vez, por padrao.** Duas execucoes na mesma maquina disputam a CPU que precisa despachar no instante agendado, e nenhuma das duas mede o que se propos a medir. A segunda responde `409` e diz como aceitar a contaminacao (`-concurrent`), se for esse o caso.
+
+**O YAML continua sendo a verdade.** Nao ha banco: os cenarios sao os arquivos do `-dir`, e as execucoes vivem na memoria do processo. Sem interface grafica, sem conta de usuario, sem multiusuario, sem agendamento — isso esta fora de escopo, nao para depois.
+
+Um exemplo de `curl` por rota, com a resposta real, esta em [docs/api-servidor.md](docs/api-servidor.md).
+
 ## O que existe hoje
 
 | Recurso | Estado |
@@ -850,6 +890,7 @@ A comparacao nunca chama de regressao o que pode ser ruido, lista tudo que mudou
 | GraphQL: uma linha por operacao, erro em 200 contado como erro | pronto |
 | Kafka e RabbitMQ com entrega confirmada, sem lote | pronto |
 | Passo `aguardar`: mede a cadeia assincrona ponta a ponta | pronto |
+| Modo servidor local: os mesmos comandos por HTTP, sem logica nova | pronto |
 | Autenticacao de broker: SASL/PLAIN, SCRAM, TLS com CA propria, mTLS | pronto |
 | AWS MSK com IAM pela cadeia padrao da AWS, sem chave no cenario | pronto, sem CI |
 | Segredo literal no cenario reprova a validacao, e a saida nunca mostra credencial | pronto |
@@ -867,7 +908,7 @@ Tres razoes, nesta ordem:
 
 ## Escopo
 
-**Dentro:** HTTP/HTTPS e REST; GraphQL de primeira classe; Kafka e RabbitMQ (produzir e consumir); passo `aguardar` com timeout; correlacao, variaveis e fluxo de autenticacao; CSV com politica de consumo e geracao sintetica com semente; perfis de carga (rampa, patamar, pico, taxa constante) e modelo fechado declarado; SLO com codigo de saida; relatorio HTML autocontido, JSON, CSV e resumo de terminal; comparacao entre execucoes; importador de `.jmx` para o subconjunto comum; gravador de trafego HTTP; autenticacao de broker (SASL/PLAIN, SCRAM, TLS com CA propria, mTLS e AWS MSK com IAM), sempre com a credencial fora do arquivo.
+**Dentro:** HTTP/HTTPS e REST; GraphQL de primeira classe; Kafka e RabbitMQ (produzir e consumir); passo `aguardar` com timeout; correlacao, variaveis e fluxo de autenticacao; CSV com politica de consumo e geracao sintetica com semente; perfis de carga (rampa, patamar, pico, taxa constante) e modelo fechado declarado; SLO com codigo de saida; relatorio HTML autocontido, JSON, CSV e resumo de terminal; comparacao entre execucoes; importador de `.jmx` para o subconjunto comum; gravador de trafego HTTP; modo servidor local sem logica propria; autenticacao de broker (SASL/PLAIN, SCRAM, TLS com CA propria, mTLS e AWS MSK com IAM), sempre com a credencial fora do arquivo.
 
 **Limitacao conhecida:** protocolo fora da lista acima exige recompilar o binario — a mesma friccao que o k6 tem. E consequencia da escolha de Go ([ADR 0004](docs/adr/0004-extensao-de-protocolo.md)), esta declarada aqui de proposito, e o processo de build reprodutivel para protocolo fora-de-arvore sera documentado. Avro e Schema Registry sao mais fracos em Go que na JVM e ficam para depois da v1.
 
@@ -875,7 +916,7 @@ Tres razoes, nesta ordem:
 
 **Limitacao conhecida:** o caminho completo do AWS MSK com IAM nao e exercitado no CI — o que roda la e SCRAM sobre TLS contra um broker de verdade, e a assinatura IAM tem cobertura de unidade. Servico gerenciado de nuvem (SQS, SNS, Kinesis, EventBridge, Service Bus, Pub/Sub) e GoldenGate ficam fora, com o motivo em [ADR 0014](docs/adr/0014-autenticacao-de-mensageria.md): os primeiros nao sao broker apontavel e entrariam como protocolos novos; o ultimo e replicacao de banco, nao QA de aplicacao. OAUTHBEARER fica para depois da v1.
 
-**Fora:** motor de browser real; nuvem gerenciada, dashboard multiusuario, conta de time; LDAP, FTP, SMTP, JMS classico; competir em vazao bruta com wrk; execucao distribuida na v1 — a arquitetura nao pode impedi-la, mas ela nao entra agora.
+**Fora:** motor de browser real; nuvem gerenciada, dashboard multiusuario, conta de time; interface grafica, agendamento e persistencia alem dos arquivos no modo servidor; LDAP, FTP, SMTP, JMS classico; competir em vazao bruta com wrk; execucao distribuida na v1 — a arquitetura nao pode impedi-la, mas ela nao entra agora.
 
 ## Documentacao
 
@@ -897,6 +938,7 @@ Tres razoes, nesta ordem:
 - [ADR 0012 — modelo fechado como opcao declarada](docs/adr/0012-modelo-fechado-como-opcao-declarada.md)
 - [ADR 0013 — gravador de trafego](docs/adr/0013-gravador-de-trafego.md)
 - [ADR 0014 — autenticacao de mensageria](docs/adr/0014-autenticacao-de-mensageria.md)
+- [API do modo servidor](docs/api-servidor.md) — um exemplo de curl por rota
 - [Schema do cenario](docs/braunrate.schema.json) — autocompletar e validacao no editor
 - [Exemplo de relatorio HTML](docs/exemplo-relatorio.html) — saida real de uma execucao que falhou o SLO
 - [Medicao dos prototipos da Fase 0](docs/medicoes-fase0.md)

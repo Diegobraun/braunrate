@@ -34,6 +34,36 @@ Reversibilidade: barato.
 
 Toca o usuario: sim, so na direcao de recusar mais: `${fonte.campo}` de fonte `gerar:` com campo inexistente agora reprova.
 
+## Modo servidor — o nucleo saiu do main para uma biblioteca, e a CLI virou impressao
+
+Alternativa considerada: o servidor chamar `scenario.ParseFile`, `engine.New` e `slo.Evaluate` por conta propria, deixando o main como estava.
+
+Por que esta: a regra da fase e "o servidor nao acrescenta logica". Com carregar, validar, avaliar SLO e decidir codigo de saida morando no main, essa regra so poderia ser intencao — a segunda porta de entrada reimplementaria cada uma delas e as duas divergiriam na primeira mudanca. `internal/runner` torna a regra verificavel, e um teste compara os dois caminhos.
+
+Reversibilidade: caro. Desfazer significa mover de volta cinco responsabilidades para o main e reescrever a CLI inteira em cima delas.
+
+Toca o usuario: nao. Saida, codigos de saida e mensagens verificados iguais antes e depois.
+
+## Modo servidor — execucao guardada so na memoria, sem arquivo de estado
+
+Alternativa considerada: gravar o JSON de cada execucao num diretorio de trabalho, para sobreviver a reinicio.
+
+Por que esta: "o YAML e a verdade, sem banco" e regra da fase, e um diretorio de resultados vira uma segunda fonte de verdade com ciclo de vida proprio — quem limpa, quanto guarda, o que acontece quando o formato de resultado muda de versao. Quem quiser guardar busca o JSON pela rota e grava onde quiser.
+
+Reversibilidade: barato — a store ja e uma interface pequena.
+
+Toca o usuario: sim. Reiniciar o servidor perde as execucoes, e `/runs/{id}` de uma execucao antiga responde 404 dizendo exatamente isso.
+
+## Modo servidor — o stream e texto puro, nao SSE nem WebSocket
+
+Alternativa considerada: server-sent events, que e o formato que um navegador consome sem codigo.
+
+Por que esta: a linha de progresso do terminal ja existe e ja e a forma acordada de mostrar andamento. SSE exigiria um segundo formato dizendo a mesma coisa, e dois formatos divergem. `curl -N` le o que esta la sem biblioteca nenhuma.
+
+Reversibilidade: barato — trocar o cabecalho e prefixar `data: `.
+
+Toca o usuario: sim, no sentido de que nao ha `EventSource` do lado do navegador; ha `fetch` com leitura por linha.
+
 ## ADR 0003 — preparacao vira regra geral, com protocolo novo obrigado a declarar
 
 Alternativa considerada: deixar como correcao pontual da Fase 7, sem regra no ADR.

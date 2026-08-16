@@ -25,6 +25,7 @@ import (
 	"github.com/Diegobraun/braunrate/internal/report/comparison"
 	"github.com/Diegobraun/braunrate/internal/runner"
 	"github.com/Diegobraun/braunrate/internal/scenario"
+	"github.com/Diegobraun/braunrate/internal/server"
 	"github.com/Diegobraun/braunrate/internal/testsupport"
 )
 
@@ -52,6 +53,8 @@ func main() {
 		os.Exit(importCommand(os.Args[2:]))
 	case "record":
 		os.Exit(record(os.Args[2:]))
+	case "serve":
+		os.Exit(serve(os.Args[2:]))
 	case "target":
 		os.Exit(serveTarget(os.Args[2:]))
 	case "version":
@@ -76,6 +79,7 @@ uso:
   braunrate record -output <cenario.yaml>       grava um cenario a partir do que passar pelo proxy
   braunrate report <resultado.json> [opcoes]    gera HTML ou CSV de um resultado ja gravado
   braunrate compare <antes.json> <depois.json>
+  braunrate serve [-addr :8080] [-dir ./cenarios]   os mesmos comandos por HTTP, local
   braunrate target [opcoes]
   braunrate version
 
@@ -538,6 +542,34 @@ func validate(args []string) int {
 	}
 	for _, line := range runner.Describe(c, plan) {
 		fmt.Println(line)
+	}
+	return runner.ExitPassed
+}
+
+func serve(args []string) int {
+	set := flag.NewFlagSet("serve", flag.ExitOnError)
+	address := set.String("addr", "127.0.0.1:8080", "endereco de escuta")
+	directory := set.String("dir", ".", "diretorio com os cenarios servidos")
+	concurrent := set.Bool("concurrent", false, "permite mais de uma execucao ao mesmo tempo, aceitando a contaminacao da medicao")
+	_ = parseArguments(set, args)
+
+	if info, err := os.Stat(*directory); err != nil || !info.IsDir() {
+		fmt.Fprintf(os.Stderr, "%s nao e um diretorio que eu consiga ler; -dir aponta para onde estao os cenarios\n", *directory)
+		return runner.ExitBadFile
+	}
+
+	options := server.DefaultOptions(version)
+	options.Address = *address
+	options.Directory = *directory
+	options.Concurrent = *concurrent
+
+	httpServer := server.New(options)
+	for _, line := range httpServer.StartupWarning() {
+		fmt.Fprintln(os.Stderr, line)
+	}
+	if err := httpServer.Listen(); err != nil {
+		fmt.Fprintf(os.Stderr, "o servidor parou: %v\n", err)
+		return runner.ExitBadFile
 	}
 	return runner.ExitPassed
 }

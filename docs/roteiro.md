@@ -40,7 +40,8 @@ Dois pontos de confiabilidade entraram na fase depois da revisao da Fase 2, porq
 | 4 | GraphQL | concluida |
 | 5 | Mensageria e passo `aguardar` | concluida |
 | 6 | Segundo publico: DSL e importador de `.jmx` | concluida |
-| 7 | Acabamento e lancamento | pendente |
+| 7 | Chegar onde o teste de verdade acontece | concluida |
+| 8 | Modo servidor | concluida |
 
 ## Fase 3 — Relatorio
 
@@ -81,6 +82,14 @@ Entregue: **gravador de trafego** (`braunrate record`), que sai do proxy com cor
 Entregue: **autenticacao de mensageria** — SASL/PLAIN, SCRAM-SHA-256 e SHA-512, TLS com CA propria, mTLS, RabbitMQ e AWS MSK com IAM pela cadeia padrao da AWS. Credencial so por variavel de ambiente ou pela cadeia da nuvem: valor literal reprova a validacao. Autenticacao e autorizacao viram classes proprias de erro, e o aperto de mao e pago na preparacao, fora da latencia ([ADR 0014](adr/0014-autenticacao-de-mensageria.md)).
 
 Coberto no CI contra broker de verdade: SCRAM-SHA-512 sobre TLS com CA propria. **Fora do CI, declarado:** o caminho completo do MSK com IAM.
+
+## Fase 8 — Modo servidor
+
+Entregue: `braunrate serve`, que expoe por HTTP o que a CLI ja faz e nada alem disso. Validar com posicao do erro, depurar uma iteracao, executar devolvendo um id, acompanhar em stream, listar com veredito e codigo de saida, buscar JSON e HTML, e comparar duas execucoes.
+
+Para a regra "zero logica nova" valer de fato, `internal/runner` passou a ser o unico lugar onde cenario vira resultado, e a CLI virou impressao em cima dele. Um teste roda o mesmo cenario pelos dois caminhos e reprova o build se os documentos deixarem de coincidir.
+
+Local por padrao (`127.0.0.1`, sem autenticacao, com aviso de partida), uma execucao por vez salvo `-concurrent`, e o YAML como unica verdade — sem banco. Rotas e campos em ingles, mensagens em portugues. Documentado com um curl por rota em [api-servidor.md](api-servidor.md).
 
 ## Prova central do produto
 

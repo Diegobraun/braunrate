@@ -36,12 +36,17 @@ const (
 type Fault struct {
 	Exit    int
 	Message string
+	// The original error travels along so the line and the column survive the
+	// formatting: an editor needs them as numbers, not inside a sentence.
+	Cause error
 }
 
 func (fault Fault) Error() string { return fault.Message }
 
-func badFile(format string, args ...any) Fault {
-	return Fault{Exit: ExitBadFile, Message: fmt.Sprintf(format, args...)}
+func (fault Fault) Unwrap() error { return fault.Cause }
+
+func badFile(cause error, format string, args ...any) Fault {
+	return Fault{Exit: ExitBadFile, Message: fmt.Sprintf(format, args...), Cause: cause}
 }
 
 type Options struct {
@@ -73,10 +78,10 @@ type Result struct {
 func Load(path string) (scenario.Spec, engine.Plan, error) {
 	spec, err := scenario.ParseFile(path)
 	if err != nil {
-		return spec, engine.Plan{}, badFile("erro no cenario: %v", err)
+		return spec, engine.Plan{}, badFile(err, "erro no cenario: %v", err)
 	}
 	if err := spec.Validate(); err != nil {
-		return spec, engine.Plan{}, badFile("%v", err)
+		return spec, engine.Plan{}, badFile(err, "%v", err)
 	}
 	return spec, engine.CompilePlan(spec.Load), nil
 }
@@ -96,7 +101,7 @@ func Execute(runContext context.Context, path string, options Options) (Result, 
 
 	executor, err := engine.New(spec, engineOptions)
 	if err != nil {
-		return Result{}, badFile("%v", err)
+		return Result{}, badFile(err, "%v", err)
 	}
 
 	result := Result{Spec: spec, Plan: executor.Plan()}
@@ -107,7 +112,7 @@ func Execute(runContext context.Context, path string, options Options) (Result, 
 	if options.BaselinePath != "" {
 		before, err := ReadDocument(options.BaselinePath)
 		if err != nil {
-			return result, badFile("%v", err)
+			return result, badFile(err, "%v", err)
 		}
 		baseline = &slo.Baseline{Comparison: comparison.Compare(before, result.Document), Path: options.BaselinePath}
 	}
@@ -148,7 +153,7 @@ func Debug(runContext context.Context, path string, version string) (Iteration, 
 
 	executor, err := engine.New(spec, engineOptions)
 	if err != nil {
-		return Iteration{}, badFile("%v", err)
+		return Iteration{}, badFile(err, "%v", err)
 	}
 
 	observations, vars, err := executor.Debug(runContext)
