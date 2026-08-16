@@ -48,8 +48,12 @@ func Debug(out io.Writer, number int, observation engine.Observation, showBody b
 	}
 	if observation.Class != protocol.Success && len(observation.Failures) == 0 {
 		write("  problema:   %s", className(string(observation.Class)))
-		if observation.Response.Detail != "" {
-			write("              %s", shorten(observation.Response.Detail))
+		// The detail may explain in more than one line what to do next, and
+		// squeezing it into one would bury the part that is not the diagnosis.
+		for _, line := range strings.Split(observation.Response.Detail, "\n") {
+			if line = strings.TrimSpace(line); line != "" {
+				write("              %s", shorten(line))
+			}
 		}
 	}
 	return output.err

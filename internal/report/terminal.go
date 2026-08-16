@@ -281,7 +281,9 @@ func mostFrequent(details map[string]int64, class string) string {
 	if best == "" {
 		return class
 	}
-	return trim(best, 44)
+	// A detail can carry more than one line; here there is room for the first
+	// sentence only, and the whole text is in the JSON.
+	return trim(strings.Join(strings.Fields(best), " "), 44)
 }
 
 func milliseconds(value float64) string {

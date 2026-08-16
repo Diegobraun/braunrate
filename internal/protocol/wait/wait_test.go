@@ -69,3 +69,20 @@ func TestMissingAddressTeachesWhereToDeclare(t *testing.T) {
 		t.Errorf("classe = %q, detalhe = %q", response.Class, response.Detail)
 	}
 }
+
+// C11 of the audit: "tempo esgotado" says what happened, not what to do about
+// it, and "enderecos:" came out empty when the address came from the target.
+func TestWaitDescribesWhereTheAddressComesFromWhenTheStepDeclaresNone(t *testing.T) {
+	config, err := decode(t, "kafka: { topico: pedidos-processados }\nchave: abc\ntimeout: 5s\n")
+	if err != nil {
+		t.Fatalf("passo invalido: %v", err)
+	}
+	description := strings.Join(config.(protocol.Describable).Describe(), "\n")
+
+	if strings.Contains(description, "enderecos: \n") || strings.HasSuffix(description, "enderecos:") {
+		t.Fatalf("o campo de enderecos saiu vazio:\n%s", description)
+	}
+	if !strings.Contains(description, "alvo do cenario") {
+		t.Fatalf("a descricao nao diz de onde vem o endereco:\n%s", description)
+	}
+}

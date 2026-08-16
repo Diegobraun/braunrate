@@ -23,7 +23,7 @@ Classificacao: **bloqueia** (a pessoa nao termina sozinha), **atrasa** (termina,
 | 8 | ~~Passo que nunca executou some do relatorio~~ — **resolvido** | B | atrasa |
 | 9 | ~~Linha de erro nao diz o status nem o passo~~ — **resolvido** | B | atrasa |
 | 10 | ~~Erro de sintaxe YAML sai cru, em ingles, sem arquivo nem coluna~~ — **resolvido** | C | atrasa |
-| 11 | Timeout do `aguardar` diz "tempo esgotado" e imprime campo vazio | C | atrasa |
+| 11 | ~~Timeout do `aguardar` diz "tempo esgotado" e imprime campo vazio~~ — **resolvido** | C | atrasa |
 | 12 | Arquivo inexistente responde em ingles e nao ensina o proximo passo | A | incomoda |
 | 13 | Sugestao de "voce quis dizer" dispara para palavra sem relacao | A | incomoda |
 | 14 | Concordancia: "as 1 regras de SLO foram atendidas" | B | incomoda |
@@ -276,7 +276,7 @@ erro no cenario: cenario.yaml:19:7: chave desconhecida no passo aguardar: "http"
 
 A mensagem esta correta e a jornada acaba ali. `aguardar` so escuta topico e fila; nao existe passo que repita uma requisicao HTTP ate o efeito aparecer. Como boa parte dos sistemas assincronos so expoe o efeito por API, esta jornada — que e a terceira prova da tese — nao se escreve para eles.
 
-### C11 — Timeout do `aguardar` diz "tempo esgotado" e imprime campo vazio (atrasa)
+### C11 — Timeout do `aguardar` diz "tempo esgotado" e imprime campo vazio (atrasa) — RESOLVIDO
 
 ```
 passo 2 — aguardar pedidos-auditoria-processados   [FALHOU em 5.213s]
@@ -287,6 +287,19 @@ passo 2 — aguardar pedidos-auditoria-processados   [FALHOU em 5.213s]
 ```
 
 O cabecalho da requisicao diz o que era esperado, onde e por quanto tempo — isso esta certo. Falta o resto: nada chegou, entao o proximo passo e conferir se ha consumidor rodando e se os dois lados usam o mesmo valor de correlacao. E `enderecos:` sai vazio quando o endereco vem do alvo.
+
+**Resolvido**, em tres partes: a depuracao passou a imprimir o detalhe do erro (que ja existia e nao aparecia), o detalhe passou a dizer o que conferir, e `enderecos:` diz de onde vem o endereco em vez de sair em branco.
+
+```
+passo 2 — aguardar processamento   [FALHOU em 3.0065s]
+  requisicao: aguardar em kafka pedidos-que-ninguem-processa por chave da mensagem = "2ad3f3c5-…"
+              desiste depois de 3s
+              enderecos: os do alvo do cenario
+  problema:   tempo esgotado
+              a mensagem com chave="2ad3f3c5-…" nao chegou em 3s no topico pedidos-que-ninguem-processa.
+              confira se ha consumidor rodando e se ele escreve nesse topico;
+              e se os dois lados usam o mesmo valor de correlacao — aqui o esperado e "2ad3f3c5-…"
+```
 
 ---
 

@@ -73,8 +73,13 @@ func (config *Config) Describe() []string {
 		fmt.Sprintf("aguardar em %s %s por %s = %q", config.Source, config.Topic, where, config.Expected),
 		"desiste depois de " + config.Timeout.String(),
 	}
+	// Printing "enderecos:" with nothing after it reads like a defect. When the
+	// step declares none, the address is the target of the scenario, and saying
+	// so is what the reader needs.
 	if len(config.Addresses) > 0 {
 		lines = append(lines, "enderecos: "+strings.Join(config.Addresses, ", "))
+	} else {
+		lines = append(lines, "enderecos: os do alvo do cenario")
 	}
 	return lines
 }
@@ -300,10 +305,14 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 
 	message, arrived := subscription.await(runContext, config.Expected, timeout)
 	if !arrived {
+		// "tempo esgotado" is what happened, not what to do about it. Nothing
+		// arriving has two usual causes, and both are checked somewhere else.
 		return protocol.Response{
 			Class: protocol.ErrTimeout,
-			Detail: fmt.Sprintf("a mensagem com %s=%q nao chegou em %s no topico %s",
-				lookupField(config), config.Expected, timeout, config.Topic),
+			Detail: fmt.Sprintf("a mensagem com %s=%q nao chegou em %s no topico %s.\n"+
+				"confira se ha consumidor rodando e se ele escreve nesse topico;\n"+
+				"e se os dois lados usam o mesmo valor de correlacao — aqui o esperado e %q",
+				lookupField(config), config.Expected, timeout, config.Topic, config.Expected),
 		}
 	}
 
