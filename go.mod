@@ -5,6 +5,7 @@ go 1.26.6
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.3.0
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4
+	github.com/goreleaser/fileglob v1.4.0
 	github.com/rabbitmq/amqp091-go v1.13.0
 	github.com/segmentio/kafka-go v0.4.51
 	github.com/tidwall/gjson v1.19.0
@@ -25,6 +26,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.32.4 // indirect
 	github.com/aws/smithy-go v1.22.0 // indirect
+	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
