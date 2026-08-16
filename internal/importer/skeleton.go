@@ -1,5 +1,7 @@
 package importer
 
+import "strings"
+
 // Skeleton exists because from an empty folder there was no path to a first
 // scenario: every command takes a file and none created one. The comments in
 // it are for someone reading this YAML for the first time, which is why they
@@ -43,5 +45,42 @@ slo:
 #   obter:
 #     http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: "${SENHA}" } }
 #     captura: { token: $.access_token }
+
+# O passo nao precisa ser HTTP. Estes sao os outros protocolos, e cada relatorio
+# lista quais existem no binario que voce esta rodando.
+` + commented(ProtocolShapes())
+}
+
+// ProtocolShapes is what the skeleton shows commented out. It lives apart from
+// the text so a test can put it through the parser: a shape that does not parse
+// teaches the wrong thing to exactly the person who has no other reference.
+func ProtocolShapes() string {
+	return `cenario:
+  - graphql:
+      consulta: |
+        query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }
+      variaveis: { id: "${assinantes.id}" }
+
+  - kafka: { topico: pedidos, chave: "${assinantes.id}", valor: { pedido: "${assinantes.id}" } }
+  - amqp:  { fila: pedidos, corpo: { pedido: "${assinantes.id}" } }
+
+  # Espera o efeito do passo anterior aparecer. A latencia dele tem a
+  # granularidade da sondagem, e o relatorio diz isso.
+  - aguardar:
+      kafka: { topico: pedidos-processados }
+      chave: "${assinantes.id}"
+      timeout: 10s
 `
+}
+
+func commented(text string) string {
+	var out strings.Builder
+	for _, line := range strings.Split(strings.TrimRight(text, "\n"), "\n") {
+		if line == "" {
+			out.WriteString("#\n")
+			continue
+		}
+		out.WriteString("# " + line + "\n")
+	}
+	return out.String()
 }
