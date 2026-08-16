@@ -24,6 +24,23 @@
         "${ALVO}"
       ]
     },
+    "requer": {
+      "type": "array",
+      "description": "Infraestrutura externa sem a qual este cenario nao roda. O laco de exemplos do CI pula com aviso em vez de quebrar.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "kafka",
+          "amqp",
+          "credencial"
+        ]
+      },
+      "examples": [
+        [
+          "kafka"
+        ]
+      ]
+    },
     "variaveis": {
       "type": "object",
       "description": "Valores reaproveitados no cenario. ${NOME:-padrao} le da variavel de ambiente com valor de reserva.",

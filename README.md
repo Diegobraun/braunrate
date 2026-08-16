@@ -43,7 +43,7 @@ Esta e a primeira das tres execucoes reais que sustentam a tese. Cada uma expoe 
 |---|---|---|
 | Alvo congelado por 1 s (acima) | 976,4 ms contra 3,3 ms | **Omissao coordenada**: laco fechado para de enviar quando o alvo trava, e a espera some da conta |
 | [GraphQL com erro em 200](#graphql) | 406 erros em 2.844 respostas, todas com status 200 | **Erro classificado por status**: quem le o codigo HTTP reporta 0% de erro e SLO verde |
-| [Cadeia assincrona](#mensageria-e-cadeia-assincrona) | 0,9 ms para produzir contra 4,87 s de jornada | **Medir so a producao**: o broker aceita rapido, e o efeito que o usuario espera chega segundos depois |
+| [Cadeia assincrona](#mensageria-e-cadeia-assincrona) | 1,2 ms para produzir contra 3,96 s de jornada | **Medir so a producao**: o broker aceita rapido, e o efeito que o usuario espera chega segundos depois |
 
 ## Estado
 
@@ -308,6 +308,12 @@ No formato, `#` vira digito e `@` vira letra; o resto sai literal. CPF e CNPJ sa
 
 Geradores disponiveis: `uuid`, `sequencia`, `numero(min,max)`, `inteiro(min,max)`, `nome`, `email`, `texto(n)`, `padrao`, `cpf`, `cnpj`.
 
+**Exemplo que depende de infraestrutura declara isso**, e o laco do CI pula com aviso em vez de quebrar em silencio:
+
+```yaml
+requer: [kafka]
+```
+
 **Limitacao conhecida:** nao existe leitura de `.xlsx`. CSV cobre o caso e a dependencia de Excel e pesada demais para o motor. Se aparecer necessidade, sera um `braunrate import planilha` que converte para CSV — nunca leitura direta durante a execucao.
 
 ## O que serve de criterio
@@ -481,19 +487,26 @@ cenario:
       timeout: 10s
 ```
 
-Execucao real contra Kafka, com um processador que leva 15 ms por mensagem e uma carga de 100/s:
+Execucao real contra Kafka com o consumidor **deliberadamente sobrecarregado** — 15 ms por mensagem, ou seja 66/s de capacidade, contra uma carga de 100/s:
+
+```bash
+braunrate target -kafka=127.0.0.1:9092 -input=pedidos -output=pedidos-processados -processor-delay=15ms &
+braunrate execute cadeia-100-por-segundo.yaml
+```
 
 ```
+A jornada inteira
+  Todas as 800 jornadas chegaram ao fim; metade levou ate 1490 ms e 95% ate 3957 ms, contados do instante em que deveriam ter comecado.
+
 Por passo
   passo                          requisicoes    metade       95%       99%     99,9%      pior   erros
-  aguardar pedidos-processa… (2)        800    1.78 s    4.87 s    5.26 s    5.30 s    5.32 s       0
-  kafka produzir pedidos-ca… (1)        800  0.915 ms    1.9 ms    4.9 ms     14 ms     27 ms       0
-
-A jornada inteira
-  Todas as 800 jornadas chegaram ao fim; metade levou ate 1778 ms e 95% ate 4874 ms, contados do instante em que deveriam ter comecado.
+  aguardar pedidos-lento-pr… (2)        800    1.49 s    3.95 s    4.17 s    4.23 s    4.24 s       0
+  kafka produzir pedidos-le… (1)        800    1.2 ms    2.2 ms    3.9 ms    179 ms    228 ms       0
 ```
 
-**Produzir custa 0,9 ms; a cadeia custa 4,87 s no 95%.** Uma ferramenta que so mede a producao teria reportado sub-milissegundo e aprovado o sistema. O consumidor nao acompanha 100/s, a fila cresce, e so a medicao ponta a ponta mostra isso.
+**Produzir custa 1,2 ms; a cadeia custa 3,96 s no 95%.** Uma ferramenta que so mede a producao teria reportado milissegundo e aprovado o sistema. O consumidor nao acompanha 100/s, a fila cresce, e so a medicao ponta a ponta mostra isso.
+
+O exemplo que acompanha o repositorio, [`examples/cadeia-assincrona.yaml`](examples/cadeia-assincrona.yaml), roda a 40/s — dentro da capacidade do processador embutido — porque exemplo publicado tem que passar quando alguem copia. A sobrecarga acima e cenario proprio, feito para mostrar o ponto cego.
 
 Detalhes das decisoes: [ADR 0008](docs/adr/0008-mensageria-e-cadeia-assincrona.md). Publicacao com confirmacao e o padrao (`acks: todos` no Kafka, publisher confirms no AMQP), sem lote — agrupar mensagens mediria o lote, nao a mensagem.
 
@@ -639,6 +652,7 @@ A comparacao nunca chama de regressao o que pode ser ruido, lista tudo que mudou
 | Assercoes funcionais e SLO por passo e global, com codigo de saida | pronto |
 | Criterio sobre a jornada inteira, taxa de sucesso e taxa efetiva | pronto |
 | Comparacao com execucao anterior como gate, com ressalva que tira o veredito | pronto |
+| Todo exemplo publicado roda no CI; exemplo que nao roda quebra o build | pronto |
 | Verificacao de sanidade do resultado antes de qualquer veredito | pronto |
 | Tempo total da jornada, contado do instante agendado | pronto |
 | Autoria: schema no editor, `depurar`, `importar curl`, erros que ensinam | pronto |

@@ -3,7 +3,10 @@ package scenario
 import (
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // A messaging broker has no mandatory scheme: "127.0.0.1:9092" is what people
@@ -88,4 +91,25 @@ func GateWarnings(c Spec) []string {
 		warnings = append(warnings, "Atencao: ha regra de regressao declarada; ela so e verificada com 'braunrate execute ... -baseline=execucao-anterior.json'.")
 	}
 	return warnings
+}
+
+// KnownRequirements is the closed list on purpose: an unknown name would be
+// declared, printed and never checked by anyone, which is worse than not
+// declaring it.
+var KnownRequirements = []string{"kafka", "amqp", "credencial"}
+
+func readRequirements(no *yaml.Node) ([]string, error) {
+	if no.Kind != yaml.SequenceNode {
+		return nil, nodeError(no, "requer precisa ser uma lista, por exemplo: requer: [kafka]\n"+
+			"    declara a infraestrutura externa sem a qual este cenario nao roda")
+	}
+	requirements := make([]string, 0, len(no.Content))
+	for _, item := range no.Content {
+		if !slices.Contains(KnownRequirements, item.Value) {
+			return nil, nodeError(item, "dependencia desconhecida: %q\n%s",
+				item.Value, sugerir(item.Value, KnownRequirements))
+		}
+		requirements = append(requirements, item.Value)
+	}
+	return requirements, nil
 }

@@ -197,6 +197,7 @@ slo:
 		yaml: `
 nome: Cadeia assincrona
 alvo: 127.0.0.1:9092
+requer: [kafka]
 
 dados:
   pedidos:
@@ -235,6 +236,7 @@ slo:
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Cadeia assincrona").
 				Target("127.0.0.1:9092").
+				Requires("kafka").
 				GeneratedData("pedidos", map[string]string{"id": "uuid"}, dsl.Consume(scenario.ConsumeSequential)).
 				Plateau(dsl.PerSecond(100), 10*time.Second).
 				Step(dsl.Kafka("pedidos-cadeia").
@@ -390,7 +392,13 @@ func TestYAMLAndDSLProduceSameScenario(t *testing.T) {
 			if reflect.DeepEqual(expected, obtained) {
 				return
 			}
-			for _, difference := range diferencas(expected, obtained) {
+			differences := diferencas(expected, obtained)
+			if len(differences) == 0 {
+				t.Fatalf("os dois cenarios diferem e a comparacao campo a campo nao viu onde: "+
+					"um campo novo de scenario.Spec entrou sem entrar em diferencas().\n  yaml: %s\n   dsl: %s",
+					format(expected), format(obtained))
+			}
+			for _, difference := range differences {
 				t.Errorf("%s", difference)
 			}
 		})
@@ -578,6 +586,7 @@ func diferencas(expected, obtained scenario.Spec) []string {
 	}
 	compare("nome", expected.Name, obtained.Name)
 	compare("alvo", expected.Target, obtained.Target)
+	compare("requer", expected.Requires, obtained.Requires)
 	compare("variaveis", expected.Vars, obtained.Vars)
 	compare("autenticacao", expected.Auth, obtained.Auth)
 	compare("dados", expected.Data, obtained.Data)

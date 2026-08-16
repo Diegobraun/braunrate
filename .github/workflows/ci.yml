@@ -86,12 +86,12 @@ jobs:
             exit 1
           fi
 
-      - name: execucao real contra o alvo embutido
+      - name: todos os exemplos publicados rodam
+        env:
+          BRAUNRATE_KAFKA: 127.0.0.1:9092
         run: |
-          ./braunrate target -address=127.0.0.1:8080 -latency=5ms &
-          sleep 1
-          chmod +x .github/executar-exemplo.sh
-          .github/executar-exemplo.sh examples/ci.yaml
-          .github/executar-exemplo.sh examples/http-basico.yaml
-          .github/executar-exemplo.sh examples/jornada-autenticada.yaml
-          .github/executar-exemplo.sh examples/graphql-cobranca.yaml
+          ./braunrate target -address=127.0.0.1:8080 -latency=5ms \
+            -kafka=127.0.0.1:9092 -input=pedidos-cadeia -output=pedidos-processados &
+          sleep 3
+          chmod +x .github/executar-exemplos.sh
+          .github/executar-exemplos.sh

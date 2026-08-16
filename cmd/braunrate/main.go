@@ -540,6 +540,9 @@ func validate(args []string) int {
 	if len(c.SLO) == 0 {
 		fmt.Println("Sem slo declarado: a execucao nunca vai falhar por lentidao. Adicione um bloco 'slo' para virar gate de CI.")
 	}
+	if len(c.Requires) > 0 {
+		fmt.Printf("Depende de infraestrutura externa: %s. Sem isso a execucao nao roda.\n", strings.Join(c.Requires, ", "))
+	}
 	for _, warning := range scenario.GateWarnings(c) {
 		fmt.Println(warning)
 	}

@@ -13,6 +13,7 @@ type Spec struct {
 	FormatVersion string
 	Name          string
 	Target        string
+	Requires      []string
 	Vars          map[string]string
 	Auth          *Auth
 	Data          []DataSource

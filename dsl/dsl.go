@@ -9,6 +9,7 @@ package dsl
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -50,6 +51,20 @@ func (c *Builder) note(err error) {
 
 func (c *Builder) Target(target string) *Builder {
 	c.scenario.Target = target
+	return c
+}
+
+// Requires declares external infrastructure without which the scenario does not
+// run. It changes nothing at run time; it is read by whoever runs the scenario
+// and by the CI loop over the published examples.
+func (c *Builder) Requires(requirements ...string) *Builder {
+	for _, requirement := range requirements {
+		if !slices.Contains(scenario.KnownRequirements, requirement) {
+			c.note(fmt.Errorf("dependencia desconhecida: %q (use %s)", requirement, strings.Join(scenario.KnownRequirements, ", ")))
+			continue
+		}
+		c.scenario.Requires = append(c.scenario.Requires, requirement)
+	}
 	return c
 }
 
