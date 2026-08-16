@@ -139,6 +139,9 @@ func Parse(content []byte) (Spec, error) {
 	}
 
 	spec.Target = Interpolate(spec.Target, spec.Vars)
+	if err := checkReferences(document, spec); err != nil {
+		return spec, err
+	}
 	return spec, nil
 }
 
@@ -467,18 +470,22 @@ func readStep(node *yaml.Node) (Step, error) {
 }
 
 func suggest(received string, valid []string) string {
-	best, shortestDistance := "", 1<<30
-	for _, valid := range valid {
-		distance := editDistance(strings.ToLower(received), strings.ToLower(valid))
-		if distance < shortestDistance {
-			best, shortestDistance = valid, distance
-		}
-	}
 	lines := ""
-	if best != "" && shortestDistance <= 3 {
+	if best, found := closest(received, valid); found {
 		lines += fmt.Sprintf("    voce quis dizer %q?\n", best)
 	}
 	return lines + "    disponiveis: " + strings.Join(valid, ", ")
+}
+
+func closest(received string, valid []string) (string, bool) {
+	best, shortestDistance := "", 1<<30
+	for _, candidate := range valid {
+		distance := editDistance(strings.ToLower(received), strings.ToLower(candidate))
+		if distance < shortestDistance {
+			best, shortestDistance = candidate, distance
+		}
+	}
+	return best, best != "" && shortestDistance <= 3
 }
 
 func editDistance(first, second string) int {

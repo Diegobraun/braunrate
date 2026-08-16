@@ -341,6 +341,37 @@ gerar:
 
 Os dois lados sao cobertos por teste: `TestGeneratedValueIsStableWithinTheIterationAndNewInTheNext` reprova se a mesma jornada usar dois valores ou se duas jornadas usarem o mesmo, e `TestNewPerUseIsExplicitAndChangesAtEveryOccurrence` reprova se o `novo_a_cada: uso` nao renovar.
 
+### De onde vem cada `${variavel}`
+
+Quatro origens, e nenhuma outra:
+
+```yaml
+variaveis:
+  tenant: acme                      # fixa no cenario
+  regiao: "${REGIAO:-us-east-1}"    # do ambiente, com reserva
+
+dados:
+  pedidos: { gerar: { id: uuid } }  # e entao ${pedidos.id}
+
+cenario:
+  - http: GET /faturas
+    captura: { faturaId: $.itens[0].id }   # e entao ${faturaId} nos passos seguintes
+```
+
+**Nome em CAIXA ALTA vem do ambiente sem precisar declarar:** `${API_KEY}`, `${KAFKA_SENHA}`. E a mesma forma que o `import curl` e o `record` escrevem sozinhos.
+
+Referencia que nao cai em nenhum desses casos **reprova a validacao**, apontando a coluna da referencia — nao o inicio da linha:
+
+```
+erro no cenario: cenario.yaml:14:26: nao sei de onde vem ${faturald}.
+    voce quis dizer "faturaId"?
+    disponiveis: faturaId, tenant
+```
+
+Antes ela virava texto vazio em silencio: a requisicao saia com o campo em branco, o alvo respondia 401 ou 404, e nada na saida ligava uma coisa a outra. O caso esta na [auditoria de friccao](docs/auditoria-fricao.md) como A8.
+
+A escolha pela caixa alta em vez de conferir o ambiente e deliberada: conferir o ambiente tornaria `braunrate validate` impossivel numa maquina sem o segredo, que e exatamente onde alguem confere o cenario antes de commitar.
+
 ### Formato declarado, e documento que o alvo aceita
 
 ```yaml

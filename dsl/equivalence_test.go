@@ -156,6 +156,9 @@ slo:
 nome: Cobranca em GraphQL
 alvo: http://127.0.0.1:8080
 
+dados:
+  assinantes: { arquivo: dados/assinantes.csv, consumo: circular }
+
 carga:
   perfis:
     - patamar: { taxa: 50/s, durante: 20s }
@@ -180,6 +183,7 @@ slo:
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Cobranca em GraphQL").
 				Target("http://127.0.0.1:8080").
+				DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(scenario.ConsumeCircular)).
 				Plateau(dsl.PerSecond(50), 20*time.Second).
 				Step(dsl.GraphQL("query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }\n").
 					Vars(map[string]any{"id": "${assinantes.id}"}).
@@ -351,6 +355,9 @@ cenario:
 nome: Chave de api
 alvo: http://127.0.0.1:8080
 
+variaveis:
+  api_key: "${API_KEY:-chave-de-teste}"
+
 autenticacao:
   tipo: cabecalho
   cabecalho: "X-API-Key: ${api_key}"
@@ -365,6 +372,7 @@ cenario:
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Chave de api").
 				Target("http://127.0.0.1:8080").
+				Variable("api_key", "${API_KEY:-chave-de-teste}").
 				Auth(dsl.WithHeaderAuth("X-API-Key: ${api_key}")).
 				Plateau(dsl.PerSecond(10), 5*time.Second).
 				Step(dsl.DELETE("/pedidos/1")).

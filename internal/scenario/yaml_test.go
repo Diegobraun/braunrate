@@ -153,6 +153,8 @@ func TestAggregationKeyCarriesNoInterpolatedValue(t *testing.T) {
 	input := `
 nome: agregacao
 alvo: http://127.0.0.1:8080
+variaveis:
+  pedidoId: "1"
 carga:
   perfis:
     - constante: { taxa: 1/s, durante: 1s }

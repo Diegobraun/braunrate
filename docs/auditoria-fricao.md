@@ -28,7 +28,7 @@ Classificacao: **bloqueia** (a pessoa nao termina sozinha), **atrasa** (termina,
 | 13 | Sugestao de "voce quis dizer" dispara para palavra sem relacao | A | incomoda |
 | 14 | Concordancia: "as 1 regras de SLO foram atendidas" | B | incomoda |
 | 15 | Cabecalho "Por passo" impresso com tabela vazia | B | incomoda |
-| 16 | Variavel que ninguem declarou vira texto vazio, e `validate` aprova (achado na Fase 7) | A | atrasa |
+| 16 | ~~Variavel que ninguem declarou vira texto vazio, e `validate` aprova~~ — **resolvido** | A | atrasa |
 
 Custo do percurso: **jornada A — 12 comandos, 6 edicoes**; **jornada B — 6 comandos, 3 edicoes** (partindo de um cenario que ja funcionava); **jornada C — 4 comandos, 3 edicoes**, e nao terminou.
 
@@ -89,7 +89,7 @@ O cenario declara `senha: "${SENHA}"`. Sem `SENHA` no ambiente, a requisicao sai
 
 O cenario roda `GET /pedidos/1` 3.000 vezes. O bloco de ambiente informa a variedade de `token`, mas **nada** sobre o caminho: como `/pedidos/1` e literal, ele nunca passa pela interpolacao e por isso nao entra na variedade observada. O alvo responde de cache e o relatorio nao tem uma linha sobre isso — exatamente o ponto cego que o [ADR 0007](adr/0007-variedade-observada.md) fecha para dados que variam.
 
-### A8 — Variavel que ninguem declarou vira texto vazio, e nada e dito (atrasa)
+### A8 — Variavel que ninguem declarou vira texto vazio, e nada e dito (atrasa) — RESOLVIDO
 
 Irmao do A6, achado na Fase 7. `${variavel_que_ninguem_declarou}` nao vem do bloco `dados`, nao vem de `captura` e nao vem do ambiente — e mesmo assim `validate` responde "Cenario valido" e o passo sai com o campo vazio:
 
@@ -103,6 +103,16 @@ $ braunrate debug cenario.yaml
 ```
 
 A validacao ja sabe tudo que precisa para pegar isso: as fontes de dados, as capturas declaradas e as variaveis de ambiente estao todas no cenario. Um `${}` que nao casa com nenhuma delas e erro de cenario, nao valor vazio.
+
+**Resolvido.** A referencia que nao vem de `variaveis`, de `captura`, de uma fonte de `dados` nem do ambiente reprova a validacao, apontando a coluna da propria referencia:
+
+```
+erro no cenario: cenario.yaml:14:25: nao sei de onde vem ${faturald}.
+    voce quis dizer "faturaId"?
+    disponiveis: faturaId, tenant
+```
+
+Nome em CAIXA ALTA e tratado como variavel de ambiente sem precisar de declaracao — decisao registrada em [decisoes-da-noite.md](decisoes-da-noite.md).
 
 ---
 
