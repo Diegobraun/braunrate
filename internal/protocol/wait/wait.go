@@ -16,7 +16,7 @@ import (
 const defaultTimeout = 30 * time.Second
 
 func init() {
-	protocol.Record(New(protocol.DefaultOptions()))
+	protocol.Register(New(protocol.DefaultOptions()))
 }
 
 type Config struct {

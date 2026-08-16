@@ -41,10 +41,10 @@ var (
 	StepKeys = []string{"nome", "captura", "verificar", "espera"}
 )
 
-func ParseFile(path string) (Scenario, error) {
+func ParseFile(path string) (Spec, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return Scenario{}, err
+		return Spec{}, err
 	}
 	c, err := Parse(content)
 	if err, ok := err.(ScenarioError); ok {
@@ -54,22 +54,22 @@ func ParseFile(path string) (Scenario, error) {
 	return c, err
 }
 
-func Parse(content []byte) (Scenario, error) {
+func Parse(content []byte) (Spec, error) {
 	var root yaml.Node
 	if err := yaml.Unmarshal(content, &root); err != nil {
-		return Scenario{}, err
+		return Spec{}, err
 	}
 	if len(root.Content) == 0 {
-		return Scenario{}, ScenarioError{Line: 1, Message: "cenario vazio"}
+		return Spec{}, ScenarioError{Line: 1, Message: "cenario vazio"}
 	}
 	document := root.Content[0]
 	if document.Kind != yaml.MappingNode {
-		return Scenario{}, nodeError(document, "o cenario precisa ser um mapa de chaves, comecando por:\n"+
+		return Spec{}, nodeError(document, "o cenario precisa ser um mapa de chaves, comecando por:\n"+
 			"  nome: Consulta de pedidos\n"+
 			"  alvo: http://127.0.0.1:8080")
 	}
 
-	c := Scenario{
+	c := Spec{
 		FormatVersion: FormatVersion,
 		Vars:          map[string]string{},
 		Load:          LoadPlan{Model: OpenArrival},

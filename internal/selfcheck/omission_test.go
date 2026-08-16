@@ -39,7 +39,7 @@ func startFreezingTarget(t *testing.T) *testsupport.Server {
 
 func runOpenModel(t *testing.T, address string) metrics.Document {
 	t.Helper()
-	c := scenario.Scenario{
+	c := scenario.Spec{
 		Name:   "auto-validacao de medicao",
 		Target: address,
 		Load: scenario.LoadPlan{

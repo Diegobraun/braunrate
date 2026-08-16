@@ -25,7 +25,7 @@ type Options struct {
 	LateThreshold    time.Duration
 	Clock            Clock
 	DataRoot         string
-	OnProgress       func(metrics.Instantaneo, float64, time.Duration)
+	OnProgress       func(metrics.Snapshot, float64, time.Duration)
 	ProgressInterval time.Duration
 	OnStep           func(Observation)
 }
@@ -54,8 +54,8 @@ type Observation struct {
 	Duration time.Duration
 }
 
-type Motor struct {
-	scenario      scenario.Scenario
+type Executor struct {
+	scenario      scenario.Spec
 	plan          Plan
 	opts          Options
 	sources       []data.Source
@@ -63,7 +63,7 @@ type Motor struct {
 	collector     atomic.Pointer[metrics.Collector]
 }
 
-func New(c scenario.Scenario, opts Options) (*Motor, error) {
+func New(c scenario.Spec, opts Options) (*Executor, error) {
 	if opts.Clock == nil {
 		opts.Clock = SystemClock{}
 	}
@@ -74,7 +74,7 @@ func New(c scenario.Scenario, opts Options) (*Motor, error) {
 		opts.MaxInflight = 20000
 	}
 
-	m := &Motor{scenario: c, plan: CompilePlan(c.Load), opts: opts}
+	m := &Executor{scenario: c, plan: CompilePlan(c.Load), opts: opts}
 
 	for _, source := range c.Data {
 		open, err := data.Open(source, opts.DataRoot)
@@ -90,11 +90,11 @@ func New(c scenario.Scenario, opts Options) (*Motor, error) {
 	return m, nil
 }
 
-func (m *Motor) Plan() Plan { return m.plan }
+func (m *Executor) Plan() Plan { return m.plan }
 
 // Depurar roda uma unica iteracao pelo mesmo caminho da carga: mesmo motor,
 // mesma resolucao de variavel, mesma captura. So a carga muda.
-func (m *Motor) Debug(ctx context.Context) ([]Observation, map[string]string, error) {
+func (m *Executor) Debug(ctx context.Context) ([]Observation, map[string]string, error) {
 	values := runtime.New(0, 0, m.scenario.Vars)
 
 	for _, source := range m.sources {
@@ -127,11 +127,11 @@ func (m *Motor) Debug(ctx context.Context) ([]Observation, map[string]string, er
 	return observations, values.Values(), nil
 }
 
-func (m *Motor) Scenario() scenario.Scenario { return m.scenario }
+func (m *Executor) Spec() scenario.Spec { return m.scenario }
 
-func (m *Motor) DataRoot() string { return filepath.Clean(m.opts.DataRoot) }
+func (m *Executor) DataRoot() string { return filepath.Clean(m.opts.DataRoot) }
 
-func (m *Motor) Execute(ctx context.Context) metrics.Document {
+func (m *Executor) Execute(ctx context.Context) metrics.Document {
 	clock := m.opts.Clock
 	start := clock.Now()
 	if err := m.prepareProtocols(ctx); err != nil {
@@ -182,7 +182,7 @@ func (m *Motor) Execute(ctx context.Context) metrics.Document {
 
 	return metrics.BuildDocument(collector, metrics.DocumentInput{
 		Version:          m.opts.Version,
-		Scenario:         m.scenario.Name,
+		Spec:             m.scenario.Name,
 		Target:           m.scenario.Target,
 		Model:            string(m.scenario.Load.Model),
 		Start:            start,
@@ -198,7 +198,7 @@ func (m *Motor) Execute(ctx context.Context) metrics.Document {
 
 // Espera por sondagem mede em degraus do intervalo: o numero e sempre maior ou
 // igual ao real, e quem le precisa saber disso antes de comparar com um SLO.
-func (m *Motor) scenarioWarnings() []metrics.Warning {
+func (m *Executor) scenarioWarnings() []metrics.Warning {
 	var warnings []metrics.Warning
 	for _, step := range m.scenario.Steps {
 		polling, sonda := step.Config.(interface{ PollInterval() time.Duration })
@@ -223,7 +223,7 @@ func (m *Motor) scenarioWarnings() []metrics.Warning {
 // Cada chegada agendada e uma iteracao inteira do cenario: e o que faz o valor
 // capturado num passo chegar ao passo seguinte. Se um passo falha, a iteracao
 // para — os passos seguintes dependeriam de uma captura que nao aconteceu.
-func (m *Motor) runIteration(ctx context.Context, virtualUser int64, scheduled time.Time, collector *metrics.Collector) {
+func (m *Executor) runIteration(ctx context.Context, virtualUser int64, scheduled time.Time, collector *metrics.Collector) {
 	values := runtime.New(virtualUser, virtualUser, m.scenario.Vars)
 
 	for _, source := range m.sources {
@@ -273,7 +273,7 @@ func (m *Motor) runIteration(ctx context.Context, virtualUser int64, scheduled t
 	collector.RecordUses(values.Uses())
 }
 
-func (m *Motor) runStep(ctx context.Context, step scenario.Step, scheduled time.Time,
+func (m *Executor) runStep(ctx context.Context, step scenario.Step, scheduled time.Time,
 	values *runtime.Values, authHeader [2]string) (metrics.Sample, Observation) {
 
 	clock := m.opts.Clock
@@ -354,7 +354,7 @@ func (m *Motor) runStep(ctx context.Context, step scenario.Step, scheduled time.
 	return sample, observation
 }
 
-func (m *Motor) verificar(step scenario.Step, response protocol.Response, values *runtime.Values) (protocol.ErrorClass, string) {
+func (m *Executor) verificar(step scenario.Step, response protocol.Response, values *runtime.Values) (protocol.ErrorClass, string) {
 	for _, check := range step.Checks {
 		switch check.Kind {
 		case scenario.CheckStatus:
@@ -375,7 +375,7 @@ func (m *Motor) verificar(step scenario.Step, response protocol.Response, values
 	return protocol.Success, ""
 }
 
-func (m *Motor) runAuthStep(ctx context.Context, step scenario.Step, values *runtime.Values) (protocol.Response, error) {
+func (m *Executor) runAuthStep(ctx context.Context, step scenario.Step, values *runtime.Values) (protocol.Response, error) {
 	sample, observation := m.runStep(ctx, step, m.opts.Clock.Now(), values, [2]string{})
 	if sample.Class != protocol.Success && sample.Class != protocol.ErrStatus {
 		return observation.Response, fmt.Errorf("%s", sample.Detail)
@@ -383,7 +383,7 @@ func (m *Motor) runAuthStep(ctx context.Context, step scenario.Step, values *run
 	return observation.Response, nil
 }
 
-func (m *Motor) follow(collector *metrics.Collector, start time.Time, stop <-chan struct{}) {
+func (m *Executor) follow(collector *metrics.Collector, start time.Time, stop <-chan struct{}) {
 	interval := m.opts.ProgressInterval
 	if interval <= 0 {
 		interval = time.Second
@@ -400,12 +400,12 @@ func (m *Motor) follow(collector *metrics.Collector, start time.Time, stop <-cha
 			if remaining < 0 {
 				remaining = 0
 			}
-			m.opts.OnProgress(collector.Instantaneo(), m.plan.RateAt(elapsed), remaining)
+			m.opts.OnProgress(collector.Snapshot(), m.plan.RateAt(elapsed), remaining)
 		}
 	}
 }
 
-func (m *Motor) appliedPhases() []metrics.AppliedPhase {
+func (m *Executor) appliedPhases() []metrics.AppliedPhase {
 	phases := make([]metrics.AppliedPhase, 0, len(m.scenario.Load.Phases))
 	for _, phase := range m.scenario.Load.Phases {
 		phases = append(phases, metrics.AppliedPhase{
@@ -418,7 +418,7 @@ func (m *Motor) appliedPhases() []metrics.AppliedPhase {
 	return phases
 }
 
-func (m *Motor) prepareProtocols(ctx context.Context) error {
+func (m *Executor) prepareProtocols(ctx context.Context) error {
 	values := runtime.New(0, 0, m.scenario.Vars)
 	for _, step := range m.scenario.Steps {
 		implementation, exists := protocol.Lookup(step.Protocol)
@@ -441,7 +441,7 @@ func (m *Motor) prepareProtocols(ctx context.Context) error {
 	return nil
 }
 
-func (m *Motor) availability() metrics.Availability {
+func (m *Executor) availability() metrics.Availability {
 	availability := metrics.Availability{}
 	for _, source := range m.sources {
 		for name, howMany := range source.Available() {
@@ -470,7 +470,7 @@ func (m *Motor) availability() metrics.Availability {
 // Semente so existe para fonte sintetica: anotar semente de um CSV sugeriria
 // que o arquivo foi sorteado, e a frase do relatorio sobre variedade e a
 // variedade observada ([ADR 0007]), nunca a semente declarada.
-func (m *Motor) seeds() map[string]int64 {
+func (m *Executor) seeds() map[string]int64 {
 	seeds := map[string]int64{}
 	for _, source := range m.scenario.Data {
 		if !source.Synthetic() {
@@ -485,7 +485,7 @@ func (m *Motor) seeds() map[string]int64 {
 	return seeds
 }
 
-func (m *Motor) authObtains() int64 {
+func (m *Executor) authObtains() int64 {
 	if m.authenticator == nil {
 		return 0
 	}

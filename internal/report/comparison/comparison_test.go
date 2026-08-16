@@ -16,7 +16,7 @@ func document(journeyP95, stepP95 float64) metrics.Document {
 		Version:     "0.3.0",
 		Environment: metrics.Environment{Host: "maquina-de-teste", Cores: 10},
 		Run: metrics.Run{
-			Scenario: "Jornada de cobranca", Target: "http://127.0.0.1:8080", Start: start,
+			Spec: "Jornada de cobranca", Target: "http://127.0.0.1:8080", Start: start,
 			AppliedPlan: []metrics.AppliedPhase{{Kind: "patamar", To: 300, DurationMs: 10000}},
 		},
 		Journey: metrics.Journey{Started: 1500, Completed: 1500, Latency: metrics.Distribution{P95: journeyP95}},

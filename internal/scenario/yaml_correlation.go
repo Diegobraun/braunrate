@@ -357,7 +357,7 @@ func readSLORule(target string, metricNode, limitNode *yaml.Node) (SLORule, erro
 	return rule, nil
 }
 
-func ParseSLORule(target, metric, limiteBruto string) (SLORule, error) {
+func ParseSLORule(target, metric, rawLimit string) (SLORule, error) {
 	rule := SLORule{
 		Step:     target,
 		Overall:  target == "global",
@@ -378,7 +378,7 @@ func ParseSLORule(target, metric, limiteBruto string) (SLORule, error) {
 			"    disponiveis: p50, p75, p90, p95, p99, p99.9, max, erros, vazao", rule.Metrica)
 	}
 
-	text := strings.TrimSpace(limiteBruto)
+	text := strings.TrimSpace(rawLimit)
 	rule.Text = rule.Metrica + ": " + text
 
 	for _, operator := range []Operator{OpLessOrEqual, OpGreaterOrEqual, OpLess, OpGreater} {

@@ -21,7 +21,7 @@ import (
 const defaultPath = "/graphql"
 
 func init() {
-	protocol.Record(New(protocol.DefaultOptions()))
+	protocol.Register(New(protocol.DefaultOptions()))
 }
 
 type Config struct {

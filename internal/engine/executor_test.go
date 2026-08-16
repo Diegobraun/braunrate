@@ -52,11 +52,11 @@ func (p *fakeProtocol) Execute(context.Context, protocol.Request) protocol.Respo
 func registerFake(t *testing.T, name string, fake *fakeProtocol) {
 	t.Helper()
 	fake.name = name
-	protocol.Record(fake)
+	protocol.Register(fake)
 }
 
-func fakeScenario(name string, rate float64, duration time.Duration) scenario.Scenario {
-	return scenario.Scenario{
+func fakeScenario(name string, rate float64, duration time.Duration) scenario.Spec {
+	return scenario.Spec{
 		Name:   "teste",
 		Target: "http://alvo.invalido",
 		Load: scenario.LoadPlan{

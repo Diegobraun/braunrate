@@ -119,7 +119,7 @@ func execute(args []string) int {
 	opts.DataRoot = filepath.Dir(scenarioPath)
 	opts.LateThreshold = *lateThreshold
 	if !*silencioso {
-		opts.OnProgress = func(snapshot metrics.Instantaneo, targetRate float64, remaining time.Duration) {
+		opts.OnProgress = func(snapshot metrics.Snapshot, targetRate float64, remaining time.Duration) {
 			fmt.Fprintf(os.Stderr, "\r%s", report.ProgressLine(snapshot, targetRate, remaining))
 		}
 	}

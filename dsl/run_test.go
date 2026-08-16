@@ -74,7 +74,7 @@ func TestGoScenarioRunsOnSameEngineWithSameKeys(t *testing.T) {
 	}
 }
 
-func execute(t *testing.T, c scenario.Scenario) metrics.Document {
+func execute(t *testing.T, c scenario.Spec) metrics.Document {
 	t.Helper()
 	opts := engine.DefaultOptions()
 	opts.DataRoot = t.TempDir()

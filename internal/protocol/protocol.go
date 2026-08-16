@@ -92,7 +92,7 @@ type Protocol interface {
 
 var record = map[string]Protocol{}
 
-func Record(p Protocol) {
+func Register(p Protocol) {
 	if _, exists := record[p.Name()]; exists {
 		panic(fmt.Sprintf("protocolo ja registrado: %s", p.Name()))
 	}

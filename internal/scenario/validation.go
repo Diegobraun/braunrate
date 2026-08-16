@@ -25,7 +25,7 @@ func validTarget(target string) bool {
 	return true
 }
 
-func (c Scenario) Validate() error {
+func (c Spec) Validate() error {
 	var problems []string
 
 	if strings.TrimSpace(c.Name) == "" {

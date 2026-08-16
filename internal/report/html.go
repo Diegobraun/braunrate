@@ -79,7 +79,7 @@ func HTML(out io.Writer, document metrics.Document) error {
 func buildPage(document metrics.Document) htmlPage {
 	page := htmlPage{
 		Document:    document,
-		Title:       document.Run.Scenario,
+		Title:       document.Run.Spec,
 		Journey:     document.Journey,
 		GeneratedAt: document.Run.Start.Format("02/01/2006 15:04:05"),
 	}

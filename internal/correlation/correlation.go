@@ -31,13 +31,13 @@ func compile(expression string) (*regexp.Regexp, error) {
 	return compiled, nil
 }
 
-type ErrCapture struct {
+type CaptureError struct {
 	Variable   string
 	Expression string
 	Reason     string
 }
 
-func (e ErrCapture) Error() string {
+func (e CaptureError) Error() string {
 	return fmt.Sprintf("nao consegui capturar %q com %s: %s", e.Variable, e.Expression, e.Reason)
 }
 
@@ -51,15 +51,15 @@ func Extract(capture scenario.Capture, response protocol.Response) (string, erro
 				return values[0], nil
 			}
 		}
-		return "", ErrCapture{capture.Variable, capture.Expression, "cabecalho ausente na resposta"}
+		return "", CaptureError{capture.Variable, capture.Expression, "cabecalho ausente na resposta"}
 	case scenario.CaptureRegex:
 		compiled, err := compile(capture.Expression)
 		if err != nil {
-			return "", ErrCapture{capture.Variable, capture.Expression, "expressao regular invalida: " + err.Error()}
+			return "", CaptureError{capture.Variable, capture.Expression, "expressao regular invalida: " + err.Error()}
 		}
 		found := compiled.FindSubmatch(response.Body)
 		if found == nil {
-			return "", ErrCapture{capture.Variable, capture.Expression, "nenhuma ocorrencia no corpo"}
+			return "", CaptureError{capture.Variable, capture.Expression, "nenhuma ocorrencia no corpo"}
 		}
 		if len(found) > 1 {
 			return string(found[1]), nil
@@ -70,7 +70,7 @@ func Extract(capture scenario.Capture, response protocol.Response) (string, erro
 	case scenario.CaptureBody:
 		return string(response.Body), nil
 	default:
-		return "", ErrCapture{capture.Variable, capture.Expression, "origem de captura desconhecida"}
+		return "", CaptureError{capture.Variable, capture.Expression, "origem de captura desconhecida"}
 	}
 }
 
@@ -81,9 +81,9 @@ func extrairDeJSON(capture scenario.Capture, response protocol.Response) (string
 	result := gjson.GetBytes(response.Body, path)
 	if !result.Exists() {
 		if !gjson.ValidBytes(response.Body) {
-			return "", ErrCapture{capture.Variable, capture.Expression, "a resposta nao e JSON valido"}
+			return "", CaptureError{capture.Variable, capture.Expression, "a resposta nao e JSON valido"}
 		}
-		return "", ErrCapture{capture.Variable, capture.Expression, "caminho nao encontrado no corpo da resposta"}
+		return "", CaptureError{capture.Variable, capture.Expression, "caminho nao encontrado no corpo da resposta"}
 	}
 	return result.String(), nil
 }

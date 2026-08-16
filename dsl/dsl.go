@@ -28,12 +28,12 @@ type Request interface {
 type StepOption func(*scenario.Step) error
 
 type Builder struct {
-	scenario scenario.Scenario
+	scenario scenario.Spec
 	errors   []error
 }
 
 func New(name string) *Builder {
-	return &Builder{scenario: scenario.Scenario{
+	return &Builder{scenario: scenario.Spec{
 		FormatVersion: scenario.FormatVersion,
 		Name:          name,
 		Vars:          map[string]string{},
@@ -286,7 +286,7 @@ func (c *Builder) Auth(authenticator *Authenticator) *Builder {
 	return c
 }
 
-func (c *Builder) Build() (scenario.Scenario, error) {
+func (c *Builder) Build() (scenario.Spec, error) {
 	built := c.scenario
 	built.Target = scenario.Interpolate(built.Target, built.Vars)
 	if len(c.errors) > 0 {

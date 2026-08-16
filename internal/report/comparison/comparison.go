@@ -26,10 +26,10 @@ type Comparison struct {
 }
 
 type Identification struct {
-	Scenario string `json:"cenario"`
-	Target   string `json:"alvo"`
-	Start    string `json:"inicio"`
-	Version  string `json:"versao"`
+	Spec    string `json:"cenario"`
+	Target  string `json:"alvo"`
+	Start   string `json:"inicio"`
+	Version string `json:"versao"`
 }
 
 type Difference struct {
@@ -83,10 +83,10 @@ func Compare(before, after metrics.Document) Comparison {
 
 func identify(document metrics.Document) Identification {
 	return Identification{
-		Scenario: document.Run.Scenario,
-		Target:   document.Run.Target,
-		Start:    document.Run.Start.Format("02/01/2006 15:04"),
-		Version:  document.Version,
+		Spec:    document.Run.Spec,
+		Target:  document.Run.Target,
+		Start:   document.Run.Start.Format("02/01/2006 15:04"),
+		Version: document.Version,
 	}
 }
 
@@ -95,8 +95,8 @@ func identify(document metrics.Document) Identification {
 func collectCaveats(before, after metrics.Document) []string {
 	var caveats []string
 
-	if before.Run.Scenario != after.Run.Scenario {
-		caveats = append(caveats, fmt.Sprintf("os cenarios sao diferentes: %q e %q", before.Run.Scenario, after.Run.Scenario))
+	if before.Run.Spec != after.Run.Spec {
+		caveats = append(caveats, fmt.Sprintf("os cenarios sao diferentes: %q e %q", before.Run.Spec, after.Run.Spec))
 	}
 	if before.Run.Target != after.Run.Target {
 		caveats = append(caveats, fmt.Sprintf("os alvos sao diferentes: %s e %s", before.Run.Target, after.Run.Target))

@@ -36,7 +36,7 @@ type Environment struct {
 }
 
 type Run struct {
-	Scenario     string           `json:"cenario"`
+	Spec         string           `json:"cenario"`
 	Target       string           `json:"alvo"`
 	Start        time.Time        `json:"inicio"`
 	End          time.Time        `json:"fim"`
@@ -126,7 +126,7 @@ func (d Document) Valid() bool {
 
 type DocumentInput struct {
 	Version          string
-	Scenario         string
+	Spec             string
 	Target           string
 	Model            string
 	Start            time.Time
@@ -153,7 +153,7 @@ func BuildDocument(c *Collector, input DocumentInput) Document {
 			GoVersion: runtime.Version(),
 		},
 		Run: Run{
-			Scenario:     input.Scenario,
+			Spec:         input.Spec,
 			Target:       input.Target,
 			Start:        input.Start,
 			End:          input.End,

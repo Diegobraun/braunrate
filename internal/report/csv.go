@@ -26,7 +26,7 @@ func CSV(out io.Writer, document metrics.Document) error {
 	start := document.Run.Start.Format("2006-01-02T15:04:05Z07:00")
 	line := func(name, kind string, count, errors, bytes int64, distribution metrics.Distribution) []string {
 		return []string{
-			document.Run.Scenario, document.Run.Target, start, name, kind,
+			document.Run.Spec, document.Run.Target, start, name, kind,
 			fmt.Sprintf("%d", count), fmt.Sprintf("%d", errors),
 			number(distribution.P50), number(distribution.P95), number(distribution.P99),
 			number(distribution.P999), number(distribution.Max), fmt.Sprintf("%d", bytes),

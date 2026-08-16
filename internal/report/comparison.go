@@ -17,8 +17,8 @@ func Comparison(out io.Writer, c comparison.Comparison) {
 	write("%s", c.Sentence)
 	write("")
 	write("Comparando")
-	write("  antes:  %s contra %s, em %s", c.Before.Scenario, c.Before.Target, c.Before.Start)
-	write("  depois: %s contra %s, em %s", c.After.Scenario, c.After.Target, c.After.Start)
+	write("  antes:  %s contra %s, em %s", c.Before.Spec, c.Before.Target, c.Before.Start)
+	write("  depois: %s contra %s, em %s", c.After.Spec, c.After.Target, c.After.Start)
 	write("")
 
 	if c.Comparable {

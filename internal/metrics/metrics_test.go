@@ -92,7 +92,7 @@ func TestAggregatesMerge(t *testing.T) {
 func buildDocument(c *metrics.Collector, start, end time.Time) metrics.Document {
 	c.Close()
 	return metrics.BuildDocument(c, metrics.DocumentInput{
-		Version: "teste", Scenario: "teste", Target: "http://alvo", Model: "aberto",
+		Version: "teste", Spec: "teste", Target: "http://alvo", Model: "aberto",
 		Start: start, End: end, MaxInflight: 100,
 	})
 }

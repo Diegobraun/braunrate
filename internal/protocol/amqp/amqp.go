@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	protocol.Record(New(protocol.DefaultOptions()))
+	protocol.Register(New(protocol.DefaultOptions()))
 }
 
 type Config struct {

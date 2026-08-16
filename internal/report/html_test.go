@@ -18,7 +18,7 @@ func sampleDocument() metrics.Document {
 		Version:       "0.3.0",
 		Environment:   metrics.Environment{Host: "maquina-de-teste", OS: "darwin", Arch: "arm64", Cores: 10},
 		Run: metrics.Run{
-			Scenario: "Jornada de cobranca", Target: "http://127.0.0.1:8080",
+			Spec: "Jornada de cobranca", Target: "http://127.0.0.1:8080",
 			Start: start, End: start.Add(10 * time.Second), DurationMs: 10000,
 			Model: "aberto", MaxInflight: 20000, AuthObtains: 1,
 			AppliedPlan: []metrics.AppliedPhase{{Kind: "patamar", To: 300, DurationMs: 10000}},

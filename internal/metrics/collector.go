@@ -201,10 +201,10 @@ func (c *Collector) Close() {
 	}
 }
 
-func (c *Collector) Instantaneo() Instantaneo {
+func (c *Collector) Snapshot() Snapshot {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	snapshot := Instantaneo{
+	snapshot := Snapshot{
 		Sent:           c.Sent,
 		Completed:      c.Completed,
 		LateDispatches: c.LateDispatches,
@@ -218,7 +218,7 @@ func (c *Collector) Instantaneo() Instantaneo {
 	return snapshot
 }
 
-type Instantaneo struct {
+type Snapshot struct {
 	Sent           int64
 	Completed      int64
 	Errors         int64
@@ -230,7 +230,7 @@ type Instantaneo struct {
 	mergedSamples  int64
 }
 
-func (i *Instantaneo) addLatency(aggregate *Aggregate) {
+func (i *Snapshot) addLatency(aggregate *Aggregate) {
 	distribution := aggregate.Distribution()
 	if distribution.Samples == 0 {
 		return
@@ -275,6 +275,6 @@ func (c *Collector) Buckets() []Bucket {
 	return list
 }
 
-func NucleosDisponiveis() int {
+func AvailableCores() int {
 	return runtime.NumCPU()
 }

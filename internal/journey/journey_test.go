@@ -66,7 +66,7 @@ slo:
   - global: { erros: < 0.1 }
 `
 
-func prepareScenario(t *testing.T, address string) (scenario.Scenario, string) {
+func prepareScenario(t *testing.T, address string) (scenario.Spec, string) {
 	t.Helper()
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "assinantes.csv"),

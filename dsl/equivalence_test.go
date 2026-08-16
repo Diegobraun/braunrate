@@ -19,7 +19,7 @@ import (
 type equivalence struct {
 	name string
 	yaml string
-	dsl  func() (scenario.Scenario, error)
+	dsl  func() (scenario.Spec, error)
 }
 
 // O YAML e a DSL precisam produzir a MESMA estrutura, e nao apenas resultados
@@ -92,7 +92,7 @@ slo:
   - POST /pedidos: { vazao: "> 50/s" }
   - global: { erros: < 0.1 }
 `,
-		dsl: func() (scenario.Scenario, error) {
+		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Jornada autenticada").
 				Target("${BASE:-http://127.0.0.1:8080}").
 				Variable("inquilino", "acme").
@@ -162,7 +162,7 @@ cenario:
 slo:
   - graphql ConsultarPedido: { p99: < 300ms }
 `,
-		dsl: func() (scenario.Scenario, error) {
+		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Cobranca em GraphQL").
 				Target("http://127.0.0.1:8080").
 				Plateau(dsl.PerSecond(50), 20*time.Second).
@@ -217,7 +217,7 @@ cenario:
 slo:
   - kafka produzir pedidos-cadeia: { p95: < 100ms }
 `,
-		dsl: func() (scenario.Scenario, error) {
+		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Cadeia assincrona").
 				Target("127.0.0.1:9092").
 				GeneratedData("pedidos", map[string]string{"id": "uuid"}, dsl.Consume(scenario.ConsumeSequential)).
@@ -277,7 +277,7 @@ cenario:
       amqp: pedidos-processados
       chave: "${clientes.id}"
 `,
-		dsl: func() (scenario.Scenario, error) {
+		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Publicacao em RabbitMQ").
 				Target("amqp://127.0.0.1:5672").
 				DataFromFile("clientes", "dados/clientes.csv", dsl.Consume(scenario.ConsumeRandom)).
@@ -318,7 +318,7 @@ carga:
 cenario:
   - http: GET /pedidos
 `,
-		dsl: func() (scenario.Scenario, error) {
+		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Basica").
 				Target("http://127.0.0.1:8080").
 				Auth(dsl.Basic("ana", "segredo")).
@@ -345,7 +345,7 @@ carga:
 cenario:
   - http: DELETE /pedidos/1
 `,
-		dsl: func() (scenario.Scenario, error) {
+		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Chave de api").
 				Target("http://127.0.0.1:8080").
 				Auth(dsl.WithHeaderAuth("X-API-Key: ${api_key}")).
@@ -492,7 +492,7 @@ func missing[T comparable](t *testing.T, subject string, expected []T, seen map[
 	}
 }
 
-func withoutLines(c scenario.Scenario) scenario.Scenario {
+func withoutLines(c scenario.Spec) scenario.Spec {
 	clone := c
 	clone.Steps = nil
 	for _, step := range c.Steps {
@@ -541,7 +541,7 @@ func stepWithoutLines(step scenario.Step) scenario.Step {
 	return clone
 }
 
-func diferencas(expected, obtained scenario.Scenario) []string {
+func diferencas(expected, obtained scenario.Spec) []string {
 	var findings []string
 	compare := func(field string, a, b any) {
 		if !reflect.DeepEqual(a, b) {

@@ -199,7 +199,7 @@ cenario:
 }
 
 func TestValidationReportsProblems(t *testing.T) {
-	c := scenario.Scenario{}
+	c := scenario.Spec{}
 	err := c.Validate()
 	if err == nil {
 		t.Fatal("esperava erro de validacao")

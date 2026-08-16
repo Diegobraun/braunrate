@@ -11,7 +11,7 @@ import (
 	"github.com/Diegobraun/braunrate/internal/slo"
 )
 
-func ProgressLine(snapshot metrics.Instantaneo, targetRate float64, remaining time.Duration) string {
+func ProgressLine(snapshot metrics.Snapshot, targetRate float64, remaining time.Duration) string {
 	alert := ""
 	if snapshot.Sent > 0 {
 		proportion := float64(snapshot.LateDispatches) / float64(snapshot.Sent)
@@ -32,7 +32,7 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) {
 	}
 
 	write("")
-	write("%s — contra %s", document.Run.Scenario, document.Run.Target)
+	write("%s — contra %s", document.Run.Spec, document.Run.Target)
 	write("")
 
 	if len(verdict.Evaluations) > 0 {

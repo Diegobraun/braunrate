@@ -97,7 +97,7 @@ func (c *Values) Uses() map[string]string {
 	return clone
 }
 
-func NaoResolvidas(text string) []string {
+func Unresolved(text string) []string {
 	var pending []string
 	for _, occurrence := range varPattern.FindAllStringSubmatch(text, -1) {
 		pending = append(pending, occurrence[1])

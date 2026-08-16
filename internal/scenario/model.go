@@ -9,7 +9,7 @@ import (
 
 const FormatVersion = "1"
 
-type Scenario struct {
+type Spec struct {
 	FormatVersion string
 	Name          string
 	Target        string
@@ -91,7 +91,7 @@ func (f Phase) FinalRate() float64 {
 	return f.To
 }
 
-func (c Scenario) Duration() time.Duration {
+func (c Spec) Duration() time.Duration {
 	var total time.Duration
 	for _, phase := range c.Load.Phases {
 		total += phase.For
@@ -99,7 +99,7 @@ func (c Scenario) Duration() time.Duration {
 	return total
 }
 
-func (c Scenario) FindStep(name string) (Step, error) {
+func (c Spec) FindStep(name string) (Step, error) {
 	for _, step := range c.Steps {
 		if step.Name == name {
 			return step, nil
