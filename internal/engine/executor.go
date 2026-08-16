@@ -196,6 +196,7 @@ func (executor *Executor) Execute(runContext context.Context) metrics.Document {
 		ThinkTime:        load.ThinkTime,
 		MaxInflight:      executor.options.MaxInflight,
 		Seeds:            executor.seeds(),
+		SeedsFrom:        scenario.SeedsFromEnvironment(executor.scenario),
 		Availability:     executor.availability(),
 		AuthObtains:      executor.authObtains(),
 		ScenarioWarnings: executor.scenarioWarnings(),
@@ -642,7 +643,7 @@ func (executor *Executor) availability() metrics.Availability {
 func (executor *Executor) seeds() map[string]int64 {
 	seeds := map[string]int64{}
 	for _, source := range executor.scenario.Data {
-		if !source.Synthetic() {
+		if !source.UsesSeed() {
 			continue
 		}
 		seed := source.Seed

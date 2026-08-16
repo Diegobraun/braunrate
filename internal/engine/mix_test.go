@@ -140,3 +140,79 @@ cenario:
 		t.Fatalf("o bloco de mix apareceu num cenario sem mix:\n%s", withoutMix)
 	}
 }
+
+// Semente diferente muda o dado, e nao pode virar desculpa para variedade
+// colapsada passar: a verificacao olha o que aconteceu, nao o que foi
+// declarado, e continua valendo qualquer que seja a semente.
+func TestSeedFromEnvironmentChangesTheDataAndDoesNotExcuseCollapsedVariety(t *testing.T) {
+	var mutex sync.Mutex
+	var paths []string
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		mutex.Lock()
+		paths = append(paths, request.URL.Path)
+		mutex.Unlock()
+		_, _ = fmt.Fprint(writer, `{"id":"1"}`)
+	}))
+	t.Cleanup(server.Close)
+
+	run := func(field string) ([]string, string) {
+		mutex.Lock()
+		paths = nil
+		mutex.Unlock()
+		spec, err := scenario.Parse([]byte(fmt.Sprintf(`
+nome: Semente
+alvo: %s
+dados:
+  pedidos:
+    gerar: { %s }
+    semente: ${SEMENTE_DO_TESTE:-42}
+carga:
+  perfis:
+    - constante: { taxa: 200/s, durante: 200ms }
+cenario:
+  - nome: consultar
+    http: GET /pedidos/${pedidos.id}
+`, server.URL, field)))
+		if err != nil {
+			t.Fatalf("cenario invalido: %v", err)
+		}
+		executor, err := engine.New(spec, engine.DefaultOptions())
+		if err != nil {
+			t.Fatalf("motor nao subiu: %v", err)
+		}
+		document := executor.Execute(context.Background())
+		var terminal bytes.Buffer
+		if err := report.Summary(&terminal, document, slo.Verdict{}); err != nil {
+			t.Fatalf("relatorio nao saiu: %v", err)
+		}
+		mutex.Lock()
+		defer mutex.Unlock()
+		return append([]string{}, paths...), terminal.String()
+	}
+
+	varying := `id: "numero(1,1000000)"`
+	t.Setenv("SEMENTE_DO_TESTE", "1")
+	first, output := run(varying)
+	if !strings.Contains(output, "(de $SEMENTE_DO_TESTE)") {
+		t.Errorf("o relatorio nao diz de onde veio a semente:\n%s", output)
+	}
+	if !strings.Contains(output, "SEMENTE_DO_TESTE=1") {
+		t.Errorf("o relatorio nao diz como repetir estes dados:\n%s", output)
+	}
+
+	t.Setenv("SEMENTE_DO_TESTE", "2")
+	second, _ := run(varying)
+	if len(first) == 0 || len(second) == 0 {
+		t.Fatal("nenhuma requisicao chegou ao alvo")
+	}
+	if first[0] == second[0] {
+		t.Fatalf("duas sementes diferentes geraram o mesmo primeiro valor: %s", first[0])
+	}
+
+	// Uma fonte que gera sempre o mesmo valor continua sendo resultado invalido,
+	// venha a semente do arquivo ou do ambiente.
+	_, collapsed := run(`id: "padrao(FIXO)"`)
+	if !strings.Contains(collapsed, "valor") || !strings.Contains(collapsed, "pedidos.id") {
+		t.Fatalf("a variedade observada sumiu do relatorio:\n%s", collapsed)
+	}
+}

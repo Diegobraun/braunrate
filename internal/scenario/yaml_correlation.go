@@ -308,11 +308,11 @@ func readData(node *yaml.Node) ([]DataSource, error) {
 						"    disponiveis: circular (padrao), sequencial, aleatorio, unico_por_usuario", value.Value)
 				}
 			case "semente":
-				seed, err := strconv.ParseInt(value.Value, 10, 64)
+				seed, origin, err := ReadSeed(value.Value)
 				if err != nil {
-					return nil, nodeError(value, "semente invalida: %q (use um numero inteiro)", value.Value)
+					return nil, nodeError(value, "%v", err)
 				}
-				source.Seed = seed
+				source.Seed, source.SeedFrom = seed, origin
 			case "gerar":
 				if value.Kind != yaml.MappingNode {
 					return nil, nodeError(value, "gerar precisa ser um mapa, por exemplo: gerar: { id: uuid, valor: numero(10,500) }")

@@ -84,6 +84,20 @@ func Seed(seed int64) DataOption {
 	return func(source *scenario.DataSource) { source.Seed = seed }
 }
 
+// SeedFromEnv le a semente do ambiente com um valor de partida, que e o mesmo
+// que "semente: ${NOME:-padrao}" faz no YAML. A semente que rodou e a origem
+// dela vao para o relatorio: sem isso, variar a semente e perder a execucao.
+func SeedFromEnv(name string, fallback int64) DataOption {
+	return func(source *scenario.DataSource) {
+		seed, origin, err := scenario.ReadSeed(fmt.Sprintf("${%s:-%d}", name, fallback))
+		if err != nil {
+			source.Seed = fallback
+			return
+		}
+		source.Seed, source.SeedFrom = seed, origin
+	}
+}
+
 func (builder *Builder) DataFromFile(name, file string, options ...DataOption) *Builder {
 	source := scenario.DataSource{Name: name, File: file, Consume: scenario.ConsumeCircular}
 	for _, option := range options {

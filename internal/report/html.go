@@ -323,7 +323,11 @@ func environmentSentences(document metrics.Document) []string {
 		sentences = append(sentences, "Variedade observada: "+variety.Sentence+".")
 	}
 	if len(document.Run.Seeds) > 0 {
-		sentences = append(sentences, "Semente das fontes sinteticas: "+seeds(document.Run.Seeds)+" — a mesma semente gera os mesmos valores de novo.")
+		sentence := "Sementes dos dados: " + seeds(document.Run.Seeds, document.Run.SeedsFrom) + " — a mesma semente gera os mesmos valores de novo."
+		if repeat := repeatWithSeeds(document.Run); repeat != "" {
+			sentence += " Para repetir exatamente estes dados, rode de novo com " + repeat + "."
+		}
+		sentences = append(sentences, sentence)
 	}
 	if document.Run.AuthObtains > 0 {
 		sentences = append(sentences, fmt.Sprintf("Autenticacao obtida %s e reaproveitada por todas as jornadas. Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.",

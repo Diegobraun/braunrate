@@ -388,6 +388,34 @@ cenario:
 		},
 	},
 	{
+		name: "semente vinda do ambiente",
+		yaml: `
+nome: Semente do ambiente
+alvo: http://127.0.0.1:8080
+
+dados:
+  pedidos:
+    gerar: { id: uuid }
+    semente: ${SEMENTE_DE_TESTE:-42}
+
+carga:
+  perfis:
+    - patamar: { taxa: 10/s, durante: 5s }
+
+cenario:
+  - http: GET /pedidos/${pedidos.id}
+    nome: consultar pedido
+`,
+		dsl: func() (scenario.Spec, error) {
+			return dsl.New("Semente do ambiente").
+				Target("http://127.0.0.1:8080").
+				GeneratedData("pedidos", map[string]string{"id": "uuid"}, dsl.SeedFromEnv("SEMENTE_DE_TESTE", 42)).
+				Plateau(dsl.PerSecond(10), 5*time.Second).
+				Step(dsl.GET("/pedidos/${pedidos.id}"), dsl.Name("consultar pedido")).
+				Build()
+		},
+	},
+	{
 		name: "mix ponderado de operacoes",
 		yaml: `
 nome: Mix de operacoes

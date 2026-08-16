@@ -84,10 +84,14 @@ const (
 )
 
 type DataSource struct {
-	Name      string
-	File      string
-	Consume   ConsumePolicy
-	Seed      int64
+	Name    string
+	File    string
+	Consume ConsumePolicy
+	Seed    int64
+	// Nome da variavel de ambiente de onde a semente veio, vazio quando ela foi
+	// escrita no arquivo. Reproduzir uma execucao exige saber qual semente rodou
+	// e de onde ela saiu, e nao ha como saber isso depois se ninguem guardar.
+	SeedFrom  string
 	Fields    map[string]Generator
 	Registros int
 	Line      int

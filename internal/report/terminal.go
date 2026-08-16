@@ -177,7 +177,14 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 		write("  %s", variety.Sentence)
 	}
 	if len(document.Run.Seeds) > 0 {
-		write("  Semente das fontes sinteticas: %s (a mesma semente gera os mesmos valores de novo)", seeds(document.Run.Seeds))
+		write("  Sementes dos dados: %s (a mesma semente gera os mesmos valores de novo)",
+			seeds(document.Run.Seeds, document.Run.SeedsFrom))
+		// Semente que veio do ambiente e um numero que ninguem sabe como
+		// reproduzir depois — a menos que o relatorio diga a linha de comando que
+		// traz de volta este mesmo caso.
+		if repeat := repeatWithSeeds(document.Run); repeat != "" {
+			write("  Para repetir exatamente estes dados, rode de novo com %s", repeat)
+		}
 	}
 	if document.Run.AuthObtains > 0 {
 		write("  Autenticacao obtida %s e reaproveitada por todas as jornadas.",
@@ -188,7 +195,7 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 	return lines.err
 }
 
-func seeds(values map[string]int64) string {
+func seeds(values map[string]int64, origins map[string]string) string {
 	names := make([]string, 0, len(values))
 	for name := range values {
 		names = append(names, name)
@@ -196,9 +203,32 @@ func seeds(values map[string]int64) string {
 	sort.Strings(names)
 	parts := make([]string, 0, len(names))
 	for _, name := range names {
+		if origin, fromEnvironment := origins[name]; fromEnvironment {
+			parts = append(parts, fmt.Sprintf("%s=%d (de $%s)", name, values[name], origin))
+			continue
+		}
 		parts = append(parts, fmt.Sprintf("%s=%d", name, values[name]))
 	}
 	return strings.Join(parts, ", ")
+}
+
+func repeatWithSeeds(run metrics.Run) string {
+	names := make([]string, 0, len(run.SeedsFrom))
+	for name := range run.SeedsFrom {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	assignments := make([]string, 0, len(names))
+	seen := map[string]bool{}
+	for _, name := range names {
+		variable := run.SeedsFrom[name]
+		if seen[variable] {
+			continue
+		}
+		seen[variable] = true
+		assignments = append(assignments, fmt.Sprintf("%s=%d", variable, run.Seeds[name]))
+	}
+	return strings.Join(assignments, " ")
 }
 
 type errorLine struct {

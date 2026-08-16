@@ -49,20 +49,23 @@ type Environment struct {
 }
 
 type Run struct {
-	Spec         string           `json:"cenario"`
-	Target       string           `json:"alvo"`
-	Start        time.Time        `json:"inicio"`
-	End          time.Time        `json:"fim"`
-	DurationMs   int64            `json:"duracao_ms"`
-	Model        string           `json:"modelo_de_chegada"`
-	AppliedPlan  []AppliedPhase   `json:"plano_aplicado"`
-	Users        int              `json:"usuarios,omitzero"`
-	ThinkTimeMs  int64            `json:"intervalo_entre_iteracoes_ms,omitzero"`
-	MaxInflight  int64            `json:"maximo_de_requisicoes_simultaneas"`
-	Seeds        map[string]int64 `json:"sementes_dos_dados"`
-	Availability Availability     `json:"valores_disponiveis_por_variavel"`
-	AuthObtains  int64            `json:"obtencoes_de_autenticacao"`
-	Brokers      []string         `json:"mensageria,omitempty"`
+	Spec        string           `json:"cenario"`
+	Target      string           `json:"alvo"`
+	Start       time.Time        `json:"inicio"`
+	End         time.Time        `json:"fim"`
+	DurationMs  int64            `json:"duracao_ms"`
+	Model       string           `json:"modelo_de_chegada"`
+	AppliedPlan []AppliedPhase   `json:"plano_aplicado"`
+	Users       int              `json:"usuarios,omitzero"`
+	ThinkTimeMs int64            `json:"intervalo_entre_iteracoes_ms,omitzero"`
+	MaxInflight int64            `json:"maximo_de_requisicoes_simultaneas"`
+	Seeds       map[string]int64 `json:"sementes_dos_dados"`
+	// Variavel de ambiente que decidiu cada semente. Sem isso, uma semente que
+	// veio do ambiente e um numero que ninguem sabe como reproduzir.
+	SeedsFrom    map[string]string `json:"sementes_de_ambiente,omitempty"`
+	Availability Availability      `json:"valores_disponiveis_por_variavel"`
+	AuthObtains  int64             `json:"obtencoes_de_autenticacao"`
+	Brokers      []string          `json:"mensageria,omitempty"`
 	// How far behind each watched consumer group was left. The time to produce
 	// says the broker accepted the message; this says whether the service kept
 	// up, and they are different questions.
@@ -196,6 +199,7 @@ type DocumentInput struct {
 	Phases           []AppliedPhase
 	MaxInflight      int64
 	Seeds            map[string]int64
+	SeedsFrom        map[string]string
 	Availability     Availability
 	AuthObtains      int64
 	ScenarioWarnings []Warning
@@ -235,6 +239,7 @@ func BuildDocument(collector *Collector, input DocumentInput) Document {
 			ThinkTimeMs:   input.ThinkTime.Milliseconds(),
 			MaxInflight:   input.MaxInflight,
 			Seeds:         input.Seeds,
+			SeedsFrom:     input.SeedsFrom,
 			Availability:  input.Availability,
 			AuthObtains:   input.AuthObtains,
 			Brokers:       input.Brokers,

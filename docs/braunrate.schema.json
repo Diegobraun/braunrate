@@ -572,8 +572,15 @@
           "description": "circular repete do inicio ao fim do arquivo; unico_por_usuario nao repete valor."
         },
         "semente": {
-          "type": "integer",
-          "description": "Mesma semente, mesmos dados. Vai para o relatorio."
+          "type": [
+            "integer",
+            "string"
+          ],
+          "description": "Mesma semente, mesmos dados. Aceita ${SEMENTE:-42} para vir do ambiente. A semente que rodou e a variavel de onde ela veio vao para o relatorio e para o JSON.",
+          "examples": [
+            42,
+            "${SEMENTE:-42}"
+          ]
         },
         "gerar": {
           "type": "object",

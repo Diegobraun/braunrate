@@ -383,6 +383,26 @@ Mix declarado e observado
 
 Peso escolhe qual alternativa executar, nao qual passo dentro de uma jornada: um cenario com captura encadeada e uma jornada so, e a validacao recusa peso nele com as duas saidas. O exemplo completo esta em [`examples/mix-de-operacoes.yaml`](examples/mix-de-operacoes.yaml), e o [ADR 0016](docs/adr/0016-mix-ponderado-de-operacoes.md) explica as tres decisoes.
 
+### Semente: repetivel por padrao, variavel quando voce quiser
+
+Semente fixa no arquivo faz o CI rodar sempre o mesmo caso, e um caso que passa mil vezes nao prova mais nada depois da primeira. A semente aceita o ambiente:
+
+```yaml
+dados:
+  pedidos:
+    gerar: { id: uuid, valor: "numero(10,500)" }
+    semente: ${SEMENTE:-42}
+```
+
+Sem a variavel, roda com 42 e nada muda. Com ela, a semente que rodou e a variavel de onde ela veio vao para o relatorio e para o JSON, junto com a linha que traz o caso de volta:
+
+```
+  Sementes dos dados: pedidos=8817 (de $SEMENTE) (a mesma semente gera os mesmos valores de novo)
+  Para repetir exatamente estes dados, rode de novo com SEMENTE=8817
+```
+
+Variar a semente nao afrouxa nada: a [variedade observada](#variedade-observada-o-relatorio-diz-o-que-aconteceu-nao-o-que-foi-declarado) olha o que de fato aconteceu, entao uma fonte que colapsou continua invalidando o resultado com qualquer semente.
+
 ### Ramificacao por perfil: a coluna decide a rota
 
 Nao existe passo condicional, e nao e falta: qual caminho cada perfil percorre, e em que proporcao, e conhecimento de negocio — nenhuma observacao de trafego revela isso, e quem grava uma passagem grava um perfil. A ramificacao honesta e por dado.
