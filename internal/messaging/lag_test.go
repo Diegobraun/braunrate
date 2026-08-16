@@ -57,6 +57,10 @@ func TestConsumerLagShowsTheServiceFallingBehind(t *testing.T) {
 	topic := fmt.Sprintf("lag-%d", time.Now().UnixNano())
 	group := topic + "-grupo"
 
+	// The topic is created before anything else for the same reason the chain
+	// test creates it: a broker without automatic creation refuses the first
+	// write, and the failure would be read as a defect of the measurement.
+	createPlainTopic(t, address, topic, 1)
 	slowGroup(t, address, topic, group, 40*time.Millisecond)
 	time.Sleep(2 * time.Second)
 
@@ -176,9 +180,12 @@ func createPlainTopic(t *testing.T, address, name string, partitions int) {
 	}
 	defer func() { _ = conn.Close() }()
 
-	if err := conn.CreateTopics(kafka.TopicConfig{
+	err = conn.CreateTopics(kafka.TopicConfig{
 		Topic: name, NumPartitions: partitions, ReplicationFactor: 1,
-	}); err != nil {
+	})
+	// A broker with automatic creation may have got there first, and that is not
+	// a failure of the test — the topic existing is what the test wanted.
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "already exists") {
 		t.Fatalf("nao consegui criar o topico: %v", err)
 	}
 	for attempt := 0; attempt < 50; attempt++ {
