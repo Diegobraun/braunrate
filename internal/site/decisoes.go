@@ -48,7 +48,8 @@ repositório.
 		fmt.Fprintf(&markdown, "| [%s](%s) | %s |\n", number, link, cell(decision))
 	}
 	return Page{Slug: "decisoes", Title: "Decisões", Section: "Referência",
-		Summary: "As decisões de arquitetura registradas, uma linha cada.", Markdown: markdown.String()}, nil
+		Summary:  "As decisões de arquitetura registradas, uma linha cada.",
+		Markdown: markdown.String(), Source: adrDirectory}, nil
 }
 
 // O titulo do ADR ja e a decisao em uma linha. Resumir o corpo aqui criaria uma

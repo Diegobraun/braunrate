@@ -1,8 +1,17 @@
 # braunrate
 
-Ferramenta de teste de carga com medição honesta: modelo de chegada aberto, HDR
-histogram e detecção de back-pressure. Binário único, sem runtime para instalar,
-cenário em YAML que vive no repositório ao lado do serviço.
+```dobra
+lema: Teste de carga que não mente sobre o próprio resultado.
+resumo: Quando o sistema trava, a maioria das ferramentas para de medir junto — e o relatório sai bonito. O braunrate continua medindo, e mostra o que aconteceu.
+comando: braunrate demo
+acao: Baixar | instalacao.html
+acao: Ver no GitHub | https://github.com/Diegobraun/braunrate
+ficha: binário único | sem runtime para instalar | cenário em YAML versionado
+prova: Mesmo serviço. Mesma travada de 1 segundo.
+lado: Ferramenta de laço fechado | 3,7 ms | "está tudo bem"
+lado: braunrate | 983,0 ms | "o usuário esperou 983 ms"
+saldo: 979,4 ms que a outra ferramenta não contou.
+```
 
 ## Começar
 

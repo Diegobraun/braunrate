@@ -86,7 +86,8 @@ aparece aqui reprova o build.
 		writeBlock(&markdown, root, definition, "`"+name+"`", 2)
 	}
 	return Page{Slug: "referencia", Title: "Referência do cenário", Section: "Referência",
-		Summary: "Todas as chaves do arquivo de cenário, geradas do schema.", Markdown: markdown.String()}, nil
+		Summary:  "Todas as chaves do arquivo de cenário, geradas do schema.",
+		Markdown: markdown.String(), Source: schemaPath}, nil
 }
 
 func readSchema(repositoryRoot string) (schemaNode, error) {

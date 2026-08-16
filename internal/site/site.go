@@ -15,7 +15,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/alecthomas/chroma/v2/styles"
+	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/extension"
@@ -36,6 +36,11 @@ type Page struct {
 	Section  string
 	Summary  string
 	Markdown string
+	// Caminho do arquivo no repositorio, para o "editar esta pagina" do rodape.
+	Source string
+	Hero   *Hero
+	// Pagina cujo indice proprio ja esta no corpo, como a grade de comandos.
+	SemIndice bool
 }
 
 func Build(repositoryRoot, destination string, version string) error {
@@ -46,15 +51,35 @@ func Build(repositoryRoot, destination string, version string) error {
 	if err := os.MkdirAll(destination, 0o755); err != nil {
 		return fmt.Errorf("não consegui criar %s: %w", destination, err)
 	}
-	for name, content := range map[string]string{"estilo.css": stylesheet, "pagina.js": script} {
+	realce, err := highlightStyles()
+	if err != nil {
+		return fmt.Errorf("não consegui gerar o destaque de sintaxe: %w", err)
+	}
+	index, err := searchIndex(pages)
+	if err != nil {
+		return fmt.Errorf("não consegui montar o índice de busca: %w", err)
+	}
+	for name, content := range map[string]string{"estilo.css": stylesheet + realce, "pagina.js": script, "indice.js": index} {
 		if err := os.WriteFile(filepath.Join(destination, name), []byte(content), 0o644); err != nil {
 			return fmt.Errorf("não consegui gravar %s: %w", name, err)
 		}
 	}
 	for index, page := range pages {
-		body, err := renderMarkdown(page.Markdown)
+		source := page.Markdown
+		cards, stripped, hasCards := commandCards(source)
+		if hasCards {
+			source = stripped
+		}
+		body, err := renderMarkdown(source)
 		if err != nil {
 			return fmt.Errorf("%s: %w", page.Slug, err)
+		}
+		if hasCards {
+			body = placeCards(body, cards)
+			// A grade ja e o indice desta pagina; repetir a mesma lista na coluna
+			// da direita gasta a largura que os cartoes precisam para caber numa
+			// tela so.
+			page.SemIndice = true
 		}
 		content := layout(page, pages, index, body, version)
 		if err := os.WriteFile(filepath.Join(destination, fileOf(page, index)), []byte(content), 0o644); err != nil {
@@ -118,9 +143,16 @@ func guides(repositoryRoot string) ([]Page, error) {
 			return nil, fmt.Errorf("%s não começa com um título '# '", name)
 		}
 		section, slug := sectionAndSlug(name)
-		pages = append(pages, Page{
-			Slug: slug, Title: title, Section: section, Summary: summary(text), Markdown: text,
-		})
+		hero, text := extractHero(text)
+		page := Page{
+			Slug: slug, Title: title, Section: section, Summary: summary(text),
+			Markdown: text, Source: guidesDirectory + "/" + name, Hero: hero,
+		}
+		if hero != nil {
+			page.Summary = hero.Lema
+			page.Markdown = strings.TrimPrefix(text, "# "+title+"\n")
+		}
+		pages = append(pages, page)
 	}
 	return pages, nil
 }
@@ -177,10 +209,9 @@ func renderMarkdown(source string) (string, error) {
 	converter := goldmark.New(
 		goldmark.WithExtensions(
 			extension.Table,
-			// O destaque de sintaxe sai com as cores dentro do proprio HTML. Uma
-			// folha de estilo de terceiro viria de CDN, e a regra de nao buscar
-			// nada da rede vale para o site como ja vale para o relatorio.
-			highlighting.NewHighlighting(highlighting.WithCustomStyle(styles.Get("github-dark"))),
+			// Em classe, com as duas paletas geradas em realce.go: cor embutida na
+			// tag so permite uma paleta, e ela ficava escura no tema claro.
+			highlighting.NewHighlighting(highlighting.WithFormatOptions(chromahtml.WithClasses(true))),
 		),
 		goldmark.WithParserOptions(parser.WithAttribute()),
 	)
@@ -209,6 +240,11 @@ func layout(page Page, pages []Page, index int, body, version string) string {
 		title = "braunrate"
 	}
 
+	hero := ""
+	if page.Hero != nil {
+		hero = page.Hero.render()
+	}
+
 	return fmt.Sprintf(`<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -217,26 +253,64 @@ func layout(page Page, pages []Page, index int, body, version string) string {
 <title>%s</title>
 <meta name="description" content="%s">
 <link rel="stylesheet" href="estilo.css">
+<script>
+// Antes da primeira pintura: escolher o tema depois dela pisca a pagina inteira.
+(function () {
+  try {
+    var escolhido = localStorage.getItem('braunrate-tema')
+    if (escolhido) document.documentElement.setAttribute('data-tema', escolhido)
+  } catch (erro) { /* navegacao privada nao guarda, e o tema do sistema vale */ }
+})()
+</script>
 </head>
 <body>
 <header>
-  <a class="marca" href="index.html">braunrate</a>
+  <a class="marca" href="index.html"><span class="sinal" aria-hidden="true"></span>braunrate</a>
   <span class="versao">%s</span>
+  <button type="button" class="abrir-busca" id="abrir-busca" aria-label="Buscar na documentação">
+    buscar <kbd>/</kbd>
+  </button>
+  <button type="button" class="tema" id="tema" aria-label="Alternar tema claro e escuro">tema</button>
   <a class="repositorio" href="https://github.com/Diegobraun/braunrate">GitHub</a>
 </header>
 <div class="pagina">
   <nav class="secoes" aria-label="Seções">
 %s  </nav>
   <main>
-    <article>
+%s    <article>
 %s    </article>
 %s  </main>
 %s</div>
+%s<div class="busca" id="busca" hidden>
+  <div class="caixa-busca" role="dialog" aria-modal="true" aria-label="Buscar na documentação">
+    <input type="search" id="termo" placeholder="buscar na documentação" autocomplete="off" spellcheck="false">
+    <ol id="resultados" aria-live="polite"></ol>
+    <p class="dica-busca"><kbd>↑</kbd><kbd>↓</kbd> navega · <kbd>enter</kbd> abre · <kbd>esc</kbd> fecha</p>
+  </div>
+</div>
+<script src="indice.js"></script>
 <script src="pagina.js"></script>
 </body>
 </html>
 `, html.EscapeString(title), html.EscapeString(page.Summary), html.EscapeString(version),
-		menu(pages, index), body, pagination(pages, index), tableOfContents(page))
+		menu(pages, index), hero, body, pagination(pages, index), tableOfContents(page),
+		footer(page, version))
+}
+
+// Pagina escrita a mao convida a edicao; pagina gerada diz de onde ela sai,
+// porque editar o HTML dela nao mudaria nada no proximo build.
+func footer(page Page, version string) string {
+	origem := fmt.Sprintf(`<a href="https://github.com/Diegobraun/braunrate/edit/main/%s">editar esta página</a>`,
+		html.EscapeString(page.Source))
+	if !strings.HasSuffix(page.Source, ".md") {
+		origem = fmt.Sprintf(`gerada de <a href="https://github.com/Diegobraun/braunrate/blob/main/%s"><code>%s</code></a>`,
+			html.EscapeString(page.Source), html.EscapeString(page.Source))
+	}
+	return fmt.Sprintf(`<footer>
+  <p><a href="https://github.com/Diegobraun/braunrate">repositório</a> · %s</p>
+  <p class="direita">braunrate %s · <a href="https://github.com/Diegobraun/braunrate/blob/main/LICENSE">licença MIT</a></p>
+</footer>
+`, origem, html.EscapeString(version))
 }
 
 func menu(pages []Page, index int) string {
@@ -280,7 +354,7 @@ var sectionHeading = regexp.MustCompile(`(?m)^(##|###) +(.+)$`)
 
 func tableOfContents(page Page) string {
 	matches := sectionHeading.FindAllStringSubmatch(page.Markdown, -1)
-	if len(matches) < 3 {
+	if page.SemIndice || len(matches) < 3 {
 		return ""
 	}
 	var written strings.Builder
