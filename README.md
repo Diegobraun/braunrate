@@ -1058,6 +1058,8 @@ Tres razoes, nesta ordem:
 - [API do modo servidor](docs/api-servidor.md) — um exemplo de curl por rota
 - [Schema do cenario](docs/braunrate.schema.json) — autocompletar e validacao no editor
 - [Exemplo de relatorio HTML](docs/exemplo-relatorio.html) — saida real de uma execucao que falhou o SLO
+- [Bateria adversarial](docs/bateria-adversarial.md) — onde a ferramenta falha, mente ou frustra
+- [Gap dos caminhos de entrada](docs/gap-caminhos-de-entrada.md) — o que `new`, `import curl` e `record` nao montam, e por que
 - [Medicao dos prototipos da Fase 0](docs/medicoes-fase0.md)
 
 ## Licenca
