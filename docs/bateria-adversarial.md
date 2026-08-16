@@ -1370,3 +1370,95 @@ O que falta e mais estreito do que eu esperava: o titulo de uma linha nao carreg
 ressalvas que o corpo carrega — nem a degradacao do 5.1, nem os 33% de erro do 2.9,
 nem o consumidor morto do 2.8. Quem le o relatorio inteiro e bem servido. Quem cola a
 primeira linha no canal do time, nao.
+
+---
+
+### 4.2 — Autenticacao HTTP e Kafka na mesma jornada
+**Funciona, e o token vai so onde deve.**
+
+```
+passo 1 — criar pedido   [ok em 2.4ms]
+  requisicao: POST /pedidos
+              Authorization: Bearer token-… (14 caracteres)
+
+passo 2 — publicar evento   [ok em 15.1ms]
+  requisicao: produzir em eventos-particionado (chave "2ad3f3c5-...")
+              acks: todos
+```
+
+O passo Kafka nao recebe cabecalho de autorizacao HTTP, e o token sai cortado em
+toda saida, como manda a regra de credencial. A captura do passo 1 entra no valor da
+mensagem do passo 2 sem nada no meio.
+
+### 4.4 — Rampa descendente
+**Correta na aritmetica.** `rampa: { de: 200/s, ate: 20/s, durante: 8s }` produziu
+**880 iteracoes**, que e exatamente a integral da rampa linear ((200+20)/2 x 8). A
+inversao da integral da funcao de taxa nao assume que a taxa cresce.
+
+### 4.6 — Captura por regex com verificacao no mesmo passo
+Coberto junto com 4.5: as duas capturas e a verificacao de status convivem no mesmo
+passo sem interferencia. O atrito e de YAML, nao de semantica — ver 4.5.
+
+### 4.10 — Gerador `novo_a_cada: uso` com captura na mesma iteracao
+**A semantica esta certa. O relatorio nao consegue mostrar isso.**
+
+Tres ocorrencias de `${req.correlacao}` numa iteracao, tres valores diferentes:
+
+```
+              X-Correlation-Id: b850c8c0-bb82-a272-b34c-4b21eef6bda2
+              corpo: {"rastreio":"3e4d9c3b-0be6-5a94-3b6f-b38941c0aad1", ...}
+variaveis no fim da iteracao
+  req.correlacao = ed7acb9d-a168-5de7-5998-28f8376a33f6
+```
+
+Exatamente o que `novo_a_cada: uso` promete. Mas sob carga:
+
+```
+  100 valores distintos de req.correlacao em 100 usos
+```
+
+Foram mais de 200 geracoes em 100 iteracoes. A contagem de **usos** e por iteracao,
+nao por ocorrencia — o comentario no codigo diz o contrario ("substitution calls it
+at every occurrence, so the report counts each one as a distinct use"). Consequencia:
+o bloco de variedade mostra `novo_a_cada: uso` e o comportamento padrao com numeros
+identicos, e e justamente esse bloco que existe para provar semantica de valor.
+
+Gravidade baixa: nao afeta o numero medido nem o que sai na requisicao. Entra na
+lista como divergencia entre codigo e comentario.
+
+---
+
+#### Achado 4.10.a — a semente e fixa e nao pode vir do ambiente
+**Gravidade**: media-alta — quebra o caso de idempotencia, que e uma das jornadas do bloco 1
+
+A semente padrao das fontes sinteticas e 1, e o relatorio declara isso
+("a mesma semente gera os mesmos valores de novo"). A consequencia nao esta declarada
+em lugar nenhum: **toda execucao gera os mesmos UUIDs, na mesma ordem**. O
+`2ad3f3c5-6e97-2f73-b612-6b688be1656a` desta bateria aparece como primeiro valor em
+cinco cenarios diferentes, escritos em horas diferentes.
+
+Num alvo que deduplica por chave de idempotencia — que e exatamente a jornada 1.2 —
+a segunda execucao do dia recebe as chaves da primeira e o alvo responde "repetida".
+Foi o que aconteceu aqui, e o relatorio culpou o alvo:
+
+```
+Falhou: o cenario inteiro teve taxa de erro de 20.48%, acima do limite de 1.00%.
+  transferir     status HTTP inesperado     34    esperava status 201, recebeu 200
+```
+
+O alvo estava certo. O cenario e que mandou a mesma chave de ontem.
+
+Nao ha saida sem editar o arquivo:
+
+```
+$ SEMENTE=42 braunrate validate c10-semente.yaml
+erro no cenario: c10-semente.yaml:5:14: semente invalida: "${SEMENTE}" (use um numero inteiro)
+```
+
+Nao existe `semente: aleatoria`, e `semente` nao aceita variavel de ambiente — e o
+unico campo do YAML que nao aceita.
+
+**Nao corrigido**: recurso, e ainda por cima com tensao real de projeto. A
+reprodutibilidade e deliberada e vale; o que falta e a saida de emergencia para o
+caso em que o valor gerado e uma chave que o alvo lembra. Vai para a lista com essa
+tensao explicita, porque a decisao e de produto.
