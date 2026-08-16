@@ -153,8 +153,8 @@ func TestThePagesFetchNothingFromTheNetwork(t *testing.T) {
 	}
 
 	// Uma ancora para o GitHub e o leitor clicando, nao a pagina buscando. O que
-	// nao pode existir e recurso carregado sozinho.
-	fetching := regexp.MustCompile(`(?i)(<script|<img|<iframe|@import|url\(\s*['"]?https?:|<link[^>]+href="https?:)`)
+	// nao pode existir e recurso carregado de outro servidor.
+	fetching := regexp.MustCompile(`(?i)(<script[^>]+src="https?:|<img|<iframe|@import|url\(\s*['"]?https?:|<link[^>]+href="https?:)`)
 	pages := 0
 	for _, entry := range entries {
 		if !strings.HasSuffix(entry.Name(), ".html") && !strings.HasSuffix(entry.Name(), ".css") {

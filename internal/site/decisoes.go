@@ -10,10 +10,6 @@ import (
 
 const adrDirectory = "docs/adr"
 
-// The ADRs are the reason the tool refuses things, and someone deciding whether
-// to adopt it reads them before reading the reference. One line each, taken
-// from the decision itself: a hand-written summary would be a second version of
-// the decision, free to drift from the one that counts.
 func DecisionsPage(repositoryRoot string) (Page, error) {
 	directory := filepath.Join(repositoryRoot, adrDirectory)
 	entries, err := os.ReadDir(directory)
@@ -51,12 +47,12 @@ repositorio.
 		number, decision := splitTitle(title)
 		fmt.Fprintf(&markdown, "| [%s](%s) | %s |\n", number, link, cell(decision))
 	}
-	return Page{Slug: "decisoes", Title: "Decisoes", Markdown: markdown.String()}, nil
+	return Page{Slug: "decisoes", Title: "Decisões", Section: "Referência",
+		Summary: "As decisões de arquitetura registradas, uma linha cada.", Markdown: markdown.String()}, nil
 }
 
-// The ADR title already is the decision in one line — that is what an ADR title
-// is for. Summarising the body here would create a second version of the
-// decision, free to drift from the one that counts.
+// O titulo do ADR ja e a decisao em uma linha. Resumir o corpo aqui criaria uma
+// segunda versao dela, livre para divergir da que vale.
 func splitTitle(title string) (string, string) {
 	rest, found := strings.CutPrefix(title, "ADR ")
 	if !found {

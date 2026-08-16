@@ -27,13 +27,9 @@ type schemaNode struct {
 	OneOf       []schemaNode          `json:"oneOf"`
 	AnyOf       []schemaNode          `json:"anyOf"`
 	Definitions map[string]schemaNode `json:"$defs"`
-	// Um mapa de chaves livres — a regra de SLO por passo, por exemplo — declara
-	// a forma do valor aqui, e e onde vivem p95, erros e taxa_efetiva.
-	Additional *additional `json:"additionalProperties"`
+	Additional  *additional           `json:"additionalProperties"`
 }
 
-// additionalProperties e "false" ou um schema, e um campo tipado como schema
-// engasga no booleano.
 type additional struct{ shape *schemaNode }
 
 func (extra *additional) UnmarshalJSON(data []byte) error {
@@ -49,9 +45,7 @@ func (extra *additional) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// "type" is either a string or a list of them in JSON Schema, and the list form
-// is what a field that accepts a number or the text of an environment reference
-// uses.
+// No JSON Schema "type" e um texto ou uma lista deles.
 type jsonType struct{ names []string }
 
 func (kind *jsonType) UnmarshalJSON(data []byte) error {
@@ -91,7 +85,8 @@ aparece aqui reprova o build.
 		}
 		writeBlock(&markdown, root, definition, "`"+name+"`", 2)
 	}
-	return Page{Slug: "referencia", Title: "Referencia do cenario", Markdown: markdown.String()}, nil
+	return Page{Slug: "referencia", Title: "Referência do cenário", Section: "Referência",
+		Summary: "Todas as chaves do arquivo de cenário, geradas do schema.", Markdown: markdown.String()}, nil
 }
 
 func readSchema(repositoryRoot string) (schemaNode, error) {
@@ -125,9 +120,8 @@ func writeBlock(out *strings.Builder, root, node schemaNode, path string, level 
 	}
 	out.WriteString("\n")
 
-	// A chave declarada dentro do proprio campo, sem $ref, nao tem secao para
-	// onde apontar: sem descer nela, "durante" e "ca" existiriam no schema, o
-	// editor completaria as duas, e a referencia publicada nao teria nenhuma.
+	// Chave declarada dentro do proprio campo nao tem secao para onde apontar:
+	// sem descer nela, "durante" e "ca" ficariam de fora da referencia.
 	for _, name := range sortedNames(properties) {
 		for _, nested := range inlineShapes(properties[name]) {
 			writeBlock(out, root, nested, path+"."+name, min(level+1, 5))
@@ -135,8 +129,6 @@ func writeBlock(out *strings.Builder, root, node schemaNode, path string, level 
 	}
 }
 
-// As chaves que este bloco aceita, venham elas de properties, de um ramo de
-// oneOf ou da forma declarada em additionalProperties.
 func shapeProperties(node schemaNode) map[string]schemaNode {
 	if len(node.Properties) > 0 {
 		return node.Properties
@@ -170,8 +162,6 @@ func inlineShapes(node schemaNode) []schemaNode {
 	return shapes
 }
 
-// A $ref with a description of its own keeps it: the reference says what the
-// shape is, the field says what it means where it is used.
 func resolve(root, node schemaNode) schemaNode {
 	if node.Reference == "" {
 		return node
@@ -242,9 +232,8 @@ func example(node schemaNode) string {
 	return "`" + literals(node.Examples)[0] + "`"
 }
 
-// Um exemplo que e mapa ou lista tem que voltar como a pessoa escreveria. A
-// formatacao padrao do Go vira map[$.status:PROCESSADO], que nao e YAML, nao e
-// JSON e nao e nada que alguem consiga colar.
+// A formatacao padrao do Go vira map[$.status:PROCESSADO], que nao da para colar
+// em lugar nenhum.
 func literals(values []any) []string {
 	written := make([]string, 0, len(values))
 	for _, value := range values {
@@ -262,8 +251,7 @@ func literals(values []any) []string {
 	return written
 }
 
-// A description with a pipe in it would silently split the Markdown table into
-// an extra column, and the reader would see a truncated sentence.
+// Uma barra vertical na descricao partiria a tabela em uma coluna a mais.
 func cell(text string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(text, "|", "\\|"), "\n", " ")
 }

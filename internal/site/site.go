@@ -11,10 +11,13 @@ import (
 	"html"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
+	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/yuin/goldmark"
+	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 )
@@ -22,18 +25,19 @@ import (
 //go:embed estilo.css
 var stylesheet string
 
+//go:embed pagina.js
+var script string
+
 const guidesDirectory = "docs/guias"
 
 type Page struct {
 	Slug     string
 	Title    string
+	Section  string
+	Summary  string
 	Markdown string
 }
 
-// Build writes the whole site under destination. Pages generated from the
-// schema and from the ADRs are assembled here and go through the same renderer
-// as the hand-written ones: a generated page that looked different would read
-// as a different product.
 func Build(repositoryRoot, destination string, version string) error {
 	pages, err := Pages(repositoryRoot)
 	if err != nil {
@@ -42,21 +46,19 @@ func Build(repositoryRoot, destination string, version string) error {
 	if err := os.MkdirAll(destination, 0o755); err != nil {
 		return fmt.Errorf("nao consegui criar %s: %w", destination, err)
 	}
-	if err := os.WriteFile(filepath.Join(destination, "estilo.css"), []byte(stylesheet), 0o644); err != nil {
-		return fmt.Errorf("nao consegui gravar a folha de estilo: %w", err)
+	for name, content := range map[string]string{"estilo.css": stylesheet, "pagina.js": script} {
+		if err := os.WriteFile(filepath.Join(destination, name), []byte(content), 0o644); err != nil {
+			return fmt.Errorf("nao consegui gravar %s: %w", name, err)
+		}
 	}
 	for index, page := range pages {
 		body, err := renderMarkdown(page.Markdown)
 		if err != nil {
 			return fmt.Errorf("%s: %w", page.Slug, err)
 		}
-		file := page.Slug + ".html"
-		if index == 0 {
-			file = "index.html"
-		}
 		content := layout(page, pages, index, body, version)
-		if err := os.WriteFile(filepath.Join(destination, file), []byte(content), 0o644); err != nil {
-			return fmt.Errorf("nao consegui gravar %s: %w", file, err)
+		if err := os.WriteFile(filepath.Join(destination, fileOf(page, index)), []byte(content), 0o644); err != nil {
+			return fmt.Errorf("nao consegui gravar %s: %w", page.Slug, err)
 		}
 	}
 	// GitHub Pages serves through Jekyll unless told otherwise, and Jekyll
@@ -64,9 +66,13 @@ func Build(repositoryRoot, destination string, version string) error {
 	return os.WriteFile(filepath.Join(destination, ".nojekyll"), nil, 0o644)
 }
 
-// Pages is the ordered list of everything the site publishes, hand-written and
-// generated alike. Exported because the tests walk it: a page nobody rendered
-// is a page nobody checked.
+func fileOf(page Page, index int) string {
+	if index == 0 {
+		return "index.html"
+	}
+	return page.Slug + ".html"
+}
+
 func Pages(repositoryRoot string) ([]Page, error) {
 	written, err := guides(repositoryRoot)
 	if err != nil {
@@ -83,9 +89,9 @@ func Pages(repositoryRoot string) ([]Page, error) {
 	return append(written, reference, decisions), nil
 }
 
-// The file name decides the order — 00-inicio, 01-instalacao — and the first
-// heading decides the title. Two places to say the same thing is how a title
-// and a menu entry end up disagreeing.
+// O nome do arquivo decide ordem e secao; o primeiro titulo decide o nome da
+// pagina. Declarar as duas coisas seria o caminho para menu e titulo
+// discordarem.
 func guides(repositoryRoot string) ([]Page, error) {
 	directory := filepath.Join(repositoryRoot, guidesDirectory)
 	entries, err := os.ReadDir(directory)
@@ -111,17 +117,27 @@ func guides(repositoryRoot string) ([]Page, error) {
 		if !found {
 			return nil, fmt.Errorf("%s nao comeca com um titulo '# '", name)
 		}
-		pages = append(pages, Page{Slug: slug(name), Title: title, Markdown: text})
+		section, slug := sectionAndSlug(name)
+		pages = append(pages, Page{
+			Slug: slug, Title: title, Section: section, Summary: summary(text), Markdown: text,
+		})
 	}
 	return pages, nil
 }
 
-func slug(fileName string) string {
+var sectionNames = map[string]string{
+	"comecar":    "Começar",
+	"guias":      "Guias",
+	"referencia": "Referência",
+}
+
+func sectionAndSlug(fileName string) (string, string) {
 	name := strings.TrimSuffix(fileName, ".md")
-	if _, rest, found := strings.Cut(name, "-"); found {
-		return rest
+	parts := strings.SplitN(name, "-", 3)
+	if len(parts) < 3 {
+		return "Guias", strings.Join(parts[1:], "-")
 	}
-	return name
+	return sectionNames[parts[1]], parts[2]
 }
 
 func firstHeading(markdown string) (string, bool) {
@@ -133,34 +149,61 @@ func firstHeading(markdown string) (string, bool) {
 	return "", false
 }
 
+func summary(markdown string) string {
+	_, after, found := strings.Cut(markdown, "\n")
+	if !found {
+		return ""
+	}
+	for _, paragraph := range strings.Split(strings.TrimSpace(after), "\n\n") {
+		line := strings.TrimSpace(paragraph)
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "```") {
+			continue
+		}
+		return plain(strings.ReplaceAll(line, "\n", " "))
+	}
+	return ""
+}
+
+// O identificador do titulo e escrito aqui, e nao deixado para o goldmark: ele
+// descarta letra acentuada em vez de transliterar, e "propositos" virava
+// "propsitos" na barra de endereco.
+var headingLine = regexp.MustCompile(`(?m)^(#{2,3}) +(.+?)\s*$`)
+
 func renderMarkdown(source string) (string, error) {
+	source = headingLine.ReplaceAllStringFunc(source, func(line string) string {
+		parts := headingLine.FindStringSubmatch(line)
+		return fmt.Sprintf("%s %s {#%s}", parts[1], parts[2], slugify(parts[2]))
+	})
 	converter := goldmark.New(
-		goldmark.WithExtensions(extension.Table),
-		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
+		goldmark.WithExtensions(
+			extension.Table,
+			// O destaque de sintaxe sai com as cores dentro do proprio HTML. Uma
+			// folha de estilo de terceiro viria de CDN, e a regra de nao buscar
+			// nada da rede vale para o site como ja vale para o relatorio.
+			highlighting.NewHighlighting(highlighting.WithCustomStyle(styles.Get("github"))),
+		),
+		goldmark.WithParserOptions(parser.WithAttribute()),
 	)
 	var rendered bytes.Buffer
 	if err := converter.Convert([]byte(source), &rendered); err != nil {
 		return "", err
 	}
-	return rendered.String(), nil
+	return decorate(rendered.String()), nil
+}
+
+var (
+	headingTag = regexp.MustCompile(`<(h[23])( id="([^"]+)")>(.*?)</h[23]>`)
+	callout    = regexp.MustCompile(`(?s)<blockquote>\s*<p><strong>(Nota|Atenção|Importante|Dica)</strong>(.*?)</blockquote>`)
+)
+
+func decorate(page string) string {
+	page = headingTag.ReplaceAllString(page,
+		`<$1$2>$4 <a class="ancora" href="#$3" aria-label="link para esta secao">#</a></$1>`)
+	return callout.ReplaceAllString(page,
+		`<aside class="nota nota-$1"><p class="rotulo">$1</p><p>$2</aside>`)
 }
 
 func layout(page Page, pages []Page, index int, body, version string) string {
-	var menu strings.Builder
-	for position, other := range pages {
-		file := other.Slug + ".html"
-		if position == 0 {
-			file = "index.html"
-		}
-		current := ""
-		if position == index {
-			current = ` aria-current="page"`
-		}
-		fmt.Fprintf(&menu, "      <li><a href=%q%s>%s</a></li>\n", file, current, html.EscapeString(other.Title))
-	}
-
-	// A pagina inicial se chama braunrate, e "braunrate — braunrate" na aba do
-	// navegador nao diz nada a mais.
 	title := page.Title + " — braunrate"
 	if page.Title == "braunrate" {
 		title = "braunrate"
@@ -172,25 +215,112 @@ func layout(page Page, pages []Page, index int, body, version string) string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>%s</title>
+<meta name="description" content="%s">
 <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
+<header>
+  <a class="marca" href="index.html">braunrate</a>
+  <span class="versao">%s</span>
+  <a class="repositorio" href="https://github.com/Diegobraun/braunrate">GitHub</a>
+</header>
 <div class="pagina">
-  <nav>
-    <a class="marca" href="index.html">braunrate</a>
-    <span class="versao">%s</span>
-    <ol>
-%s    </ol>
-  </nav>
+  <nav class="secoes" aria-label="Seções">
+%s  </nav>
   <main>
-%s    <footer>
-      Gerado de <code>docs/guias</code> deste repositorio. Os cenarios e as
-      linhas de comando publicados aqui sao conferidos pela suite de testes:
-      cenario que nao carrega ou opcao que nao existe mais reprovam o build.
-    </footer>
-  </main>
-</div>
+    <article>
+%s    </article>
+%s  </main>
+%s</div>
+<script src="pagina.js"></script>
 </body>
 </html>
-`, html.EscapeString(title), html.EscapeString(version), menu.String(), body)
+`, html.EscapeString(title), html.EscapeString(page.Summary), html.EscapeString(version),
+		menu(pages, index), body, pagination(pages, index), tableOfContents(page))
+}
+
+func menu(pages []Page, index int) string {
+	var written strings.Builder
+	section := ""
+	for position, page := range pages {
+		if page.Section != section {
+			if section != "" {
+				written.WriteString("    </ol>\n")
+			}
+			fmt.Fprintf(&written, "    <p class=\"secao\">%s</p>\n    <ol>\n", html.EscapeString(page.Section))
+			section = page.Section
+		}
+		current := ""
+		if position == index {
+			current = ` aria-current="page"`
+		}
+		fmt.Fprintf(&written, "      <li><a href=%q%s>%s</a></li>\n",
+			fileOf(page, position), current, html.EscapeString(page.Title))
+	}
+	written.WriteString("    </ol>\n")
+	return written.String()
+}
+
+func pagination(pages []Page, index int) string {
+	var written strings.Builder
+	written.WriteString("    <nav class=\"paginacao\" aria-label=\"Páginas\">\n")
+	if index > 0 {
+		fmt.Fprintf(&written, "      <a class=\"anterior\" href=%q><span>anterior</span>%s</a>\n",
+			fileOf(pages[index-1], index-1), html.EscapeString(pages[index-1].Title))
+	}
+	if index+1 < len(pages) {
+		fmt.Fprintf(&written, "      <a class=\"proxima\" href=%q><span>próxima</span>%s</a>\n",
+			fileOf(pages[index+1], index+1), html.EscapeString(pages[index+1].Title))
+	}
+	written.WriteString("    </nav>\n")
+	return written.String()
+}
+
+var sectionHeading = regexp.MustCompile(`(?m)^(##|###) +(.+)$`)
+
+func tableOfContents(page Page) string {
+	matches := sectionHeading.FindAllStringSubmatch(page.Markdown, -1)
+	if len(matches) < 3 {
+		return ""
+	}
+	var written strings.Builder
+	written.WriteString("  <aside class=\"indice\" aria-label=\"Nesta página\">\n    <p class=\"secao\">Nesta página</p>\n    <ol>\n")
+	for _, match := range matches {
+		level := "nivel-2"
+		if match[1] == "###" {
+			level = "nivel-3"
+		}
+		text := strings.TrimSpace(match[2])
+		fmt.Fprintf(&written, "      <li class=%q><a href=\"#%s\">%s</a></li>\n",
+			level, slugify(text), html.EscapeString(plain(text)))
+	}
+	written.WriteString("    </ol>\n  </aside>\n")
+	return written.String()
+}
+
+var markup = regexp.MustCompile("`|\\*\\*|\\*|_")
+
+func plain(text string) string { return markup.ReplaceAllString(text, "") }
+
+var accents = strings.NewReplacer(
+	"á", "a", "à", "a", "â", "a", "ã", "a", "ä", "a",
+	"é", "e", "ê", "e", "è", "e", "í", "i", "î", "i", "ì", "i",
+	"ó", "o", "ô", "o", "õ", "o", "ò", "o", "ö", "o",
+	"ú", "u", "û", "u", "ù", "u", "ü", "u", "ç", "c", "ñ", "n",
+)
+
+func slugify(text string) string {
+	var written strings.Builder
+	previousDash := false
+	for _, character := range accents.Replace(strings.ToLower(plain(text))) {
+		switch {
+		case character >= 'a' && character <= 'z', character >= '0' && character <= '9':
+			written.WriteRune(character)
+			previousDash = false
+		case !previousDash && written.Len() > 0:
+			written.WriteRune('-')
+			previousDash = true
+		}
+	}
+	return strings.TrimSuffix(written.String(), "-")
 }
