@@ -61,7 +61,40 @@ func createTopics(conn *kafka.Conn, topics ...string) error {
 	if err := leader.CreateTopics(settings...); err != nil {
 		return fmt.Errorf("nao consegui criar os topicos %v: %w", topics, err)
 	}
+	for _, topic := range topics {
+		if err := waitForLeader(conn, topic); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// CreateTopics returns before the partition has an elected leader, and reading
+// the offset in that window fails with Not Leader For Partition. The wait is
+// bounded: a broker that does not elect a leader in ten seconds is broken, and
+// pretending otherwise would hide it.
+func waitForLeader(conn *kafka.Conn, topic string) error {
+	deadline := time.Now().Add(10 * time.Second)
+	var last error
+	for time.Now().Before(deadline) {
+		partitions, err := conn.ReadPartitions(topic)
+		if err != nil {
+			last = err
+		} else {
+			elected := len(partitions) > 0
+			for _, partition := range partitions {
+				if partition.Leader.Host == "" {
+					elected = false
+				}
+			}
+			if elected {
+				return nil
+			}
+			last = fmt.Errorf("nenhuma particao com lider eleito")
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	return fmt.Errorf("o topico %q nao ficou pronto em 10s: %w", topic, last)
 }
 
 func (p *Processor) Start() error {
