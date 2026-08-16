@@ -38,7 +38,7 @@ Toca o usuario: sim, no que aparece: valores com prefixo curto em comum nao ganh
 
 Alternativa considerada: deixar como estava, porque nenhum teste reclamava.
 
-Por que esta: duas frases afirmavam coisa que a comparacao nao tinha apurado. "Nao da para comparar ... porque o gerador saturou" era dito para qualquer execucao invalida, inclusive as que reportaram jornada incompleta ou passo 100% falho — cause errada na tela. E "Com N ressalvas que podem explicar a diferenca sozinhas" era dito de toda ressalva, quando o campo `impede_comparacao` existe justamente para separar as que explicam das que so mudaram.
+Por que esta: duas frases afirmavam coisa que a comparacao nao tinha apurado. "Nao da para comparar ... porque o gerador saturou" era dito para qualquer execucao invalida, inclusive as que reportaram jornada incompleta ou passo 100% falho — causa errada na tela. E "Com N ressalvas que podem explicar a diferenca sozinhas" era dito de toda ressalva, quando o campo `impede_comparacao` existe justamente para separar as que explicam das que so mudaram.
 
 Reversibilidade: barato — duas funcoes em `comparison.go`, com teste cobrindo cada uma.
 

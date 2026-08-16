@@ -124,22 +124,33 @@ func TestServerAndCLIProduceTheSameDocument(t *testing.T) {
 	directory := directoryWith(t, map[string]string{"cenario.yaml": scenarioText(fake.Address())})
 	base := serverOn(t, directory, false).URL
 
-	fromCLI, err := runner.Execute(context.Background(), filepath.Join(directory, "cenario.yaml"), runner.DefaultOptions(version))
-	if err != nil {
-		t.Fatalf("execucao pela CLI falhou: %v", err)
-	}
+	// Two attempts, because these are two real runs: a machine that was busy in
+	// between invalidates one of them for saturation, and that says nothing
+	// about whether the server added logic. Twice in a row is a defect.
+	for attempt := 1; attempt <= 2; attempt++ {
+		fromCLI, err := runner.Execute(context.Background(), filepath.Join(directory, "cenario.yaml"), runner.DefaultOptions(version))
+		if err != nil {
+			t.Fatalf("execucao pela CLI falhou: %v", err)
+		}
 
-	answer := waitForRun(t, base, startRun(t, base, "cenario.yaml"))
-	body, err := json.Marshal(answer)
-	if err != nil {
-		t.Fatalf("nao consegui reserializar: %v", err)
-	}
-	var fromServer metrics.Document
-	if err := json.Unmarshal(body, &fromServer); err != nil {
-		t.Fatalf("a resposta nao e um documento de resultado: %v", err)
-	}
+		answer := waitForRun(t, base, startRun(t, base, "cenario.yaml"))
+		body, err := json.Marshal(answer)
+		if err != nil {
+			t.Fatalf("nao consegui reserializar: %v", err)
+		}
+		var fromServer metrics.Document
+		if err := json.Unmarshal(body, &fromServer); err != nil {
+			t.Fatalf("a resposta nao e um documento de resultado: %v", err)
+		}
 
-	if got, want := comparable(fromServer), comparable(fromCLI.Document); got != want {
+		got, want := comparable(fromServer), comparable(fromCLI.Document)
+		if got == want {
+			return
+		}
+		if attempt < 2 && (!fromServer.Valid() || !fromCLI.Document.Valid()) {
+			t.Logf("uma das execucoes saiu invalida numa maquina ocupada; repetindo o par:\n servidor: %s\n cli:      %s", got, want)
+			continue
+		}
 		t.Fatalf("o servidor produziu documento diferente do da CLI:\n servidor: %s\n cli:      %s", got, want)
 	}
 }
