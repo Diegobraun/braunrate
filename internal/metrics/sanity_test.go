@@ -256,3 +256,36 @@ func checksExcept(name string) []sanityCheck {
 	}
 	return kept
 }
+
+// An absolute threshold where the sibling check had a proportion: a thirty
+// minute run that applied 359.999 of 360.000 requests was invalidated for the
+// one missing, while the closed model already tolerated 1% of its window.
+func TestAlmostCompleteRunIsNotInvalidatedForOneRequest(t *testing.T) {
+	document := Document{
+		Scheduling: Scheduling{Sent: 359_999},
+		Run:        Run{DurationMs: 1_800_000},
+		Journey:    Journey{Started: 359_999, Completed: 359_999},
+	}
+	input := DocumentInput{PlannedRequests: 360_000, PlannedDuration: 30 * time.Minute}
+
+	sanity := CheckSanity(document, input)
+	if !sanity.Valid {
+		t.Fatalf("execucao com uma requisicao a menos em 360.000 foi invalidada: %+v", sanity.Findings)
+	}
+}
+
+// The tolerance is a proportion, not an amnesty: a run that applied a fifth of
+// the declared profile still says so.
+func TestRunThatAppliedAFifthOfTheProfileIsStillInvalid(t *testing.T) {
+	document := Document{
+		Scheduling: Scheduling{Sent: 72_000},
+		Run:        Run{DurationMs: 360_000},
+		Journey:    Journey{Started: 72_000, Completed: 72_000},
+	}
+	input := DocumentInput{PlannedRequests: 360_000, PlannedDuration: 30 * time.Minute}
+
+	sanity := CheckSanity(document, input)
+	if sanity.Valid {
+		t.Fatal("execucao que aplicou um quinto do perfil declarado passou como valida")
+	}
+}

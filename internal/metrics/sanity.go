@@ -27,6 +27,10 @@ type SanityFinding struct {
 // target falling over, and claiming otherwise would be a second wrong claim.
 const invalidSentence = "Resultado invalido: a execucao nao mediu o que se propos a medir. Isto nao e veredito sobre o alvo — e a medicao que nao vale, e por isso nenhuma regra de SLO foi avaliada."
 
+// What counts as the declared load having been applied. Below it the run
+// measured a piece of the profile and says so.
+const appliedTolerance = 99
+
 type sanityCheck struct {
 	name string
 	run  func(Document, DocumentInput) []SanityFinding
@@ -130,12 +134,17 @@ func everythingFailed(document Document, _ DocumentInput) []SanityFinding {
 // Wall clock is the wrong ruler: a 3 s profile at 20/s schedules its last
 // request at 2,95 s, so a complete run ends before the window closes. Dropped
 // counts as applied — the loop did get there.
+//
+// The tolerance is the same the closed model already uses for the same
+// question. Demanding every single request invalidated a thirty minute run for
+// missing one of 360.000 — an absolute threshold where the sibling check had a
+// proportion, and the same shape as the defect that let a 98% broken run pass.
 func runShorterThanPlan(document Document, input DocumentInput) []SanityFinding {
 	if input.PlannedRequests <= 0 {
 		return runShorterThanWindow(document, input)
 	}
 	applied := document.Scheduling.Sent + document.Scheduling.DroppedByInflightLimit
-	if applied >= input.PlannedRequests {
+	if applied >= input.PlannedRequests*appliedTolerance/100 {
 		return nil
 	}
 	actual := time.Duration(document.Run.DurationMs) * time.Millisecond
@@ -155,7 +164,7 @@ func runShorterThanWindow(document Document, input DocumentInput) []SanityFindin
 		return nil
 	}
 	actual := time.Duration(document.Run.DurationMs) * time.Millisecond
-	if actual >= input.PlannedDuration*99/100 {
+	if actual >= input.PlannedDuration*appliedTolerance/100 {
 		return nil
 	}
 	return []SanityFinding{{
