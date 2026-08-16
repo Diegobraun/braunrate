@@ -78,8 +78,24 @@ type Result struct {
 // which is why a scenario refused by the CLI is refused by the server with the
 // same message.
 func Load(path string) (scenario.Spec, engine.Plan, error) {
-	spec, err := scenario.ParseFile(path)
+	content, err := os.ReadFile(path)
 	if err != nil {
+		spec, parseErr := scenario.ParseFile(path)
+		return spec, engine.Plan{}, badFile(parseErr, "erro no cenario: %v", parseErr)
+	}
+	return Check(content, path)
+}
+
+// Check e a mesma leitura do Load a partir do texto, para quem ainda nao gravou
+// o arquivo — a interface confere o rascunho enquanto a pessoa digita. Duas
+// leituras diferentes dariam uma resposta no editor e outra no terminal.
+func Check(content []byte, name string) (scenario.Spec, engine.Plan, error) {
+	spec, err := scenario.Parse(content)
+	if err != nil {
+		if positioned, is := err.(scenario.ScenarioError); is {
+			positioned.File = name
+			err = positioned
+		}
 		return spec, engine.Plan{}, badFile(err, "erro no cenario: %v", err)
 	}
 	if err := spec.Validate(); err != nil {

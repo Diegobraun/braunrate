@@ -53,7 +53,7 @@ func TestPublishedGoScenarioRunsAndPasses(t *testing.T) {
 // page is wrong — and a wrong page is the only documentation nobody notices is
 // wrong.
 func TestPublishedSnippetIsThisFile(t *testing.T) {
-	readme, err := os.ReadFile("../../docs/guias/05-receitas.md")
+	readme, err := os.ReadFile("../../docs/guias/50-guias-receitas.md")
 	if err != nil {
 		t.Fatalf("nao consegui ler a receita publicada: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestPublishedSnippetIsThisFile(t *testing.T) {
 	}
 
 	if published != expected {
-		t.Fatalf("docs/guias/05-receitas.md derivou de examples/cenario-em-go/cenario.go.\nna pagina:\n%s\n\nno arquivo:\n%s", published, expected)
+		t.Fatalf("docs/guias/50-guias-receitas.md derivou de examples/cenario-em-go/cenario.go.\nna pagina:\n%s\n\nno arquivo:\n%s", published, expected)
 	}
 }
 

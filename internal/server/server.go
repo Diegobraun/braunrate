@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Diegobraun/braunrate/internal/engine"
 	"github.com/Diegobraun/braunrate/internal/metrics"
 	"github.com/Diegobraun/braunrate/internal/report"
 	"github.com/Diegobraun/braunrate/internal/report/comparison"
@@ -29,6 +31,14 @@ type Options struct {
 	Directory  string
 	Version    string
 	Concurrent bool
+	// Writable liga a gravacao de cenario e a interface. Fica desligado no
+	// 'serve': a porta nao tem autenticacao, e ler cenario e disparar carga ja
+	// e bastante para uma porta assim; escrever arquivo e outra ordem de risco,
+	// e quem liga declara isso.
+	Writable bool
+	// UI e a interface embarcada, montada na raiz quando existe. Chega como
+	// parametro para o servidor nao depender do pacote que a carrega.
+	UI http.Handler
 }
 
 func DefaultOptions(version string) Options {
@@ -53,6 +63,7 @@ func (server *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", server.health)
 	mux.HandleFunc("GET /scenarios", server.listScenarios)
+	mux.HandleFunc("GET /scenarios/{name}/text", server.readScenario)
 	mux.HandleFunc("POST /scenarios/{name}/validate", server.validate)
 	mux.HandleFunc("POST /scenarios/{name}/debug", server.debug)
 	mux.HandleFunc("POST /scenarios/{name}/runs", server.startRun)
@@ -62,8 +73,62 @@ func (server *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /runs/{id}/stream", server.streamRun)
 	mux.HandleFunc("GET /runs/{before}/comparison/{after}", server.compare)
 	mux.HandleFunc("GET /runs/{before}/comparison/{after}/report", server.compareReport)
+	if server.options.Writable {
+		mux.HandleFunc("PUT /scenarios/{name}/text", server.writeScenario)
+	}
+	if server.options.UI != nil {
+		mux.Handle("GET /", server.options.UI)
+	}
 	return mux
 }
+
+// O texto cru, com os comentarios: a interface edita o arquivo, e nao uma
+// arvore de campos reconstruida a partir dele. Comentario que o autor escreveu
+// e informacao, e serializar de volta a partir de widget apagaria essa
+// informacao — que e exatamente o defeito do .jmx.
+func (server *Server) readScenario(writer http.ResponseWriter, request *http.Request) {
+	path, err := server.pathOf(request.PathValue("name"))
+	if err != nil {
+		writeProblem(writer, http.StatusBadRequest, err.Error())
+		return
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		writeProblem(writer, http.StatusNotFound, fmt.Sprintf("nao consegui ler %s: %v", path, err))
+		return
+	}
+	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	writer.Header().Set("X-Content-Type-Options", "nosniff")
+	_, _ = writer.Write(content)
+}
+
+// Grava sem validar de proposito: rascunho que ainda nao fecha precisa poder ser
+// salvo, e a validacao e um pedido a parte, com a mesma mensagem do terminal.
+func (server *Server) writeScenario(writer http.ResponseWriter, request *http.Request) {
+	path, err := server.pathOf(request.PathValue("name"))
+	if err != nil {
+		writeProblem(writer, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !strings.HasSuffix(path, ".yaml") && !strings.HasSuffix(path, ".yml") {
+		writeProblem(writer, http.StatusBadRequest, "so gravo cenario: o nome precisa terminar em .yaml")
+		return
+	}
+	content, err := io.ReadAll(io.LimitReader(request.Body, maxScenarioBytes))
+	if err != nil {
+		writeProblem(writer, http.StatusBadRequest, fmt.Sprintf("nao consegui ler o corpo: %v", err))
+		return
+	}
+	if err := os.WriteFile(path, content, 0o644); err != nil {
+		writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("nao consegui gravar %s: %v", path, err))
+		return
+	}
+	writeJSON(writer, http.StatusOK, map[string]any{"name": request.PathValue("name"), "bytes": len(content)})
+}
+
+// Um cenario e um arquivo de texto de dezenas de linhas; o limite existe para o
+// processo nao guardar na memoria o que alguem mandar.
+const maxScenarioBytes = 1 << 20
 
 // StartupWarning is printed, not logged: whoever started the server has to see
 // that the port has no authentication before pointing anyone at it.
@@ -72,6 +137,9 @@ func (server *Server) StartupWarning() []string {
 		fmt.Sprintf("braunrate serve em http://%s, servindo cenarios de %s", server.options.Address, server.options.Directory),
 		"Sem autenticacao e sem TLS: qualquer um que alcance esta porta pode disparar carga contra os alvos dos cenarios.",
 		"Foi feito para rodar em 127.0.0.1. Expor em outra interface e outra decisao, e ela ainda nao foi tomada.",
+	}
+	if server.options.Writable {
+		lines = append(lines, "Gravacao ligada: quem alcancar esta porta pode alterar os arquivos de cenario de "+server.options.Directory+".")
 	}
 	if server.options.Concurrent {
 		lines = append(lines, "Execucao concorrente ligada: duas execucoes ao mesmo tempo disputam a CPU que precisa despachar no instante agendado, e nenhuma das duas mede o que se propos a medir.")
@@ -138,7 +206,21 @@ func (server *Server) validate(writer http.ResponseWriter, request *http.Request
 		writeProblem(writer, http.StatusBadRequest, err.Error())
 		return
 	}
-	spec, plan, err := runner.Load(path)
+	// Com corpo, confere o rascunho que a interface tem na tela; sem corpo,
+	// confere o arquivo gravado. Os dois passam pela mesma leitura, entao o
+	// editor nunca aprova o que o terminal reprovaria.
+	draft, err := io.ReadAll(io.LimitReader(request.Body, maxScenarioBytes))
+	if err != nil {
+		writeProblem(writer, http.StatusBadRequest, fmt.Sprintf("nao consegui ler o corpo: %v", err))
+		return
+	}
+	var spec scenario.Spec
+	var plan engine.Plan
+	if len(draft) > 0 {
+		spec, plan, err = runner.Check(draft, path)
+	} else {
+		spec, plan, err = runner.Load(path)
+	}
 	if err != nil {
 		writeJSON(writer, http.StatusUnprocessableEntity, refusal(err))
 		return

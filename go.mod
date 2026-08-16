@@ -4,11 +4,14 @@ go 1.26.6
 
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.3.0
+	github.com/alecthomas/chroma/v2 v2.24.1
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4
 	github.com/goreleaser/fileglob v1.4.0
 	github.com/rabbitmq/amqp091-go v1.13.0
 	github.com/segmentio/kafka-go v0.4.51
 	github.com/tidwall/gjson v1.19.0
+	github.com/yuin/goldmark v1.8.5
+	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -35,6 +38,6 @@ require (
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
-	github.com/yuin/goldmark v1.8.5 // indirect
+	github.com/dlclark/regexp2 v1.12.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 )
