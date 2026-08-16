@@ -303,9 +303,13 @@ func readData(no *yaml.Node) ([]DataSource, error) {
 				if value.Kind != yaml.MappingNode {
 					return nil, nodeError(value, "gerar precisa ser um mapa, por exemplo: gerar: { id: uuid, valor: numero(10,500) }")
 				}
-				source.Fields = map[string]string{}
+				source.Fields = map[string]Generator{}
 				for j := 0; j+1 < len(value.Content); j += 2 {
-					source.Fields[value.Content[j].Value] = value.Content[j+1].Value
+					generator, err := readGenerator(value.Content[j].Value, value.Content[j+1])
+					if err != nil {
+						return nil, err
+					}
+					source.Fields[value.Content[j].Value] = generator
 				}
 			default:
 				return nil, nodeError(key, "chave desconhecida na fonte de dados %q: %q\n"+
@@ -318,6 +322,44 @@ func readData(no *yaml.Node) ([]DataSource, error) {
 		sources = append(sources, source)
 	}
 	return sources, nil
+}
+
+func readGenerator(field string, no *yaml.Node) (Generator, error) {
+	if no.Kind != yaml.MappingNode {
+		return ParseGenerator(no.Value), nil
+	}
+	generator := Generator{}
+	for index := 0; index+1 < len(no.Content); index += 2 {
+		key, value := no.Content[index], no.Content[index+1]
+		switch key.Value {
+		case "tipo":
+			generator.Recipe = value.Value
+		case "formato":
+			generator.Format = value.Value
+		case "novo_a_cada":
+			switch value.Value {
+			case "uso":
+				generator.PerUse = true
+			case "iteracao":
+				generator.PerUse = false
+			default:
+				return generator, nodeError(value, "novo_a_cada aceita 'iteracao' (padrao) ou 'uso': %q\n"+
+					"    iteracao mantem o mesmo valor nos dois passos da mesma jornada, que e o caso da chave de idempotencia", value.Value)
+			}
+		default:
+			return generator, nodeError(key, "chave desconhecida no campo %q: %q\n"+
+				"    disponiveis: tipo, formato, novo_a_cada\n"+
+				"    exemplo: %s: { tipo: padrao, formato: \"PED-######\" }", field, key.Value, field)
+		}
+	}
+	if generator.Recipe == "" {
+		return generator, nodeError(no, "o campo %q precisa de 'tipo', por exemplo: %s: { tipo: padrao, formato: \"PED-######\" }", field, field)
+	}
+	if generator.Recipe == "padrao" && generator.Format == "" {
+		return generator, nodeError(no, "o campo %q e do tipo padrao e precisa de 'formato', por exemplo: { tipo: padrao, formato: \"PED-######\" }\n"+
+			"    # vira digito e @ vira letra; o resto sai literal", field)
+	}
+	return generator, nil
 }
 
 func readSLO(no *yaml.Node) ([]SLORule, error) {

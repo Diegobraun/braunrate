@@ -271,6 +271,45 @@ $ go test ./dsl/ -run TestYAMLEDSL -v
     --- PASS: TestYAMLEDSLProduzemOMesmoCenario/autenticacao_por_cabecalho_fixo (0.00s)
 ```
 
+## Dados: um valor por jornada, nao por requisicao
+
+O caso mais comum e a chave de idempotencia: **o mesmo `transactionId` nas duas requisicoes da mesma jornada, um novo na jornada seguinte**. Esse e o padrao, sem declarar nada:
+
+```yaml
+dados:
+  pagamento:
+    gerar: { transactionId: uuid }
+
+cenario:
+  - http: { metodo: POST, caminho: /pedidos, cabecalhos: { X-Idempotency-Key: "${pagamento.transactionId}" } }
+  - http: { metodo: GET, caminho: "/pedidos/${pedidoId}", cabecalhos: { X-Idempotency-Key: "${pagamento.transactionId}" } }
+```
+
+Se o valor precisar ser novo **a cada uso**, isso e declarado:
+
+```yaml
+gerar:
+  nonce: { tipo: uuid, novo_a_cada: uso }
+```
+
+Os dois lados sao cobertos por teste: `TestGeneratedValueIsStableWithinTheIterationAndNewInTheNext` reprova se a mesma jornada usar dois valores ou se duas jornadas usarem o mesmo, e `TestNewPerUseIsExplicitAndChangesAtEveryOccurrence` reprova se o `novo_a_cada: uso` nao renovar.
+
+### Formato declarado, e documento que o alvo aceita
+
+```yaml
+gerar:
+  referencia: { tipo: padrao, formato: "PED-######" }   # PED-481902
+  filial:     { tipo: padrao, formato: "@@-####" }      # KQ-3718
+  documento:  { tipo: cpf }
+  empresa:    { tipo: cnpj }
+```
+
+No formato, `#` vira digito e `@` vira letra; o resto sai literal. CPF e CNPJ saem **com digito verificador valido** — gerar invalido faz o alvo recusar tudo com erro de validacao, e a execucao passa a medir o caminho da recusa em vez do trabalho. Coberto por teste que recalcula os dois digitos de 200 documentos de cada tipo.
+
+Geradores disponiveis: `uuid`, `sequencia`, `numero(min,max)`, `inteiro(min,max)`, `nome`, `email`, `texto(n)`, `padrao`, `cpf`, `cnpj`.
+
+**Limitacao conhecida:** nao existe leitura de `.xlsx`. CSV cobre o caso e a dependencia de Excel e pesada demais para o motor. Se aparecer necessidade, sera um `braunrate import planilha` que converte para CSV — nunca leitura direta durante a execucao.
+
 ## O que serve de criterio
 
 Um gate feito so de regra por passo aprova cada pedaco e nao diz nada sobre a espera que o usuario sente, que e a soma deles. Por isso o bloco `slo` tem quatro escopos, e o relatorio mostra tambem **o que nao foi declarado**:
@@ -595,6 +634,8 @@ A comparacao nunca chama de regressao o que pode ser ruido, lista tudo que mudou
 | Correlacao em uma linha: JSON, cabecalho e regex | pronto |
 | Autenticacao por token com renovacao, e basica | pronto |
 | Dados: CSV com politica de consumo e geracao com semente | pronto |
+| Valor gerado estavel na jornada, com `novo_a_cada: uso` explicito | pronto |
+| Formato declarado, e CPF/CNPJ com digito verificador valido | pronto |
 | Assercoes funcionais e SLO por passo e global, com codigo de saida | pronto |
 | Criterio sobre a jornada inteira, taxa de sucesso e taxa efetiva | pronto |
 | Comparacao com execucao anterior como gate, com ressalva que tira o veredito | pronto |

@@ -99,14 +99,14 @@ func TestRandomConsumeWithSameSeedRepeatsSequence(t *testing.T) {
 }
 
 func TestSyntheticGenerationIsReproducibleBySeed(t *testing.T) {
-	source := scenario.DataSource{Name: "pedidos", Seed: 7, Fields: map[string]string{
+	source := scenario.DataSource{Name: "pedidos", Seed: 7, Fields: generators(map[string]string{
 		"id":     "uuid",
 		"valor":  "numero(10,500)",
 		"ordem":  "sequencia",
 		"quem":   "nome",
 		"email":  "email",
 		"codigo": "texto(6)",
-	}}
+	})}
 
 	generate := func() []string {
 		open, err := data.Open(source, "")
@@ -134,13 +134,13 @@ func TestSyntheticGenerationIsReproducibleBySeed(t *testing.T) {
 }
 
 func TestUnknownGeneratorTeachesValidOnes(t *testing.T) {
-	source := scenario.DataSource{Name: "x", Fields: map[string]string{"a": "telefone"}}
+	source := scenario.DataSource{Name: "x", Fields: generators(map[string]string{"a": "telefone"})}
 	open, err := data.Open(source, "")
 	if err != nil {
 		t.Fatalf("abrir deveria funcionar: %v", err)
 	}
 	_, err = open.Next(0)
-	if err == nil || !strings.Contains(err.Error(), "use uuid") {
+	if err == nil || !strings.Contains(err.Error(), "disponiveis: uuid") {
 		t.Fatalf("esperava lista de geradores validos, recebeu %v", err)
 	}
 }
@@ -150,4 +150,12 @@ func TestMissingFileExplainsProblem(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "nao-existe.csv") {
 		t.Fatalf("esperava mensagem citando o arquivo, recebeu %v", err)
 	}
+}
+
+func generators(recipes map[string]string) map[string]scenario.Generator {
+	fields := make(map[string]scenario.Generator, len(recipes))
+	for name, recipe := range recipes {
+		fields[name] = scenario.ParseGenerator(recipe)
+	}
+	return fields
 }

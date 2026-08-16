@@ -54,6 +54,11 @@ dados:
   pedidos:
     gerar: { id: uuid, valor: "numero(10,500)" }
     semente: 7
+  pagamento:
+    gerar:
+      referencia: { tipo: padrao, formato: "PED-######" }
+      documento: { tipo: cpf }
+      nonce: { tipo: uuid, novo_a_cada: uso }
 
 carga:
   perfis:
@@ -103,6 +108,11 @@ slo:
 				).RefreshAfter(25*time.Minute)).
 				DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(scenario.ConsumeCircular)).
 				GeneratedData("pedidos", map[string]string{"id": "uuid", "valor": "numero(10,500)"}, dsl.Seed(7)).
+				GeneratedFields("pagamento", map[string]dsl.Field{
+					"referencia": dsl.Pattern("PED-######"),
+					"documento":  dsl.Generator("cpf"),
+					"nonce":      dsl.Generator("uuid").NewPerUse(),
+				}).
 				Ramp(dsl.PerSecond(10), dsl.PerSecond(100), 30*time.Second).
 				Plateau(dsl.PerSecond(100), time.Minute).
 				Spike(dsl.PerMinute(600), 10*time.Second).
@@ -433,6 +443,7 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 	consumePolicies := map[scenario.ConsumePolicy]bool{}
 	metrics := map[string]bool{}
 	scopes := map[scenario.SLOScope]bool{}
+	generators := map[string]bool{}
 	operators := map[scenario.Operator]bool{}
 
 	for _, testCase := range testCases {
@@ -460,6 +471,12 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 		}
 		for _, source := range built.Data {
 			consumePolicies[source.Consume] = true
+			for _, field := range source.Fields {
+				generators[field.Recipe] = true
+				if field.PerUse {
+					generators["novo_a_cada: uso"] = true
+				}
+			}
 		}
 		for _, rule := range built.SLO {
 			metrics[rule.Metrica] = true
@@ -485,6 +502,7 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 		scenario.ConsumeCircular, scenario.ConsumeSequential, scenario.ConsumeRandom, scenario.ConsumeUniquePerUser,
 	}, consumePolicies)
 	missing(t, "metrica de slo", []string{"p95", "p99", "max", "erros", "sucesso", "taxa_efetiva", "jornada_p95"}, metrics)
+	missing(t, "gerador de dados", []string{"uuid", "padrao", "cpf", "novo_a_cada: uso"}, generators)
 	missing(t, "escopo de slo", []scenario.SLOScope{
 		scenario.ScopeStep, scenario.ScopeOverall, scenario.ScopeJourney, scenario.ScopeRegression,
 	}, scopes)

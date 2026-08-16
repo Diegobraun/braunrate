@@ -78,9 +78,43 @@ func (c *Builder) DataFromFile(name, file string, opts ...DataOption) *Builder {
 }
 
 func (c *Builder) GeneratedData(name string, fields map[string]string, opts ...DataOption) *Builder {
-	source := scenario.DataSource{Name: name, Consume: scenario.ConsumeCircular, Fields: map[string]string{}}
+	source := scenario.DataSource{Name: name, Consume: scenario.ConsumeCircular, Fields: map[string]scenario.Generator{}}
 	for field, recipe := range fields {
-		source.Fields[field] = recipe
+		source.Fields[field] = scenario.ParseGenerator(recipe)
+	}
+	for _, option := range opts {
+		option(&source)
+	}
+	if len(source.Fields) == 0 {
+		c.note(fmt.Errorf("a fonte de dados %q precisa de pelo menos um campo em 'gerar'", name))
+	}
+	c.scenario.Data = append(c.scenario.Data, source)
+	return c
+}
+
+// Field is the long form of a generated field, for what the short string
+// cannot say: a declared format, or a new value at every use.
+type Field struct {
+	recipe string
+	format string
+	perUse bool
+}
+
+func Generator(recipe string) Field { return Field{recipe: recipe} }
+
+func Pattern(format string) Field { return Field{recipe: "padrao", format: format} }
+
+func (f Field) NewPerUse() Field {
+	f.perUse = true
+	return f
+}
+
+func (c *Builder) GeneratedFields(name string, fields map[string]Field, opts ...DataOption) *Builder {
+	source := scenario.DataSource{Name: name, Consume: scenario.ConsumeCircular, Fields: map[string]scenario.Generator{}}
+	for field, declared := range fields {
+		source.Fields[field] = scenario.Generator{
+			Recipe: declared.recipe, Format: declared.format, PerUse: declared.perUse,
+		}
 	}
 	for _, option := range opts {
 		option(&source)

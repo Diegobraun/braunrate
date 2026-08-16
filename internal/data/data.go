@@ -128,7 +128,7 @@ func (f *csvSource) Next(virtualUser int64) (map[string]string, error) {
 
 type syntheticSource struct {
 	name        string
-	fields      map[string]string
+	fields      map[string]scenario.Generator
 	sortedNames []string
 	seed        int64
 	sequence    atomic.Int64
@@ -182,11 +182,28 @@ func (f *syntheticSource) Next(virtualUser int64) (map[string]string, error) {
 	return values, nil
 }
 
+// PerUse fields are handed over as a function instead of a value: substitution
+// calls it at every occurrence, so the report counts each one as a distinct use.
+func (f *syntheticSource) PerUse() map[string]func() (string, error) {
+	perUse := map[string]func() (string, error){}
+	for _, field := range f.sortedNames {
+		generator := f.fields[field]
+		if !generator.PerUse {
+			continue
+		}
+		perUse[f.name+"."+field] = func() (string, error) {
+			sequence := f.sequence.Add(1)
+			return generate(generator, rand.New(rand.NewSource(f.seed+sequence)), sequence)
+		}
+	}
+	return perUse
+}
+
 var names = []string{"ana", "bruno", "carla", "diego", "elisa", "fabio", "gabriela", "heitor", "isabel", "joao"}
 var lastNames = []string{"souza", "lima", "braun", "costa", "martins", "azevedo", "ferreira", "rocha"}
 
-func generate(expression string, random *rand.Rand, sequence int64) (string, error) {
-	name, args := splitGenerator(expression)
+func generate(generator scenario.Generator, random *rand.Rand, sequence int64) (string, error) {
+	name, args := splitGenerator(generator.Recipe)
 	switch name {
 	case "uuid":
 		return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x", random.Uint32(), random.Intn(0xffff),
@@ -233,9 +250,73 @@ func generate(expression string, random *rand.Rand, sequence int64) (string, err
 			builder.WriteByte(letters[random.Intn(len(letters))])
 		}
 		return builder.String(), nil
+	case "padrao":
+		return fromPattern(generator.Format, random), nil
+	case "cpf":
+		return brazilianDocument(random, cpfLength, cpfWeights), nil
+	case "cnpj":
+		return brazilianDocument(random, cnpjLength, cnpjWeights), nil
 	default:
-		return "", fmt.Errorf("gerador desconhecido: %q (use uuid, sequencia, numero, inteiro, nome, email ou texto)", name)
+		return "", fmt.Errorf("gerador desconhecido: %q\n"+
+			"    disponiveis: uuid, sequencia, numero, inteiro, nome, email, texto, padrao, cpf, cnpj", name)
 	}
+}
+
+// fromPattern keeps two placeholders only. More would need a grammar, and the
+// point here is filling a format the target validates, not a template engine.
+func fromPattern(format string, random *rand.Rand) string {
+	builder := strings.Builder{}
+	for _, character := range format {
+		switch character {
+		case '#':
+			builder.WriteByte(byte('0' + random.Intn(10)))
+		case '@':
+			builder.WriteByte(byte('A' + random.Intn(26)))
+		default:
+			builder.WriteRune(character)
+		}
+	}
+	return builder.String()
+}
+
+// An invalid CPF or CNPJ makes the target refuse every request with a
+// validation error, and the run measures the rejection path instead of the
+// work. The check digits are the same modulo 11 rule for both, changing only
+// the length and the weights.
+const (
+	cpfLength  = 9
+	cnpjLength = 12
+)
+
+var (
+	cpfWeights  = [][]int{{10, 9, 8, 7, 6, 5, 4, 3, 2}, {11, 10, 9, 8, 7, 6, 5, 4, 3, 2}}
+	cnpjWeights = [][]int{{5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2}, {6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2}}
+)
+
+func brazilianDocument(random *rand.Rand, length int, weights [][]int) string {
+	digits := make([]int, 0, length+2)
+	for index := 0; index < length; index++ {
+		digits = append(digits, random.Intn(10))
+	}
+	for _, weight := range weights {
+		digits = append(digits, checkDigit(digits, weight))
+	}
+	builder := strings.Builder{}
+	for _, digit := range digits {
+		builder.WriteByte(byte('0' + digit))
+	}
+	return builder.String()
+}
+
+func checkDigit(digits []int, weights []int) int {
+	total := 0
+	for index, weight := range weights {
+		total += digits[index] * weight
+	}
+	if remainder := total % 11; remainder >= 2 {
+		return 11 - remainder
+	}
+	return 0
 }
 
 func splitGenerator(expression string) (string, []string) {

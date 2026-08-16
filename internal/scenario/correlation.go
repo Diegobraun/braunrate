@@ -87,10 +87,22 @@ type DataSource struct {
 	File      string
 	Consume   ConsumePolicy
 	Seed      int64
-	Fields    map[string]string
+	Fields    map[string]Generator
 	Registros int
 	Line      int
 }
+
+// PerUse is off by default: the same generated value has to hold for the whole
+// iteration, which is what an idempotency key needs — the same transactionId in
+// two requests, a new one on the next iteration. Wanting a new value at every
+// substitution is the rare case, so it is declared.
+type Generator struct {
+	Recipe string
+	Format string
+	PerUse bool
+}
+
+func ParseGenerator(recipe string) Generator { return Generator{Recipe: recipe} }
 
 func (f DataSource) Synthetic() bool {
 	return f.File == ""

@@ -103,6 +103,13 @@ func (m *Executor) Debug(ctx context.Context) ([]Observation, map[string]string,
 			return nil, values.Values(), err
 		}
 		values.SetAll(record)
+		if perUse, has := source.(interface {
+			PerUse() map[string]func() (string, error)
+		}); has {
+			for name, generate := range perUse.PerUse() {
+				values.SetPerUse(name, generate)
+			}
+		}
 	}
 
 	var authHeader [2]string
@@ -250,6 +257,13 @@ func (m *Executor) runIteration(ctx context.Context, virtualUser int64, schedule
 			return
 		}
 		values.SetAll(record)
+		if perUse, has := source.(interface {
+			PerUse() map[string]func() (string, error)
+		}); has {
+			for name, generate := range perUse.PerUse() {
+				values.SetPerUse(name, generate)
+			}
+		}
 	}
 
 	var authHeader [2]string

@@ -14,6 +14,14 @@ type Values struct {
 	mu          sync.RWMutex
 	values      map[string]string
 	uses        map[string]string
+	perUse      map[string]func() (string, error)
+}
+
+func (c *Values) generatorFor(name string) (func() (string, error), bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	generate, found := c.perUse[name]
+	return generate, found
 }
 
 func New(virtualUser, iteration int64, base map[string]string) *Values {
@@ -57,6 +65,15 @@ func (c *Values) Values() map[string]string {
 
 // Resolve happens at run time, not at load time: without that, a value
 // captured in one step never reaches the next one.
+func (c *Values) SetPerUse(name string, generate func() (string, error)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.perUse == nil {
+		c.perUse = map[string]func() (string, error){}
+	}
+	c.perUse[name] = generate
+}
+
 func (c *Values) Resolve(text string) string {
 	if text == "" {
 		return text
@@ -64,6 +81,12 @@ func (c *Values) Resolve(text string) string {
 	return varPattern.ReplaceAllStringFunc(text, func(occurrence string) string {
 		parts := varPattern.FindStringSubmatch(occurrence)
 		name, fallback := parts[1], parts[2]
+		if generate, perUse := c.generatorFor(name); perUse {
+			if value, err := generate(); err == nil {
+				c.noteUse(name, value)
+				return value
+			}
+		}
 		if value, exists := c.Value(name); exists {
 			c.noteUse(name, value)
 			return value

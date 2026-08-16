@@ -471,12 +471,9 @@
         },
         "gerar": {
           "type": "object",
-          "description": "Campos sinteticos. Ex.: 'id: uuid'.",
+          "description": "Campos sinteticos. Um valor por iteracao, estavel na jornada inteira.",
           "additionalProperties": {
-            "type": [
-              "string",
-              "object"
-            ]
+            "$ref": "#/$defs/campoGerado"
           }
         }
       }
@@ -898,6 +895,66 @@
           "description": "De quanto em quanto tempo sondar. A latencia medida tem essa granularidade."
         }
       }
+    },
+    "campoGerado": {
+      "description": "Receita curta (\"uuid\", \"numero(10,500)\") ou a forma longa com tipo, formato e novo_a_cada.",
+      "oneOf": [
+        {
+          "type": "string",
+          "examples": [
+            "uuid",
+            "sequencia",
+            "numero(10,500)",
+            "inteiro(1,99)",
+            "nome",
+            "email",
+            "texto(8)",
+            "cpf",
+            "cnpj"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tipo"
+          ],
+          "properties": {
+            "tipo": {
+              "type": "string",
+              "enum": [
+                "uuid",
+                "sequencia",
+                "numero",
+                "inteiro",
+                "nome",
+                "email",
+                "texto",
+                "padrao",
+                "cpf",
+                "cnpj"
+              ]
+            },
+            "formato": {
+              "type": "string",
+              "description": "So para tipo: padrao. # vira digito, @ vira letra, o resto sai literal.",
+              "examples": [
+                "PED-######",
+                "@@-####"
+              ]
+            },
+            "novo_a_cada": {
+              "type": "string",
+              "enum": [
+                "iteracao",
+                "uso"
+              ],
+              "default": "iteracao",
+              "description": "iteracao mantem o mesmo valor na jornada inteira, que e o caso da chave de idempotencia."
+            }
+          }
+        }
+      ]
     }
   }
 }
