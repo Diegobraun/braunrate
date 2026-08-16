@@ -2,6 +2,12 @@
 nome: Fumaca de CI
 alvo: http://127.0.0.1:8080
 
+autenticacao:
+  tipo: token
+  obter:
+    http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ci } }
+    captura: { token: $.access_token }
+
 carga:
   perfis:
     - rampa: { de: 50/s, ate: 200/s, durante: 3s }
@@ -11,3 +17,6 @@ cenario:
   - http: GET /pedidos/1
     nome: consultar pedido
     verificar: { status: 200 }
+
+slo:
+  - global: { erros: < 0.1 }
