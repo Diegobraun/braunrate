@@ -23,6 +23,11 @@ type ScenarioError struct {
 }
 
 func (scenarioError ScenarioError) Error() string {
+	// A scenario written in Go has no line: printing "linha 0" would send the
+	// reader looking for a file that does not exist.
+	if scenarioError.Line == 0 {
+		return scenarioError.Message
+	}
 	if scenarioError.File == "" {
 		return fmt.Sprintf("linha %d: %s", scenarioError.Line, scenarioError.Message)
 	}

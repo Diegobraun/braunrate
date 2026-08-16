@@ -2,6 +2,7 @@ package dsl_test
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -751,5 +752,67 @@ func TestEveryProtocolConfigFieldHasEquivalenceCase(t *testing.T) {
 					protocolName, field.Name)
 			}
 		}
+	}
+}
+
+// The undeclared-variable refusal was born reading the YAML text, so it never
+// reached the scenario written in Go: the same file refused in one public was
+// accepted in the other, and the request went out with an empty field. ADR 0002
+// says validation runs on the model, one place, same message for both.
+func TestUndeclaredVariableIsRefusedInTheDSLToo(t *testing.T) {
+	cases := map[string]func() (scenario.Spec, error){
+		"no caminho": func() (scenario.Spec, error) {
+			return dsl.New("x").Target("http://127.0.0.1:8080").
+				Plateau(dsl.PerSecond(1), time.Second).
+				Step(dsl.GET("/pedidos/${nao_declarada}"), dsl.Name("consultar")).Build()
+		},
+		"no corpo": func() (scenario.Spec, error) {
+			return dsl.New("x").Target("http://127.0.0.1:8080").
+				Plateau(dsl.PerSecond(1), time.Second).
+				Step(dsl.POST("/pedidos").Body(map[string]any{"cupom": "${nao_declarada}"}), dsl.Name("criar")).Build()
+		},
+		"no cabecalho": func() (scenario.Spec, error) {
+			return dsl.New("x").Target("http://127.0.0.1:8080").
+				Plateau(dsl.PerSecond(1), time.Second).
+				Step(dsl.GET("/pedidos").Header("X-Inquilino", "${nao_declarada}"), dsl.Name("consultar")).Build()
+		},
+		"na chave do kafka": func() (scenario.Spec, error) {
+			return dsl.New("x").Target("127.0.0.1:9092").
+				Plateau(dsl.PerSecond(1), time.Second).
+				Step(dsl.Kafka("pedidos").Key("${nao_declarada}").Value(map[string]any{"id": "1"}), dsl.Name("publicar")).Build()
+		},
+	}
+
+	for name, build := range cases {
+		_, err := build()
+		if err == nil {
+			t.Errorf("%s: a DSL aceitou ${nao_declarada}; o mesmo cenario em YAML e recusado", name)
+			continue
+		}
+		if !strings.Contains(err.Error(), "nao sei de onde vem ${nao_declarada}") {
+			t.Errorf("%s: a mensagem nao e a mesma do YAML: %v", name, err)
+		}
+		if strings.Contains(err.Error(), "linha 0") {
+			t.Errorf("%s: cenario em Go nao tem linha para apontar: %v", name, err)
+		}
+	}
+}
+
+// The same rule cannot start refusing what the scenario does declare: a name
+// from the environment, a captured value, a field of a declared source.
+func TestDeclaredVariablesKeepPassingInTheDSL(t *testing.T) {
+	_, err := dsl.New("x").Target("http://127.0.0.1:8080").
+		Variable("inquilino", "acme").
+		GeneratedData("pedidos", map[string]string{"id": "uuid"}).
+		Plateau(dsl.PerSecond(1), time.Second).
+		Step(dsl.GET("/pedidos/${pedidos.id}"),
+			dsl.Name("consultar"),
+			dsl.Capture("faturaId", "$.ultimaFatura.id")).
+		Step(dsl.POST("/faturas/${faturaId}").
+			Header("X-Inquilino", "${inquilino}").
+			Body(map[string]any{"chave": "${API_KEY}"}), dsl.Name("pagar")).
+		Build()
+	if err != nil {
+		t.Fatalf("cenario com tudo declarado foi recusado: %v", err)
 	}
 }

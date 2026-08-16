@@ -4,6 +4,16 @@ Registro das decisoes tomadas durante o trabalho autonomo da noite de 2026-08-16
 Ordenado por risco: primeiro o que muda o que o usuario ve, o que contraria ADR
 existente e o que e caro de reverter; depois o resto.
 
+## Revisao dos ADRs — a recusa de variavel nao declarada passa a valer tambem para o cenario em Go
+
+Alternativa considerada: deixar o item 1 so no caminho do YAML, que e onde a friccao foi medida.
+
+Por que esta: o ADR 0002 diz que a validacao roda sobre o modelo e que a mensagem e uma so para os dois publicos. A recusa nasceu esta noite lendo o texto do arquivo, entao o mesmo cenario era recusado em YAML e aceito em Go — e em Go a requisicao saia com o campo vazio, que e exatamente o defeito que o item 1 existia para matar. A regra e a mensagem continuam num lugar so; o caminho do YAML e que acrescenta linha e coluna, e o passo do modelo acrescenta o nome do passo.
+
+Reversibilidade: medio — `CheckReferences` percorre a configuracao de cada passo por reflexao, e tirar isso devolve a assimetria.
+
+Toca o usuario: sim, e a mudanca mais visivel desta revisao. `Build()` da DSL passa a devolver erro onde antes devolvia cenario, e cenario em Go que dependia de `${nome}` vazio para de compilar o teste que o usa. `ScenarioError` tambem para de imprimir "linha 0" quando nao ha arquivo.
+
 ## Revisao dos ADRs — a regra de dependencia de `metrics` passa a dizer o que o codigo faz, com a divida nomeada
 
 Alternativa considerada: cumprir a regra como estava escrita, movendo `ErrorClass` e `ConsumerLag` para `metrics` e invertendo o import.

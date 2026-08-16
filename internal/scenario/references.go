@@ -199,6 +199,11 @@ func sortedFields(fields map[string]Generator) []string {
 // scalar starts one character after the position yaml reports, and a value
 // broken across lines gives up and points at the start.
 func referenceError(node *yaml.Node, used reference, message string) error {
+	// A scenario written in Go has no line to point at, so the message travels
+	// alone. Same rule, same words, one of the two publics carrying a position.
+	if node == nil {
+		return ScenarioError{Message: message}
+	}
 	line, column := node.Line, node.Column
 	if !strings.Contains(node.Value[:used.offset], "\n") {
 		column += used.offset

@@ -36,7 +36,7 @@ Regras que sustentam a promessa:
 
 - **Nenhum comportamento fora do modelo.** Se um recurso nao pode ser expresso como no da arvore, ele nao existe — nem na DSL. Isso e o que impede a DSL de virar um segundo produto.
 - **O motor so conhece o modelo.** Ele nao sabe se o cenario veio de YAML, DSL ou importador de `.jmx`. Nao existe caminho de execucao alternativo.
-- **Validacao roda sobre o modelo**, nao sobre o texto YAML. Mensagem de erro, checagem de referencia de variavel, SLO apontando para passo inexistente: um lugar so, mesma mensagem nos dois publicos.
+- **Validacao roda sobre o modelo**, nao sobre o texto YAML. Mensagem de erro, checagem de referencia de variavel, SLO apontando para passo inexistente: um lugar so, mesma mensagem nos dois publicos. A checagem de referencia nasceu na Fase 8 lendo o texto e valia so para o YAML; a revisao do fim da fase moveu a regra para `scenario.CheckReferences`, sobre o modelo, com o leitor de YAML acrescentando linha e coluna por cima.
 - **O modelo serializa de volta para YAML.** Isso da tres coisas de graca: saida do importador de `.jmx`, teste de equivalencia entre os dois caminhos, e diff legivel de cenario.
 
 ### 2. O que a DSL pode a mais, e como isso continua dentro do modelo

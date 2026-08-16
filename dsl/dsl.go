@@ -364,6 +364,12 @@ func (builder *Builder) Build() (scenario.Spec, error) {
 	if err := built.Validate(); err != nil {
 		return built, err
 	}
+	// The same refusal the YAML gets for a ${nome} that resolves from nowhere.
+	// It ran only on the text of the file, so the Go scenario sent the empty
+	// value out and nobody was told (ADR 0002).
+	if err := scenario.CheckReferences(&built); err != nil {
+		return built, err
+	}
 	return built, nil
 }
 
