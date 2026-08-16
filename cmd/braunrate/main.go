@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -487,6 +488,19 @@ func debug(args []string) int {
 			fmt.Printf("A iteracao parou no passo %d. Corrija e rode de novo; a carga so vale depois que a iteracao passa.\n",
 				len(iteration.Observations))
 		}
+		if c.Auth == nil && refusedForCredentials(iteration) {
+			fmt.Print(`
+O alvo recusou por credencial, e o cenario nao declara autenticacao nenhuma.
+Declare de onde vem o token e o braunrate obtem uma vez e reaproveita em todas
+as jornadas:
+
+  autenticacao:
+    tipo: token
+    obter:
+      http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana } }
+      captura: { token: $.access_token }
+`)
+		}
 		if unreachable(iteration) {
 			fmt.Printf("\nNinguem atendeu em %s. Confira se o servico esta no ar e se o endereco esta certo.\n"+
 				"Se voce ainda nao tem um servico para testar, suba o embutido em outro terminal:\n"+
@@ -497,6 +511,18 @@ func debug(args []string) int {
 	fmt.Printf("Iteracao completa: %s, tudo certo. Para rodar com carga:\n  braunrate execute %s\n",
 		texto.Count(int64(len(iteration.Observations)), "passo", "passos"), scenarioPath)
 	return runner.ExitPassed
+}
+
+// A 401 with no authentication block is not a mystery to whoever wrote the
+// scenario knowing the tool has one. It is a wall to everyone else, and the
+// body of the answer says "token ausente" without saying where to declare it.
+func refusedForCredentials(iteration runner.Iteration) bool {
+	for _, observation := range iteration.Observations {
+		if observation.Response.Status == http.StatusUnauthorized || observation.Response.Status == http.StatusForbidden {
+			return true
+		}
+	}
+	return false
 }
 
 // "falha de rede / connection refused" says what the operating system saw, not

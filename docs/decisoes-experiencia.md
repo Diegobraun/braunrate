@@ -100,6 +100,19 @@ toca o usuario.
 - **Reversibilidade**: alta.
 - **Toca o usuario**: sim.
 
+## 7b. `debug` que toma 401 mostra o bloco `autenticacao`
+
+- **Decisao**: quando o alvo responde 401 ou 403 e o cenario nao declara
+  autenticacao, a depuracao imprime o bloco pronto.
+- **Alternativa**: deixar como estava — o corpo da resposta ja aparecia, com
+  `{"erro":"token ausente ou invalido"}` visivel.
+- **Por que esta**: apareceu na autoverificacao, no caminho `import curl` de
+  quem tem uma API. O corpo diz o que faltou; nada dizia onde declarar. Quem
+  escreveu o cenario sabendo que a ferramenta tem esse bloco nao ve o problema,
+  e essa e a definicao do "e so a pessoa saber que...".
+- **Reversibilidade**: alta.
+- **Toca o usuario**: sim.
+
 ## 8. Flag desconhecida sugere a certa em vez de despejar a lista
 
 - **Decisao**: `braunrate target -addr :8080` responde `"-addr" nao existe. Voce
