@@ -1,160 +1,181 @@
-# Decisoes de experiencia de uso
+# Decisões de experiência de uso
 
-Toda decisao que muda o que o usuario le ou ve, contraria um ADR, ou e cara de
-reverter. Decisao, alternativa descartada, por que esta, reversibilidade, e se
-toca o usuario.
+Toda decisão que muda o que o usuário lê ou vê, contraria um ADR, ou é cara de
+reverter. Decisão, alternativa descartada, por que esta, reversibilidade, e se
+toca o usuário.
 
-## 1. `vazao` continua existindo como metrica de SLO
+## 1. `vazão` continua existindo como métrica de SLO
 
-- **Decisao**: o [vocabulario](vocabulario.md) fixa **taxa** e proibe "vazao" no
-  texto ao usuario, mas a chave `vazao` do bloco `slo` fica como esta.
-- **Alternativa**: renomear a chave e aceitar `vazao` como apelido silencioso.
-- **Por que esta**: mudar chave do YAML e mudanca de formato, fora do escopo de
-  experiencia de uso; e `vazao` ja e apelido de `taxa_efetiva`, entao quem
-  escreve cenario novo tem o nome certo disponivel. O texto que a ferramenta
+- **Decisão**: o [vocabulário](vocabulario.md) fixa **taxa** e proíbe "vazão" no
+  texto ao usuário, mas a chave `vazao` do bloco `slo` fica como está.
+- **Alternativa**: renomear a chave e aceitar `vazão` como apelido silencioso.
+- **Por que esta**: mudar chave do YAML é mudança de formato, fora do escopo de
+  experiência de uso; e `vazao` já é apelido de `taxa_efetiva`, então quem
+  escreve cenário novo tem o nome certo disponível. O texto que a ferramenta
   imprime diz "taxa efetiva" nos dois casos.
-- **Reversibilidade**: alta — e uma linha no `switch` que le a metrica.
-- **Toca o usuario**: nao, enquanto ninguem le a documentacao antiga.
+- **Reversibilidade**: alta — é uma linha no `switch` que lê a métrica.
+- **Toca o usuário**: não, enquanto ninguém lê a documentação antiga.
 
-## 2. Percentil vira "95% das respostas" na frase do criterio de aceite
+## 2. Percentil vira "95% das respostas" na frase do critério de aceite
 
-- **Decisao**: as frases de veredito passam de `todas as requisicoes (p95) de
-  6 ms` para `respondeu 95% em ate 6 ms`.
-- **Alternativa**: manter `p95` no texto, por ser o termo da area.
-- **Por que esta**: quem nunca fez teste de carga nao sabe o que e p95, e a
-  frase de veredito e onde o numero decide se o CI passa. O leitor que ja sabe
-  perde nada: o `p95` continua na chave do YAML, no JSON e no CSV.
-- **Reversibilidade**: alta — e a construcao da frase, nao o dado.
-- **Toca o usuario**: sim, direto na linha do SLO.
+- **Decisão**: as frases de veredito passam de `todas as requisições (p95) de
+  6 ms` para `respondeu 95% em até 6 ms`.
+- **Alternativa**: manter `p95` no texto, por ser o termo da área.
+- **Por que esta**: quem nunca fez teste de carga não sabe o que é p95, e a
+  frase de veredito é onde o número decide se o CI passa. O leitor que já sabe
+  não perde nada: o `p95` continua na chave do YAML, no JSON e no CSV.
+- **Reversibilidade**: alta — é a construção da frase, não o dado.
+- **Toca o usuário**: sim, direto na linha do SLO.
 
-## 3. `saturacao` vira "o gerador nao sustentou a taxa"
+## 3. `saturacao` vira "o gerador não sustentou a taxa"
 
-- **Decisao**: a classe de erro `saturacao` e impressa como "o gerador nao
+- **Decisão**: a classe de erro `saturacao` é impressa como "o gerador não
   sustentou a taxa".
 - **Alternativa**: "gerador saturado", que era o texto anterior.
-- **Por que esta**: "saturado" nao diz de quem e a culpa. A frase nova diz que o
-  problema esta no gerador, nao no alvo — que e a leitura que muda a acao.
+- **Por que esta**: "saturado" não diz de quem é a culpa. A frase nova diz que o
+  problema está no gerador, não no alvo — que é a leitura que muda a ação.
 - **Reversibilidade**: alta.
-- **Toca o usuario**: sim, na tabela de erros.
+- **Toca o usuário**: sim, na tabela de erros.
 
-## 3b. O exemplo congelado teve as frases reescritas, nao os numeros
+## 3b. O exemplo congelado teve as frases reescritas, não os números
 
-- **Decisao**: em `docs/exemplo-resultado.json`, as frases de veredito e a
+- **Decisão**: em `docs/exemplo-resultado.json`, as frases de veredito e a
   mensagem de aviso foram reescritas no texto novo, e `versao` passou a 0.5.0.
-  Nenhuma medicao foi tocada.
+  Nenhuma medição foi tocada.
 - **Alternativa**: gerar um exemplo novo rodando de novo.
-- **Por que esta**: uma execucao nova daria numeros diferentes, e o exemplo
-  publicado e citado por numero no README. As frases sao renderizacao dos
-  mesmos numeros — o que mudou foi como o codigo de hoje as escreve.
-- **Reversibilidade**: alta, o arquivo esta versionado.
-- **Toca o usuario**: sim, e a primeira coisa que alguem abre para decidir se a
+- **Por que esta**: uma execução nova daria números diferentes, e o exemplo
+  publicado é citado por número no README. As frases são renderização dos
+  mesmos números — o que mudou foi como o código de hoje as escreve.
+- **Reversibilidade**: alta, o arquivo está versionado.
+- **Toca o usuário**: sim, é a primeira coisa que alguém abre para decidir se a
   ferramenta presta.
 
-## 4. `braunrate demo` sobe alvo, grava cenario e roda, tudo em um comando
+## 4. `braunrate demo` sobe alvo, grava cenário e roda, tudo em um comando
 
-- **Decisao**: existe um comando que nao pede arquivo, nao pede alvo e nao pede
+- **Decisão**: existe um comando que não pede arquivo, não pede alvo e não pede
   segundo terminal.
-- **Alternativa**: so documentar o caminho `target` num terminal e `execute` no
-  outro, como o README ja fazia.
-- **Por que esta**: o proprio autor precisou de dois terminais e nao rodou
-  nenhuma medicao na primeira volta com o binario publicado. Um caminho que o
-  autor nao percorre sozinho nao vai ser percorrido por quem nunca fez teste de
+- **Alternativa**: só documentar o caminho `target` num terminal e `execute` no
+  outro, como o README já fazia.
+- **Por que esta**: o próprio autor precisou de dois terminais e não rodou
+  nenhuma medição na primeira volta com o binario publicado. Um caminho que o
+  autor não percorre sozinho não vai ser percorrido por quem nunca fez teste de
   carga.
-- **Reversibilidade**: media — e um comando novo com um pacote proprio, e sai
+- **Reversibilidade**: média — é um comando novo com um pacote próprio, e sai
   inteiro se sair.
-- **Toca o usuario**: sim, e a primeira coisa que a tela inicial oferece.
+- **Toca o usuário**: sim, é a primeira coisa que a tela inicial oferece.
 
-## 5. A demo grava o cenario que ela roda, em vez de rodar de memoria
+## 5. A demo grava o cenário que ela roda, em vez de rodar de memória
 
-- **Decisao**: `braunrate demo` escreve `demo.yaml` no diretorio atual e executa
-  esse arquivo, pelo mesmo caminho de codigo do `execute`.
+- **Decisão**: `braunrate demo` escreve `demo.yaml` no diretório atual e executa
+  esse arquivo, pelo mesmo caminho de código do `execute`.
 - **Alternativa**: montar a `Spec` em Go e rodar sem tocar em disco, o que
   deixaria o diretorio limpo.
-- **Por que esta**: principio 1 do produto — o cenario e a verdade. Uma demo que
-  roda algo que nao existe como arquivo ensina que existe um caminho secreto, e
+- **Por que esta**: princípio 1 do produto — o cenário é a verdade. Uma demo que
+  roda algo que não existe como arquivo ensina que existe um caminho secreto, e
   deixa quem gostou do resultado sem nada para editar.
 - **Reversibilidade**: alta.
-- **Toca o usuario**: sim, cria arquivo no diretorio de trabalho, e a saida diz
+- **Toca o usuário**: sim, cria arquivo no diretório de trabalho, e a saída diz
   qual.
 
-## 6. A dica de proximo passo do `execute` desliga com `-quiet`
+## 6. A dica de próximo passo do `execute` desliga com `-quiet`
 
-- **Decisao**: `braunrate execute` termina apontando o proximo comando, e a
-  linha some com `-quiet` ou quando a execucao reprovou.
+- **Decisão**: `braunrate execute` termina apontando o próximo comando, e a
+  linha some com `-quiet` ou quando a execução reprovou.
 - **Alternativa**: imprimir sempre.
-- **Por que esta**: principio 4 da hierarquia — quem ja sabe nao pode ser
-  atrapalhado. Numa esteira a linha vira ruido em log, e quando o criterio de
-  aceite reprovou o proximo passo e corrigir, nao comparar.
+- **Por que esta**: princípio 4 da hierarquia — quem já sabe não pode ser
+  atrapalhado. Numa esteira a linha vira ruído em log, e quando o critério de
+  aceite reprovou o próximo passo é corrigir, não comparar.
 - **Reversibilidade**: alta.
-- **Toca o usuario**: sim, no fim de toda execucao interativa.
+- **Toca o usuário**: sim, no fim de toda execução interativa.
 
-## 7. `debug` que nao alcanca o alvo aponta `braunrate target`
+## 7. `debug` que não alcanca o alvo aponta `braunrate target`
 
-- **Decisao**: falha de rede na depuracao imprime que ninguem atendeu naquele
-  endereco e oferece o alvo embutido.
-- **Alternativa**: manter "falha de rede / connection refused", que e o que o
+- **Decisão**: falha de rede na depuracao imprime que ninguém atendeu naquele
+  endereço e oferece o alvo embutido.
+- **Alternativa**: manter "falha de rede / connection refused", que é o que o
   sistema operacional viu.
-- **Por que esta**: apareceu na autoverificacao da Fase 1 — quem esta no
-  primeiro cenario nao tem por que saber que um alvo precisa estar no ar em
+- **Por que esta**: apareceu na autoverificação da Fase 1 — quem está no
+  primeiro cenário não tem por que saber que um alvo precisa estar no ar em
   algum lugar, nem que a ferramenta traz um.
 - **Reversibilidade**: alta.
-- **Toca o usuario**: sim.
+- **Toca o usuário**: sim.
 
-## 7b. `debug` que toma 401 mostra o bloco `autenticacao`
+## 7b. `debug` que toma 401 mostra o bloco `autenticação`
 
-- **Decisao**: quando o alvo responde 401 ou 403 e o cenario nao declara
-  autenticacao, a depuracao imprime o bloco pronto.
-- **Alternativa**: deixar como estava — o corpo da resposta ja aparecia, com
-  `{"erro":"token ausente ou invalido"}` visivel.
-- **Por que esta**: apareceu na autoverificacao, no caminho `import curl` de
+- **Decisão**: quando o alvo responde 401 ou 403 e o cenário não declara
+  autenticação, a depuracao imprime o bloco pronto.
+- **Alternativa**: deixar como estava — o corpo da resposta já aparecia, com
+  `{"erro":"token ausente ou inválido"}` visível.
+- **Por que esta**: apareceu na autoverificação, no caminho `import curl` de
   quem tem uma API. O corpo diz o que faltou; nada dizia onde declarar. Quem
-  escreveu o cenario sabendo que a ferramenta tem esse bloco nao ve o problema,
-  e essa e a definicao do "e so a pessoa saber que...".
+  escreveu o cenário sabendo que a ferramenta tem esse bloco não vê o problema,
+  e essa é a definição do "é só a pessoa saber que...".
 - **Reversibilidade**: alta.
-- **Toca o usuario**: sim.
+- **Toca o usuário**: sim.
 
 ## 8. Flag desconhecida sugere a certa em vez de despejar a lista
 
-- **Decisao**: `braunrate target -addr :8080` responde `"-addr" nao existe. Voce
+- **Decisão**: `braunrate target -addr :8080` responde `"-addr" não existe. Você
   quis dizer "-address"?`, com o comando corrigido pronto para copiar.
-- **Alternativa**: o comportamento padrao do pacote `flag`, que imprime a lista
-  inteira de opcoes.
-- **Por que esta**: e o mesmo erro que o autor cometeu na primeira volta, e a
-  ferramenta ja tinha a resposta — a sugestao por distancia de edicao existia
-  desde a validacao de cenario, presa dentro do pacote `scenario`.
+- **Alternativa**: o comportamento padrão do pacote `flag`, que imprime a lista
+  inteira de opções.
+- **Por que esta**: é o mesmo erro que o autor cometeu na primeira volta, e a
+  ferramenta já tinha a resposta — a sugestao por distância de edicao existia
+  desde a validação de cenário, presa dentro do pacote `scenario`.
 - **Reversibilidade**: alta.
-- **Toca o usuario**: sim, em todo comando com opcoes.
-- **Efeito colateral aceito**: a funcao de semelhanca ganhou regra de
-  abreviacao (`addr` casa `address`), e ela e a mesma que sugere chave de
-  cenario. Agora `car` sugere `carga`, o que antes nao acontecia. Prefixo de
-  tres letras ou mais e sinal forte o bastante para nao virar palpite errado.
+- **Toca o usuário**: sim, em todo comando com opções.
+- **Efeito colateral aceito**: a função de semelhanca ganhou regra de
+  abreviação (`addr` casa `address`), e ela é a mesma que sugere chave de
+  cenário. Agora `car` sugere `carga`, o que antes não acontecia. Prefixo de
+  três letras ou mais é sinal forte o bastante para não virar palpite errado.
 
-## 9. Tudo que a pessoa le sai acentuado; o que ela copia para o arquivo, nao
+## 9. Tudo que a pessoa lê sai acentuado; o que ela copia para o arquivo, não
 
-- **Decisao**: terminal, relatorio HTML, demonstracao, mensagens de recusa,
-  site e README passam a sair em portugues acentuado. Chave de YAML, campo de
+- **Decisão**: terminal, relatório HTML, demonstração, mensagens de recusa,
+  site e README passam a sair em português acentuado. Chave de YAML, campo de
   JSON, nome de rota, valor de enum (`lider`, `basica`, `aleatorio`, `contem`) e
   nome de arquivo continuam em ASCII.
 - **Alternativa**: manter tudo sem acento, como estava desde a Fase 0.
-- **Por que esta**: texto sem acento em portugues le como rascunho, e o produto
-  pede confianca no numero que ele mostra. A fronteira e o que a pessoa **copia
+- **Por que esta**: texto sem acento em português lê como rascunho, e o produto
+  pede confiança no número que ele mostra. A fronteira é o que a pessoa **copia
   de volta para o arquivo**: se a mensagem ensina `senha: ${BROKER_SENHA}`, o que
   ela ensina precisa carregar no parser.
-- **Reversibilidade**: media. A varredura foi automatica sobre os literais de
-  string, com as excecoes acima conferidas uma a uma pela suite.
-- **Toca o usuario**: sim, em toda saida.
-- **Efeito colateral**: as saidas coladas na documentacao ficaram desatualizadas
-  no mesmo instante. Foram regeradas rodando os comandos, e nao reescritas a mao.
+- **Reversibilidade**: média. A varredura foi automática sobre os literais de
+  string, com as exceções acima conferidas uma a uma pela suíte.
+- **Toca o usuário**: sim, em toda saída.
+- **Efeito colateral**: as saídas coladas na documentação ficaram desatualizadas
+  no mesmo instante. Foram regeradas rodando os comandos, e não reescritas à mão.
 
-## 10. A interface e um editor do arquivo, e mostra o comando equivalente
+## 10. A interface é um editor do arquivo, e mostra o comando equivalente
 
-- **Decisao**: `braunrate ui` abre o `.yaml` do diretorio numa area de texto,
-  valida o rascunho pela mesma leitura do terminal e grava o texto como ele esta.
+- **Decisão**: `braunrate ui` abre o `.yaml` do diretório numa área de texto,
+  valida o rascunho pela mesma leitura do terminal e grava o texto como ele está.
   O comando de terminal equivalente fica no topo de toda tela.
-- **Alternativa**: uma arvore de campos, com formulario por bloco do cenario.
+- **Alternativa**: uma árvore de campos, com formulário por bloco do cenário.
 - **Por que esta**: registrada em [ADR 0018](adr/0018-interface-como-editor-do-arquivo.md).
-  Formulario que serializa de volta apaga comentario e destroi o diff, que e o
+  Formulário que serializa de volta apaga comentário e destrói o diff, que é o
   defeito do `.jmx` e o motivo do importador existir.
-- **Reversibilidade**: alta enquanto a interface nao guardar nada que o arquivo
-  nao guarde.
-- **Toca o usuario**: sim, e e a primeira tela de quem nao usa terminal.
+- **Reversibilidade**: alta enquanto a interface não guardar nada que o arquivo
+  não guarde.
+- **Toca o usuário**: sim, e é a primeira tela de quem não usa terminal.
+
+## 11. Exemplo de YAML dentro da mensagem sai em ASCII, mesmo quando a frase é acentuada
+
+- **Decisão**: dentro de uma mensagem, o trecho que a pessoa copia para o
+  arquivo — nome de chave, lista de chaves aceitas, valor de enum — sai em ASCII,
+  ainda que a frase ao redor esteja acentuada. `rampa precisa de 'de' e 'ate',
+  por exemplo: - rampa: { de: 50/s, ate: 300/s, durante: 30s }`.
+- **Alternativa**: acentuar a mensagem inteira, incluindo o exemplo.
+- **Por que esta**: a decisão 9 já traçava essa fronteira, e a varredura passou
+  por cima dela em nove lugares: o erro de rampa ensinava `até:`, o de kafka
+  ensinava `tópico:` e `partição:`, o de graphql ensinava `operação:` e
+  `variáveis:`, o de captura ensinava `padrão`, e o esqueleto do `braunrate new`
+  saía com `# autenticação:` e `corpo: { usuário: ana }`. Nenhum desses carrega
+  no parser: a mensagem que existe para desbloquear estava ensinando o erro
+  seguinte.
+- **Reversibilidade**: alta, e agora auditável — a regra é comparar cada palavra
+  acentuada de um trecho de exemplo com o conjunto de chaves que o parser aceita.
+- **Toca o usuário**: sim, e exatamente no momento em que ele já está travado.
+- **Efeito colateral**: o exemplo congelado voltou a dizer `usuario: texto` na
+  forma de corpo observada, porque ali não é frase: é o nome do campo que o
+  cenário enviou.

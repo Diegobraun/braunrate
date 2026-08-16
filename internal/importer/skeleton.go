@@ -10,11 +10,11 @@ func Skeleton() string {
 	return `# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
 # Com a extensão YAML do editor, a linha acima liga o autocompletar das chaves.
 
-nome: Meu primeiro cenario
+nome: Meu primeiro cenário
 alvo: http://127.0.0.1:8080
 
-# Taxa de chegada, em requisições por segundo. Não e número de usuários: o
-# gerador dispara na hora marcada mesmo que o alvo esteja lento, que e o que
+# Taxa de chegada, em requisições por segundo. Não é número de usuários: o
+# gerador dispara na hora marcada mesmo que o alvo esteja lento, que é o que
 # faz a medição não esconder travada.
 carga:
   perfis:
@@ -36,18 +36,18 @@ slo:
 # dados:
 #   assinantes: { arquivo: assinantes.csv, consumo: circular }
 #
-# cenário:
+# cenario:
 #   - http: GET /pedidos/${assinantes.id}
 
 # Login uma vez, token reaproveitado pelas iterações seguintes.
-# autenticação:
+# autenticacao:
 #   tipo: token
 #   obter:
-#     http: { metodo: POST, caminho: /auth/token, corpo: { usuário: ana, senha: "${SENHA}" } }
+#     http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: "${SENHA}" } }
 #     captura: { token: $.access_token }
 
 # O passo não precisa ser HTTP. Estes são os outros protocolos, e cada relatório
-# lista quais existem no binario que você esta rodando.
+# lista quais existem no binário que você está rodando.
 ` + commented(ProtocolShapes())
 }
 

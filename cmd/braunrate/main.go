@@ -684,7 +684,7 @@ Aponte o cliente para este proxy e navegue pelo fluxo que você quer medir:
 
 Duas coisas que este gravador não sabe, e você sabe:
   a carga e o slo saem como chute de partida, não como medição — ajuste antes de usar como gate
-  uma sequência gravada uma vez não e o mix de produção: a proporção entre as rotas e sua decisão
+  uma sequência gravada uma vez não é o mix de produção: a proporção entre as rotas e sua decisão
 
 Ctrl+C encerra e escreve o cenário.
 `, listening, listening, listening, listening)
@@ -872,7 +872,7 @@ func serveTarget(args []string) int {
 		return 1
 	}
 	fmt.Fprintf(os.Stderr, "alvo de teste em %s (responde em %s)\n", server.Address(), *latency)
-	fmt.Fprintf(os.Stderr, "\nEm outro terminal, aponte um cenário para ca:\n  braunrate execute examples/ci.yaml\n"+
+	fmt.Fprintf(os.Stderr, "\nEm outro terminal, aponte um cenário para cá:\n  braunrate execute examples/ci.yaml\n"+
 		"Se você só quer ver a ferramenta funcionando, não precisa deste comando:\n  braunrate demo\n\n")
 
 	var processor *testsupport.Processor

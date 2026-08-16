@@ -199,7 +199,7 @@ func readBody(node *yaml.Node) ([]byte, error) {
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não e de amqp"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não é de amqp"}
 	}
 
 	broker := request.Messaging.BrokerFor("amqp")

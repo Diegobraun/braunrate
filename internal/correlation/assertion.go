@@ -100,7 +100,7 @@ func avaliarJSON(assertion scenario.Assertion, response protocol.Response, expec
 func compareNumbers(assertion scenario.Assertion, obtained float64, esperadoTexto, description string) error {
 	expected, err := strconv.ParseFloat(strings.TrimSpace(esperadoTexto), 64)
 	if err != nil {
-		return AssertionFailure{description, esperadoTexto, "valor esperado não e número"}
+		return AssertionFailure{description, esperadoTexto, "valor esperado não é número"}
 	}
 	obtidoTexto := strconv.FormatFloat(obtained, 'f', -1, 64)
 

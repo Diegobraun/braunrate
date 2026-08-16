@@ -178,7 +178,7 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 			}
 			config.Timeout = duration
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo aguardar: %q (use kafka, amqp, http, chave, campo, igual_a, até, intervalo ou timeout)", key.Value)
+			return nil, fmt.Errorf("chave desconhecida no passo aguardar: %q (use kafka, amqp, http, chave, campo, igual_a, ate, intervalo ou timeout)", key.Value)
 		}
 	}
 
@@ -277,7 +277,7 @@ func readSource(config *Config, node *yaml.Node) error {
 				config.Addresses = append(config.Addresses, item.Value)
 			}
 		default:
-			return fmt.Errorf("chave desconhecida em aguardar.%s: %q (use tópico ou brokers)", config.Source, key.Value)
+			return fmt.Errorf("chave desconhecida em aguardar.%s: %q (use topico ou brokers)", config.Source, key.Value)
 		}
 	}
 	if config.Topic == "" {
@@ -300,7 +300,7 @@ func (implementation *Protocol) Prepare(_ context.Context, request protocol.Requ
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não e de aguardar"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não é de aguardar"}
 	}
 
 	if config.Source == "http" {

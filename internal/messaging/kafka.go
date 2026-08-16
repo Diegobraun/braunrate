@@ -145,7 +145,7 @@ func Explain(kind string, broker *Broker) string {
 	case "autenticacao":
 		return fmt.Sprintf("o broker recusou a credencial (%s): confira o usuário e a variável de ambiente com a senha", broker.Describe())
 	case "autorizacao":
-		return fmt.Sprintf("a credencial foi aceita e não tem permissão nesse tópico ou grupo (%s): e caso de ACL no broker, não de senha errada", broker.Describe())
+		return fmt.Sprintf("a credencial foi aceita e não tem permissão nesse tópico ou grupo (%s): é caso de ACL no broker, não de senha errada", broker.Describe())
 	}
 	return ""
 }

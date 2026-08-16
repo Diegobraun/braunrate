@@ -140,7 +140,7 @@ func TestUnknownGeneratorTeachesValidOnes(t *testing.T) {
 		t.Fatalf("abrir deveria funcionar: %v", err)
 	}
 	_, err = open.Next(0)
-	if err == nil || !strings.Contains(err.Error(), "disponiveis: uuid") {
+	if err == nil || !strings.Contains(err.Error(), "disponíveis: uuid") {
 		t.Fatalf("esperava lista de geradores válidos, recebeu %v", err)
 	}
 }

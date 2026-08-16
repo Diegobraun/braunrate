@@ -408,7 +408,7 @@ func readPhase(node *yaml.Node) (Phase, error) {
 		}
 	}
 	if phase.Kind == PhaseRamp && phase.From == 0 && phase.To == 0 {
-		return phase, nodeError(body, "rampa precisa de 'de' e 'ate', por exemplo: - rampa: { de: 50/s, até: 300/s, durante: 30s }")
+		return phase, nodeError(body, "rampa precisa de 'de' e 'ate', por exemplo: - rampa: { de: 50/s, ate: 300/s, durante: 30s }")
 	}
 	return phase, nil
 }

@@ -253,7 +253,7 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 		case "grupo":
 			config.Group = value.Value
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo kafka: %q (use tópico, chave, valor, cabecalhos, brokers, acks, timeout, partição ou grupo)", key.Value)
+			return nil, fmt.Errorf("chave desconhecida no passo kafka: %q (use topico, chave, valor, cabecalhos, brokers, acks, timeout, particao ou grupo)", key.Value)
 		}
 	}
 
@@ -299,7 +299,7 @@ func readValue(node *yaml.Node) ([]byte, error) {
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não e de kafka"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não é de kafka"}
 	}
 
 	broker := request.Messaging.BrokerFor("kafka")

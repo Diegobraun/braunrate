@@ -24,7 +24,7 @@ func (server *Server) handleGraphQL(w http.ResponseWriter, r *http.Request) {
 
 	var order pedidoGraphQL
 	if err := json.NewDecoder(r.Body).Decode(&order); err != nil {
-		serveGraphQL(w, "", `{"errors":[{"message":"corpo não e JSON","extensions":{"code":"BAD_REQUEST"}}]}`)
+		serveGraphQL(w, "", `{"errors":[{"message":"corpo não é JSON","extensions":{"code":"BAD_REQUEST"}}]}`)
 		return
 	}
 

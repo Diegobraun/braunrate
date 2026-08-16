@@ -12,8 +12,8 @@ import (
 )
 
 func main() {
-	root := flag.String("root", ".", "raiz do repositorio")
-	destination := flag.String("out", "site", "diretorio onde o site e gravado")
+	root := flag.String("root", ".", "raiz do repositório")
+	destination := flag.String("out", "site", "diretório onde o site é gravado")
 	flag.Parse()
 
 	if err := site.Build(*root, *destination, build.Version); err != nil {

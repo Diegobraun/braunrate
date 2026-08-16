@@ -105,7 +105,7 @@ func readFullCapture(name string, node *yaml.Node) (Capture, error) {
 		case "obrigatoria":
 			capture.Required = value.Value != "false"
 		default:
-			return capture, nodeError(key, "chave desconhecida na captura %q: %q (use de, padrão ou obrigatória)", name, key.Value)
+			return capture, nodeError(key, "chave desconhecida na captura %q: %q (use de, padrao ou obrigatoria)", name, key.Value)
 		}
 	}
 	if capture.Origin == "" {
@@ -159,7 +159,7 @@ func readAssertions(node *yaml.Node) ([]Check, []Assertion, error) {
 			}
 		default:
 			return nil, nil, nodeError(key, "verificação desconhecida: %q\n"+
-				"    disponiveis: status, corpo_contem, corpo_casa, json, cabecalho", key.Value)
+				"    disponíveis: status, corpo_contem, corpo_casa, json, cabecalho", key.Value)
 		}
 	}
 	return checks, assertions, nil
@@ -305,7 +305,7 @@ func readData(node *yaml.Node) ([]DataSource, error) {
 					source.Consume = ConsumeUniquePerUser
 				default:
 					return nil, nodeError(value, "consumo desconhecido: %q\n"+
-						"    disponiveis: circular (padrao), sequencial, aleatorio, unico_por_usuario", value.Value)
+						"    disponíveis: circular (padrao), sequencial, aleatorio, unico_por_usuario", value.Value)
 				}
 			case "semente":
 				seed, origin, err := ReadSeed(value.Value)
@@ -327,7 +327,7 @@ func readData(node *yaml.Node) ([]DataSource, error) {
 				}
 			default:
 				return nil, nodeError(key, "chave desconhecida na fonte de dados %q: %q\n"+
-					"    disponiveis: arquivo, gerar, consumo, semente", name.Value, key.Value)
+					"    disponíveis: arquivo, gerar, consumo, semente", name.Value, key.Value)
 			}
 		}
 		if source.File == "" && len(source.Fields) == 0 {
@@ -362,15 +362,15 @@ func readGenerator(field string, node *yaml.Node) (Generator, error) {
 			}
 		default:
 			return generator, nodeError(key, "chave desconhecida no campo %q: %q\n"+
-				"    disponiveis: tipo, formato, novo_a_cada\n"+
+				"    disponíveis: tipo, formato, novo_a_cada\n"+
 				"    exemplo: %s: { tipo: padrao, formato: \"PED-######\" }", field, key.Value, field)
 		}
 	}
 	if generator.Recipe == "" {
-		return generator, nodeError(node, "o campo %q precisa de 'tipo', por exemplo: %s: { tipo: padrão, formato: \"PED-######\" }", field, field)
+		return generator, nodeError(node, "o campo %q precisa de 'tipo', por exemplo: %s: { tipo: padrao, formato: \"PED-######\" }", field, field)
 	}
 	if generator.Recipe == "padrao" && generator.Format == "" {
-		return generator, nodeError(node, "o campo %q é do tipo padrão e precisa de 'formato', por exemplo: { tipo: padrão, formato: \"PED-######\" }\n"+
+		return generator, nodeError(node, "o campo %q é do tipo padrão e precisa de 'formato', por exemplo: { tipo: padrao, formato: \"PED-######\" }\n"+
 			"    # vira dígito e @ vira letra; o resto sai literal", field)
 	}
 	return generator, nil
@@ -468,7 +468,7 @@ func describeMetric(rule *SLORule) error {
 	if rule.Scope == ScopeRegression {
 		if !isRegressionMetric(rule.Metrica) {
 			return fmt.Errorf("métrica de regressão desconhecida: %q\n"+
-				"    disponiveis: jornada_p50, jornada_p95, jornada_p99, global_p95, global_p99\n"+
+				"    disponíveis: jornada_p50, jornada_p95, jornada_p99, global_p95, global_p99\n"+
 				"    exemplo: - regressao: { jornada_p95: <= 10%% pior }", rule.Metrica)
 		}
 		rule.Unit = "% pior"
@@ -492,7 +492,7 @@ func describeMetric(rule *SLORule) error {
 		rule.Operator = OpGreaterOrEqual
 	default:
 		return fmt.Errorf("métrica de slo desconhecida: %q\n"+
-			"    disponiveis: p50, p75, p90, p95, p99, p99.9, max, erros, sucesso, taxa_efetiva", rule.Metrica)
+			"    disponíveis: p50, p75, p90, p95, p99, p99.9, max, erros, sucesso, taxa_efetiva", rule.Metrica)
 	}
 
 	if rule.Scope == ScopeJourney && (rule.Metrica == "erros" || rule.Metrica == "sucesso") {

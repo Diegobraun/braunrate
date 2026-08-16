@@ -206,7 +206,7 @@ func readBody(node *yaml.Node) ([]byte, string, error) {
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não e de http"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não é de http"}
 	}
 
 	address, err := transport.BuildURL(request.URLBase, config.Path)

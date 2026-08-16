@@ -352,6 +352,6 @@ func RequireEnvironment(spec scenario.Spec) error {
 	return Fault{Exit: ExitBadFile, Message: fmt.Sprintf(
 		"o cenário usa %s, e essa variável não está no ambiente: o campo sairia vazio e o alvo responderia com erro que não explica nada.\n"+
 			"    rode com:  %s=... braunrate execute cenario.yaml\n"+
-			"    ou declare uma reserva no próprio cenário:  variáveis: { %s: \"${%s:-valor}\" }",
+			"    ou declare uma reserva no próprio cenário:  variaveis: { %s: \"${%s:-valor}\" }",
 		strings.Join(spec.MissingEnvironment, ", "), first, strings.ToLower(first), first)}
 }

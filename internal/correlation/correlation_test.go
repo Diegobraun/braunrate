@@ -74,7 +74,7 @@ func TestFailedCaptureExplainsWhy(t *testing.T) {
 func TestCaptureOnNonJSONResponseSaysSo(t *testing.T) {
 	capture := scenario.Capture{Variable: "id", Origin: scenario.CaptureJSON, Expression: "$.id"}
 	_, err := correlation.Extract(capture, protocol.Response{Body: []byte("<html>erro</html>")})
-	if err == nil || !strings.Contains(err.Error(), "não e JSON válido") {
+	if err == nil || !strings.Contains(err.Error(), "não é JSON válido") {
 		t.Fatalf("esperava aviso de corpo nao-JSON, recebeu %v", err)
 	}
 }

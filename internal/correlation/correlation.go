@@ -103,7 +103,7 @@ func extractFromJSON(capture scenario.Capture, response protocol.Response) (stri
 	result := gjson.GetBytes(response.Body, path)
 	if !result.Exists() {
 		if !gjson.ValidBytes(response.Body) {
-			return "", CaptureError{capture.Variable, capture.Expression, "a resposta não e JSON válido"}
+			return "", CaptureError{capture.Variable, capture.Expression, "a resposta não é JSON válido"}
 		}
 		return "", CaptureError{capture.Variable, capture.Expression, "caminho não encontrado no corpo da resposta"}
 	}

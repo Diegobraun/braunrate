@@ -110,7 +110,7 @@ func (csvSource *csvSource) Next(virtualUser int64) (map[string]string, error) {
 		index = csvSource.position.Add(1) - 1
 		if index >= total {
 			csvSource.exhausted.Store(true)
-			return nil, fmt.Errorf("os dados de %q acabaram na linha %d; use consumo circular para repetir do inicio", csvSource.name, total)
+			return nil, fmt.Errorf("os dados de %q acabaram na linha %d; use consumo circular para repetir do início", csvSource.name, total)
 		}
 	default:
 		index = (csvSource.position.Add(1) - 1) % total
@@ -272,7 +272,7 @@ func generate(generator scenario.Generator, random *rand.Rand, sequence int64) (
 		return brazilianDocument(random, cnpjLength, cnpjWeights), nil
 	default:
 		return "", fmt.Errorf("gerador desconhecido: %q\n"+
-			"    disponiveis: uuid, sequencia, numero, inteiro, nome, email, texto, padrao, cpf, cnpj", name)
+			"    disponíveis: uuid, sequencia, numero, inteiro, nome, email, texto, padrao, cpf, cnpj", name)
 	}
 }
 

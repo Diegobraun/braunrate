@@ -162,7 +162,7 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 			}
 			config.Timeout = duration
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo graphql: %q (use consulta, operação, variáveis, caminho, cabecalhos ou timeout)", key.Value)
+			return nil, fmt.Errorf("chave desconhecida no passo graphql: %q (use consulta, operacao, variaveis, caminho, cabecalhos ou timeout)", key.Value)
 		}
 	}
 	return Finish(config)
@@ -241,7 +241,7 @@ type graphQLError struct {
 func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não e de graphql"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuração não é de graphql"}
 	}
 
 	address, err := transport.BuildURL(request.URLBase, config.Path)

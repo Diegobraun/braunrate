@@ -303,9 +303,9 @@
       "valores_disponiveis": 0,
       "limitado_pelo_teto": false,
       "formas_observadas": [
-        "senha: texto, usuário: texto"
+        "senha: texto, usuario: texto"
       ],
-      "frase": "1 forma de corpo em \"obter autenticacao\", em 1 envios: senha: texto, usuário: texto"
+      "frase": "1 forma de corpo em \"obter autenticacao\", em 1 envios: senha: texto, usuario: texto"
     },
     {
       "nome": "corpo.pagar fatura",
