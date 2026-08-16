@@ -145,6 +145,8 @@ braunrate/
     └── testsupport/     alvo de teste embutido
 ```
 
+O codigo e escrito em ingles e o produto fala portugues ([ADR 0010](adr/0010-idioma-do-codigo.md)): chave de YAML, mensagem e relatorio continuam como o usuario espera.
+
 `internal/` nao e organizacao: e o compilador impedindo que projeto de fora importe o que nao e contrato publico. So `dsl/` e API para quem usa o braunrate como biblioteca.
 
 Dependencia permitida em uma direcao so: `report` e `protocol` dependem de `metrics` e `scenario`; `engine` depende de `scenario`, `metrics` e do registro de protocolos; `scenario` e `metrics` nao dependem de ninguem acima. Um `import` de `protocol` dentro de `metrics` e erro de arquitetura, porque e o comeco de metrica especifica de protocolo.
