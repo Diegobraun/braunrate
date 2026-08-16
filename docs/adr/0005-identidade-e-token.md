@@ -23,7 +23,7 @@ A alternativa — obter token por iteracao — e pior: mediria o servico de aute
 
 Tres obrigacoes que vem junto:
 
-1. **O relatorio declara.** Toda execucao com autenticacao imprime: *"Autenticacao obtida N vez(es) e reaproveitada por todas as jornadas. Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista."*
+1. **O relatorio declara.** Toda execucao com autenticacao imprime: *"Autenticacao obtida uma vez (ou N vezes) e reaproveitada por todas as jornadas. Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista."*
 2. **O README declara**, na secao de limitacoes conhecidas, junto com a friccao de protocolo compilado.
 3. **A evolucao esta prevista e nomeada**, para nao virar reescrita:
    - **`pool de tokens`**: o cenario declara N identidades (de CSV ou de geracao), o motor obtem um token por identidade no inicio e distribui entre as iteracoes com a mesma politica de consumo dos dados (`circular`, `unico_por_usuario`, ...). Reaproveita `dados` e `autenticacao`, sem conceito novo para o usuario.

@@ -4,6 +4,16 @@ Registro das decisoes tomadas durante o trabalho autonomo da noite de 2026-08-16
 Ordenado por risco: primeiro o que muda o que o usuario ve, o que contraria ADR
 existente e o que e caro de reverter; depois o resto.
 
+## Revisao dos ADRs — a regra de dependencia de `metrics` passa a dizer o que o codigo faz, com a divida nomeada
+
+Alternativa considerada: cumprir a regra como estava escrita, movendo `ErrorClass` e `ConsumerLag` para `metrics` e invertendo o import.
+
+Por que esta: `docs/arquitetura.md` dizia que um import de `protocol` dentro de `metrics` e erro de arquitetura, e esse import existe desde muito antes desta noite, por causa de `ErrorClass`. Inverter mexeria em todos os protocolos de uma vez, de madrugada, para separar um vocabulario que nao pertence a protocolo nenhum. O que a regra protege de verdade e `metrics` conhecer **um** protocolo — e isso agora e teste, nao frase. Fica registrada a divida que sobra: `metrics/variety.go` escreve a frase de particao do Kafka, e as duas saidas obvias estao fechadas (generalizar perde o conselho util; deixar o protocolo escrever contraria o ADR 0003 §3).
+
+Reversibilidade: barato como texto e teste; a inversao de dependencia continua possivel depois, e mais cara.
+
+Toca o usuario: nao. Nenhuma saida muda.
+
 ## Revisao dos ADRs — o cenario em Go so roda de dentro deste modulo, e o README passa a dizer isso
 
 Alternativa considerada: expor motor e documento de resultado como API publica, para o cenario em Go rodar de um modulo de fora.

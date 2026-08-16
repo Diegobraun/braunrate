@@ -135,6 +135,7 @@ braunrate/
     ├── engine/          plano de carga, agendador, executor
     ├── metrics/         HDR, contadores, series, documento de resultado, merge
     ├── protocol/        registro + http, graphql, kafka, amqp, wait, transport
+    ├── messaging/       broker, autenticacao e TLS compartilhados por kafka e amqp
     ├── report/          terminal, html, json, csv, comparison
     ├── correlation/     captura e assercao
     ├── runtime/         valores da iteracao e interpolacao
@@ -142,6 +143,12 @@ braunrate/
     ├── data/            csv com politica de consumo, geracao com semente
     ├── slo/             avaliacao e codigo de saida
     ├── importer/        curl e jmx -> modelo
+    ├── recorder/        proxy que grava trafego e escreve cenario
+    ├── runner/          cenario -> resultado, unico caminho da CLI e do servidor
+    ├── server/          rotas HTTP, sem logica propria
+    ├── texto/           plural e contagem nas mensagens
+    ├── journey/         testes de ponta a ponta do que o usuario ve
+    ├── selfcheck/       provas de honestidade de medicao que rodam no CI
     └── testsupport/     alvo de teste embutido
 ```
 
@@ -149,7 +156,11 @@ O codigo e escrito em ingles e o produto fala portugues ([ADR 0010](adr/0010-idi
 
 `internal/` nao e organizacao: e o compilador impedindo que projeto de fora importe o que nao e contrato publico. So `dsl/` e API para quem usa o braunrate como biblioteca.
 
-Dependencia permitida em uma direcao so: `report` e `protocol` dependem de `metrics` e `scenario`; `engine` depende de `scenario`, `metrics` e do registro de protocolos; `scenario` e `metrics` nao dependem de ninguem acima. Um `import` de `protocol` dentro de `metrics` e erro de arquitetura, porque e o comeco de metrica especifica de protocolo.
+Dependencia permitida em uma direcao so: `report` depende de `metrics` e `scenario`; `engine` depende de `scenario`, `metrics` e do registro de protocolos; `scenario` nao depende de ninguem acima.
+
+`metrics` **importa `protocol`**, e isso e deliberado: o vocabulario compartilhado — classe de erro, atributo de resposta, atraso de consumidor — vive no pacote de protocolo e nao pertence a nenhum protocolo em particular. O que continua sendo erro de arquitetura e `metrics` conhecer **um** protocolo: um `import` de `protocol/kafka` ali seria o comeco de metrica especifica, e um teste reprova o build se aparecer.
+
+**Divida conhecida**, achada relendo esta pagina contra o codigo na Fase 8: `metrics/variety.go` escreve a frase de particao do Kafka, entao ha conhecimento de um protocolo dentro de `metrics` na forma de texto. O conselho da frase e especifico demais para ser generico ("faca a chave variar por iteracao") e o ADR 0003 §3 proibe o protocolo de escrever no relatorio, entao as duas saidas obvias estao fechadas; fica registrado como divida ate aparecer a terceira.
 
 ## Preparacao para execucao distribuida
 

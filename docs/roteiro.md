@@ -26,7 +26,7 @@ Dois pontos de confiabilidade entraram na fase depois da revisao da Fase 2, porq
 5. **Latencia do segundo passo em diante.** So o primeiro passo tem instante agendado proprio. O relatorio distingue visualmente os dois tipos com nota em portugues comum, e passa a medir o **tempo total da iteracao contado do instante agendado** — a metrica que continua honesta para a jornada inteira.
 6. **Token compartilhado.** Um token para a execucao inteira nao existe em producao. O padrao continua, com a limitacao declarada no relatorio e no README, e a evolucao registrada no [ADR 0005](adr/0005-identidade-e-token.md).
 
-**Como o criterio de aceitacao foi verificado**: o teste de deriva entre schema e parser cobre o autocompletar; `importar curl` gera cenario que o proprio parser aceita (teste); `depurar` mostra requisicao, resposta, captura e variaveis, e termina imprimindo o comando de carga; sete mensagens de erro tipicas foram checadas por teste quanto a linha, sugestao e exemplo minimo. O que **nao** foi verificado: nenhuma pessoa de fora executou o percurso ainda — isso continua pendente e so uma sessao com um QA real fecha o criterio.
+**Como o criterio de aceitacao foi verificado**: o teste de deriva entre schema e parser cobre o autocompletar; `import curl` gera cenario que o proprio parser aceita (teste); `debug` mostra requisicao, resposta, captura e variaveis, e termina imprimindo o comando de carga; sete mensagens de erro tipicas foram checadas por teste quanto a linha, sugestao e exemplo minimo. O que **nao** foi verificado: nenhuma pessoa de fora executou o percurso ainda — isso continua pendente e so uma sessao com um QA real fecha o criterio.
 
 ## Fases
 
@@ -69,7 +69,7 @@ Os testes de mensageria rodam contra Kafka e RabbitMQ de verdade no CI, e **pula
 
 Entregue: DSL em Go que monta o mesmo `scenario.Spec` que o YAML monta e vai para o mesmo motor, com a equivalencia travada por teste caso a caso e por teste de cobertura (protocolo, chave de topo, origem de captura, tipo de assercao, perfil, autenticacao, consumo e opcao de protocolo sem caso de equivalencia quebram o build). Decisao em [ADR 0009](adr/0009-equivalencia-entre-yaml-e-dsl.md).
 
-Entregue tambem: `importar jmx`, traducao **parcial e declarada** do plano do JMeter — requisicao HTTP, cabecalho (com credencial virando variavel de ambiente), CSVDataSet e correlacao viram cenario ou aviso; thread nunca vira taxa; o que nao foi traduzido sai listado elemento a elemento.
+Entregue tambem: `import jmx`, traducao **parcial e declarada** do plano do JMeter — requisicao HTTP, cabecalho (com credencial virando variavel de ambiente), CSVDataSet e correlacao viram cenario ou aviso; thread nunca vira taxa; o que nao foi traduzido sai listado elemento a elemento.
 
 Medido nesta fase: o teto do gerador produzindo em Kafka (15.000 msg/s confirmadas com 6 particoes, 5.000/s com uma, em loopback nesta maquina), e a deteccao de saturacao com passo de mensageria, agora coberta por teste contra broker de verdade.
 

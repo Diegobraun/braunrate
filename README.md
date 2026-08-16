@@ -156,7 +156,7 @@ Ambiente
   4 valores distintos de assinantes.id em 2.375 usos
   4 valores distintos de faturaId em 2.375 usos
   1 unico valor de token em 2.375 usos
-  Autenticacao obtida 1 vez(es) e reaproveitada por todas as jornadas.
+  Autenticacao obtida uma vez e reaproveitada por todas as jornadas.
   Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.
 ```
 
@@ -954,7 +954,7 @@ Um exemplo de `curl` por rota, com a resposta real, esta em [docs/api-servidor.m
 | Segredo literal no cenario reprova a validacao, e a saida nunca mostra credencial | pronto |
 | Variedade observada, com resultado invalido quando a carga concentra | pronto |
 | Cenario em Go, com equivalencia YAML x DSL travada por teste | pronto |
-| `importar jmx`: requisicao, cabecalho, CSV e correlacao do plano do JMeter | parcial, declarado |
+| `import jmx`: requisicao, cabecalho, CSV e correlacao do plano do JMeter | parcial, declarado |
 
 ## Por que existe
 
