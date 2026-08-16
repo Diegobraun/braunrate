@@ -14,168 +14,168 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-const intervaloPadrao = 500 * time.Millisecond
+const defaultInterval = 500 * time.Millisecond
 
 // Boa parte dos sistemas assincronos so mostra o efeito por API: nao ha topico
 // para escutar, e sem isto a cadeia ponta a ponta nao se mede neles. A medicao
 // por sondagem e honesta desde que a granularidade seja declarada — o valor
 // medido e sempre maior ou igual ao real, ate um intervalo de sondagem.
-type Condicao struct {
-	Status      int
-	Caminho     string
-	Valor       string
-	CorpoContem string
+type Condition struct {
+	Status       int
+	Path         string
+	Value        string
+	BodyContains string
 }
 
-func (c Condicao) vazia() bool {
-	return c.Status == 0 && c.Caminho == "" && c.CorpoContem == ""
+func (c Condition) empty() bool {
+	return c.Status == 0 && c.Path == "" && c.BodyContains == ""
 }
 
-func (c Condicao) descrever() string {
+func (c Condition) describe() string {
 	switch {
-	case c.Caminho != "":
-		return fmt.Sprintf("%s = %q", c.Caminho, c.Valor)
-	case c.CorpoContem != "":
-		return fmt.Sprintf("o corpo conter %q", c.CorpoContem)
+	case c.Path != "":
+		return fmt.Sprintf("%s = %q", c.Path, c.Value)
+	case c.BodyContains != "":
+		return fmt.Sprintf("o corpo conter %q", c.BodyContains)
 	default:
 		return fmt.Sprintf("status %d", c.Status)
 	}
 }
 
-func (c Condicao) satisfeita(status int, corpo []byte) bool {
+func (c Condition) satisfied(status int, body []byte) bool {
 	switch {
-	case c.Caminho != "":
-		return gjson.GetBytes(corpo, strings.TrimPrefix(strings.TrimPrefix(c.Caminho, "$."), "$")).String() == c.Valor
-	case c.CorpoContem != "":
-		return strings.Contains(string(corpo), c.CorpoContem)
+	case c.Path != "":
+		return gjson.GetBytes(body, strings.TrimPrefix(strings.TrimPrefix(c.Path, "$."), "$")).String() == c.Value
+	case c.BodyContains != "":
+		return strings.Contains(string(body), c.BodyContains)
 	default:
 		return status == c.Status
 	}
 }
 
-func (p *Protocolo) esperarPorHTTP(ctx context.Context, requisicao protocol.Requisicao, configuracao *Configuracao) protocol.Resposta {
-	endereco, err := transport.MontarURL(requisicao.URLBase, configuracao.Caminho)
+func (p *Protocol) awaitOverHTTP(ctx context.Context, request protocol.Request, config *Config) protocol.Response {
+	address, err := transport.BuildURL(request.URLBase, config.Path)
 	if err != nil {
-		return protocol.Resposta{Classe: protocol.ErroDeConfigacao, Detalhe: err.Error()}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
 	}
 
-	timeout := configuracao.Timeout
+	timeout := config.Timeout
 	if timeout <= 0 {
-		timeout = timeoutPadrao
+		timeout = defaultTimeout
 	}
-	intervalo := configuracao.Intervalo
-	if intervalo <= 0 {
-		intervalo = intervaloPadrao
+	interval := config.Interval
+	if interval <= 0 {
+		interval = defaultInterval
 	}
 
-	limite, cancelar := context.WithTimeout(ctx, timeout)
-	defer cancelar()
+	limit, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 
-	var ultimoStatus int
-	var ultimoCorpo []byte
-	var ultimoErro string
-	sondagens := 0
+	var lastStatus int
+	var lastBody []byte
+	var lastErr string
+	polls := 0
 
 	for {
-		status, corpo, err := p.sondar(limite, endereco)
-		sondagens++
+		status, body, err := p.poll(limit, address)
+		polls++
 		if err != nil {
-			ultimoErro = err.Error()
+			lastErr = err.Error()
 		} else {
-			ultimoStatus, ultimoCorpo, ultimoErro = status, corpo, ""
-			if configuracao.Ate.satisfeita(status, corpo) {
-				return protocol.Resposta{
+			lastStatus, lastBody, lastErr = status, body, ""
+			if config.To.satisfied(status, body) {
+				return protocol.Response{
 					Status: status,
-					Corpo:  corpo,
-					Bytes:  int64(len(corpo)),
-					Classe: protocol.Sucesso,
+					Body:   body,
+					Bytes:  int64(len(body)),
+					Class:  protocol.Success,
 				}
 			}
 		}
 
 		select {
-		case <-limite.Done():
-			return protocol.Resposta{
-				Status:  ultimoStatus,
-				Corpo:   ultimoCorpo,
-				Classe:  protocol.ErroDeTimeout,
-				Detalhe: detalheDeEspera(configuracao, endereco, timeout, intervalo, sondagens, ultimoStatus, ultimoCorpo, ultimoErro),
+		case <-limit.Done():
+			return protocol.Response{
+				Status: lastStatus,
+				Body:   lastBody,
+				Class:  protocol.ErrTimeout,
+				Detail: waitDetail(config, address, timeout, interval, polls, lastStatus, lastBody, lastErr),
 			}
-		case <-time.After(intervalo):
+		case <-time.After(interval):
 		}
 	}
 }
 
-func detalheDeEspera(configuracao *Configuracao, endereco string, timeout, intervalo time.Duration,
-	sondagens int, status int, corpo []byte, erro string) string {
+func waitDetail(config *Config, address string, timeout, interval time.Duration,
+	polls int, status int, body []byte, err string) string {
 
-	if erro != "" {
+	if err != "" {
 		return fmt.Sprintf("esperei %s por %s em %s e a ultima tentativa falhou: %s (%d sondagens a cada %s)",
-			timeout, configuracao.Ate.descrever(), endereco, erro, sondagens, intervalo)
+			timeout, config.To.describe(), address, err, polls, interval)
 	}
-	amostra := string(corpo)
-	if len(amostra) > 120 {
-		amostra = amostra[:120] + "…"
+	sample := string(body)
+	if len(sample) > 120 {
+		sample = sample[:120] + "…"
 	}
 	return fmt.Sprintf("esperei %s por %s em %s e o efeito nao apareceu; ultima resposta: status %d, corpo %q (%d sondagens a cada %s)",
-		timeout, configuracao.Ate.descrever(), endereco, status, amostra, sondagens, intervalo)
+		timeout, config.To.describe(), address, status, sample, polls, interval)
 }
 
-func (p *Protocolo) sondar(ctx context.Context, endereco string) (int, []byte, error) {
-	requisicao, err := http.NewRequestWithContext(ctx, http.MethodGet, endereco, nil)
+func (p *Protocol) poll(ctx context.Context, address string) (int, []byte, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
 	if err != nil {
 		return 0, nil, err
 	}
-	resposta, err := p.cliente().Do(requisicao)
+	response, err := p.client().Do(request)
 	if err != nil {
 		return 0, nil, err
 	}
-	defer resposta.Body.Close()
+	defer response.Body.Close()
 
-	corpo, err := io.ReadAll(resposta.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return resposta.StatusCode, nil, err
+		return response.StatusCode, nil, err
 	}
-	return resposta.StatusCode, corpo, nil
+	return response.StatusCode, body, nil
 }
 
-func (p *Protocolo) cliente() *http.Client {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
+func (p *Protocol) client() *http.Client {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	if p.http == nil {
-		p.http = transport.NovoCliente(protocol.Opcoes{})
+		p.http = transport.NewClient(protocol.Options{})
 	}
 	return p.http
 }
 
-func lerCondicao(chave string, bruto map[string]string) (Condicao, error) {
-	condicao := Condicao{}
-	for nome, valor := range bruto {
-		switch nome {
+func readCondition(key string, raw map[string]string) (Condition, error) {
+	condition := Condition{}
+	for name, value := range raw {
+		switch name {
 		case "status":
-			numero, err := strconv.Atoi(strings.TrimSpace(valor))
+			number, err := strconv.Atoi(strings.TrimSpace(value))
 			if err != nil {
-				return condicao, fmt.Errorf("status invalido em %s: %q (use um numero, por exemplo 200)", chave, valor)
+				return condition, fmt.Errorf("status invalido em %s: %q (use um numero, por exemplo 200)", key, value)
 			}
-			condicao.Status = numero
+			condition.Status = number
 		case "corpo_contem":
-			condicao.CorpoContem = valor
+			condition.BodyContains = value
 		default:
-			condicao.Caminho = nome
-			condicao.Valor = valor
+			condition.Path = name
+			condition.Value = value
 		}
 	}
-	return condicao, nil
+	return condition, nil
 }
 
 // O motor usa isto para declarar no relatorio que aquele passo foi medido por
 // sondagem — sem a declaracao, o degrau do intervalo viraria latencia do alvo.
-func (c *Configuracao) IntervaloDeSondagem() time.Duration {
-	if c.Fonte != "http" {
+func (c *Config) PollInterval() time.Duration {
+	if c.Source != "http" {
 		return 0
 	}
-	if c.Intervalo > 0 {
-		return c.Intervalo
+	if c.Interval > 0 {
+		return c.Interval
 	}
-	return intervaloPadrao
+	return defaultInterval
 }

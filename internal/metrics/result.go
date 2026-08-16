@@ -1,0 +1,349 @@
+package metrics
+
+import (
+	"fmt"
+	"os"
+	"runtime"
+	"time"
+
+	"github.com/Diegobraun/braunrate/internal/protocol"
+)
+
+const VersaoDoFormatoDeResultado = "1"
+
+type Document struct {
+	FormatVersion string        `json:"versao_do_formato"`
+	Tool          string        `json:"ferramenta"`
+	Version       string        `json:"versao"`
+	Environment   Environment   `json:"ambiente"`
+	Run           Run           `json:"execucao"`
+	Scheduling    Scheduling    `json:"agendamento"`
+	Journey       Journey       `json:"jornada"`
+	Steps         []StepResult  `json:"passos"`
+	Overall       OverallResult `json:"global"`
+	SLO           Verdict       `json:"slo"`
+	Variety       []Variety     `json:"variedade_observada"`
+	Warnings      []Warning     `json:"avisos"`
+	Series        []Bucket      `json:"series_temporais"`
+}
+
+type Environment struct {
+	Host      string `json:"maquina"`
+	OS        string `json:"sistema_operacional"`
+	Arch      string `json:"arquitetura"`
+	Cores     int    `json:"nucleos"`
+	GoVersion string `json:"versao_do_go"`
+}
+
+type Run struct {
+	Scenario     string           `json:"cenario"`
+	Target       string           `json:"alvo"`
+	Start        time.Time        `json:"inicio"`
+	End          time.Time        `json:"fim"`
+	DurationMs   int64            `json:"duracao_ms"`
+	Model        string           `json:"modelo_de_chegada"`
+	AppliedPlan  []AppliedPhase   `json:"plano_aplicado"`
+	MaxInflight  int64            `json:"maximo_de_requisicoes_simultaneas"`
+	Seeds        map[string]int64 `json:"sementes_dos_dados"`
+	Availability Availability     `json:"valores_disponiveis_por_variavel"`
+	AuthObtains  int64            `json:"obtencoes_de_autenticacao"`
+}
+
+type AppliedPhase struct {
+	Kind       string  `json:"tipo"`
+	From       float64 `json:"de_por_segundo"`
+	To         float64 `json:"ate_por_segundo"`
+	DurationMs int64   `json:"duracao_ms"`
+}
+
+type Scheduling struct {
+	Sent                   int64        `json:"enviadas"`
+	Completed              int64        `json:"concluidas"`
+	LateDispatches         int64        `json:"despachos_atrasados"`
+	DroppedByInflightLimit int64        `json:"descartadas_por_limite_de_voo"`
+	LostSamples            int64        `json:"amostras_perdidas"`
+	PeakInflight           int64        `json:"pico_em_voo"`
+	LateThresholdMs        float64      `json:"limiar_de_atraso_ms"`
+	Skew                   Distribution `json:"desvio_de_agendamento"`
+}
+
+type Journey struct {
+	Started   int64        `json:"iniciadas"`
+	Completed int64        `json:"completas"`
+	Latency   Distribution `json:"latencia_corrigida"`
+	Sentence  string       `json:"frase"`
+}
+
+type StepResult struct {
+	Name           string           `json:"nome"`
+	LatencyKind    string           `json:"tipo_de_latencia"`
+	Key            string           `json:"chave"`
+	Protocol       string           `json:"protocolo"`
+	Count          int64            `json:"contagem"`
+	Successes      int64            `json:"sucessos"`
+	Errors         int64            `json:"erros"`
+	Bytes          int64            `json:"bytes"`
+	ErrorsByClass  map[string]int64 `json:"erros_por_classe"`
+	StatusByCode   map[string]int64 `json:"status_por_codigo"`
+	Details        map[string]int64 `json:"detalhes_de_erro"`
+	Latency        Distribution     `json:"latencia_corrigida"`
+	ServiceLatency Distribution     `json:"latencia_de_servico"`
+}
+
+type OverallResult struct {
+	Count          int64        `json:"contagem"`
+	Successes      int64        `json:"sucessos"`
+	Errors         int64        `json:"erros"`
+	ErrorRate      float64      `json:"taxa_de_erro"`
+	EffectiveRate  float64      `json:"taxa_efetiva_por_segundo"`
+	Latency        Distribution `json:"latencia_corrigida"`
+	ServiceLatency Distribution `json:"latencia_de_servico"`
+}
+
+type Severity string
+
+const (
+	SeverityHigh   Severity = "alta"
+	SeverityMedium Severity = "media"
+	SeverityLow    Severity = "baixa"
+)
+
+type Warning struct {
+	Kind     string   `json:"tipo"`
+	Severity Severity `json:"gravidade"`
+	Message  string   `json:"mensagem"`
+	Evidence string   `json:"evidencia"`
+}
+
+func (d Document) Valid() bool {
+	for _, warning := range d.Warnings {
+		if warning.Severity == SeverityHigh {
+			return false
+		}
+	}
+	return true
+}
+
+type DocumentInput struct {
+	Version          string
+	Scenario         string
+	Target           string
+	Model            string
+	Start            time.Time
+	End              time.Time
+	Phases           []AppliedPhase
+	MaxInflight      int64
+	Seeds            map[string]int64
+	Availability     Availability
+	AuthObtains      int64
+	ScenarioWarnings []Warning
+}
+
+func BuildDocument(c *Collector, input DocumentInput) Document {
+	maquina, _ := os.Hostname()
+	document := Document{
+		FormatVersion: VersaoDoFormatoDeResultado,
+		Tool:          "braunrate",
+		Version:       input.Version,
+		Environment: Environment{
+			Host:      maquina,
+			OS:        runtime.GOOS,
+			Arch:      runtime.GOARCH,
+			Cores:     runtime.NumCPU(),
+			GoVersion: runtime.Version(),
+		},
+		Run: Run{
+			Scenario:     input.Scenario,
+			Target:       input.Target,
+			Start:        input.Start,
+			End:          input.End,
+			DurationMs:   input.End.Sub(input.Start).Milliseconds(),
+			Model:        input.Model,
+			AppliedPlan:  input.Phases,
+			MaxInflight:  input.MaxInflight,
+			Seeds:        input.Seeds,
+			Availability: input.Availability,
+			AuthObtains:  input.AuthObtains,
+		},
+		Scheduling: Scheduling{
+			Sent:                   c.Sent,
+			Completed:              c.Completed,
+			LateDispatches:         c.LateDispatches,
+			DroppedByInflightLimit: c.DroppedByInflightLimit,
+			LostSamples:            c.LostSamples,
+			PeakInflight:           c.PeakInflight,
+			LateThresholdMs:        float64(c.LateThreshold.Microseconds()) / 1000,
+			Skew:                   c.SchedulingSkew(),
+		},
+		Series: c.Buckets(),
+	}
+
+	aggregates := c.Aggregates()
+	overall := NewAggregate("global", "global", "")
+	for _, key := range SortKeys(aggregates) {
+		aggregate := aggregates[key]
+		overall.Add(aggregate)
+		document.Steps = append(document.Steps, convertStep(aggregate))
+	}
+
+	duration := input.End.Sub(input.Start).Seconds()
+	document.Overall = OverallResult{
+		Count:          overall.Count,
+		Successes:      overall.Successes,
+		Errors:         overall.Errors(),
+		Latency:        overall.Distribution(),
+		ServiceLatency: overall.ServiceDistribution(),
+	}
+	if overall.Count > 0 {
+		document.Overall.ErrorRate = float64(overall.Errors()) / float64(overall.Count)
+	}
+	if duration > 0 {
+		document.Overall.EffectiveRate = float64(overall.Count) / duration
+	}
+
+	document.Journey = Journey{
+		Started:   c.JourneysStarted,
+		Completed: c.JourneysCompleted,
+		Latency:   c.Journeys(),
+	}
+	document.Journey.Sentence = phraseJourney(document.Journey)
+
+	document.Variety = c.Varieties(input.Availability)
+	document.Warnings = append(evaluateWarnings(c, document), input.ScenarioWarnings...)
+	return document
+}
+
+func convertStep(a *Aggregate) StepResult {
+	errorsByClass := map[string]int64{}
+	for class, count := range a.ErrorsByClass {
+		errorsByClass[string(class)] = count
+	}
+	statusPorCodigo := map[string]int64{}
+	for status, count := range a.StatusByCode {
+		statusPorCodigo[fmt.Sprintf("%d", status)] = count
+	}
+	return StepResult{
+		Name:           a.Step,
+		LatencyKind:    string(a.LatencyKind),
+		Key:            a.Key,
+		Protocol:       a.Protocol,
+		Count:          a.Count,
+		Successes:      a.Successes,
+		Errors:         a.Errors(),
+		Bytes:          a.Bytes,
+		ErrorsByClass:  errorsByClass,
+		StatusByCode:   statusPorCodigo,
+		Details:        a.Details,
+		Latency:        a.Distribution(),
+		ServiceLatency: a.ServiceDistribution(),
+	}
+}
+
+func evaluateWarnings(c *Collector, document Document) []Warning {
+	var warnings []Warning
+	scheduling := document.Scheduling
+
+	if scheduling.DroppedByInflightLimit > 0 {
+		warnings = append(warnings, Warning{
+			Kind:     "gerador_saturado",
+			Severity: SeverityHigh,
+			Message:  "o gerador atingiu o limite de requisicoes em voo e deixou de enviar requisicoes agendadas; o resultado nao vale",
+			Evidence: fmt.Sprintf("%d requisicoes descartadas, pico de %d em voo", scheduling.DroppedByInflightLimit, scheduling.PeakInflight),
+		})
+	}
+
+	if scheduling.Sent > 0 {
+		proportion := float64(scheduling.LateDispatches) / float64(scheduling.Sent)
+		if proportion >= 0.01 {
+			warnings = append(warnings, Warning{
+				Kind:     "gerador_saturado",
+				Severity: SeverityHigh,
+				Message:  "o gerador nao sustentou a taxa alvo: despachos sairam depois do instante agendado; o resultado nao vale",
+				Evidence: fmt.Sprintf("%.2f%% dos despachos atrasaram mais de %.1f ms (desvio p99 de %.1f ms)", proportion*100, scheduling.LateThresholdMs, scheduling.Skew.P99),
+			})
+		} else if scheduling.LateDispatches > 0 {
+			warnings = append(warnings, Warning{
+				Kind:     "gerador_com_atraso_pontual",
+				Severity: SeverityLow,
+				Message:  "houve atraso pontual de despacho, abaixo de 1% das requisicoes",
+				Evidence: fmt.Sprintf("%d despachos atrasados de %d (desvio p99 de %.1f ms)", scheduling.LateDispatches, scheduling.Sent, scheduling.Skew.P99),
+			})
+		}
+	}
+
+	if scheduling.LostSamples > 0 {
+		warnings = append(warnings, Warning{
+			Kind:     "amostras_perdidas",
+			Severity: SeverityHigh,
+			Message:  "o coletor de metrica nao acompanhou o volume e perdeu amostras; a distribuicao esta incompleta",
+			Evidence: fmt.Sprintf("%d amostras perdidas", scheduling.LostSamples),
+		})
+	}
+
+	if warning, had := detectTargetDegradation(document); had {
+		warnings = append(warnings, warning)
+	}
+
+	warnings = append(warnings, VarietyWarnings(document.Variety)...)
+
+	return warnings
+}
+
+func detectTargetDegradation(document Document) (Warning, bool) {
+	series := document.Series
+	if len(series) < 4 {
+		return Warning{}, false
+	}
+	first := series[0].LatencyP99Ms
+	if first <= 0 {
+		first = series[1].LatencyP99Ms
+	}
+	worst := 0.0
+	for _, bucket := range series {
+		if bucket.LatencyP99Ms > worst {
+			worst = bucket.LatencyP99Ms
+		}
+	}
+	if first > 0 && worst >= 3*first {
+		return Warning{
+			Kind:     "alvo_degradado",
+			Severity: SeverityMedium,
+			Message:  "a latencia do alvo cresceu ao longo da execucao enquanto o despacho continuou pontual; a degradacao e do alvo, nao do gerador",
+			Evidence: fmt.Sprintf("p99 por segundo passou de %.1f ms para %.1f ms", first, worst),
+		}, true
+	}
+	return Warning{}, false
+}
+
+func ReadableClass(class protocol.ErrorClass) string {
+	switch class {
+	case protocol.ErrNetwork:
+		return "falha de rede"
+	case protocol.ErrTimeout:
+		return "timeout"
+	case protocol.ErrStatus:
+		return "status HTTP inesperado"
+	case protocol.ErrAssertion:
+		return "assercao funcional"
+	case protocol.ErrCorrelation:
+		return "correlacao perdida"
+	case protocol.ErrSaturation:
+		return "saturacao do gerador"
+	case protocol.ErrGraphQL:
+		return "erro no corpo da resposta GraphQL"
+	default:
+		return string(class)
+	}
+}
+
+func phraseJourney(journey Journey) string {
+	if journey.Started == 0 {
+		return "Nenhuma jornada foi executada."
+	}
+	if journey.Completed < journey.Started {
+		return fmt.Sprintf("%d de %d jornadas chegaram ao fim; metade delas levou ate %.0f ms e 95%% ate %.0f ms, contados do instante em que deveriam ter comecado.",
+			journey.Completed, journey.Started, journey.Latency.P50, journey.Latency.P95)
+	}
+	return fmt.Sprintf("Todas as %d jornadas chegaram ao fim; metade levou ate %.0f ms e 95%% ate %.0f ms, contados do instante em que deveriam ter comecado.",
+		journey.Started, journey.Latency.P50, journey.Latency.P95)
+}

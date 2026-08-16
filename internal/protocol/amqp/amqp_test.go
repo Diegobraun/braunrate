@@ -9,59 +9,59 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func decodificar(t *testing.T, texto string) (protocol.Configuracao, error) {
+func decode(t *testing.T, text string) (protocol.Config, error) {
 	t.Helper()
-	var documento yaml.Node
-	if err := yaml.Unmarshal([]byte(texto), &documento); err != nil {
+	var document yaml.Node
+	if err := yaml.Unmarshal([]byte(text), &document); err != nil {
 		t.Fatalf("yaml invalido no teste: %v", err)
 	}
-	return amqp.Novo(protocol.OpcoesPadrao()).Decodificar(documento.Content[0])
+	return amqp.New(protocol.DefaultOptions()).Decode(document.Content[0])
 }
 
-func TestFilaSozinhaBastaEViraRota(t *testing.T) {
-	configuracao, err := decodificar(t, "fila: pedidos\ncorpo: { id: 1 }\n")
+func TestQueueAloneIsEnoughAndBecomesRoute(t *testing.T) {
+	config, err := decode(t, "fila: pedidos\ncorpo: { id: 1 }\n")
 	if err != nil {
 		t.Fatalf("nao decodificou: %v", err)
 	}
-	if configuracao.ChaveDeAgregacao() != "amqp publicar pedidos" {
-		t.Errorf("chave = %q", configuracao.ChaveDeAgregacao())
+	if config.AggregationKey() != "amqp publicar pedidos" {
+		t.Errorf("chave = %q", config.AggregationKey())
 	}
 }
 
-func TestTrocaComRotaApareceNaChave(t *testing.T) {
-	configuracao, err := decodificar(t, "troca: cobranca\nrota: pedido.criado\ncorpo: { id: 1 }\n")
+func TestExchangeWithRouteAppearsInKey(t *testing.T) {
+	config, err := decode(t, "troca: cobranca\nrota: pedido.criado\ncorpo: { id: 1 }\n")
 	if err != nil {
 		t.Fatalf("nao decodificou: %v", err)
 	}
-	if configuracao.ChaveDeAgregacao() != "amqp publicar cobranca/pedido.criado" {
-		t.Errorf("chave = %q", configuracao.ChaveDeAgregacao())
+	if config.AggregationKey() != "amqp publicar cobranca/pedido.criado" {
+		t.Errorf("chave = %q", config.AggregationKey())
 	}
 }
 
 // Sem confirmacao, o tempo medido e o de escrever no socket: mediria a rede
 // local, e nao o broker aceitando a mensagem.
-func TestConfirmacaoEhOPadrao(t *testing.T) {
-	configuracao, err := decodificar(t, "fila: pedidos\ncorpo: { id: 1 }\n")
+func TestConfirmationIsDefault(t *testing.T) {
+	config, err := decode(t, "fila: pedidos\ncorpo: { id: 1 }\n")
 	if err != nil {
 		t.Fatalf("nao decodificou: %v", err)
 	}
-	descricao := strings.Join(configuracao.(protocol.ConfiguracaoDescritivel).Descrever(), " ")
-	if !strings.Contains(descricao, "espera confirmacao do broker") {
-		t.Errorf("descricao = %s", descricao)
+	description := strings.Join(config.(protocol.Describable).Describe(), " ")
+	if !strings.Contains(description, "espera confirmacao do broker") {
+		t.Errorf("descricao = %s", description)
 	}
 }
 
-func TestPassoSemDestinoOuSemCorpoEnsinaAFormaCerta(t *testing.T) {
-	for nome, texto := range map[string]string{
+func TestStepWithoutDestinationOrBodyTeachesRightForm(t *testing.T) {
+	for name, text := range map[string]string{
 		"sem destino": "corpo: { id: 1 }\n",
 		"sem corpo":   "fila: pedidos\n",
 	} {
-		_, err := decodificar(t, texto)
+		_, err := decode(t, text)
 		if err == nil {
-			t.Fatalf("%s: esperava erro", nome)
+			t.Fatalf("%s: esperava erro", name)
 		}
 		if !strings.Contains(err.Error(), "- amqp:") {
-			t.Errorf("%s: a mensagem precisa mostrar um exemplo: %q", nome, err.Error())
+			t.Errorf("%s: a mensagem precisa mostrar um exemplo: %q", name, err.Error())
 		}
 	}
 }

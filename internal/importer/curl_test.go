@@ -8,96 +8,96 @@ import (
 	"github.com/Diegobraun/braunrate/internal/scenario"
 )
 
-func TestImportaCurlDeUmaLinhaEGeraCenarioQueOParserAceita(t *testing.T) {
-	importacao, err := DeCurl(`curl https://api.exemplo.com/saude`)
+func TestImportsSingleLineCurlIntoParsableScenario(t *testing.T) {
+	importResult, err := FromCurl(`curl https://api.exemplo.com/saude`)
 	if err != nil {
 		t.Fatalf("nao importou: %v", err)
 	}
-	lido, err := scenario.Carregar([]byte(importacao.YAML))
+	read, err := scenario.Parse([]byte(importResult.YAML))
 	if err != nil {
-		t.Fatalf("o cenario gerado nao carrega: %v\n%s", err, importacao.YAML)
+		t.Fatalf("o cenario gerado nao carrega: %v\n%s", err, importResult.YAML)
 	}
-	if len(lido.Passos) != 1 {
-		t.Fatalf("esperava 1 passo, veio %d", len(lido.Passos))
+	if len(read.Steps) != 1 {
+		t.Fatalf("esperava 1 passo, veio %d", len(read.Steps))
 	}
-	if lido.Passos[0].Nome != "get saude" {
-		t.Errorf("nome do passo veio %q", lido.Passos[0].Nome)
+	if read.Steps[0].Name != "get saude" {
+		t.Errorf("nome do passo veio %q", read.Steps[0].Name)
 	}
 }
 
-func TestImportaCurlColadoDoNavegadorComQuebraDeLinha(t *testing.T) {
-	comando := `curl 'https://api.exemplo.com/v2/faturas/887766/pagar' \
+func TestImportsCurlPastedFromBrowserWithLineBreaks(t *testing.T) {
+	command := `curl 'https://api.exemplo.com/v2/faturas/887766/pagar' \
   -X POST \
   -H 'Content-Type: application/json' \
   --data-raw '{"valor": 199.90, "metodo": "pix"}'`
 
-	importacao, err := DeCurl(comando)
+	importResult, err := FromCurl(command)
 	if err != nil {
 		t.Fatalf("nao importou: %v", err)
 	}
-	if _, err := scenario.Carregar([]byte(importacao.YAML)); err != nil {
-		t.Fatalf("o cenario gerado nao carrega: %v\n%s", err, importacao.YAML)
+	if _, err := scenario.Parse([]byte(importResult.YAML)); err != nil {
+		t.Fatalf("o cenario gerado nao carrega: %v\n%s", err, importResult.YAML)
 	}
-	if !strings.Contains(importacao.YAML, `corpo: '{"valor": 199.90, "metodo": "pix"}'`) {
-		t.Errorf("o corpo nao sobreviveu a separacao:\n%s", importacao.YAML)
+	if !strings.Contains(importResult.YAML, `corpo: '{"valor": 199.90, "metodo": "pix"}'`) {
+		t.Errorf("o corpo nao sobreviveu a separacao:\n%s", importResult.YAML)
 	}
-	if !strings.Contains(importacao.YAML, "metodo: POST") {
-		t.Errorf("perdeu o metodo declarado:\n%s", importacao.YAML)
+	if !strings.Contains(importResult.YAML, "metodo: POST") {
+		t.Errorf("perdeu o metodo declarado:\n%s", importResult.YAML)
 	}
-	if !strings.Contains(importacao.YAML, "nome: post faturas pagar") {
-		t.Errorf("o identificador entrou no nome do passo, o que geraria uma linha de relatorio por requisicao:\n%s", importacao.YAML)
+	if !strings.Contains(importResult.YAML, "nome: post faturas pagar") {
+		t.Errorf("o identificador entrou no nome do passo, o que geraria uma linha de relatorio por requisicao:\n%s", importResult.YAML)
 	}
 }
 
-func TestTokenDoCurlNaoVaiParaOArquivo(t *testing.T) {
-	importacao, err := DeCurl(`curl https://api.exemplo.com/pedidos -H "Authorization: Bearer abc.def.ghi" -H "X-API-Key: chave-secreta"`)
+func TestCurlTokenNeverReachesFile(t *testing.T) {
+	importResult, err := FromCurl(`curl https://api.exemplo.com/pedidos -H "Authorization: Bearer abc.def.ghi" -H "X-API-Key: chave-secreta"`)
 	if err != nil {
 		t.Fatalf("nao importou: %v", err)
 	}
-	for _, segredo := range []string{"abc.def.ghi", "chave-secreta"} {
-		if strings.Contains(importacao.YAML, segredo) {
-			t.Errorf("o segredo %q ficou no YAML gerado", segredo)
+	for _, secret := range []string{"abc.def.ghi", "chave-secreta"} {
+		if strings.Contains(importResult.YAML, secret) {
+			t.Errorf("o segredo %q ficou no YAML gerado", secret)
 		}
 	}
-	if !strings.Contains(importacao.YAML, "token: ${TOKEN}") || !strings.Contains(importacao.YAML, "api_key: ${API_KEY}") {
-		t.Errorf("o segredo nao virou variavel de ambiente:\n%s", importacao.YAML)
+	if !strings.Contains(importResult.YAML, "token: ${TOKEN}") || !strings.Contains(importResult.YAML, "api_key: ${API_KEY}") {
+		t.Errorf("o segredo nao virou variavel de ambiente:\n%s", importResult.YAML)
 	}
-	if len(importacao.Avisos) < 2 {
-		t.Errorf("importacao com dois segredos precisa avisar sobre os dois, veio %d aviso(s)", len(importacao.Avisos))
+	if len(importResult.Warnings) < 2 {
+		t.Errorf("importacao com dois segredos precisa avisar sobre os dois, veio %d aviso(s)", len(importResult.Warnings))
 	}
-	if _, err := scenario.Carregar([]byte(importacao.YAML)); err != nil {
-		t.Fatalf("o cenario gerado nao carrega: %v\n%s", err, importacao.YAML)
-	}
-}
-
-func TestMetodoViraPostQuandoOCurlTemCorpoSemMenosX(t *testing.T) {
-	importacao, err := DeCurl(`curl https://api.exemplo.com/pedidos -d '{"a":1}'`)
-	if err != nil {
-		t.Fatalf("nao importou: %v", err)
-	}
-	if !strings.Contains(importacao.YAML, "metodo: POST") {
-		t.Errorf("curl com corpo e POST no curl tambem:\n%s", importacao.YAML)
+	if _, err := scenario.Parse([]byte(importResult.YAML)); err != nil {
+		t.Fatalf("o cenario gerado nao carrega: %v\n%s", err, importResult.YAML)
 	}
 }
 
-func TestAvisaQueValorFixoNoCaminhoDeixaONumeroOtimista(t *testing.T) {
-	importacao, err := DeCurl(`curl https://api.exemplo.com/pedidos/9912`)
+func TestMethodBecomesPostWhenCurlHasBodyWithoutX(t *testing.T) {
+	importResult, err := FromCurl(`curl https://api.exemplo.com/pedidos -d '{"a":1}'`)
 	if err != nil {
 		t.Fatalf("nao importou: %v", err)
 	}
-	achou := false
-	for _, aviso := range importacao.Avisos {
-		if strings.Contains(aviso, "cache") {
-			achou = true
+	if !strings.Contains(importResult.YAML, "metodo: POST") {
+		t.Errorf("curl com corpo e POST no curl tambem:\n%s", importResult.YAML)
+	}
+}
+
+func TestWarnsFixedPathValueMakesNumberOptimistic(t *testing.T) {
+	importResult, err := FromCurl(`curl https://api.exemplo.com/pedidos/9912`)
+	if err != nil {
+		t.Fatalf("nao importou: %v", err)
+	}
+	found := false
+	for _, warning := range importResult.Warnings {
+		if strings.Contains(warning, "cache") {
+			found = true
 		}
 	}
-	if !achou {
-		t.Errorf("importacao com id fixo precisa avisar sobre cache, veio: %v", importacao.Avisos)
+	if !found {
+		t.Errorf("importacao com id fixo precisa avisar sobre cache, veio: %v", importResult.Warnings)
 	}
 }
 
-func TestErroDeCurlSemURLDizOQueFazer(t *testing.T) {
-	_, err := DeCurl(`curl -X POST -H "Accept: application/json"`)
+func TestCurlWithoutURLSaysWhatToDo(t *testing.T) {
+	_, err := FromCurl(`curl -X POST -H "Accept: application/json"`)
 	if err == nil {
 		t.Fatal("curl sem URL precisa falhar")
 	}
@@ -106,8 +106,8 @@ func TestErroDeCurlSemURLDizOQueFazer(t *testing.T) {
 	}
 }
 
-func TestErroDeAspasAbertasDizOQueFazer(t *testing.T) {
-	_, err := DeCurl(`curl 'https://api.exemplo.com/pedidos`)
+func TestUnclosedQuoteErrorSaysWhatToDo(t *testing.T) {
+	_, err := FromCurl(`curl 'https://api.exemplo.com/pedidos`)
 	if err == nil {
 		t.Fatal("aspas abertas precisam falhar")
 	}
@@ -116,12 +116,12 @@ func TestErroDeAspasAbertasDizOQueFazer(t *testing.T) {
 	}
 }
 
-func TestCenarioGeradoApontaParaOSchemaPublicado(t *testing.T) {
-	importacao, err := DeCurl(`curl https://api.exemplo.com/saude`)
+func TestGeneratedScenarioPointsToPublishedSchema(t *testing.T) {
+	importResult, err := FromCurl(`curl https://api.exemplo.com/saude`)
 	if err != nil {
 		t.Fatalf("nao importou: %v", err)
 	}
-	if !strings.HasPrefix(importacao.YAML, "# yaml-language-server: $schema=") {
-		t.Errorf("o arquivo gerado precisa dar autocompletar no editor de quem recebeu:\n%s", importacao.YAML)
+	if !strings.HasPrefix(importResult.YAML, "# yaml-language-server: $schema=") {
+		t.Errorf("o arquivo gerado precisa dar autocompletar no editor de quem recebeu:\n%s", importResult.YAML)
 	}
 }

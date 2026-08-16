@@ -8,17 +8,17 @@ import (
 	"strings"
 )
 
-type elemento struct {
-	XMLName   xml.Name
-	Atributos []xml.Attr  `xml:",any,attr"`
-	Filhos    []*elemento `xml:",any"`
-	Texto     string      `xml:",chardata"`
+type element struct {
+	XMLName    xml.Name
+	Attributes []xml.Attr `xml:",any,attr"`
+	Children   []*element `xml:",any"`
+	Text       string     `xml:",chardata"`
 }
 
-func (e *elemento) atributo(nome string) string {
-	for _, atributo := range e.Atributos {
-		if atributo.Name.Local == nome {
-			return atributo.Value
+func (e *element) attribute(name string) string {
+	for _, attribute := range e.Attributes {
+		if attribute.Name.Local == name {
+			return attribute.Value
 		}
 	}
 	return ""
@@ -26,33 +26,33 @@ func (e *elemento) atributo(nome string) string {
 
 // Propriedade de JMeter e sempre "<stringProp name=...>valor</stringProp>",
 // inclusive dentro de elementProp aninhado, entao a busca desce a arvore.
-func (e *elemento) propriedade(nome string) string {
-	for _, filho := range e.Filhos {
-		if filho.atributo("name") == nome && len(filho.Filhos) == 0 {
-			return strings.TrimSpace(filho.Texto)
+func (e *element) property(name string) string {
+	for _, child := range e.Children {
+		if child.attribute("name") == name && len(child.Children) == 0 {
+			return strings.TrimSpace(child.Text)
 		}
-		if valor := filho.propriedade(nome); valor != "" {
-			return valor
+		if value := child.property(name); value != "" {
+			return value
 		}
 	}
 	return ""
 }
 
-func (e *elemento) buscarTodos(nome string) []*elemento {
-	var achados []*elemento
-	if e.XMLName.Local == nome {
-		achados = append(achados, e)
+func (e *element) findAll(name string) []*element {
+	var findings []*element
+	if e.XMLName.Local == name {
+		findings = append(findings, e)
 	}
-	for _, filho := range e.Filhos {
-		achados = append(achados, filho.buscarTodos(nome)...)
+	for _, child := range e.Children {
+		findings = append(findings, child.findAll(name)...)
 	}
-	return achados
+	return findings
 }
 
 // A traducao e parcial de proposito e o que ficou de fora sai declarado: um
 // importador que engole o arquivo inteiro em silencio entrega um cenario que
 // mede outra coisa e ninguem percebe.
-var elementosTraduzidos = map[string]bool{
+var translatedElements = map[string]bool{
 	"jmeterTestPlan": true, "hashTree": true, "TestPlan": true, "ThreadGroup": true,
 	"HTTPSamplerProxy": true, "HeaderManager": true, "CSVDataSet": true,
 	"JSONPostProcessor": true, "RegexExtractor": true, "ResponseAssertion": true,
@@ -60,255 +60,255 @@ var elementosTraduzidos = map[string]bool{
 	"intProp": true, "longProp": true, "doubleProp": true, "objProp": true,
 }
 
-func DeJMX(conteudo []byte) (Importacao, error) {
-	var raiz elemento
-	if err := xml.Unmarshal(conteudo, &raiz); err != nil {
-		return Importacao{}, fmt.Errorf("nao consegui ler o arquivo como .jmx: %v", err)
+func FromJMX(content []byte) (Import, error) {
+	var root element
+	if err := xml.Unmarshal(content, &root); err != nil {
+		return Import{}, fmt.Errorf("nao consegui ler o arquivo como .jmx: %v", err)
 	}
 
-	amostradores := raiz.buscarTodos("HTTPSamplerProxy")
-	if len(amostradores) == 0 {
-		return Importacao{}, fmt.Errorf(`nao achei nenhuma requisicao HTTP no .jmx.
+	samplers := root.findAll("HTTPSamplerProxy")
+	if len(samplers) == 0 {
+		return Import{}, fmt.Errorf(`nao achei nenhuma requisicao HTTP no .jmx.
 Hoje o importador traduz HTTPSamplerProxy (requisicao HTTP), HeaderManager, CSVDataSet,
 extratores JSON e regex, e assercao de resposta. Sampler de JDBC, JMS ou script nao entra`)
 	}
 
-	roteiro := Roteiro{Nome: nomeDoPlano(&raiz), Passos: nil}
+	script := Script{Name: planName(&root), Steps: nil}
 	cabecalhosGlobais := map[string]string{}
-	for _, gerente := range raiz.buscarTodos("HeaderManager") {
-		for nome, valor := range cabecalhosDe(gerente) {
-			cabecalhosGlobais[nome] = valor
+	for _, manager := range root.findAll("HeaderManager") {
+		for name, value := range headersOf(manager) {
+			cabecalhosGlobais[name] = value
 		}
 	}
 
-	alvos := map[string]int{}
-	usados := map[string]int{}
-	for _, amostrador := range amostradores {
-		passo, alvo := passoDeAmostrador(amostrador, cabecalhosGlobais)
-		if alvo != "" {
-			alvos[alvo]++
+	targets := map[string]int{}
+	used := map[string]int{}
+	for _, sampler := range samplers {
+		step, target := stepFromSampler(sampler, cabecalhosGlobais)
+		if target != "" {
+			targets[target]++
 		}
-		nome := passo.Nome
-		usados[nome]++
-		if usados[nome] > 1 {
-			passo.Nome = fmt.Sprintf("%s %d", nome, usados[nome])
+		name := step.Name
+		used[name]++
+		if used[name] > 1 {
+			step.Name = fmt.Sprintf("%s %d", name, used[name])
 		}
-		roteiro.Passos = append(roteiro.Passos, passo)
+		script.Steps = append(script.Steps, step)
 	}
 
-	roteiro.Alvo = alvoMaisComum(alvos)
-	if roteiro.Alvo == "" {
-		roteiro.Alvo = "http://127.0.0.1:8080"
-		roteiro.Avisos = append(roteiro.Avisos,
+	script.Target = mostCommonTarget(targets)
+	if script.Target == "" {
+		script.Target = "http://127.0.0.1:8080"
+		script.Warnings = append(script.Warnings,
 			"o .jmx nao declara dominio nas requisicoes (provavelmente usa variavel de plano): troque o alvo antes de rodar")
 	}
-	if len(alvos) > 1 {
-		roteiro.Avisos = append(roteiro.Avisos,
-			fmt.Sprintf("o .jmx aponta para %d dominios diferentes; ficou o mais frequente e os outros viraram caminho fixo", len(alvos)))
+	if len(targets) > 1 {
+		script.Warnings = append(script.Warnings,
+			fmt.Sprintf("o .jmx aponta para %d dominios diferentes; ficou o mais frequente e os outros viraram caminho fixo", len(targets)))
 	}
 
-	for _, conjunto := range raiz.buscarTodos("CSVDataSet") {
-		roteiro.Dados = append(roteiro.Dados, fonteDeCSV(conjunto))
+	for _, set := range root.findAll("CSVDataSet") {
+		script.Data = append(script.Data, sourceFromCSV(set))
 	}
 
-	for _, passo := range roteiro.Passos {
-		if temIdentificador(passo.Caminho) {
-			roteiro.Avisos = append(roteiro.Avisos, fmt.Sprintf(
+	for _, step := range script.Steps {
+		if hasIdentifier(step.Path) {
+			script.Warnings = append(script.Warnings, fmt.Sprintf(
 				"o passo %q tem valor fixo no caminho (%s): com um valor so, o alvo responde de cache e o numero fica otimista. "+
-					"Troque por ${dados.coluna} e aponte para o CSV", passo.Nome, passo.Caminho))
+					"Troque por ${dados.coluna} e aponte para o CSV", step.Name, step.Path))
 		}
 	}
-	roteiro.Avisos = append(roteiro.Avisos, avisosDeCarga(&raiz)...)
-	roteiro.Avisos = append(roteiro.Avisos, avisosDeCorrelacao(&raiz)...)
-	roteiro.Avisos = append(roteiro.Avisos, avisosDoQueFicouDeFora(&raiz)...)
+	script.Warnings = append(script.Warnings, loadWarnings(&root)...)
+	script.Warnings = append(script.Warnings, correlationWarnings(&root)...)
+	script.Warnings = append(script.Warnings, untranslatedWarnings(&root)...)
 
-	importacao := GerarYAML(roteiro)
-	return importacao, nil
+	importResult := RenderYAML(script)
+	return importResult, nil
 }
 
-func nomeDoPlano(raiz *elemento) string {
-	for _, plano := range raiz.buscarTodos("TestPlan") {
-		if nome := strings.TrimSpace(plano.atributo("testname")); nome != "" {
-			return "Importado de JMeter: " + nome
+func planName(root *element) string {
+	for _, plan := range root.findAll("TestPlan") {
+		if name := strings.TrimSpace(plan.attribute("testname")); name != "" {
+			return "Importado de JMeter: " + name
 		}
 	}
 	return "Importado de JMeter"
 }
 
-func passoDeAmostrador(amostrador *elemento, globais map[string]string) (PassoImportado, string) {
-	metodo := strings.ToUpper(amostrador.propriedade("HTTPSampler.method"))
-	if metodo == "" {
-		metodo = "GET"
+func stepFromSampler(sampler *element, global map[string]string) (ImportedStep, string) {
+	method := strings.ToUpper(sampler.property("HTTPSampler.method"))
+	if method == "" {
+		method = "GET"
 	}
-	caminho := amostrador.propriedade("HTTPSampler.path")
-	if caminho == "" {
-		caminho = "/"
+	path := sampler.property("HTTPSampler.path")
+	if path == "" {
+		path = "/"
 	}
-	if !strings.HasPrefix(caminho, "/") && !strings.HasPrefix(caminho, "http") {
-		caminho = "/" + caminho
-	}
-
-	passo := PassoImportado{
-		Metodo:     metodo,
-		Caminho:    caminho,
-		Cabecalhos: map[string]string{},
-		Corpo:      corpoDeAmostrador(amostrador),
-	}
-	for nome, valor := range globais {
-		passo.Cabecalhos[nome] = valor
+	if !strings.HasPrefix(path, "/") && !strings.HasPrefix(path, "http") {
+		path = "/" + path
 	}
 
-	nome := strings.TrimSpace(amostrador.atributo("testname"))
-	if nome == "" || nome == "HTTP Request" {
-		nome = strings.ToLower(metodo) + " " + recurso(caminho)
+	step := ImportedStep{
+		Method:  method,
+		Path:    path,
+		Headers: map[string]string{},
+		Body:    samplerBody(sampler),
 	}
-	passo.Nome = nome
+	for name, value := range global {
+		step.Headers[name] = value
+	}
 
-	dominio := amostrador.propriedade("HTTPSampler.domain")
-	if dominio == "" {
-		return passo, ""
+	name := strings.TrimSpace(sampler.attribute("testname"))
+	if name == "" || name == "HTTP Request" {
+		name = strings.ToLower(method) + " " + resource(path)
 	}
-	esquema := amostrador.propriedade("HTTPSampler.protocol")
-	if esquema == "" {
-		esquema = "http"
+	step.Name = name
+
+	domain := sampler.property("HTTPSampler.domain")
+	if domain == "" {
+		return step, ""
 	}
-	alvo := esquema + "://" + dominio
-	if porta := amostrador.propriedade("HTTPSampler.port"); porta != "" && porta != "80" && porta != "443" {
-		alvo += ":" + porta
+	schema := sampler.property("HTTPSampler.protocol")
+	if schema == "" {
+		schema = "http"
 	}
-	return passo, alvo
+	target := schema + "://" + domain
+	if port := sampler.property("HTTPSampler.port"); port != "" && port != "80" && port != "443" {
+		target += ":" + port
+	}
+	return step, target
 }
 
-func corpoDeAmostrador(amostrador *elemento) string {
-	for _, argumento := range amostrador.buscarTodos("elementProp") {
-		if argumento.atributo("elementType") != "HTTPArgument" {
+func samplerBody(sampler *element) string {
+	for _, arg := range sampler.findAll("elementProp") {
+		if arg.attribute("elementType") != "HTTPArgument" {
 			continue
 		}
-		if valor := argumento.propriedade("Argument.value"); valor != "" {
-			return valor
+		if value := arg.property("Argument.value"); value != "" {
+			return value
 		}
 	}
 	return ""
 }
 
-func cabecalhosDe(gerente *elemento) map[string]string {
-	cabecalhos := map[string]string{}
-	for _, cabecalho := range gerente.buscarTodos("elementProp") {
-		nome := cabecalho.propriedade("Header.name")
-		valor := cabecalho.propriedade("Header.value")
-		if nome != "" {
-			cabecalhos[nome] = valor
+func headersOf(manager *element) map[string]string {
+	headers := map[string]string{}
+	for _, header := range manager.findAll("elementProp") {
+		name := header.property("Header.name")
+		value := header.property("Header.value")
+		if name != "" {
+			headers[name] = value
 		}
 	}
-	return cabecalhos
+	return headers
 }
 
-func fonteDeCSV(conjunto *elemento) FonteImportada {
-	arquivo := conjunto.propriedade("filename")
-	nome := strings.TrimSpace(conjunto.atributo("testname"))
-	if nome == "" || strings.Contains(nome, " ") {
-		nome = "dados"
+func sourceFromCSV(set *element) ImportedSource {
+	file := set.property("filename")
+	name := strings.TrimSpace(set.attribute("testname"))
+	if name == "" || strings.Contains(name, " ") {
+		name = "dados"
 	}
-	consumo := "circular"
-	if conjunto.propriedade("recycle") == "false" {
-		consumo = "sequencial"
+	consume := "circular"
+	if set.property("recycle") == "false" {
+		consume = "sequencial"
 	}
-	return FonteImportada{Nome: nome, Arquivo: arquivo, Consumo: consumo}
+	return ImportedSource{Name: name, File: file, Consume: consume}
 }
 
 // Thread nao vira taxa: no JMeter cada thread so envia depois que a resposta
 // anterior chegou, entao 50 threads viram 50/s se o alvo responde em 1 s e 5/s
 // se responde em 10 s. Converter em silencio importaria a omissao coordenada
 // junto com o cenario.
-func avisosDeCarga(raiz *elemento) []string {
-	var avisos []string
-	for _, grupo := range raiz.buscarTodos("ThreadGroup") {
-		threads := grupo.propriedade("ThreadGroup.num_threads")
+func loadWarnings(root *element) []string {
+	var warnings []string
+	for _, group := range root.findAll("ThreadGroup") {
+		threads := group.property("ThreadGroup.num_threads")
 		if threads == "" {
 			continue
 		}
-		duracao := grupo.propriedade("ThreadGroup.duration")
-		descricao := threads + " threads"
-		if rampa := grupo.propriedade("ThreadGroup.ramp_time"); rampa != "" && rampa != "0" {
-			descricao += ", rampa de " + rampa + "s"
+		duration := group.property("ThreadGroup.duration")
+		description := threads + " threads"
+		if ramp := group.property("ThreadGroup.ramp_time"); ramp != "" && ramp != "0" {
+			description += ", rampa de " + ramp + "s"
 		}
-		if duracao != "" && duracao != "0" {
-			descricao += ", " + duracao + "s de duracao"
+		if duration != "" && duration != "0" {
+			description += ", " + duration + "s de duracao"
 		}
-		avisos = append(avisos, fmt.Sprintf(
+		warnings = append(warnings, fmt.Sprintf(
 			"o grupo %q declara %s: numero de thread nao vira taxa de chegada, porque thread so envia depois da resposta anterior. "+
 				"O bloco 'carga' ficou com um chute; troque pela taxa que voce quer sustentar (requisicoes por segundo)",
-			grupo.atributo("testname"), descricao))
+			group.attribute("testname"), description))
 	}
-	return avisos
+	return warnings
 }
 
-func avisosDeCorrelacao(raiz *elemento) []string {
-	var avisos []string
-	for _, extrator := range raiz.buscarTodos("JSONPostProcessor") {
-		variavel := extrator.propriedade("JSONPostProcessor.referenceNames")
-		caminho := extrator.propriedade("JSONPostProcessor.jsonPathExprs")
-		if variavel == "" {
+func correlationWarnings(root *element) []string {
+	var warnings []string
+	for _, extractor := range root.findAll("JSONPostProcessor") {
+		variable := extractor.property("JSONPostProcessor.referenceNames")
+		path := extractor.property("JSONPostProcessor.jsonPathExprs")
+		if variable == "" {
 			continue
 		}
-		avisos = append(avisos, fmt.Sprintf(
+		warnings = append(warnings, fmt.Sprintf(
 			"o .jmx captura %q de %q: declare no passo que produz o valor, como captura: { %s: %s }",
-			variavel, caminho, variavel, caminho))
+			variable, path, variable, path))
 	}
-	for _, extrator := range raiz.buscarTodos("RegexExtractor") {
-		variavel := extrator.propriedade("RegexExtractor.refname")
-		expressao := extrator.propriedade("RegexExtractor.regex")
-		if variavel == "" {
+	for _, extractor := range root.findAll("RegexExtractor") {
+		variable := extractor.property("RegexExtractor.refname")
+		expression := extractor.property("RegexExtractor.regex")
+		if variable == "" {
 			continue
 		}
-		avisos = append(avisos, fmt.Sprintf(
+		warnings = append(warnings, fmt.Sprintf(
 			"o .jmx captura %q por expressao regular: declare no passo que produz o valor, como captura: { %s: /%s/ }",
-			variavel, variavel, expressao))
+			variable, variable, expression))
 	}
-	for _, assercao := range raiz.buscarTodos("ResponseAssertion") {
-		nome := assercao.atributo("testname")
-		avisos = append(avisos, fmt.Sprintf(
-			"a assercao %q nao foi traduzida: todo passo saiu com 'verificar: { status: 200 }', ajuste o que era diferente disso", nome))
+	for _, assertion := range root.findAll("ResponseAssertion") {
+		name := assertion.attribute("testname")
+		warnings = append(warnings, fmt.Sprintf(
+			"a assercao %q nao foi traduzida: todo passo saiu com 'verificar: { status: 200 }', ajuste o que era diferente disso", name))
 	}
-	return avisos
+	return warnings
 }
 
-func avisosDoQueFicouDeFora(raiz *elemento) []string {
-	ignorados := map[string]int{}
-	var contar func(*elemento)
-	contar = func(atual *elemento) {
-		nome := atual.XMLName.Local
-		if nome != "" && !elementosTraduzidos[nome] {
-			ignorados[nome]++
+func untranslatedWarnings(root *element) []string {
+	ignored := map[string]int{}
+	var count func(*element)
+	count = func(current *element) {
+		name := current.XMLName.Local
+		if name != "" && !translatedElements[name] {
+			ignored[name]++
 			return
 		}
-		for _, filho := range atual.Filhos {
-			contar(filho)
+		for _, child := range current.Children {
+			count(child)
 		}
 	}
-	contar(raiz)
+	count(root)
 
-	if len(ignorados) == 0 {
+	if len(ignored) == 0 {
 		return nil
 	}
-	nomes := make([]string, 0, len(ignorados))
+	names := make([]string, 0, len(ignored))
 	total := 0
-	for nome, quantidade := range ignorados {
-		nomes = append(nomes, nome+" ("+strconv.Itoa(quantidade)+")")
-		total += quantidade
+	for name, count := range ignored {
+		names = append(names, name+" ("+strconv.Itoa(count)+")")
+		total += count
 	}
-	sort.Strings(nomes)
+	sort.Strings(names)
 	return []string{fmt.Sprintf(
 		"%d elemento(s) do .jmx nao foram traduzidos e ficaram de fora do cenario: %s. "+
-			"Confira se algum deles mudava o que era medido", total, strings.Join(nomes, ", "))}
+			"Confira se algum deles mudava o que era medido", total, strings.Join(names, ", "))}
 }
 
-func alvoMaisComum(alvos map[string]int) string {
-	melhor, maior := "", 0
-	for alvo, quantidade := range alvos {
-		if quantidade > maior || (quantidade == maior && alvo < melhor) {
-			melhor, maior = alvo, quantidade
+func mostCommonTarget(targets map[string]int) string {
+	best, greater := "", 0
+	for target, count := range targets {
+		if count > greater || (count == greater && target < best) {
+			best, greater = target, count
 		}
 	}
-	return melhor
+	return best
 }

@@ -11,42 +11,42 @@ import (
 // O CSV existe para planilha e para juntar execucoes; o campo tipo_de_latencia
 // vai junto porque uma coluna de p95 sem ele mistura latencia corrigida com
 // tempo de servico na mesma media.
-func CSV(saida io.Writer, documento metrics.Documento) error {
-	escritor := csv.NewWriter(saida)
-	defer escritor.Flush()
+func CSV(out io.Writer, document metrics.Document) error {
+	writer := csv.NewWriter(out)
+	defer writer.Flush()
 
-	cabecalho := []string{
+	header := []string{
 		"cenario", "alvo", "inicio", "passo", "tipo_de_latencia", "contagem", "erros",
 		"p50_ms", "p95_ms", "p99_ms", "p99_9_ms", "max_ms", "bytes",
 	}
-	if err := escritor.Write(cabecalho); err != nil {
+	if err := writer.Write(header); err != nil {
 		return err
 	}
 
-	inicio := documento.Execucao.Inicio.Format("2006-01-02T15:04:05Z07:00")
-	linha := func(nome, tipo string, contagem, erros, bytes int64, distribuicao metrics.Distribuicao) []string {
+	start := document.Run.Start.Format("2006-01-02T15:04:05Z07:00")
+	line := func(name, kind string, count, errors, bytes int64, distribution metrics.Distribution) []string {
 		return []string{
-			documento.Execucao.Cenario, documento.Execucao.Alvo, inicio, nome, tipo,
-			fmt.Sprintf("%d", contagem), fmt.Sprintf("%d", erros),
-			numero(distribuicao.P50), numero(distribuicao.P95), numero(distribuicao.P99),
-			numero(distribuicao.P999), numero(distribuicao.Maximo), fmt.Sprintf("%d", bytes),
+			document.Run.Scenario, document.Run.Target, start, name, kind,
+			fmt.Sprintf("%d", count), fmt.Sprintf("%d", errors),
+			number(distribution.P50), number(distribution.P95), number(distribution.P99),
+			number(distribution.P999), number(distribution.Max), fmt.Sprintf("%d", bytes),
 		}
 	}
 
-	if documento.Jornada.Iniciadas > 0 {
-		perdidas := documento.Jornada.Iniciadas - documento.Jornada.Completas
-		if err := escritor.Write(linha("jornada inteira", "corrigida", documento.Jornada.Iniciadas, perdidas, 0, documento.Jornada.Latencia)); err != nil {
+	if document.Journey.Started > 0 {
+		lost := document.Journey.Started - document.Journey.Completed
+		if err := writer.Write(line("jornada inteira", "corrigida", document.Journey.Started, lost, 0, document.Journey.Latency)); err != nil {
 			return err
 		}
 	}
-	for _, passo := range documento.Passos {
-		if err := escritor.Write(linha(passo.Nome, passo.TipoDeLatencia, passo.Contagem, passo.Erros, passo.Bytes, passo.Latencia)); err != nil {
+	for _, step := range document.Steps {
+		if err := writer.Write(line(step.Name, step.LatencyKind, step.Count, step.Errors, step.Bytes, step.Latency)); err != nil {
 			return err
 		}
 	}
-	return escritor.Write(linha("global", "corrigida", documento.Global.Contagem, documento.Global.Erros, 0, documento.Global.Latencia))
+	return writer.Write(line("global", "corrigida", document.Overall.Count, document.Overall.Errors, 0, document.Overall.Latency))
 }
 
-func numero(valor float64) string {
-	return fmt.Sprintf("%.3f", valor)
+func number(value float64) string {
+	return fmt.Sprintf("%.3f", value)
 }

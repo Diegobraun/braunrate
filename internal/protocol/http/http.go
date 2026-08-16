@@ -18,239 +18,239 @@ import (
 )
 
 func init() {
-	protocol.Registrar(Novo(protocol.OpcoesPadrao()))
+	protocol.Record(New(protocol.DefaultOptions()))
 }
 
-type Configuracao struct {
-	Metodo         string
-	Caminho        string
-	Cabecalhos     map[string]string
-	Corpo          []byte
-	TipoDeConteudo string
+type Config struct {
+	Method         string
+	Path           string
+	Headers        map[string]string
+	Body           []byte
+	ContentType    string
 	Timeout        time.Duration
 	SeguirRedirect *bool
 }
 
-func (c *Configuracao) Protocolo() string { return "http" }
+func (c *Config) Protocol() string { return "http" }
 
-func (c *Configuracao) ChaveDeAgregacao() string {
-	return fmt.Sprintf("%s %s", c.Metodo, c.Caminho)
+func (c *Config) AggregationKey() string {
+	return fmt.Sprintf("%s %s", c.Method, c.Path)
 }
 
-func (c *Configuracao) Resolver(resolver func(string) string) protocol.Configuracao {
-	copia := *c
-	copia.Caminho = resolver(c.Caminho)
-	copia.Cabecalhos = make(map[string]string, len(c.Cabecalhos))
-	for nome, valor := range c.Cabecalhos {
-		copia.Cabecalhos[nome] = resolver(valor)
+func (c *Config) Resolve(resolve func(string) string) protocol.Config {
+	clone := *c
+	clone.Path = resolve(c.Path)
+	clone.Headers = make(map[string]string, len(c.Headers))
+	for name, value := range c.Headers {
+		clone.Headers[name] = resolve(value)
 	}
-	if len(c.Corpo) > 0 {
-		copia.Corpo = []byte(resolver(string(c.Corpo)))
+	if len(c.Body) > 0 {
+		clone.Body = []byte(resolve(string(c.Body)))
 	}
-	return &copia
+	return &clone
 }
 
-func (c *Configuracao) ComCabecalho(nome, valor string) protocol.Configuracao {
-	copia := *c
-	copia.Cabecalhos = make(map[string]string, len(c.Cabecalhos)+1)
-	for chave, conteudo := range c.Cabecalhos {
-		copia.Cabecalhos[chave] = conteudo
+func (c *Config) WithHeader(name, value string) protocol.Config {
+	clone := *c
+	clone.Headers = make(map[string]string, len(c.Headers)+1)
+	for key, content := range c.Headers {
+		clone.Headers[key] = content
 	}
-	copia.Cabecalhos[nome] = valor
-	return &copia
+	clone.Headers[name] = value
+	return &clone
 }
 
-func (c *Configuracao) Descrever() []string {
-	linhas := []string{fmt.Sprintf("%s %s", c.Metodo, c.Caminho)}
+func (c *Config) Describe() []string {
+	lines := []string{fmt.Sprintf("%s %s", c.Method, c.Path)}
 
-	nomes := make([]string, 0, len(c.Cabecalhos))
-	for nome := range c.Cabecalhos {
-		nomes = append(nomes, nome)
+	names := make([]string, 0, len(c.Headers))
+	for name := range c.Headers {
+		names = append(names, name)
 	}
-	sort.Strings(nomes)
-	for _, nome := range nomes {
-		linhas = append(linhas, fmt.Sprintf("%s: %s", nome, transport.EsconderSegredo(nome, c.Cabecalhos[nome])))
+	sort.Strings(names)
+	for _, name := range names {
+		lines = append(lines, fmt.Sprintf("%s: %s", name, transport.MaskSecret(name, c.Headers[name])))
 	}
-	if c.TipoDeConteudo != "" {
-		linhas = append(linhas, "Content-Type: "+c.TipoDeConteudo)
+	if c.ContentType != "" {
+		lines = append(lines, "Content-Type: "+c.ContentType)
 	}
-	if len(c.Corpo) > 0 {
-		linhas = append(linhas, "corpo: "+string(c.Corpo))
+	if len(c.Body) > 0 {
+		lines = append(lines, "corpo: "+string(c.Body))
 	}
 	if c.Timeout > 0 {
-		linhas = append(linhas, "timeout: "+c.Timeout.String())
+		lines = append(lines, "timeout: "+c.Timeout.String())
 	}
-	return linhas
+	return lines
 }
 
-type Protocolo struct {
-	cliente *http.Client
-	opcoes  protocol.Opcoes
+type Protocol struct {
+	client *http.Client
+	opts   protocol.Options
 }
 
-func Novo(opcoes protocol.Opcoes) *Protocolo {
-	return &Protocolo{cliente: transport.NovoCliente(opcoes), opcoes: opcoes}
+func New(opts protocol.Options) *Protocol {
+	return &Protocol{client: transport.NewClient(opts), opts: opts}
 }
 
-func (p *Protocolo) Nome() string { return "http" }
+func (p *Protocol) Name() string { return "http" }
 
-func (p *Protocolo) Encerrar() error {
-	p.cliente.CloseIdleConnections()
+func (p *Protocol) Close() error {
+	p.client.CloseIdleConnections()
 	return nil
 }
 
-func (p *Protocolo) Decodificar(no *yaml.Node) (protocol.Configuracao, error) {
+func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
 	if no == nil {
 		return nil, errors.New("passo http sem configuracao")
 	}
-	configuracao := Padrao()
+	config := Default()
 
 	if no.Kind == yaml.ScalarNode {
-		partes := strings.Fields(no.Value)
-		switch len(partes) {
+		parts := strings.Fields(no.Value)
+		switch len(parts) {
 		case 1:
-			configuracao.Caminho = partes[0]
+			config.Path = parts[0]
 		case 2:
-			configuracao.Metodo = strings.ToUpper(partes[0])
-			configuracao.Caminho = partes[1]
+			config.Method = strings.ToUpper(parts[0])
+			config.Path = parts[1]
 		default:
 			return nil, fmt.Errorf("forma curta do passo http deve ser \"METODO /caminho\", recebido %q", no.Value)
 		}
-		return configuracao, nil
+		return config, nil
 	}
 
 	if no.Kind != yaml.MappingNode {
 		return nil, errors.New("passo http precisa ser um texto ou um mapa")
 	}
 
-	for indice := 0; indice+1 < len(no.Content); indice += 2 {
-		chave := no.Content[indice]
-		valor := no.Content[indice+1]
-		switch chave.Value {
+	for index := 0; index+1 < len(no.Content); index += 2 {
+		key := no.Content[index]
+		value := no.Content[index+1]
+		switch key.Value {
 		case "metodo":
-			configuracao.Metodo = strings.ToUpper(valor.Value)
+			config.Method = strings.ToUpper(value.Value)
 		case "caminho", "url":
-			configuracao.Caminho = valor.Value
+			config.Path = value.Value
 		case "cabecalhos":
-			if valor.Kind != yaml.MappingNode {
+			if value.Kind != yaml.MappingNode {
 				return nil, errors.New("cabecalhos precisa ser um mapa")
 			}
-			for i := 0; i+1 < len(valor.Content); i += 2 {
-				configuracao.Cabecalhos[valor.Content[i].Value] = valor.Content[i+1].Value
+			for i := 0; i+1 < len(value.Content); i += 2 {
+				config.Headers[value.Content[i].Value] = value.Content[i+1].Value
 			}
 		case "corpo":
-			corpo, tipo, err := lerCorpo(valor)
+			body, kind, err := readBody(value)
 			if err != nil {
 				return nil, err
 			}
-			configuracao.Corpo = corpo
-			configuracao.TipoDeConteudo = tipo
+			config.Body = body
+			config.ContentType = kind
 		case "timeout":
-			duracao, err := time.ParseDuration(valor.Value)
+			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout invalido: %q", valor.Value)
+				return nil, fmt.Errorf("timeout invalido: %q", value.Value)
 			}
-			configuracao.Timeout = duracao
+			config.Timeout = duration
 		case "seguir_redirect":
-			seguir := valor.Value == "true"
-			configuracao.SeguirRedirect = &seguir
+			seguir := value.Value == "true"
+			config.SeguirRedirect = &seguir
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo http: %q", chave.Value)
+			return nil, fmt.Errorf("chave desconhecida no passo http: %q", key.Value)
 		}
 	}
 
-	if err := Validar(configuracao); err != nil {
+	if err := Validate(config); err != nil {
 		return nil, err
 	}
-	return configuracao, nil
+	return config, nil
 }
 
 // Padrao e Validar existem para que a DSL em Go entre pelo mesmo lugar que o
 // YAML: um padrao que so um dos dois aplicasse viraria diferenca de medicao
 // entre os dois publicos.
-func Padrao() *Configuracao {
-	return &Configuracao{Metodo: http.MethodGet, Cabecalhos: map[string]string{}}
+func Default() *Config {
+	return &Config{Method: http.MethodGet, Headers: map[string]string{}}
 }
 
-func Validar(configuracao *Configuracao) error {
-	if configuracao.Caminho == "" {
+func Validate(config *Config) error {
+	if config.Path == "" {
 		return errors.New("passo http sem caminho")
 	}
 	return nil
 }
 
-func lerCorpo(no *yaml.Node) ([]byte, string, error) {
+func readBody(no *yaml.Node) ([]byte, string, error) {
 	if no.Kind == yaml.ScalarNode {
 		return []byte(no.Value), "text/plain", nil
 	}
-	var estrutura any
-	if err := no.Decode(&estrutura); err != nil {
+	var structure any
+	if err := no.Decode(&structure); err != nil {
 		return nil, "", fmt.Errorf("corpo invalido: %v", err)
 	}
-	corpo, err := json.Marshal(estrutura)
+	body, err := json.Marshal(structure)
 	if err != nil {
 		return nil, "", fmt.Errorf("corpo nao serializa para JSON: %v", err)
 	}
-	return corpo, "application/json", nil
+	return body, "application/json", nil
 }
 
-func (p *Protocolo) Executar(ctx context.Context, requisicao protocol.Requisicao) protocol.Resposta {
-	configuracao, ok := requisicao.Configuracao.(*Configuracao)
+func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protocol.Response {
+	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Resposta{Classe: protocol.ErroDeConfigacao, Detalhe: "configuracao nao e de http"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de http"}
 	}
 
-	endereco, err := transport.MontarURL(requisicao.URLBase, configuracao.Caminho)
+	address, err := transport.BuildURL(request.URLBase, config.Path)
 	if err != nil {
-		return protocol.Resposta{Classe: protocol.ErroDeConfigacao, Detalhe: err.Error()}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
 	}
 
-	var corpo io.Reader
-	if len(configuracao.Corpo) > 0 {
-		corpo = bytes.NewReader(configuracao.Corpo)
+	var body io.Reader
+	if len(config.Body) > 0 {
+		body = bytes.NewReader(config.Body)
 	}
 
-	if configuracao.Timeout > 0 {
-		var cancelar context.CancelFunc
-		ctx, cancelar = context.WithTimeout(ctx, configuracao.Timeout)
-		defer cancelar()
+	if config.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, config.Timeout)
+		defer cancel()
 	}
 
-	pedido, err := http.NewRequestWithContext(ctx, configuracao.Metodo, endereco, corpo)
+	order, err := http.NewRequestWithContext(ctx, config.Method, address, body)
 	if err != nil {
-		return protocol.Resposta{Classe: protocol.ErroDeConfigacao, Detalhe: err.Error()}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
 	}
-	if configuracao.TipoDeConteudo != "" {
-		pedido.Header.Set("Content-Type", configuracao.TipoDeConteudo)
+	if config.ContentType != "" {
+		order.Header.Set("Content-Type", config.ContentType)
 	}
-	for nome, valor := range configuracao.Cabecalhos {
-		pedido.Header.Set(nome, valor)
+	for name, value := range config.Headers {
+		order.Header.Set(name, value)
 	}
 
-	resposta, err := p.cliente.Do(pedido)
+	response, err := p.client.Do(order)
 	if err != nil {
-		return protocol.Resposta{Classe: transport.Classificar(err), Detalhe: transport.ResumirErro(err)}
+		return protocol.Response{Class: transport.Classify(err), Detail: transport.SummarizeError(err)}
 	}
-	defer resposta.Body.Close()
+	defer response.Body.Close()
 
-	conteudo, err := io.ReadAll(resposta.Body)
+	content, err := io.ReadAll(response.Body)
 	if err != nil {
-		return protocol.Resposta{Status: resposta.StatusCode, Classe: transport.Classificar(err), Detalhe: transport.ResumirErro(err)}
+		return protocol.Response{Status: response.StatusCode, Class: transport.Classify(err), Detail: transport.SummarizeError(err)}
 	}
 
-	classe := protocol.Sucesso
-	detalhe := ""
-	if resposta.StatusCode >= 400 {
-		classe = protocol.ErroDeStatus
-		detalhe = fmt.Sprintf("status %d", resposta.StatusCode)
+	class := protocol.Success
+	detail := ""
+	if response.StatusCode >= 400 {
+		class = protocol.ErrStatus
+		detail = fmt.Sprintf("status %d", response.StatusCode)
 	}
 
-	return protocol.Resposta{
-		Status:     resposta.StatusCode,
-		Corpo:      conteudo,
-		Cabecalhos: resposta.Header,
-		Bytes:      int64(len(conteudo)),
-		Classe:     classe,
-		Detalhe:    detalhe,
+	return protocol.Response{
+		Status:  response.StatusCode,
+		Body:    content,
+		Headers: response.Header,
+		Bytes:   int64(len(content)),
+		Class:   class,
+		Detail:  detail,
 	}
 }

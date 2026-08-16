@@ -11,156 +11,156 @@ import (
 	"github.com/Diegobraun/braunrate/internal/slo"
 )
 
-func LinhaDeProgresso(instantaneo metrics.Instantaneo, taxaAlvo float64, restante time.Duration) string {
-	alerta := ""
-	if instantaneo.Enviadas > 0 {
-		proporcao := float64(instantaneo.DespachosAtrasados) / float64(instantaneo.Enviadas)
-		if proporcao >= 0.01 {
-			alerta = fmt.Sprintf("  ATENCAO: o gerador nao esta conseguindo manter a carga (%.1f%% em atraso)", proporcao*100)
+func ProgressLine(snapshot metrics.Instantaneo, targetRate float64, remaining time.Duration) string {
+	alert := ""
+	if snapshot.Sent > 0 {
+		proportion := float64(snapshot.LateDispatches) / float64(snapshot.Sent)
+		if proportion >= 0.01 {
+			alert = fmt.Sprintf("  ATENCAO: o gerador nao esta conseguindo manter a carga (%.1f%% em atraso)", proportion*100)
 		}
 	}
 	return fmt.Sprintf("carga %.0f/s | enviadas %d | concluidas %d | erros %d | metade em %.1f ms | 99%% em %.1f ms | faltam %s%s",
-		taxaAlvo, instantaneo.Enviadas, instantaneo.Concluidas, instantaneo.Erros,
-		instantaneo.LatenciaP50Ms, instantaneo.LatenciaP99Ms, restante.Round(time.Second), alerta)
+		targetRate, snapshot.Sent, snapshot.Completed, snapshot.Errors,
+		snapshot.LatencyP50Ms, snapshot.LatencyP99Ms, remaining.Round(time.Second), alert)
 }
 
 // A saida tem duas camadas: a frase em portugues comum diz o que aconteceu, e o
 // numero fica logo abaixo para quem precisa dele.
-func Resumo(saida io.Writer, documento metrics.Documento, veredito slo.Veredito) {
-	escrever := func(formato string, argumentos ...any) {
-		fmt.Fprintf(saida, formato+"\n", argumentos...)
+func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) {
+	write := func(format string, args ...any) {
+		fmt.Fprintf(out, format+"\n", args...)
 	}
 
-	escrever("")
-	escrever("%s — contra %s", documento.Execucao.Cenario, documento.Execucao.Alvo)
-	escrever("")
+	write("")
+	write("%s — contra %s", document.Run.Scenario, document.Run.Target)
+	write("")
 
-	if len(veredito.Avaliacoes) > 0 {
-		escrever("%s", veredito.Frase)
-		escrever("")
+	if len(verdict.Evaluations) > 0 {
+		write("%s", verdict.Sentence)
+		write("")
 	}
 
-	global := documento.Global
-	duracao := (time.Duration(documento.Execucao.DuracaoMs) * time.Millisecond).Round(100 * time.Millisecond)
-	escrever("O que aconteceu")
-	escrever("  %s requisicoes em %s, %.0f por segundo, %s de erro",
-		milhar(global.Contagem), duracao, global.TaxaEfetiva, porcentagem(global.TaxaDeErro*100))
-	escrever("  Metade das respostas em ate %s; 95%% em ate %s; 99%% em ate %s; a pior levou %s",
-		milissegundos(global.Latencia.P50), milissegundos(global.Latencia.P95),
-		milissegundos(global.Latencia.P99), milissegundos(global.Latencia.Maximo))
-	escrever("")
+	overall := document.Overall
+	duration := (time.Duration(document.Run.DurationMs) * time.Millisecond).Round(100 * time.Millisecond)
+	write("O que aconteceu")
+	write("  %s requisicoes em %s, %.0f por segundo, %s de erro",
+		thousands(overall.Count), duration, overall.EffectiveRate, percentage(overall.ErrorRate*100))
+	write("  Metade das respostas em ate %s; 95%% em ate %s; 99%% em ate %s; a pior levou %s",
+		milliseconds(overall.Latency.P50), milliseconds(overall.Latency.P95),
+		milliseconds(overall.Latency.P99), milliseconds(overall.Latency.Max))
+	write("")
 
-	if documento.Jornada.Iniciadas > 0 {
-		escrever("A jornada inteira")
-		escrever("  %s", documento.Jornada.Frase)
-		escrever("  metade %s | 95%% %s | 99%% %s | pior %s",
-			milissegundos(documento.Jornada.Latencia.P50), milissegundos(documento.Jornada.Latencia.P95),
-			milissegundos(documento.Jornada.Latencia.P99), milissegundos(documento.Jornada.Latencia.Maximo))
-		escrever("")
+	if document.Journey.Started > 0 {
+		write("A jornada inteira")
+		write("  %s", document.Journey.Sentence)
+		write("  metade %s | 95%% %s | 99%% %s | pior %s",
+			milliseconds(document.Journey.Latency.P50), milliseconds(document.Journey.Latency.P95),
+			milliseconds(document.Journey.Latency.P99), milliseconds(document.Journey.Latency.Max))
+		write("")
 	}
 
-	escrever("Por passo")
-	escrever("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7s", "passo", "", "requisicoes", "metade", "95%", "99%", "99,9%", "pior", "erros")
-	temPassoDeServico := false
-	for _, passo := range documento.Passos {
-		marca := "(1)"
-		if passo.TipoDeLatencia == string(metrics.LatenciaDeServico) {
-			marca = "(2)"
-			temPassoDeServico = true
+	write("Por passo")
+	write("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7s", "passo", "", "requisicoes", "metade", "95%", "99%", "99,9%", "pior", "erros")
+	hasServiceStep := false
+	for _, step := range document.Steps {
+		mark := "(1)"
+		if step.LatencyKind == string(metrics.ServiceLatency) {
+			mark = "(2)"
+			hasServiceStep = true
 		}
-		escrever("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7d",
-			cortar(passo.Nome, 26), marca, milhar(passo.Contagem),
-			milissegundos(passo.Latencia.P50), milissegundos(passo.Latencia.P95),
-			milissegundos(passo.Latencia.P99), milissegundos(passo.Latencia.P999),
-			milissegundos(passo.Latencia.Maximo), passo.Erros)
+		write("  %-26s %-3s %10s %9s %9s %9s %9s %9s %7d",
+			trim(step.Name, 26), mark, thousands(step.Count),
+			milliseconds(step.Latency.P50), milliseconds(step.Latency.P95),
+			milliseconds(step.Latency.P99), milliseconds(step.Latency.P999),
+			milliseconds(step.Latency.Max), step.Errors)
 	}
-	escrever("")
-	escrever("  (1) tempo contado do instante em que a requisicao deveria ter partido — inclui")
-	escrever("      qualquer atraso e por isso nao esconde travada do alvo.")
-	if temPassoDeServico {
-		escrever("  (2) tempo de resposta puro, contado de quando o passo anterior terminou. Como")
-		escrever("      esse passo depende do valor capturado antes dele, nao existe instante")
-		escrever("      agendado proprio. Para a leitura honesta da jornada, use \"A jornada inteira\".")
+	write("")
+	write("  (1) tempo contado do instante em que a requisicao deveria ter partido — inclui")
+	write("      qualquer atraso e por isso nao esconde travada do alvo.")
+	if hasServiceStep {
+		write("  (2) tempo de resposta puro, contado de quando o passo anterior terminou. Como")
+		write("      esse passo depende do valor capturado antes dele, nao existe instante")
+		write("      agendado proprio. Para a leitura honesta da jornada, use \"A jornada inteira\".")
 	}
-	escrever("")
+	write("")
 
-	if len(veredito.Avaliacoes) > 0 {
-		escrever("SLO")
-		for _, avaliacao := range veredito.Avaliacoes {
-			marca := "ok  "
-			if !avaliacao.Passou {
-				marca = "FALHA"
+	if len(verdict.Evaluations) > 0 {
+		write("SLO")
+		for _, evaluation := range verdict.Evaluations {
+			mark := "ok  "
+			if !evaluation.Passed {
+				mark = "FALHA"
 			}
-			escrever("  %-5s %s", marca, avaliacao.Frase)
+			write("  %-5s %s", mark, evaluation.Sentence)
 		}
-		escrever("")
+		write("")
 	}
 
-	erros := errosPorClasse(documento)
-	if len(erros) > 0 {
-		escrever("Erros")
-		for _, linha := range erros {
-			escrever("  %-50s %s", linha.classe, milhar(linha.quantidade))
+	errors := errorsByClass(document)
+	if len(errors) > 0 {
+		write("Erros")
+		for _, line := range errors {
+			write("  %-50s %s", line.class, thousands(line.count))
 		}
-		escrever("")
+		write("")
 	}
 
-	escrever("Confiabilidade da medicao")
-	for _, aviso := range documento.Avisos {
-		if aviso.Gravidade == metrics.GravidadeAlta {
-			escrever("  RESULTADO INVALIDO: %s", aviso.Mensagem)
+	write("Confiabilidade da medicao")
+	for _, warning := range document.Warnings {
+		if warning.Severity == metrics.SeverityHigh {
+			write("  RESULTADO INVALIDO: %s", warning.Message)
 		} else {
-			escrever("  Atencao: %s", aviso.Mensagem)
+			write("  Atencao: %s", warning.Message)
 		}
-		escrever("            %s", aviso.Evidencia)
+		write("            %s", warning.Evidence)
 	}
-	if documento.Agendamento.DespachosAtrasados == 0 && documento.Agendamento.DescartadasPorLimiteDeVoo == 0 {
-		escrever("  O gerador disparou todas as requisicoes na hora certa, entao os numeros acima valem.")
+	if document.Scheduling.LateDispatches == 0 && document.Scheduling.DroppedByInflightLimit == 0 {
+		write("  O gerador disparou todas as requisicoes na hora certa, entao os numeros acima valem.")
 	}
-	escrever("  Atraso tipico para disparar: %s; pior caso: %s (o tempo de resposta ja desconta isso)",
-		milissegundos(documento.Agendamento.Desvio.P50), milissegundos(documento.Agendamento.Desvio.Maximo))
-	escondido := documento.Global.Latencia.P99 - documento.Global.LatenciaDeServico.P99
-	if escondido >= 1 {
-		escrever("  Uma ferramenta de laco fechado teria reportado %s a menos no 99%%.", milissegundos(escondido))
+	write("  Atraso tipico para disparar: %s; pior caso: %s (o tempo de resposta ja desconta isso)",
+		milliseconds(document.Scheduling.Skew.P50), milliseconds(document.Scheduling.Skew.Max))
+	hidden := document.Overall.Latency.P99 - document.Overall.ServiceLatency.P99
+	if hidden >= 1 {
+		write("  Uma ferramenta de laco fechado teria reportado %s a menos no 99%%.", milliseconds(hidden))
 	}
-	escrever("")
+	write("")
 
-	escrever("Ambiente")
-	escrever("  %s %s/%s, %d nucleos | braunrate %s | %s",
-		documento.Ambiente.Maquina, documento.Ambiente.SistemaOperacional, documento.Ambiente.Arquitetura,
-		documento.Ambiente.Nucleos, documento.Versao, documento.Execucao.Inicio.Format("2006-01-02 15:04:05"))
-	for _, variedade := range documento.Variedade {
-		escrever("  %s", variedade.Frase)
+	write("Ambiente")
+	write("  %s %s/%s, %d nucleos | braunrate %s | %s",
+		document.Environment.Host, document.Environment.OS, document.Environment.Arch,
+		document.Environment.Cores, document.Version, document.Run.Start.Format("2006-01-02 15:04:05"))
+	for _, variety := range document.Variety {
+		write("  %s", variety.Sentence)
 	}
-	if len(documento.Execucao.Sementes) > 0 {
-		escrever("  Semente das fontes sinteticas: %s (a mesma semente gera os mesmos valores de novo)", sementes(documento.Execucao.Sementes))
+	if len(document.Run.Seeds) > 0 {
+		write("  Semente das fontes sinteticas: %s (a mesma semente gera os mesmos valores de novo)", seeds(document.Run.Seeds))
 	}
-	if documento.Execucao.Autenticacoes > 0 {
-		escrever("  Autenticacao obtida %d vez(es) e reaproveitada por todas as jornadas.", documento.Execucao.Autenticacoes)
-		escrever("  Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.")
+	if document.Run.AuthObtains > 0 {
+		write("  Autenticacao obtida %d vez(es) e reaproveitada por todas as jornadas.", document.Run.AuthObtains)
+		write("  Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.")
 	}
-	escrever("")
+	write("")
 }
 
-func sementes(valores map[string]int64) string {
-	nomes := make([]string, 0, len(valores))
-	for nome := range valores {
-		nomes = append(nomes, nome)
+func seeds(values map[string]int64) string {
+	names := make([]string, 0, len(values))
+	for name := range values {
+		names = append(names, name)
 	}
-	sort.Strings(nomes)
-	partes := make([]string, 0, len(nomes))
-	for _, nome := range nomes {
-		partes = append(partes, fmt.Sprintf("%s=%d", nome, valores[nome]))
+	sort.Strings(names)
+	parts := make([]string, 0, len(names))
+	for _, name := range names {
+		parts = append(parts, fmt.Sprintf("%s=%d", name, values[name]))
 	}
-	return strings.Join(partes, ", ")
+	return strings.Join(parts, ", ")
 }
 
-type linhaDeErro struct {
-	classe     string
-	quantidade int64
+type errorLine struct {
+	class string
+	count int64
 }
 
-var nomeDeClasse = map[string]string{
+var classNames = map[string]string{
 	"rede":         "falha de rede",
 	"timeout":      "tempo esgotado",
 	"status":       "status HTTP inesperado",
@@ -172,65 +172,65 @@ var nomeDeClasse = map[string]string{
 	"graphql":      "erro no corpo da resposta GraphQL (com status 200)",
 }
 
-func errosPorClasse(documento metrics.Documento) []linhaDeErro {
+func errorsByClass(document metrics.Document) []errorLine {
 	total := map[string]int64{}
-	for _, passo := range documento.Passos {
-		for classe, quantidade := range passo.ErrosPorClasse {
-			nome := nomeDeClasse[classe]
-			if nome == "" {
-				nome = classe
+	for _, step := range document.Steps {
+		for class, count := range step.ErrorsByClass {
+			name := classNames[class]
+			if name == "" {
+				name = class
 			}
-			total[nome] += quantidade
+			total[name] += count
 		}
 	}
-	linhas := make([]linhaDeErro, 0, len(total))
-	for classe, quantidade := range total {
-		linhas = append(linhas, linhaDeErro{classe: classe, quantidade: quantidade})
+	lines := make([]errorLine, 0, len(total))
+	for class, count := range total {
+		lines = append(lines, errorLine{class: class, count: count})
 	}
-	sort.Slice(linhas, func(i, j int) bool { return linhas[i].quantidade > linhas[j].quantidade })
-	return linhas
+	sort.Slice(lines, func(i, j int) bool { return lines[i].count > lines[j].count })
+	return lines
 }
 
-func milissegundos(valor float64) string {
+func milliseconds(value float64) string {
 	switch {
-	case valor >= 1000:
-		return fmt.Sprintf("%.2f s", valor/1000)
-	case valor >= 10:
-		return fmt.Sprintf("%.0f ms", valor)
-	case valor >= 1:
-		return fmt.Sprintf("%.1f ms", valor)
+	case value >= 1000:
+		return fmt.Sprintf("%.2f s", value/1000)
+	case value >= 10:
+		return fmt.Sprintf("%.0f ms", value)
+	case value >= 1:
+		return fmt.Sprintf("%.1f ms", value)
 	default:
-		return fmt.Sprintf("%.3f ms", valor)
+		return fmt.Sprintf("%.3f ms", value)
 	}
 }
 
-func porcentagem(valor float64) string {
-	if valor == 0 {
+func percentage(value float64) string {
+	if value == 0 {
 		return "0%"
 	}
-	if valor < 0.01 {
-		return fmt.Sprintf("%.4f%%", valor)
+	if value < 0.01 {
+		return fmt.Sprintf("%.4f%%", value)
 	}
-	return fmt.Sprintf("%.2f%%", valor)
+	return fmt.Sprintf("%.2f%%", value)
 }
 
-func milhar(valor int64) string {
-	texto := fmt.Sprintf("%d", valor)
-	if len(texto) <= 3 {
-		return texto
+func thousands(value int64) string {
+	text := fmt.Sprintf("%d", value)
+	if len(text) <= 3 {
+		return text
 	}
-	var partes []string
-	for len(texto) > 3 {
-		partes = append([]string{texto[len(texto)-3:]}, partes...)
-		texto = texto[:len(texto)-3]
+	var parts []string
+	for len(text) > 3 {
+		parts = append([]string{text[len(text)-3:]}, parts...)
+		text = text[:len(text)-3]
 	}
-	partes = append([]string{texto}, partes...)
-	return strings.Join(partes, ".")
+	parts = append([]string{text}, parts...)
+	return strings.Join(parts, ".")
 }
 
-func cortar(texto string, tamanho int) string {
-	if len(texto) <= tamanho {
-		return texto
+func trim(text string, size int) string {
+	if len(text) <= size {
+		return text
 	}
-	return strings.TrimSpace(texto[:tamanho-1]) + "…"
+	return strings.TrimSpace(text[:size-1]) + "…"
 }

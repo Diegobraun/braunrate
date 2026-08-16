@@ -19,475 +19,475 @@ import (
 	"github.com/Diegobraun/braunrate/internal/scenario"
 )
 
-type Opcoes struct {
-	Versao               string
-	MaximoSimultaneas    int64
-	LimiarDeAtraso       time.Duration
-	Relogio              Relogio
-	RaizDeDados          string
-	AoProgredir          func(metrics.Instantaneo, float64, time.Duration)
-	IntervaloDeProgresso time.Duration
-	AoObservarPasso      func(Observacao)
+type Options struct {
+	Version          string
+	MaxInflight      int64
+	LateThreshold    time.Duration
+	Clock            Clock
+	DataRoot         string
+	OnProgress       func(metrics.Instantaneo, float64, time.Duration)
+	ProgressInterval time.Duration
+	OnStep           func(Observation)
 }
 
-func OpcoesPadrao() Opcoes {
-	return Opcoes{
-		Versao:               "0.2.0",
-		MaximoSimultaneas:    20000,
-		LimiarDeAtraso:       10 * time.Millisecond,
-		Relogio:              RelogioDoSistema{},
-		IntervaloDeProgresso: time.Second,
+func DefaultOptions() Options {
+	return Options{
+		Version:          "0.2.0",
+		MaxInflight:      20000,
+		LateThreshold:    10 * time.Millisecond,
+		Clock:            SystemClock{},
+		ProgressInterval: time.Second,
 	}
 }
 
 // Observacao existe para o modo de depuracao: um usuario, uma iteracao, tudo
 // visivel. O caminho de execucao e o mesmo da carga.
-type Observacao struct {
-	Passo        string
-	Chave        string
-	Configuracao protocol.Configuracao
-	Resposta     protocol.Resposta
-	Capturado    map[string]string
-	Variaveis    map[string]string
-	Falhas       []string
-	Classe       protocol.ClasseDeErro
-	Duracao      time.Duration
+type Observation struct {
+	Step     string
+	Key      string
+	Config   protocol.Config
+	Response protocol.Response
+	Captured map[string]string
+	Vars     map[string]string
+	Failures []string
+	Class    protocol.ErrorClass
+	Duration time.Duration
 }
 
 type Motor struct {
-	cenario      scenario.Cenario
-	plano        Plano
-	opcoes       Opcoes
-	fontes       []data.Fonte
-	autenticador *auth.Gerenciador
-	coletor      atomic.Pointer[metrics.Coletor]
+	scenario      scenario.Scenario
+	plan          Plan
+	opts          Options
+	sources       []data.Source
+	authenticator *auth.Manager
+	collector     atomic.Pointer[metrics.Collector]
 }
 
-func Novo(c scenario.Cenario, opcoes Opcoes) (*Motor, error) {
-	if opcoes.Relogio == nil {
-		opcoes.Relogio = RelogioDoSistema{}
+func New(c scenario.Scenario, opts Options) (*Motor, error) {
+	if opts.Clock == nil {
+		opts.Clock = SystemClock{}
 	}
-	if opcoes.LimiarDeAtraso <= 0 {
-		opcoes.LimiarDeAtraso = 10 * time.Millisecond
+	if opts.LateThreshold <= 0 {
+		opts.LateThreshold = 10 * time.Millisecond
 	}
-	if opcoes.MaximoSimultaneas <= 0 {
-		opcoes.MaximoSimultaneas = 20000
+	if opts.MaxInflight <= 0 {
+		opts.MaxInflight = 20000
 	}
 
-	m := &Motor{cenario: c, plano: CompilarPlano(c.Carga), opcoes: opcoes}
+	m := &Motor{scenario: c, plan: CompilePlan(c.Load), opts: opts}
 
-	for _, fonte := range c.Dados {
-		aberta, err := data.Abrir(fonte, opcoes.RaizDeDados)
+	for _, source := range c.Data {
+		open, err := data.Open(source, opts.DataRoot)
 		if err != nil {
 			return nil, err
 		}
-		m.fontes = append(m.fontes, aberta)
+		m.sources = append(m.sources, open)
 	}
 
-	if c.Autenticacao != nil {
-		m.autenticador = auth.Novo(*c.Autenticacao, m.executarPassoDeAutenticacao, opcoes.Relogio)
+	if c.Auth != nil {
+		m.authenticator = auth.New(*c.Auth, m.runAuthStep, opts.Clock)
 	}
 	return m, nil
 }
 
-func (m *Motor) Plano() Plano { return m.plano }
+func (m *Motor) Plan() Plan { return m.plan }
 
 // Depurar roda uma unica iteracao pelo mesmo caminho da carga: mesmo motor,
 // mesma resolucao de variavel, mesma captura. So a carga muda.
-func (m *Motor) Depurar(ctx context.Context) ([]Observacao, map[string]string, error) {
-	valores := runtime.Novo(0, 0, m.cenario.Variaveis)
+func (m *Motor) Debug(ctx context.Context) ([]Observation, map[string]string, error) {
+	values := runtime.New(0, 0, m.scenario.Vars)
 
-	for _, fonte := range m.fontes {
-		registro, err := fonte.Proximo(0)
+	for _, source := range m.sources {
+		record, err := source.Next(0)
 		if err != nil {
-			return nil, valores.Valores(), err
+			return nil, values.Values(), err
 		}
-		valores.DefinirVarios(registro)
+		values.SetAll(record)
 	}
 
-	var cabecalhoDeAutenticacao [2]string
-	if m.autenticador != nil {
-		nome, valor, err := m.autenticador.Cabecalho(ctx, valores)
+	var authHeader [2]string
+	if m.authenticator != nil {
+		name, value, err := m.authenticator.Header(ctx, values)
 		if err != nil {
-			return nil, valores.Valores(), err
+			return nil, values.Values(), err
 		}
-		cabecalhoDeAutenticacao = [2]string{nome, valor}
+		authHeader = [2]string{name, value}
 	}
 
-	var observacoes []Observacao
-	instante := m.opcoes.Relogio.Agora()
-	for _, passo := range m.cenario.Passos {
-		amostra, observacao := m.executarPasso(ctx, passo, instante, valores, cabecalhoDeAutenticacao)
-		observacoes = append(observacoes, observacao)
-		instante = amostra.InstanteDeTermino
-		if amostra.Classe != protocol.Sucesso {
+	var observations []Observation
+	instant := m.opts.Clock.Now()
+	for _, step := range m.scenario.Steps {
+		sample, observation := m.runStep(ctx, step, instant, values, authHeader)
+		observations = append(observations, observation)
+		instant = sample.FinishedAt
+		if sample.Class != protocol.Success {
 			break
 		}
 	}
-	return observacoes, valores.Valores(), nil
+	return observations, values.Values(), nil
 }
 
-func (m *Motor) Cenario() scenario.Cenario { return m.cenario }
+func (m *Motor) Scenario() scenario.Scenario { return m.scenario }
 
-func (m *Motor) RaizDeDados() string { return filepath.Clean(m.opcoes.RaizDeDados) }
+func (m *Motor) DataRoot() string { return filepath.Clean(m.opts.DataRoot) }
 
-func (m *Motor) Executar(ctx context.Context) metrics.Documento {
-	relogio := m.opcoes.Relogio
-	inicio := relogio.Agora()
-	if err := m.prepararProtocolos(ctx); err != nil {
+func (m *Motor) Execute(ctx context.Context) metrics.Document {
+	clock := m.opts.Clock
+	start := clock.Now()
+	if err := m.prepareProtocols(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 	}
 
-	coletor := metrics.NovoColetor(inicio, m.opcoes.LimiarDeAtraso)
-	m.coletor.Store(coletor)
+	collector := metrics.NewCollector(start, m.opts.LateThreshold)
+	m.collector.Store(collector)
 
-	var emVoo atomic.Int64
-	var grupo sync.WaitGroup
-	pararProgresso := make(chan struct{})
+	var inflight atomic.Int64
+	var group sync.WaitGroup
+	stopProgress := make(chan struct{})
 
-	if m.opcoes.AoProgredir != nil {
-		go m.acompanhar(coletor, inicio, pararProgresso)
+	if m.opts.OnProgress != nil {
+		go m.follow(collector, start, stopProgress)
 	}
 
-	total := m.plano.TotalDeRequisicoes()
-	for indice := int64(0); indice < total; indice++ {
+	total := m.plan.TotalRequests()
+	for index := int64(0); index < total; index++ {
 		if ctx.Err() != nil {
 			break
 		}
-		deslocamento := m.plano.InstanteDe(indice)
-		agendado := inicio.Add(deslocamento)
-		relogio.EsperarAte(agendado)
-		despacho := relogio.Agora()
+		offset := m.plan.InstantOf(index)
+		scheduled := start.Add(offset)
+		clock.WaitUntil(scheduled)
+		dispatch := clock.Now()
 
-		if emVoo.Load() >= m.opcoes.MaximoSimultaneas {
-			coletor.RegistrarDescartePorLimiteDeVoo()
+		if inflight.Load() >= m.opts.MaxInflight {
+			collector.RecordInflightDrop()
 			continue
 		}
 
-		atuais := emVoo.Add(1)
-		coletor.RegistrarDespacho(agendado, despacho, m.plano.TaxaEm(deslocamento), atuais)
+		current := inflight.Add(1)
+		collector.RecordDispatch(scheduled, dispatch, m.plan.RateAt(offset), current)
 
-		grupo.Add(1)
-		go func(usuarioVirtual int64, agendado time.Time) {
-			defer grupo.Done()
-			defer emVoo.Add(-1)
-			m.executarIteracao(ctx, usuarioVirtual, agendado, coletor)
-		}(indice, agendado)
+		group.Add(1)
+		go func(virtualUser int64, scheduled time.Time) {
+			defer group.Done()
+			defer inflight.Add(-1)
+			m.runIteration(ctx, virtualUser, scheduled, collector)
+		}(index, scheduled)
 	}
 
-	grupo.Wait()
-	close(pararProgresso)
-	fim := relogio.Agora()
-	coletor.Encerrar()
+	group.Wait()
+	close(stopProgress)
+	end := clock.Now()
+	collector.Close()
 
-	return metrics.MontarDocumento(coletor, metrics.EntradaDoDocumento{
-		Versao:            m.opcoes.Versao,
-		Cenario:           m.cenario.Nome,
-		Alvo:              m.cenario.Alvo,
-		Modelo:            string(m.cenario.Carga.Modelo),
-		Inicio:            inicio,
-		Fim:               fim,
-		Fases:             m.fasesAplicadas(),
-		MaximoSimultaneas: m.opcoes.MaximoSimultaneas,
-		Sementes:          m.sementes(),
-		Disponibilidade:   m.disponibilidade(),
-		Autenticacoes:     m.obtencoesDeAutenticacao(),
-		AvisosDoCenario:   m.avisosDoCenario(),
+	return metrics.BuildDocument(collector, metrics.DocumentInput{
+		Version:          m.opts.Version,
+		Scenario:         m.scenario.Name,
+		Target:           m.scenario.Target,
+		Model:            string(m.scenario.Load.Model),
+		Start:            start,
+		End:              end,
+		Phases:           m.appliedPhases(),
+		MaxInflight:      m.opts.MaxInflight,
+		Seeds:            m.seeds(),
+		Availability:     m.availability(),
+		AuthObtains:      m.authObtains(),
+		ScenarioWarnings: m.scenarioWarnings(),
 	})
 }
 
 // Espera por sondagem mede em degraus do intervalo: o numero e sempre maior ou
 // igual ao real, e quem le precisa saber disso antes de comparar com um SLO.
-func (m *Motor) avisosDoCenario() []metrics.Aviso {
-	var avisos []metrics.Aviso
-	for _, passo := range m.cenario.Passos {
-		sondagem, sonda := passo.Configuracao.(interface{ IntervaloDeSondagem() time.Duration })
+func (m *Motor) scenarioWarnings() []metrics.Warning {
+	var warnings []metrics.Warning
+	for _, step := range m.scenario.Steps {
+		polling, sonda := step.Config.(interface{ PollInterval() time.Duration })
 		if !sonda {
 			continue
 		}
-		intervalo := sondagem.IntervaloDeSondagem()
-		if intervalo <= 0 {
+		interval := polling.PollInterval()
+		if interval <= 0 {
 			continue
 		}
-		avisos = append(avisos, metrics.Aviso{
-			Tipo:      "espera_por_sondagem",
-			Gravidade: metrics.GravidadeBaixa,
-			Mensagem: fmt.Sprintf("o passo %q espera sondando a cada %s: a latencia dele tem essa granularidade e fica maior que a real, nunca menor",
-				passo.Nome, intervalo),
-			Evidencia: passo.ChaveDeAgregacao(),
+		warnings = append(warnings, metrics.Warning{
+			Kind:     "espera_por_sondagem",
+			Severity: metrics.SeverityLow,
+			Message: fmt.Sprintf("o passo %q espera sondando a cada %s: a latencia dele tem essa granularidade e fica maior que a real, nunca menor",
+				step.Name, interval),
+			Evidence: step.AggregationKey(),
 		})
 	}
-	return avisos
+	return warnings
 }
 
 // Cada chegada agendada e uma iteracao inteira do cenario: e o que faz o valor
 // capturado num passo chegar ao passo seguinte. Se um passo falha, a iteracao
 // para — os passos seguintes dependeriam de uma captura que nao aconteceu.
-func (m *Motor) executarIteracao(ctx context.Context, usuarioVirtual int64, agendado time.Time, coletor *metrics.Coletor) {
-	valores := runtime.Novo(usuarioVirtual, usuarioVirtual, m.cenario.Variaveis)
+func (m *Motor) runIteration(ctx context.Context, virtualUser int64, scheduled time.Time, collector *metrics.Collector) {
+	values := runtime.New(virtualUser, virtualUser, m.scenario.Vars)
 
-	for _, fonte := range m.fontes {
-		registro, err := fonte.Proximo(usuarioVirtual)
+	for _, source := range m.sources {
+		record, err := source.Next(virtualUser)
 		if err != nil {
-			coletor.Registrar(metrics.Amostra{
-				Passo: "dados: " + fonte.Nome(), Chave: fonte.Nome(), Protocolo: "dados",
-				InstanteAgendado: agendado, InstanteDeEnvio: agendado, InstanteDeTermino: m.opcoes.Relogio.Agora(),
-				Classe: protocol.ErroDeConfigacao, Detalhe: err.Error(),
+			collector.Record(metrics.Sample{
+				Step: "dados: " + source.Name(), Key: source.Name(), Protocol: "dados",
+				ScheduledAt: scheduled, SentAt: scheduled, FinishedAt: m.opts.Clock.Now(),
+				Class: protocol.ErrConfig, Detail: err.Error(),
 			})
 			return
 		}
-		valores.DefinirVarios(registro)
+		values.SetAll(record)
 	}
 
-	var cabecalhoDeAutenticacao [2]string
-	if m.autenticador != nil {
-		nome, valor, err := m.autenticador.Cabecalho(ctx, valores)
+	var authHeader [2]string
+	if m.authenticator != nil {
+		name, value, err := m.authenticator.Header(ctx, values)
 		if err != nil {
-			coletor.Registrar(metrics.Amostra{
-				Passo: "autenticacao", Chave: "autenticacao", Protocolo: "http",
-				InstanteAgendado: agendado, InstanteDeEnvio: agendado, InstanteDeTermino: m.opcoes.Relogio.Agora(),
-				Classe: protocol.ErroDeAutenticacao, Detalhe: fmt.Sprintf("%v — alvo %s", err, m.cenario.Alvo),
+			collector.Record(metrics.Sample{
+				Step: "autenticacao", Key: "autenticacao", Protocol: "http",
+				ScheduledAt: scheduled, SentAt: scheduled, FinishedAt: m.opts.Clock.Now(),
+				Class: protocol.ErrAuth, Detail: fmt.Sprintf("%v — alvo %s", err, m.scenario.Target),
 			})
 			return
 		}
-		cabecalhoDeAutenticacao = [2]string{nome, valor}
+		authHeader = [2]string{name, value}
 	}
 
-	instanteDoPasso := agendado
-	completa := true
-	for indice, passo := range m.cenario.Passos {
-		amostra, _ := m.executarPasso(ctx, passo, instanteDoPasso, valores, cabecalhoDeAutenticacao)
-		if indice == 0 {
-			amostra.TipoDeLatencia = metrics.LatenciaCorrigida
+	stepInstant := scheduled
+	complete := true
+	for index, step := range m.scenario.Steps {
+		sample, _ := m.runStep(ctx, step, stepInstant, values, authHeader)
+		if index == 0 {
+			sample.LatencyKind = metrics.CorrectedLatency
 		} else {
-			amostra.TipoDeLatencia = metrics.LatenciaDeServico
+			sample.LatencyKind = metrics.ServiceLatency
 		}
-		coletor.Registrar(amostra)
-		instanteDoPasso = amostra.InstanteDeTermino
-		if amostra.Classe != protocol.Sucesso {
-			completa = false
+		collector.Record(sample)
+		stepInstant = sample.FinishedAt
+		if sample.Class != protocol.Success {
+			complete = false
 			break
 		}
 	}
-	coletor.RegistrarJornada(agendado, instanteDoPasso, completa)
-	coletor.RegistrarUsos(valores.Usos())
+	collector.RecordJourney(scheduled, stepInstant, complete)
+	collector.RecordUses(values.Uses())
 }
 
-func (m *Motor) executarPasso(ctx context.Context, passo scenario.Passo, agendado time.Time,
-	valores *runtime.Contexto, cabecalhoDeAutenticacao [2]string) (metrics.Amostra, Observacao) {
+func (m *Motor) runStep(ctx context.Context, step scenario.Step, scheduled time.Time,
+	values *runtime.Values, authHeader [2]string) (metrics.Sample, Observation) {
 
-	relogio := m.opcoes.Relogio
-	observacao := Observacao{Passo: passo.Nome, Chave: passo.ChaveDeAgregacao(), Capturado: map[string]string{}}
-	amostra := metrics.Amostra{
-		Passo: passo.Nome, Chave: passo.ChaveDeAgregacao(), Protocolo: passo.Protocolo,
-		InstanteAgendado: agendado,
+	clock := m.opts.Clock
+	observation := Observation{Step: step.Name, Key: step.AggregationKey(), Captured: map[string]string{}}
+	sample := metrics.Sample{
+		Step: step.Name, Key: step.AggregationKey(), Protocol: step.Protocol,
+		ScheduledAt: scheduled,
 	}
 
-	implementacao, existe := protocol.Buscar(passo.Protocolo)
-	if !existe {
-		amostra.InstanteDeEnvio = relogio.Agora()
-		amostra.InstanteDeTermino = amostra.InstanteDeEnvio
-		amostra.Classe = protocol.ErroDeConfigacao
-		amostra.Detalhe = "protocolo nao compilado neste binario"
-		return amostra, observacao
+	implementation, exists := protocol.Lookup(step.Protocol)
+	if !exists {
+		sample.SentAt = clock.Now()
+		sample.FinishedAt = sample.SentAt
+		sample.Class = protocol.ErrConfig
+		sample.Detail = "protocolo nao compilado neste binario"
+		return sample, observation
 	}
 
-	configuracao := passo.Configuracao.Resolver(valores.Resolver)
-	if cabecalhoDeAutenticacao[0] != "" {
-		if comCabecalhos, aceita := configuracao.(protocol.ConfiguracaoComCabecalhos); aceita {
-			configuracao = comCabecalhos.ComCabecalho(cabecalhoDeAutenticacao[0], cabecalhoDeAutenticacao[1])
+	config := step.Config.Resolve(values.Resolve)
+	if authHeader[0] != "" {
+		if withHeaders, accepts := config.(protocol.WithHeaders); accepts {
+			config = withHeaders.WithHeader(authHeader[0], authHeader[1])
 		}
 	}
-	observacao.Configuracao = configuracao
+	observation.Config = config
 
-	amostra.InstanteDeEnvio = relogio.Agora()
-	resposta := implementacao.Executar(ctx, protocol.Requisicao{
-		NomeDoPasso:  passo.Nome,
-		Configuracao: configuracao,
-		URLBase:      m.cenario.Alvo,
-		Variaveis:    valores.Valores(),
+	sample.SentAt = clock.Now()
+	response := implementation.Execute(ctx, protocol.Request{
+		StepName: step.Name,
+		Config:   config,
+		URLBase:  m.scenario.Target,
+		Vars:     values.Values(),
 	})
-	amostra.InstanteDeTermino = relogio.Agora()
-	amostra.Status = resposta.Status
-	amostra.Bytes = resposta.Bytes
-	amostra.Classe = resposta.Classe
-	amostra.Detalhe = resposta.Detalhe
-	observacao.Resposta = resposta
-	observacao.Duracao = amostra.InstanteDeTermino.Sub(amostra.InstanteDeEnvio)
+	sample.FinishedAt = clock.Now()
+	sample.Status = response.Status
+	sample.Bytes = response.Bytes
+	sample.Class = response.Class
+	sample.Detail = response.Detail
+	observation.Response = response
+	observation.Duration = sample.FinishedAt.Sub(sample.SentAt)
 
-	if coletor := m.coletor.Load(); coletor != nil && len(resposta.Atributos) > 0 {
-		coletor.RegistrarUsos(resposta.Atributos)
+	if collector := m.collector.Load(); collector != nil && len(response.Attributes) > 0 {
+		collector.RecordUses(response.Attributes)
 	}
 
-	if resposta.Chave != "" {
-		amostra.Chave = resposta.Chave
-		observacao.Chave = resposta.Chave
+	if response.Key != "" {
+		sample.Key = response.Key
+		observation.Key = response.Key
 	}
 
-	if amostra.Classe == protocol.Sucesso {
-		if classe, detalhe := m.verificar(passo, resposta, valores); classe != protocol.Sucesso {
-			amostra.Classe = classe
-			amostra.Detalhe = detalhe
-			observacao.Falhas = append(observacao.Falhas, detalhe)
+	if sample.Class == protocol.Success {
+		if class, detail := m.verificar(step, response, values); class != protocol.Success {
+			sample.Class = class
+			sample.Detail = detail
+			observation.Failures = append(observation.Failures, detail)
 		}
 	}
 
-	if amostra.Classe == protocol.Sucesso {
-		for _, captura := range passo.Capturas {
-			valor, err := correlation.Extrair(captura, resposta)
+	if sample.Class == protocol.Success {
+		for _, capture := range step.Captures {
+			value, err := correlation.Extract(capture, response)
 			if err != nil {
-				if captura.Obrigatoria {
-					amostra.Classe = protocol.ErroDeCorrelacao
-					amostra.Detalhe = err.Error()
-					observacao.Falhas = append(observacao.Falhas, err.Error())
+				if capture.Required {
+					sample.Class = protocol.ErrCorrelation
+					sample.Detail = err.Error()
+					observation.Failures = append(observation.Failures, err.Error())
 					break
 				}
-				valor = captura.Padrao
+				value = capture.Default
 			}
-			valores.Definir(captura.Variavel, valor)
-			observacao.Capturado[captura.Variavel] = valor
+			values.Set(capture.Variable, value)
+			observation.Captured[capture.Variable] = value
 		}
 	}
 
-	observacao.Classe = amostra.Classe
-	observacao.Variaveis = valores.Valores()
-	return amostra, observacao
+	observation.Class = sample.Class
+	observation.Vars = values.Values()
+	return sample, observation
 }
 
-func (m *Motor) verificar(passo scenario.Passo, resposta protocol.Resposta, valores *runtime.Contexto) (protocol.ClasseDeErro, string) {
-	for _, verificacao := range passo.Verificacoes {
-		switch verificacao.Tipo {
-		case scenario.VerificarStatus:
-			if resposta.Status != verificacao.Status {
-				return protocol.ErroDeStatus, fmt.Sprintf("esperava status %d, recebeu %d", verificacao.Status, resposta.Status)
+func (m *Motor) verificar(step scenario.Step, response protocol.Response, values *runtime.Values) (protocol.ErrorClass, string) {
+	for _, check := range step.Checks {
+		switch check.Kind {
+		case scenario.CheckStatus:
+			if response.Status != check.Status {
+				return protocol.ErrStatus, fmt.Sprintf("esperava status %d, recebeu %d", check.Status, response.Status)
 			}
-		case scenario.VerificarCorpo:
-			if !bytes.Contains(resposta.Corpo, []byte(verificacao.Texto)) {
-				return protocol.ErroDeAssercao, fmt.Sprintf("o corpo nao contem %q", verificacao.Texto)
+		case scenario.CheckBody:
+			if !bytes.Contains(response.Body, []byte(check.Text)) {
+				return protocol.ErrAssertion, fmt.Sprintf("o corpo nao contem %q", check.Text)
 			}
 		}
 	}
-	for _, assercao := range passo.Assercoes {
-		if err := correlation.Avaliar(assercao, resposta, valores.Resolver); err != nil {
-			return protocol.ErroDeAssercao, err.Error()
+	for _, assertion := range step.Assertions {
+		if err := correlation.Evaluate(assertion, response, values.Resolve); err != nil {
+			return protocol.ErrAssertion, err.Error()
 		}
 	}
-	return protocol.Sucesso, ""
+	return protocol.Success, ""
 }
 
-func (m *Motor) executarPassoDeAutenticacao(ctx context.Context, passo scenario.Passo, valores *runtime.Contexto) (protocol.Resposta, error) {
-	amostra, observacao := m.executarPasso(ctx, passo, m.opcoes.Relogio.Agora(), valores, [2]string{})
-	if amostra.Classe != protocol.Sucesso && amostra.Classe != protocol.ErroDeStatus {
-		return observacao.Resposta, fmt.Errorf("%s", amostra.Detalhe)
+func (m *Motor) runAuthStep(ctx context.Context, step scenario.Step, values *runtime.Values) (protocol.Response, error) {
+	sample, observation := m.runStep(ctx, step, m.opts.Clock.Now(), values, [2]string{})
+	if sample.Class != protocol.Success && sample.Class != protocol.ErrStatus {
+		return observation.Response, fmt.Errorf("%s", sample.Detail)
 	}
-	return observacao.Resposta, nil
+	return observation.Response, nil
 }
 
-func (m *Motor) acompanhar(coletor *metrics.Coletor, inicio time.Time, parar <-chan struct{}) {
-	intervalo := m.opcoes.IntervaloDeProgresso
-	if intervalo <= 0 {
-		intervalo = time.Second
+func (m *Motor) follow(collector *metrics.Collector, start time.Time, stop <-chan struct{}) {
+	interval := m.opts.ProgressInterval
+	if interval <= 0 {
+		interval = time.Second
 	}
-	tique := time.NewTicker(intervalo)
-	defer tique.Stop()
+	tick := time.NewTicker(interval)
+	defer tick.Stop()
 	for {
 		select {
-		case <-parar:
+		case <-stop:
 			return
-		case <-tique.C:
-			decorrido := time.Since(inicio)
-			restante := m.plano.Duracao() - decorrido
-			if restante < 0 {
-				restante = 0
+		case <-tick.C:
+			elapsed := time.Since(start)
+			remaining := m.plan.Duration() - elapsed
+			if remaining < 0 {
+				remaining = 0
 			}
-			m.opcoes.AoProgredir(coletor.Instantaneo(), m.plano.TaxaEm(decorrido), restante)
+			m.opts.OnProgress(collector.Instantaneo(), m.plan.RateAt(elapsed), remaining)
 		}
 	}
 }
 
-func (m *Motor) fasesAplicadas() []metrics.FaseAplicada {
-	fases := make([]metrics.FaseAplicada, 0, len(m.cenario.Carga.Fases))
-	for _, fase := range m.cenario.Carga.Fases {
-		fases = append(fases, metrics.FaseAplicada{
-			Tipo:      string(fase.Tipo),
-			De:        fase.TaxaInicial(),
-			Ate:       fase.TaxaFinal(),
-			DuracaoMs: fase.Durante.Milliseconds(),
+func (m *Motor) appliedPhases() []metrics.AppliedPhase {
+	phases := make([]metrics.AppliedPhase, 0, len(m.scenario.Load.Phases))
+	for _, phase := range m.scenario.Load.Phases {
+		phases = append(phases, metrics.AppliedPhase{
+			Kind:       string(phase.Kind),
+			From:       phase.InitialRate(),
+			To:         phase.FinalRate(),
+			DurationMs: phase.For.Milliseconds(),
 		})
 	}
-	return fases
+	return phases
 }
 
-func (m *Motor) prepararProtocolos(ctx context.Context) error {
-	valores := runtime.Novo(0, 0, m.cenario.Variaveis)
-	for _, passo := range m.cenario.Passos {
-		implementacao, existe := protocol.Buscar(passo.Protocolo)
-		if !existe {
+func (m *Motor) prepareProtocols(ctx context.Context) error {
+	values := runtime.New(0, 0, m.scenario.Vars)
+	for _, step := range m.scenario.Steps {
+		implementation, exists := protocol.Lookup(step.Protocol)
+		if !exists {
 			continue
 		}
-		preparador, precisa := implementacao.(protocol.ProtocoloComPreparacao)
-		if !precisa {
+		preparer, needs := implementation.(protocol.Preparable)
+		if !needs {
 			continue
 		}
-		erro := preparador.Preparar(ctx, protocol.Requisicao{
-			NomeDoPasso:  passo.Nome,
-			Configuracao: passo.Configuracao.Resolver(valores.Resolver),
-			URLBase:      m.cenario.Alvo,
+		err := preparer.Prepare(ctx, protocol.Request{
+			StepName: step.Name,
+			Config:   step.Config.Resolve(values.Resolve),
+			URLBase:  m.scenario.Target,
 		})
-		if erro != nil {
-			return fmt.Errorf("nao consegui preparar o passo %q: %w", passo.Nome, erro)
+		if err != nil {
+			return fmt.Errorf("nao consegui preparar o passo %q: %w", step.Name, err)
 		}
 	}
 	return nil
 }
 
-func (m *Motor) disponibilidade() metrics.Disponibilidade {
-	disponibilidade := metrics.Disponibilidade{}
-	for _, fonte := range m.fontes {
-		for nome, quantos := range fonte.Disponiveis() {
-			disponibilidade[nome] = quantos
+func (m *Motor) availability() metrics.Availability {
+	availability := metrics.Availability{}
+	for _, source := range m.sources {
+		for name, howMany := range source.Available() {
+			availability[name] = howMany
 		}
 	}
-	for _, nome := range protocol.Registrados() {
-		implementacao, _ := protocol.Buscar(nome)
-		if sabe, tem := implementacao.(protocol.ProtocoloComDisponibilidade); tem {
-			for chave, quantos := range sabe.Disponiveis() {
-				disponibilidade[chave] = quantos
+	for _, name := range protocol.Registered() {
+		implementation, _ := protocol.Lookup(name)
+		if knows, has := implementation.(protocol.WithAvailability); has {
+			for key, howMany := range knows.Available() {
+				availability[key] = howMany
 			}
 		}
 	}
 	// O token e um so por execucao por decisao declarada (ADR 0005), entao um
 	// valor unico aqui nao e defeito: a limitacao ja aparece no bloco de
 	// ambiente, e repetir como aviso grave abafaria os avisos que importam.
-	if m.cenario.Autenticacao != nil && m.cenario.Autenticacao.Obter != nil {
-		for _, captura := range m.cenario.Autenticacao.Obter.Capturas {
-			disponibilidade[captura.Variavel] = 1
+	if m.scenario.Auth != nil && m.scenario.Auth.Obtain != nil {
+		for _, capture := range m.scenario.Auth.Obtain.Captures {
+			availability[capture.Variable] = 1
 		}
 	}
-	return disponibilidade
+	return availability
 }
 
 // Semente so existe para fonte sintetica: anotar semente de um CSV sugeriria
 // que o arquivo foi sorteado, e a frase do relatorio sobre variedade e a
 // variedade observada ([ADR 0007]), nunca a semente declarada.
-func (m *Motor) sementes() map[string]int64 {
-	sementes := map[string]int64{}
-	for _, fonte := range m.cenario.Dados {
-		if !fonte.Sintetica() {
+func (m *Motor) seeds() map[string]int64 {
+	seeds := map[string]int64{}
+	for _, source := range m.scenario.Data {
+		if !source.Synthetic() {
 			continue
 		}
-		semente := fonte.Semente
-		if semente == 0 {
-			semente = 1
+		seed := source.Seed
+		if seed == 0 {
+			seed = 1
 		}
-		sementes[fonte.Nome] = semente
+		seeds[source.Name] = seed
 	}
-	return sementes
+	return seeds
 }
 
-func (m *Motor) obtencoesDeAutenticacao() int64 {
-	if m.autenticador == nil {
+func (m *Motor) authObtains() int64 {
+	if m.authenticator == nil {
 		return 0
 	}
-	return m.autenticador.Obtencoes
+	return m.authenticator.Obtains
 }

@@ -17,101 +17,101 @@ import (
 )
 
 func init() {
-	protocol.Registrar(Novo(protocol.OpcoesPadrao()))
+	protocol.Record(New(protocol.DefaultOptions()))
 }
 
-type Configuracao struct {
-	Topico     string
-	Chave      string
-	Valor      []byte
-	Cabecalhos map[string]string
-	Brokers    []string
-	Acks       string
-	Timeout    time.Duration
+type Config struct {
+	Topic   string
+	Key     string
+	Value   []byte
+	Headers map[string]string
+	Brokers []string
+	Acks    string
+	Timeout time.Duration
 }
 
-func (c *Configuracao) Protocolo() string { return "kafka" }
+func (c *Config) Protocol() string { return "kafka" }
 
 // A chave e o topico, e nao o broker: quem le o relatorio precisa saber qual
 // fluxo de negocio ficou lento, nao qual maquina recebeu o byte.
-func (c *Configuracao) ChaveDeAgregacao() string {
-	return "kafka produzir " + c.Topico
+func (c *Config) AggregationKey() string {
+	return "kafka produzir " + c.Topic
 }
 
-func (c *Configuracao) Resolver(resolver func(string) string) protocol.Configuracao {
-	copia := *c
-	copia.Topico = resolver(c.Topico)
-	copia.Chave = resolver(c.Chave)
-	if len(c.Valor) > 0 {
-		copia.Valor = []byte(resolver(string(c.Valor)))
+func (c *Config) Resolve(resolve func(string) string) protocol.Config {
+	clone := *c
+	clone.Topic = resolve(c.Topic)
+	clone.Key = resolve(c.Key)
+	if len(c.Value) > 0 {
+		clone.Value = []byte(resolve(string(c.Value)))
 	}
-	copia.Cabecalhos = make(map[string]string, len(c.Cabecalhos))
-	for nome, valor := range c.Cabecalhos {
-		copia.Cabecalhos[nome] = resolver(valor)
+	clone.Headers = make(map[string]string, len(c.Headers))
+	for name, value := range c.Headers {
+		clone.Headers[name] = resolve(value)
 	}
-	return &copia
+	return &clone
 }
 
-func (c *Configuracao) Descrever() []string {
-	linhas := []string{fmt.Sprintf("produzir em %s (chave %q)", c.Topico, c.Chave)}
-	nomes := make([]string, 0, len(c.Cabecalhos))
-	for nome := range c.Cabecalhos {
-		nomes = append(nomes, nome)
+func (c *Config) Describe() []string {
+	lines := []string{fmt.Sprintf("produzir em %s (chave %q)", c.Topic, c.Key)}
+	names := make([]string, 0, len(c.Headers))
+	for name := range c.Headers {
+		names = append(names, name)
 	}
-	sort.Strings(nomes)
-	for _, nome := range nomes {
-		linhas = append(linhas, fmt.Sprintf("cabecalho %s: %s", nome, c.Cabecalhos[nome]))
+	sort.Strings(names)
+	for _, name := range names {
+		lines = append(lines, fmt.Sprintf("cabecalho %s: %s", name, c.Headers[name]))
 	}
 	if len(c.Brokers) > 0 {
-		linhas = append(linhas, "brokers: "+strings.Join(c.Brokers, ", "))
+		lines = append(lines, "brokers: "+strings.Join(c.Brokers, ", "))
 	}
-	linhas = append(linhas, "acks: "+c.Acks)
-	if len(c.Valor) > 0 {
-		linhas = append(linhas, "valor: "+string(c.Valor))
+	lines = append(lines, "acks: "+c.Acks)
+	if len(c.Value) > 0 {
+		lines = append(lines, "valor: "+string(c.Value))
 	}
-	return linhas
+	return lines
 }
 
-type Protocolo struct {
-	opcoes     protocol.Opcoes
-	mutex      sync.Mutex
-	escritores map[string]*kafka.Writer
-	particoes  map[string]int64
+type Protocol struct {
+	opts       protocol.Options
+	mu         sync.Mutex
+	writers    map[string]*kafka.Writer
+	partitions map[string]int64
 }
 
-func Novo(opcoes protocol.Opcoes) *Protocolo {
-	return &Protocolo{opcoes: opcoes, escritores: map[string]*kafka.Writer{}, particoes: map[string]int64{}}
+func New(opts protocol.Options) *Protocol {
+	return &Protocol{opts: opts, writers: map[string]*kafka.Writer{}, partitions: map[string]int64{}}
 }
 
-func (p *Protocolo) Nome() string { return "kafka" }
+func (p *Protocol) Name() string { return "kafka" }
 
-func (p *Protocolo) Encerrar() error {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	var ultimo error
-	for chave, escritor := range p.escritores {
-		if err := escritor.Close(); err != nil {
-			ultimo = err
+func (p *Protocol) Close() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	var last error
+	for key, writer := range p.writers {
+		if err := writer.Close(); err != nil {
+			last = err
 		}
-		delete(p.escritores, chave)
+		delete(p.writers, key)
 	}
-	return ultimo
+	return last
 }
 
 // Quantas particoes cada topico tem. E o que permite ao relatorio dizer que
 // mandar tudo para uma particao so foi defeito de chave, e nao um topico de
 // uma particao.
-func (p *Protocolo) Disponiveis() map[string]int64 {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	disponiveis := make(map[string]int64, len(p.particoes))
-	for topico, quantas := range p.particoes {
-		disponiveis["kafka.particao."+topico] = quantas
+func (p *Protocol) Available() map[string]int64 {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	available := make(map[string]int64, len(p.partitions))
+	for topic, howMany := range p.partitions {
+		available["kafka.particao."+topic] = howMany
 	}
-	return disponiveis
+	return available
 }
 
-func (p *Protocolo) Decodificar(no *yaml.Node) (protocol.Configuracao, error) {
+func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
 	if no == nil || no.Kind != yaml.MappingNode {
 		return nil, errors.New(`passo kafka precisa ser um mapa, por exemplo:
   - kafka:
@@ -120,179 +120,179 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocol.Configuracao, error) {
       valor: { id: "${assinantes.id}", total: 199.90 }`)
 	}
 
-	configuracao := Padrao()
-	for indice := 0; indice+1 < len(no.Content); indice += 2 {
-		chave := no.Content[indice]
-		valor := no.Content[indice+1]
-		switch chave.Value {
+	config := Default()
+	for index := 0; index+1 < len(no.Content); index += 2 {
+		key := no.Content[index]
+		value := no.Content[index+1]
+		switch key.Value {
 		case "topico":
-			configuracao.Topico = valor.Value
+			config.Topic = value.Value
 		case "chave":
-			configuracao.Chave = valor.Value
+			config.Key = value.Value
 		case "valor":
-			corpo, err := lerValor(valor)
+			body, err := readValue(value)
 			if err != nil {
 				return nil, err
 			}
-			configuracao.Valor = corpo
+			config.Value = body
 		case "cabecalhos":
-			if valor.Kind != yaml.MappingNode {
+			if value.Kind != yaml.MappingNode {
 				return nil, errors.New("cabecalhos precisa ser um mapa")
 			}
-			for i := 0; i+1 < len(valor.Content); i += 2 {
-				configuracao.Cabecalhos[valor.Content[i].Value] = valor.Content[i+1].Value
+			for i := 0; i+1 < len(value.Content); i += 2 {
+				config.Headers[value.Content[i].Value] = value.Content[i+1].Value
 			}
 		case "brokers":
-			if valor.Kind == yaml.ScalarNode {
-				configuracao.Brokers = strings.Split(valor.Value, ",")
+			if value.Kind == yaml.ScalarNode {
+				config.Brokers = strings.Split(value.Value, ",")
 				break
 			}
-			for _, item := range valor.Content {
-				configuracao.Brokers = append(configuracao.Brokers, item.Value)
+			for _, item := range value.Content {
+				config.Brokers = append(config.Brokers, item.Value)
 			}
 		case "acks":
-			switch valor.Value {
+			switch value.Value {
 			case "todos", "lider", "nenhum":
-				configuracao.Acks = valor.Value
+				config.Acks = value.Value
 			default:
-				return nil, fmt.Errorf("acks desconhecido: %q (use todos, lider ou nenhum)", valor.Value)
+				return nil, fmt.Errorf("acks desconhecido: %q (use todos, lider ou nenhum)", value.Value)
 			}
 		case "timeout":
-			duracao, err := time.ParseDuration(valor.Value)
+			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout invalido: %q (use 5s, 30s)", valor.Value)
+				return nil, fmt.Errorf("timeout invalido: %q (use 5s, 30s)", value.Value)
 			}
-			configuracao.Timeout = duracao
+			config.Timeout = duration
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo kafka: %q (use topico, chave, valor, cabecalhos, brokers, acks ou timeout)", chave.Value)
+			return nil, fmt.Errorf("chave desconhecida no passo kafka: %q (use topico, chave, valor, cabecalhos, brokers, acks ou timeout)", key.Value)
 		}
 	}
 
-	if err := Validar(configuracao); err != nil {
+	if err := Validate(config); err != nil {
 		return nil, err
 	}
-	return configuracao, nil
+	return config, nil
 }
 
 // Padrao e Validar sao o caminho unico de construcao: a DSL em Go recusa o
 // mesmo cenario que o YAML recusa, com a mesma mensagem.
-func Padrao() *Configuracao {
-	return &Configuracao{Cabecalhos: map[string]string{}, Acks: "todos"}
+func Default() *Config {
+	return &Config{Headers: map[string]string{}, Acks: "todos"}
 }
 
-func Validar(configuracao *Configuracao) error {
-	if configuracao.Topico == "" {
+func Validate(config *Config) error {
+	if config.Topic == "" {
 		return errors.New(`passo kafka sem topico, por exemplo:
   - kafka: { topico: pedidos, valor: { id: "${assinantes.id}" } }`)
 	}
-	if len(configuracao.Valor) == 0 {
+	if len(config.Value) == 0 {
 		return errors.New(`passo kafka sem valor: uma mensagem vazia nao exercita o consumidor.
   - kafka: { topico: pedidos, valor: { id: "${assinantes.id}" } }`)
 	}
 	return nil
 }
 
-func lerValor(no *yaml.Node) ([]byte, error) {
+func readValue(no *yaml.Node) ([]byte, error) {
 	if no.Kind == yaml.ScalarNode {
 		return []byte(no.Value), nil
 	}
-	var estrutura any
-	if err := no.Decode(&estrutura); err != nil {
+	var structure any
+	if err := no.Decode(&structure); err != nil {
 		return nil, fmt.Errorf("valor invalido: %v", err)
 	}
-	corpo, err := json.Marshal(estrutura)
+	body, err := json.Marshal(structure)
 	if err != nil {
 		return nil, fmt.Errorf("valor nao serializa para JSON: %v", err)
 	}
-	return corpo, nil
+	return body, nil
 }
 
-func (p *Protocolo) Executar(ctx context.Context, requisicao protocol.Requisicao) protocol.Resposta {
-	configuracao, ok := requisicao.Configuracao.(*Configuracao)
+func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protocol.Response {
+	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Resposta{Classe: protocol.ErroDeConfigacao, Detalhe: "configuracao nao e de kafka"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de kafka"}
 	}
 
-	brokers := configuracao.Brokers
+	brokers := config.Brokers
 	if len(brokers) == 0 {
-		brokers = brokersDoAlvo(requisicao.URLBase)
+		brokers = targetBrokers(request.URLBase)
 	}
 	if len(brokers) == 0 {
-		return protocol.Resposta{
-			Classe:  protocol.ErroDeConfigacao,
-			Detalhe: "sem broker: declare 'brokers' no passo ou aponte o alvo do cenario para kafka://host:9092",
+		return protocol.Response{
+			Class:  protocol.ErrConfig,
+			Detail: "sem broker: declare 'brokers' no passo ou aponte o alvo do cenario para kafka://host:9092",
 		}
 	}
 
-	escritor, err := p.escritorDe(brokers, configuracao)
+	writer, err := p.writerOf(brokers, config)
 	if err != nil {
-		return protocol.Resposta{Classe: protocol.ErroDeConfigacao, Detalhe: err.Error()}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
 	}
 
-	if configuracao.Timeout > 0 {
-		var cancelar context.CancelFunc
-		ctx, cancelar = context.WithTimeout(ctx, configuracao.Timeout)
-		defer cancelar()
+	if config.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, config.Timeout)
+		defer cancel()
 	}
 
-	mensagem := kafka.Message{Value: configuracao.Valor}
-	if configuracao.Chave != "" {
-		mensagem.Key = []byte(configuracao.Chave)
+	message := kafka.Message{Value: config.Value}
+	if config.Key != "" {
+		message.Key = []byte(config.Key)
 	}
-	for nome, valor := range configuracao.Cabecalhos {
-		mensagem.Headers = append(mensagem.Headers, kafka.Header{Key: nome, Value: []byte(valor)})
-	}
-
-	if err := escritor.WriteMessages(ctx, mensagem); err != nil {
-		return protocol.Resposta{Classe: classificar(err), Detalhe: resumir(err.Error())}
+	for name, value := range config.Headers {
+		message.Headers = append(message.Headers, kafka.Header{Key: name, Value: []byte(value)})
 	}
 
-	particao := p.particaoDe(brokers, configuracao.Topico, mensagem.Key)
-	resposta := protocol.Resposta{
-		Bytes:  int64(len(configuracao.Valor) + len(mensagem.Key)),
-		Classe: protocol.Sucesso,
+	if err := writer.WriteMessages(ctx, message); err != nil {
+		return protocol.Response{Class: classificar(err), Detail: summarize(err.Error())}
 	}
-	if particao >= 0 {
-		resposta.Atributos = map[string]string{
-			"kafka.particao." + configuracao.Topico: strconv.Itoa(particao),
+
+	partition := p.partitionOf(brokers, config.Topic, message.Key)
+	response := protocol.Response{
+		Bytes: int64(len(config.Value) + len(message.Key)),
+		Class: protocol.Success,
+	}
+	if partition >= 0 {
+		response.Attributes = map[string]string{
+			"kafka.particao." + config.Topic: strconv.Itoa(partition),
 		}
 	}
-	return resposta
+	return response
 }
 
-func (p *Protocolo) escritorDe(brokers []string, configuracao *Configuracao) (*kafka.Writer, error) {
-	chave := strings.Join(brokers, ",") + "|" + configuracao.Topico + "|" + configuracao.Acks
+func (p *Protocol) writerOf(brokers []string, config *Config) (*kafka.Writer, error) {
+	key := strings.Join(brokers, ",") + "|" + config.Topic + "|" + config.Acks
 
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	if escritor, existe := p.escritores[chave]; existe {
-		return escritor, nil
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if writer, exists := p.writers[key]; exists {
+		return writer, nil
 	}
 
 	// Sem lote e sem espera: o braunrate mede o tempo ate o broker confirmar a
 	// mensagem daquela chegada agendada. Agrupar mensagens melhoraria a vazao e
 	// mediria o lote, nao a mensagem.
-	escritor := &kafka.Writer{
+	writer := &kafka.Writer{
 		Addr:                   kafka.TCP(brokers...),
-		Topic:                  configuracao.Topico,
+		Topic:                  config.Topic,
 		Balancer:               &kafka.Hash{},
 		BatchSize:              1,
 		BatchTimeout:           time.Millisecond,
-		RequiredAcks:           acksDe(configuracao.Acks),
+		RequiredAcks:           acksOf(config.Acks),
 		AllowAutoTopicCreation: true,
 		Async:                  false,
 	}
-	p.escritores[chave] = escritor
+	p.writers[key] = writer
 
-	if _, medido := p.particoes[configuracao.Topico]; !medido {
-		if quantas := contarParticoes(brokers, configuracao.Topico); quantas > 0 {
-			p.particoes[configuracao.Topico] = int64(quantas)
+	if _, measured := p.partitions[config.Topic]; !measured {
+		if howMany := countPartitions(brokers, config.Topic); howMany > 0 {
+			p.partitions[config.Topic] = int64(howMany)
 		}
 	}
-	return escritor, nil
+	return writer, nil
 }
 
-func acksDe(acks string) kafka.RequiredAcks {
+func acksOf(acks string) kafka.RequiredAcks {
 	switch acks {
 	case "nenhum":
 		return kafka.RequireNone
@@ -306,70 +306,70 @@ func acksDe(acks string) kafka.RequiredAcks {
 // A particao e calculada com o mesmo balanceador usado no envio: o kafka-go nao
 // devolve a particao escolhida, e a alternativa seria nao declarar nada sobre
 // distribuicao — que e justamente onde a carga fica otimista sem ninguem ver.
-func (p *Protocolo) particaoDe(brokers []string, topico string, chave []byte) int {
-	p.mutex.Lock()
-	quantas, conhecida := p.particoes[topico]
-	p.mutex.Unlock()
-	if !conhecida || quantas <= 0 {
+func (p *Protocol) partitionOf(brokers []string, topic string, key []byte) int {
+	p.mu.Lock()
+	howMany, known := p.partitions[topic]
+	p.mu.Unlock()
+	if !known || howMany <= 0 {
 		return -1
 	}
-	if len(chave) == 0 {
+	if len(key) == 0 {
 		return -1
 	}
-	balanceador := &kafka.Hash{}
-	lista := make([]int, 0, quantas)
-	for indice := 0; indice < int(quantas); indice++ {
-		lista = append(lista, indice)
+	balancer := &kafka.Hash{}
+	list := make([]int, 0, howMany)
+	for index := 0; index < int(howMany); index++ {
+		list = append(list, index)
 	}
-	return balanceador.Balance(kafka.Message{Key: chave}, lista...)
+	return balancer.Balance(kafka.Message{Key: key}, list...)
 }
 
-func contarParticoes(brokers []string, topico string) int {
-	conexao, err := kafka.Dial("tcp", brokers[0])
+func countPartitions(brokers []string, topic string) int {
+	conn, err := kafka.Dial("tcp", brokers[0])
 	if err != nil {
 		return 0
 	}
-	defer conexao.Close()
-	particoes, err := conexao.ReadPartitions(topico)
+	defer conn.Close()
+	partitions, err := conn.ReadPartitions(topic)
 	if err != nil {
 		return 0
 	}
-	return len(particoes)
+	return len(partitions)
 }
 
-func brokersDoAlvo(alvo string) []string {
-	if alvo == "" {
+func targetBrokers(target string) []string {
+	if target == "" {
 		return nil
 	}
-	endereco := strings.TrimPrefix(strings.TrimPrefix(alvo, "kafka://"), "tcp://")
-	endereco = strings.TrimSuffix(endereco, "/")
-	if strings.HasPrefix(alvo, "http://") || strings.HasPrefix(alvo, "https://") {
+	address := strings.TrimPrefix(strings.TrimPrefix(target, "kafka://"), "tcp://")
+	address = strings.TrimSuffix(address, "/")
+	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
 		return nil
 	}
-	if endereco == "" {
+	if address == "" {
 		return nil
 	}
-	return strings.Split(endereco, ",")
+	return strings.Split(address, ",")
 }
 
-func classificar(err error) protocol.ClasseDeErro {
+func classificar(err error) protocol.ErrorClass {
 	if errors.Is(err, context.DeadlineExceeded) {
-		return protocol.ErroDeTimeout
+		return protocol.ErrTimeout
 	}
-	texto := err.Error()
-	if strings.Contains(texto, "timeout") || strings.Contains(texto, "deadline") {
-		return protocol.ErroDeTimeout
+	text := err.Error()
+	if strings.Contains(text, "timeout") || strings.Contains(text, "deadline") {
+		return protocol.ErrTimeout
 	}
-	if strings.Contains(texto, "connection") || strings.Contains(texto, "dial") || strings.Contains(texto, "EOF") {
-		return protocol.ErroDeRede
+	if strings.Contains(text, "connection") || strings.Contains(text, "dial") || strings.Contains(text, "EOF") {
+		return protocol.ErrNetwork
 	}
-	return protocol.ErroDeMensageria
+	return protocol.ErrMessaging
 }
 
-func resumir(texto string) string {
-	texto = strings.Join(strings.Fields(texto), " ")
-	if len(texto) > 140 {
-		return texto[:140] + "…"
+func summarize(text string) string {
+	text = strings.Join(strings.Fields(text), " ")
+	if len(text) > 140 {
+		return text[:140] + "…"
 	}
-	return texto
+	return text
 }

@@ -8,134 +8,134 @@ import (
 	"github.com/Diegobraun/braunrate/internal/scenario"
 )
 
-type Veredito = metrics.Veredito
+type Verdict = metrics.Verdict
 
-type Avaliacao = metrics.Avaliacao
+type Evaluation = metrics.Evaluation
 
 // Execucao em que nenhuma jornada chegou ao fim nao pode passar, mesmo sem SLO
 // declarado que a pegue: o cenario nao mediu o que se propos a medir, e um
 // veredito verde ali e afirmacao errada, nao falta de criterio.
-func Avaliar(regras []scenario.RegraDeSLO, documento metrics.Documento) Veredito {
-	veredito := Veredito{Passou: true}
-	if avaliacao, houve := jornadaNuncaCompletou(documento); houve {
-		veredito.Passou = false
-		veredito.Avaliacoes = append(veredito.Avaliacoes, avaliacao)
+func Evaluate(rules []scenario.SLORule, document metrics.Document) Verdict {
+	verdict := Verdict{Passed: true}
+	if evaluation, had := noJourneyCompleted(document); had {
+		verdict.Passed = false
+		verdict.Evaluations = append(verdict.Evaluations, evaluation)
 	}
-	porPasso := map[string]metrics.ResultadoDePasso{}
-	for _, passo := range documento.Passos {
-		porPasso[passo.Nome] = passo
+	byStep := map[string]metrics.StepResult{}
+	for _, step := range document.Steps {
+		byStep[step.Name] = step
 	}
 
-	for _, regra := range regras {
-		avaliacao := avaliarRegra(regra, documento, porPasso)
-		if !avaliacao.Passou {
-			veredito.Passou = false
+	for _, rule := range rules {
+		evaluation := avaliarRegra(rule, document, byStep)
+		if !evaluation.Passed {
+			verdict.Passed = false
 		}
-		veredito.Avaliacoes = append(veredito.Avaliacoes, avaliacao)
+		verdict.Evaluations = append(verdict.Evaluations, evaluation)
 	}
 
-	veredito.Frase = frasear(veredito)
-	return veredito
+	verdict.Sentence = phrase(verdict)
+	return verdict
 }
 
-func jornadaNuncaCompletou(documento metrics.Documento) (Avaliacao, bool) {
-	if documento.Jornada.Iniciadas == 0 || documento.Jornada.Completas > 0 {
-		return Avaliacao{}, false
+func noJourneyCompleted(document metrics.Document) (Evaluation, bool) {
+	if document.Journey.Started == 0 || document.Journey.Completed > 0 {
+		return Evaluation{}, false
 	}
-	return Avaliacao{
-		Passo:   "jornada",
-		Metrica: "completas",
-		Regra:   "toda jornada precisa chegar ao fim",
-		Obtido:  0,
-		Limite:  float64(documento.Jornada.Iniciadas),
-		Unidade: "jornadas",
-		Passou:  false,
-		Frase: fmt.Sprintf("Falhou: nenhuma das %d jornadas chegou ao fim, entao o cenario nao mediu o que se propos a medir. Rode 'braunrate depurar' para ver onde a iteracao para.",
-			documento.Jornada.Iniciadas),
+	return Evaluation{
+		Step:     "jornada",
+		Metrica:  "completas",
+		Rule:     "toda jornada precisa chegar ao fim",
+		Obtained: 0,
+		Limit:    float64(document.Journey.Started),
+		Unit:     "jornadas",
+		Passed:   false,
+		Sentence: fmt.Sprintf("Falhou: nenhuma das %d jornadas chegou ao fim, entao o cenario nao mediu o que se propos a medir. Rode 'braunrate depurar' para ver onde a iteracao para.",
+			document.Journey.Started),
 	}, true
 }
 
-func avaliarRegra(regra scenario.RegraDeSLO, documento metrics.Documento, porPasso map[string]metrics.ResultadoDePasso) Avaliacao {
-	avaliacao := Avaliacao{
-		Passo:   nomeDoAlvo(regra),
-		Metrica: regra.Metrica,
-		Regra:   regra.Texto,
-		Limite:  regra.Limite,
-		Unidade: regra.Unidade,
+func avaliarRegra(rule scenario.SLORule, document metrics.Document, byStep map[string]metrics.StepResult) Evaluation {
+	evaluation := Evaluation{
+		Step:    targetName(rule),
+		Metrica: rule.Metrica,
+		Rule:    rule.Text,
+		Limit:   rule.Limit,
+		Unit:    rule.Unit,
 	}
 
-	var distribuicao metrics.Distribuicao
-	var contagem, erros int64
+	var distribution metrics.Distribution
+	var count, errors int64
 
-	if regra.Global {
-		distribuicao = documento.Global.Latencia
-		contagem, erros = documento.Global.Contagem, documento.Global.Erros
+	if rule.Overall {
+		distribution = document.Overall.Latency
+		count, errors = document.Overall.Count, document.Overall.Errors
 	} else {
-		passo, existe := porPasso[regra.Passo]
-		if !existe {
-			avaliacao.SemDados = true
-			avaliacao.Passou = false
-			avaliacao.Frase = fmt.Sprintf("Sem dados: o passo %q nao produziu nenhuma requisicao, entao a regra %q nao pode ser verificada.", regra.Passo, regra.Texto)
-			return avaliacao
+		step, exists := byStep[rule.Step]
+		if !exists {
+			evaluation.NoData = true
+			evaluation.Passed = false
+			evaluation.Sentence = fmt.Sprintf("Sem dados: o passo %q nao produziu nenhuma requisicao, entao a regra %q nao pode ser verificada.", rule.Step, rule.Text)
+			return evaluation
 		}
-		distribuicao = passo.Latencia
-		contagem, erros = passo.Contagem, passo.Erros
+		distribution = step.Latency
+		count, errors = step.Count, step.Errors
 	}
 
-	switch regra.Metrica {
+	switch rule.Metrica {
 	case "p50":
-		avaliacao.Obtido = distribuicao.P50
+		evaluation.Obtained = distribution.P50
 	case "p75":
-		avaliacao.Obtido = distribuicao.P75
+		evaluation.Obtained = distribution.P75
 	case "p90":
-		avaliacao.Obtido = distribuicao.P90
+		evaluation.Obtained = distribution.P90
 	case "p95":
-		avaliacao.Obtido = distribuicao.P95
+		evaluation.Obtained = distribution.P95
 	case "p99":
-		avaliacao.Obtido = distribuicao.P99
+		evaluation.Obtained = distribution.P99
 	case "p99.9":
-		avaliacao.Obtido = distribuicao.P999
+		evaluation.Obtained = distribution.P999
 	case "max":
-		avaliacao.Obtido = distribuicao.Maximo
+		evaluation.Obtained = distribution.Max
 	case "erros":
-		if contagem > 0 {
-			avaliacao.Obtido = float64(erros) / float64(contagem) * 100
+		if count > 0 {
+			evaluation.Obtained = float64(errors) / float64(count) * 100
 		}
 	case "vazao":
-		avaliacao.Obtido = documento.Global.TaxaEfetiva
+		evaluation.Obtained = document.Overall.EffectiveRate
 	}
 
-	avaliacao.Passou = comparar(avaliacao.Obtido, regra.Operador, regra.Limite)
-	avaliacao.Frase = frasearAvaliacao(avaliacao, regra)
-	return avaliacao
+	evaluation.Passed = compare(evaluation.Obtained, rule.Operator, rule.Limit)
+	evaluation.Sentence = phraseEvaluation(evaluation, rule)
+	return evaluation
 }
 
-func comparar(obtido float64, operador scenario.Operador, limite float64) bool {
-	switch operador {
-	case scenario.OperadorMenor:
-		return obtido < limite
-	case scenario.OperadorMenorOuIgual:
-		return obtido <= limite
-	case scenario.OperadorMaior:
-		return obtido > limite
-	case scenario.OperadorMaiorOuIgual:
-		return obtido >= limite
-	case scenario.OperadorDiferente:
-		return obtido != limite
+func compare(obtained float64, operator scenario.Operator, limit float64) bool {
+	switch operator {
+	case scenario.OpLess:
+		return obtained < limit
+	case scenario.OpLessOrEqual:
+		return obtained <= limit
+	case scenario.OpGreater:
+		return obtained > limit
+	case scenario.OpGreaterOrEqual:
+		return obtained >= limit
+	case scenario.OpNotEqual:
+		return obtained != limit
 	default:
-		return obtido == limite
+		return obtained == limit
 	}
 }
 
-func nomeDoAlvo(regra scenario.RegraDeSLO) string {
-	if regra.Global {
+func targetName(rule scenario.SLORule) string {
+	if rule.Overall {
 		return "global"
 	}
-	return regra.Passo
+	return rule.Step
 }
 
-func nomeLegivel(metrica string) string {
-	switch metrica {
+func readableName(metric string) string {
+	switch metric {
 	case "erros":
 		return "taxa de erro"
 	case "vazao":
@@ -143,58 +143,58 @@ func nomeLegivel(metrica string) string {
 	case "max":
 		return "latencia maxima"
 	default:
-		return "latencia " + metrica
+		return "latencia " + metric
 	}
 }
 
-func formatar(valor float64, unidade string) string {
-	switch unidade {
+func format(value float64, unit string) string {
+	switch unit {
 	case "ms":
-		return fmt.Sprintf("%.0f ms", valor)
+		return fmt.Sprintf("%.0f ms", value)
 	case "%":
-		return fmt.Sprintf("%.2f%%", valor)
+		return fmt.Sprintf("%.2f%%", value)
 	case "/s":
-		return fmt.Sprintf("%.0f/s", valor)
+		return fmt.Sprintf("%.0f/s", value)
 	default:
-		return fmt.Sprintf("%.2f", valor)
+		return fmt.Sprintf("%.2f", value)
 	}
 }
 
-func frasearAvaliacao(avaliacao Avaliacao, regra scenario.RegraDeSLO) string {
-	alvo := avaliacao.Passo
-	if regra.Global {
-		alvo = "o cenario inteiro"
+func phraseEvaluation(evaluation Evaluation, rule scenario.SLORule) string {
+	target := evaluation.Step
+	if rule.Overall {
+		target = "o cenario inteiro"
 	} else {
-		alvo = fmt.Sprintf("%q", alvo)
+		target = fmt.Sprintf("%q", target)
 	}
-	comparacao := "acima do limite de"
-	if regra.Operador == scenario.OperadorMaior || regra.Operador == scenario.OperadorMaiorOuIgual {
-		comparacao = "abaixo do minimo de"
+	comparison := "acima do limite de"
+	if rule.Operator == scenario.OpGreater || rule.Operator == scenario.OpGreaterOrEqual {
+		comparison = "abaixo do minimo de"
 	}
-	if avaliacao.Passou {
+	if evaluation.Passed {
 		return fmt.Sprintf("Passou: %s teve %s de %s, dentro do limite de %s.",
-			alvo, nomeLegivel(avaliacao.Metrica), formatar(avaliacao.Obtido, avaliacao.Unidade), formatar(avaliacao.Limite, avaliacao.Unidade))
+			target, readableName(evaluation.Metrica), format(evaluation.Obtained, evaluation.Unit), format(evaluation.Limit, evaluation.Unit))
 	}
 	return fmt.Sprintf("Falhou: %s teve %s de %s, %s %s.",
-		alvo, nomeLegivel(avaliacao.Metrica), formatar(avaliacao.Obtido, avaliacao.Unidade),
-		comparacao, formatar(avaliacao.Limite, avaliacao.Unidade))
+		target, readableName(evaluation.Metrica), format(evaluation.Obtained, evaluation.Unit),
+		comparison, format(evaluation.Limit, evaluation.Unit))
 }
 
-func frasear(veredito Veredito) string {
-	if len(veredito.Avaliacoes) == 0 {
+func phrase(verdict Verdict) string {
+	if len(verdict.Evaluations) == 0 {
 		return "Sem SLO declarado: nada foi verificado."
 	}
-	var falhas []string
-	for _, avaliacao := range veredito.Avaliacoes {
-		if !avaliacao.Passou {
-			falhas = append(falhas, avaliacao.Frase)
+	var failures []string
+	for _, evaluation := range verdict.Evaluations {
+		if !evaluation.Passed {
+			failures = append(failures, evaluation.Sentence)
 		}
 	}
-	if len(falhas) == 0 {
-		if len(veredito.Avaliacoes) == 1 {
+	if len(failures) == 0 {
+		if len(verdict.Evaluations) == 1 {
 			return "Passou: a unica regra de SLO foi atendida."
 		}
-		return fmt.Sprintf("Passou: as %d regras de SLO foram atendidas.", len(veredito.Avaliacoes))
+		return fmt.Sprintf("Passou: as %d regras de SLO foram atendidas.", len(verdict.Evaluations))
 	}
-	return strings.Join(falhas, " ")
+	return strings.Join(failures, " ")
 }

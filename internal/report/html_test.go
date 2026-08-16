@@ -10,173 +10,173 @@ import (
 	"github.com/Diegobraun/braunrate/internal/report"
 )
 
-func documentoDeExemplo() metrics.Documento {
-	inicio := time.Date(2026, 8, 15, 22, 0, 0, 0, time.UTC)
-	return metrics.Documento{
-		VersaoDoFormato: metrics.VersaoDoFormatoDeResultado,
-		Ferramenta:      "braunrate",
-		Versao:          "0.3.0",
-		Ambiente:        metrics.Ambiente{Maquina: "maquina-de-teste", SistemaOperacional: "darwin", Arquitetura: "arm64", Nucleos: 10},
-		Execucao: metrics.Execucao{
-			Cenario: "Jornada de cobranca", Alvo: "http://127.0.0.1:8080",
-			Inicio: inicio, Fim: inicio.Add(10 * time.Second), DuracaoMs: 10000,
-			Modelo: "aberto", MaximoSimultaneas: 20000, Autenticacoes: 1,
-			PlanoAplicado: []metrics.FaseAplicada{{Tipo: "patamar", Ate: 300, DuracaoMs: 10000}},
+func sampleDocument() metrics.Document {
+	start := time.Date(2026, 8, 15, 22, 0, 0, 0, time.UTC)
+	return metrics.Document{
+		FormatVersion: metrics.VersaoDoFormatoDeResultado,
+		Tool:          "braunrate",
+		Version:       "0.3.0",
+		Environment:   metrics.Environment{Host: "maquina-de-teste", OS: "darwin", Arch: "arm64", Cores: 10},
+		Run: metrics.Run{
+			Scenario: "Jornada de cobranca", Target: "http://127.0.0.1:8080",
+			Start: start, End: start.Add(10 * time.Second), DurationMs: 10000,
+			Model: "aberto", MaxInflight: 20000, AuthObtains: 1,
+			AppliedPlan: []metrics.AppliedPhase{{Kind: "patamar", To: 300, DurationMs: 10000}},
 		},
-		Agendamento: metrics.Agendamento{Enviadas: 3000, Concluidas: 3000, Desvio: metrics.Distribuicao{P50: 0.01, Maximo: 1.2}},
-		Jornada: metrics.Jornada{
-			Iniciadas: 1500, Completas: 1500,
-			Latencia: metrics.Distribuicao{P50: 8.7, P95: 9.5, P99: 10, Maximo: 18},
-			Frase:    "Todas as 1500 jornadas chegaram ao fim; metade levou ate 9 ms e 95% ate 10 ms, contados do instante em que deveriam ter comecado.",
+		Scheduling: metrics.Scheduling{Sent: 3000, Completed: 3000, Skew: metrics.Distribution{P50: 0.01, Max: 1.2}},
+		Journey: metrics.Journey{
+			Started: 1500, Completed: 1500,
+			Latency:  metrics.Distribution{P50: 8.7, P95: 9.5, P99: 10, Max: 18},
+			Sentence: "Todas as 1500 jornadas chegaram ao fim; metade levou ate 9 ms e 95% ate 10 ms, contados do instante em que deveriam ter comecado.",
 		},
-		Passos: []metrics.ResultadoDePasso{
-			{Nome: "consultar pedido", TipoDeLatencia: string(metrics.LatenciaCorrigida), Contagem: 1500,
-				Latencia: metrics.Distribuicao{P50: 4.3, P95: 4.9, P99: 5.3, P999: 6.2, Maximo: 13}},
-			{Nome: "pagar fatura", TipoDeLatencia: string(metrics.LatenciaDeServico), Contagem: 1500, Erros: 3,
-				ErrosPorClasse: map[string]int64{"status": 3},
-				Latencia:       metrics.Distribuicao{P50: 4.3, P95: 4.8, P99: 5.1, P999: 5.8, Maximo: 11}},
+		Steps: []metrics.StepResult{
+			{Name: "consultar pedido", LatencyKind: string(metrics.CorrectedLatency), Count: 1500,
+				Latency: metrics.Distribution{P50: 4.3, P95: 4.9, P99: 5.3, P999: 6.2, Max: 13}},
+			{Name: "pagar fatura", LatencyKind: string(metrics.ServiceLatency), Count: 1500, Errors: 3,
+				ErrorsByClass: map[string]int64{"status": 3},
+				Latency:       metrics.Distribution{P50: 4.3, P95: 4.8, P99: 5.1, P999: 5.8, Max: 11}},
 		},
-		Global: metrics.ResultadoGlobal{
-			Contagem: 3000, Sucessos: 2997, Erros: 3, TaxaDeErro: 0.001, TaxaEfetiva: 300,
-			Latencia:          metrics.Distribuicao{P50: 4.3, P95: 4.9, P99: 9.8},
-			LatenciaDeServico: metrics.Distribuicao{P50: 4.3, P95: 4.8, P99: 5.1},
+		Overall: metrics.OverallResult{
+			Count: 3000, Successes: 2997, Errors: 3, ErrorRate: 0.001, EffectiveRate: 300,
+			Latency:        metrics.Distribution{P50: 4.3, P95: 4.9, P99: 9.8},
+			ServiceLatency: metrics.Distribution{P50: 4.3, P95: 4.8, P99: 5.1},
 		},
 		Series: []metrics.Bucket{
-			{InicioEpochMs: 1000, Enviadas: 300, Concluidas: 300, LatenciaP50Ms: 4.2, LatenciaP99Ms: 5.1},
-			{InicioEpochMs: 2000, Enviadas: 300, Concluidas: 300, LatenciaP50Ms: 4.3, LatenciaP99Ms: 5.4},
-			{InicioEpochMs: 3000, Enviadas: 300, Concluidas: 299, Erros: 1, LatenciaP50Ms: 4.4, LatenciaP99Ms: 9.9},
+			{StartEpochMs: 1000, Sent: 300, Completed: 300, LatencyP50Ms: 4.2, LatencyP99Ms: 5.1},
+			{StartEpochMs: 2000, Sent: 300, Completed: 300, LatencyP50Ms: 4.3, LatencyP99Ms: 5.4},
+			{StartEpochMs: 3000, Sent: 300, Completed: 299, Errors: 1, LatencyP50Ms: 4.4, LatencyP99Ms: 9.9},
 		},
 	}
 }
 
-func gerar(t *testing.T, documento metrics.Documento) string {
+func generate(t *testing.T, document metrics.Document) string {
 	t.Helper()
-	var saida strings.Builder
-	if err := report.HTML(&saida, documento); err != nil {
+	var out strings.Builder
+	if err := report.HTML(&out, document); err != nil {
 		t.Fatalf("nao gerou o HTML: %v", err)
 	}
-	return saida.String()
+	return out.String()
 }
 
-func TestOTopoDoRelatorioEhUmaFraseEhNaoUmaTabela(t *testing.T) {
-	documento := documentoDeExemplo()
-	documento.SLO = metrics.Veredito{Passou: true, Frase: "Passou: as 3 regras de SLO foram atendidas."}
-	pagina := gerar(t, documento)
+func TestReportTopIsSentenceNotTable(t *testing.T) {
+	document := sampleDocument()
+	document.SLO = metrics.Verdict{Passed: true, Sentence: "Passou: as 3 regras de SLO foram atendidas."}
+	page := generate(t, document)
 
-	titulo := regexp.MustCompile(`(?s)<h1[^>]*>(.*?)</h1>`).FindStringSubmatch(pagina)
-	if titulo == nil {
+	title := regexp.MustCompile(`(?s)<h1[^>]*>(.*?)</h1>`).FindStringSubmatch(page)
+	if title == nil {
 		t.Fatal("o relatorio nao tem titulo")
 	}
-	if titulo[1] != "Passou: as 3 regras de SLO foram atendidas." {
-		t.Errorf("o topo precisa ser a frase do veredito, veio: %q", titulo[1])
+	if title[1] != "Passou: as 3 regras de SLO foram atendidas." {
+		t.Errorf("o topo precisa ser a frase do veredito, veio: %q", title[1])
 	}
-	if indice := strings.Index(pagina, "<table"); indice < strings.Index(pagina, "</h1>") {
+	if index := strings.Index(page, "<table"); index < strings.Index(page, "</h1>") {
 		t.Error("existe tabela antes da frase de veredito")
 	}
 }
 
-func TestRelatorioDeFalhaMostraOMotivoNoTopo(t *testing.T) {
-	documento := documentoDeExemplo()
-	documento.SLO = metrics.Veredito{
-		Passou: false,
-		Frase:  `Falhou: "pagar fatura" teve latencia p95 de 210 ms, acima do limite de 150 ms.`,
-		Avaliacoes: []metrics.Avaliacao{
-			{Passo: "pagar fatura", Passou: false, Frase: `Falhou: "pagar fatura" teve latencia p95 de 210 ms, acima do limite de 150 ms.`},
+func TestFailureReportShowsReasonOnTop(t *testing.T) {
+	document := sampleDocument()
+	document.SLO = metrics.Verdict{
+		Passed:   false,
+		Sentence: `Falhou: "pagar fatura" teve latencia p95 de 210 ms, acima do limite de 150 ms.`,
+		Evaluations: []metrics.Evaluation{
+			{Step: "pagar fatura", Passed: false, Sentence: `Falhou: "pagar fatura" teve latencia p95 de 210 ms, acima do limite de 150 ms.`},
 		},
 	}
-	pagina := gerar(t, documento)
+	page := generate(t, document)
 
-	if !strings.Contains(pagina, `<h1 class="falhou">`) {
+	if !strings.Contains(page, `<h1 class="falhou">`) {
 		t.Error("falha de SLO precisa aparecer como falha no topo")
 	}
-	if !strings.Contains(pagina, "acima do limite de 150 ms") {
+	if !strings.Contains(page, "acima do limite de 150 ms") {
 		t.Error("o motivo da falha nao aparece")
 	}
 }
 
-func TestResultadoInvalidoNaoEhApresentadoComoNumeroDoAlvo(t *testing.T) {
-	documento := documentoDeExemplo()
-	documento.SLO = metrics.Veredito{Passou: true, Frase: "Passou: as 3 regras de SLO foram atendidas."}
-	documento.Avisos = []metrics.Aviso{{
-		Tipo: "gerador_saturado", Gravidade: metrics.GravidadeAlta,
-		Mensagem:  "o gerador nao sustentou a taxa alvo",
-		Evidencia: "12% dos despachos atrasaram",
+func TestInvalidResultIsNotPresentedAsTargetNumber(t *testing.T) {
+	document := sampleDocument()
+	document.SLO = metrics.Verdict{Passed: true, Sentence: "Passou: as 3 regras de SLO foram atendidas."}
+	document.Warnings = []metrics.Warning{{
+		Kind: "gerador_saturado", Severity: metrics.SeverityHigh,
+		Message:  "o gerador nao sustentou a taxa alvo",
+		Evidence: "12% dos despachos atrasaram",
 	}}
-	pagina := gerar(t, documento)
+	page := generate(t, document)
 
-	if strings.Contains(pagina, `<h1 class="passou">`) {
+	if strings.Contains(page, `<h1 class="passou">`) {
 		t.Error("com o gerador saturado o topo nao pode dizer que passou")
 	}
-	if !strings.Contains(pagina, "Resultado invalido") {
+	if !strings.Contains(page, "Resultado invalido") {
 		t.Error("o topo precisa declarar que o resultado nao vale")
 	}
-	if !strings.Contains(pagina, "medem o gerador, nao o alvo") {
+	if !strings.Contains(page, "medem o gerador, nao o alvo") {
 		t.Error("falta a leitura em portugues comum do resultado invalido")
 	}
 }
 
-func TestRelatorioDistingueLatenciaCorrigidaDeLatenciaDeServico(t *testing.T) {
-	pagina := gerar(t, documentoDeExemplo())
-	if !strings.Contains(pagina, "(1)") || !strings.Contains(pagina, "(2)") {
+func TestReportDistinguishesCorrectedFromServiceLatency(t *testing.T) {
+	page := generate(t, sampleDocument())
+	if !strings.Contains(page, "(1)") || !strings.Contains(page, "(2)") {
 		t.Error("os dois tipos de latencia precisam estar marcados por passo")
 	}
-	if !strings.Contains(pagina, "nao tem instante agendado proprio") {
+	if !strings.Contains(page, "nao tem instante agendado proprio") {
 		t.Error("falta a explicacao do que e latencia de servico")
 	}
-	if !strings.Contains(pagina, "A jornada inteira") {
+	if !strings.Contains(page, "A jornada inteira") {
 		t.Error("falta a metrica que continua honesta para a jornada toda")
 	}
 }
 
-func TestRelatorioDeclaraALimitacaoDeTokenUnico(t *testing.T) {
-	pagina := gerar(t, documentoDeExemplo())
-	if !strings.Contains(pagina, "cache, rate limit ou sharding por token") {
+func TestReportDeclaresSingleTokenLimitation(t *testing.T) {
+	page := generate(t, sampleDocument())
+	if !strings.Contains(page, "cache, rate limit ou sharding por token") {
 		t.Error("execucao com autenticacao precisa declarar a limitacao de token unico")
 	}
 }
 
 // Relatorio de carga costuma ser aberto de dentro de rede fechada ou anexado
 // em ticket; se depender de rede, abre quebrado justamente onde importa.
-func TestRelatorioNaoBuscaNadaNaRede(t *testing.T) {
-	pagina := gerar(t, documentoDeExemplo())
-	proibidos := []string{"<script", "src=", "@import", "cdn.", "https://fonts", "<link"}
-	for _, proibido := range proibidos {
-		if strings.Contains(pagina, proibido) {
-			t.Errorf("o relatorio deixou de ser autocontido: encontrei %q", proibido)
+func TestReportFetchesNothingFromNetwork(t *testing.T) {
+	page := generate(t, sampleDocument())
+	forbidden := []string{"<script", "src=", "@import", "cdn.", "https://fonts", "<link"}
+	for _, forbidden := range forbidden {
+		if strings.Contains(page, forbidden) {
+			t.Errorf("o relatorio deixou de ser autocontido: encontrei %q", forbidden)
 		}
 	}
 }
 
-func TestRelatorioSemSLODizQueNaoAprovaNemReprova(t *testing.T) {
-	pagina := gerar(t, documentoDeExemplo())
-	if !strings.Contains(pagina, "nao aprova nem reprova") {
+func TestReportWithoutSLOSaysItNeitherPassesNorFails(t *testing.T) {
+	page := generate(t, sampleDocument())
+	if !strings.Contains(page, "nao aprova nem reprova") {
 		t.Error("sem slo declarado o relatorio precisa dizer que nao decide nada")
 	}
 }
 
-func TestSerieTemporalViraGraficoSemBiblioteca(t *testing.T) {
-	pagina := gerar(t, documentoDeExemplo())
-	if !strings.Contains(pagina, "<svg") || !strings.Contains(pagina, "<polyline") {
+func TestTimeSeriesBecomesChartWithoutLibrary(t *testing.T) {
+	page := generate(t, sampleDocument())
+	if !strings.Contains(page, "<svg") || !strings.Contains(page, "<polyline") {
 		t.Error("a serie temporal nao virou grafico")
 	}
 }
 
-func TestCSVSeparaLatenciaCorrigidaDeLatenciaDeServico(t *testing.T) {
-	var saida strings.Builder
-	if err := report.CSV(&saida, documentoDeExemplo()); err != nil {
+func TestCSVSeparatesCorrectedFromServiceLatency(t *testing.T) {
+	var out strings.Builder
+	if err := report.CSV(&out, sampleDocument()); err != nil {
 		t.Fatalf("nao gerou o CSV: %v", err)
 	}
-	linhas := strings.Split(strings.TrimSpace(saida.String()), "\n")
-	if len(linhas) != 5 {
-		t.Fatalf("esperava cabecalho, jornada, dois passos e global; vieram %d linhas", len(linhas))
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 5 {
+		t.Fatalf("esperava cabecalho, jornada, dois passos e global; vieram %d linhas", len(lines))
 	}
-	if !strings.Contains(linhas[0], "tipo_de_latencia") {
+	if !strings.Contains(lines[0], "tipo_de_latencia") {
 		t.Error("o CSV precisa dizer de que tipo e cada latencia")
 	}
-	if !strings.HasPrefix(linhas[1], "Jornada de cobranca,http://127.0.0.1:8080") || !strings.Contains(linhas[1], "jornada inteira") {
-		t.Errorf("a primeira linha de dados precisa ser a jornada: %s", linhas[1])
+	if !strings.HasPrefix(lines[1], "Jornada de cobranca,http://127.0.0.1:8080") || !strings.Contains(lines[1], "jornada inteira") {
+		t.Errorf("a primeira linha de dados precisa ser a jornada: %s", lines[1])
 	}
-	if !strings.Contains(linhas[3], ",servico,") {
-		t.Errorf("o passo de latencia de servico precisa estar marcado: %s", linhas[3])
+	if !strings.Contains(lines[3], ",servico,") {
+		t.Errorf("o passo de latencia de servico precisa estar marcado: %s", lines[3])
 	}
 }

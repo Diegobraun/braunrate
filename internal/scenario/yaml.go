@@ -12,397 +12,397 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type ErroDeCenario struct {
-	Arquivo  string
-	Linha    int
-	Coluna   int
-	Mensagem string
+type ScenarioError struct {
+	File    string
+	Line    int
+	Column  int
+	Message string
 }
 
-func (e ErroDeCenario) Error() string {
-	if e.Arquivo == "" {
-		return fmt.Sprintf("linha %d: %s", e.Linha, e.Mensagem)
+func (e ScenarioError) Error() string {
+	if e.File == "" {
+		return fmt.Sprintf("linha %d: %s", e.Line, e.Message)
 	}
-	return fmt.Sprintf("%s:%d:%d: %s", e.Arquivo, e.Linha, e.Coluna, e.Mensagem)
+	return fmt.Sprintf("%s:%d:%d: %s", e.File, e.Line, e.Column, e.Message)
 }
 
-func erroNo(no *yaml.Node, formato string, argumentos ...any) error {
-	linha, coluna := 0, 0
+func nodeError(no *yaml.Node, format string, args ...any) error {
+	line, column := 0, 0
 	if no != nil {
-		linha, coluna = no.Line, no.Column
+		line, column = no.Line, no.Column
 	}
-	return ErroDeCenario{Linha: linha, Coluna: coluna, Mensagem: fmt.Sprintf(formato, argumentos...)}
+	return ScenarioError{Line: line, Column: column, Message: fmt.Sprintf(format, args...)}
 }
 
 // Listadas aqui porque o schema publicado e testado contra elas: chave que
 // existe so num dos dois lados vira autocompletar que o parser recusa.
 var (
-	ChavesDeTopo  = []string{"nome", "alvo", "variaveis", "autenticacao", "dados", "carga", "cenario", "slo"}
-	ChavesDePasso = []string{"nome", "captura", "verificar", "espera"}
+	TopKeys  = []string{"nome", "alvo", "variaveis", "autenticacao", "dados", "carga", "cenario", "slo"}
+	StepKeys = []string{"nome", "captura", "verificar", "espera"}
 )
 
-func CarregarArquivo(caminho string) (Cenario, error) {
-	conteudo, err := os.ReadFile(caminho)
+func ParseFile(path string) (Scenario, error) {
+	content, err := os.ReadFile(path)
 	if err != nil {
-		return Cenario{}, err
+		return Scenario{}, err
 	}
-	c, err := Carregar(conteudo)
-	if erro, ok := err.(ErroDeCenario); ok {
-		erro.Arquivo = caminho
-		return c, erro
+	c, err := Parse(content)
+	if err, ok := err.(ScenarioError); ok {
+		err.File = path
+		return c, err
 	}
 	return c, err
 }
 
-func Carregar(conteudo []byte) (Cenario, error) {
-	var raiz yaml.Node
-	if err := yaml.Unmarshal(conteudo, &raiz); err != nil {
-		return Cenario{}, err
+func Parse(content []byte) (Scenario, error) {
+	var root yaml.Node
+	if err := yaml.Unmarshal(content, &root); err != nil {
+		return Scenario{}, err
 	}
-	if len(raiz.Content) == 0 {
-		return Cenario{}, ErroDeCenario{Linha: 1, Mensagem: "cenario vazio"}
+	if len(root.Content) == 0 {
+		return Scenario{}, ScenarioError{Line: 1, Message: "cenario vazio"}
 	}
-	documento := raiz.Content[0]
-	if documento.Kind != yaml.MappingNode {
-		return Cenario{}, erroNo(documento, "o cenario precisa ser um mapa de chaves, comecando por:\n"+
+	document := root.Content[0]
+	if document.Kind != yaml.MappingNode {
+		return Scenario{}, nodeError(document, "o cenario precisa ser um mapa de chaves, comecando por:\n"+
 			"  nome: Consulta de pedidos\n"+
 			"  alvo: http://127.0.0.1:8080")
 	}
 
-	c := Cenario{
-		VersaoDoFormato: VersaoDoFormato,
-		Variaveis:       map[string]string{},
-		Carga:           PlanoDeCarga{Modelo: ChegadaAberta},
+	c := Scenario{
+		FormatVersion: FormatVersion,
+		Vars:          map[string]string{},
+		Load:          LoadPlan{Model: OpenArrival},
 	}
 
-	for indice := 0; indice+1 < len(documento.Content); indice += 2 {
-		chave := documento.Content[indice]
-		valor := documento.Content[indice+1]
-		switch chave.Value {
+	for index := 0; index+1 < len(document.Content); index += 2 {
+		key := document.Content[index]
+		value := document.Content[index+1]
+		switch key.Value {
 		case "nome":
-			c.Nome = valor.Value
+			c.Name = value.Value
 		case "alvo":
-			c.Alvo = valor.Value
+			c.Target = value.Value
 		case "variaveis":
-			variaveis, err := lerVariaveis(valor)
+			vars, err := readVars(value)
 			if err != nil {
 				return c, err
 			}
-			c.Variaveis = variaveis
+			c.Vars = vars
 		case "carga":
-			carga, err := lerCarga(valor)
+			load, err := readLoad(value)
 			if err != nil {
 				return c, err
 			}
-			c.Carga = carga
+			c.Load = load
 		case "cenario":
-			passos, err := lerPassos(valor)
+			steps, err := readSteps(value)
 			if err != nil {
 				return c, err
 			}
-			c.Passos = passos
+			c.Steps = steps
 		case "autenticacao":
-			autenticacao, err := lerAutenticacao(valor)
+			auth, err := readAuth(value)
 			if err != nil {
 				return c, err
 			}
-			c.Autenticacao = autenticacao
+			c.Auth = auth
 		case "dados":
-			fontes, err := lerDados(valor)
+			sources, err := readData(value)
 			if err != nil {
 				return c, err
 			}
-			c.Dados = fontes
+			c.Data = sources
 		case "slo":
-			regras, err := lerSLO(valor)
+			rules, err := readSLO(value)
 			if err != nil {
 				return c, err
 			}
-			c.SLO = regras
+			c.SLO = rules
 		default:
-			return c, erroNo(chave, "chave desconhecida no topo do cenario: %q\n%s",
-				chave.Value, sugerir(chave.Value, ChavesDeTopo))
+			return c, nodeError(key, "chave desconhecida no topo do cenario: %q\n%s",
+				key.Value, sugerir(key.Value, TopKeys))
 		}
 	}
 
-	c.Alvo = Interpolar(c.Alvo, c.Variaveis)
+	c.Target = Interpolate(c.Target, c.Vars)
 	return c, nil
 }
 
-func lerVariaveis(no *yaml.Node) (map[string]string, error) {
-	variaveis := map[string]string{}
+func readVars(no *yaml.Node) (map[string]string, error) {
+	vars := map[string]string{}
 	if no.Kind != yaml.MappingNode {
-		return nil, erroNo(no, "variaveis precisa ser um mapa, por exemplo:\n"+
+		return nil, nodeError(no, "variaveis precisa ser um mapa, por exemplo:\n"+
 			"  variaveis:\n"+
 			"    usuario: ${USUARIO:-ana}")
 	}
-	for indice := 0; indice+1 < len(no.Content); indice += 2 {
-		nome := no.Content[indice].Value
-		variaveis[nome] = ExpandirDoAmbiente(no.Content[indice+1].Value)
+	for index := 0; index+1 < len(no.Content); index += 2 {
+		name := no.Content[index].Value
+		vars[name] = ExpandFromEnv(no.Content[index+1].Value)
 	}
-	return variaveis, nil
+	return vars, nil
 }
 
-var padraoDeVariavel = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_.]*)(?::-([^}]*))?\}`)
+var varPattern = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_.]*)(?::-([^}]*))?\}`)
 
-func ExpandirDoAmbiente(texto string) string {
-	return padraoDeVariavel.ReplaceAllStringFunc(texto, func(ocorrencia string) string {
-		partes := padraoDeVariavel.FindStringSubmatch(ocorrencia)
-		if valor, definida := os.LookupEnv(partes[1]); definida {
-			return valor
+func ExpandFromEnv(text string) string {
+	return varPattern.ReplaceAllStringFunc(text, func(occurrence string) string {
+		parts := varPattern.FindStringSubmatch(occurrence)
+		if value, definida := os.LookupEnv(parts[1]); definida {
+			return value
 		}
-		return partes[2]
+		return parts[2]
 	})
 }
 
-func Interpolar(texto string, variaveis map[string]string) string {
-	if texto == "" {
-		return texto
+func Interpolate(text string, vars map[string]string) string {
+	if text == "" {
+		return text
 	}
-	return padraoDeVariavel.ReplaceAllStringFunc(texto, func(ocorrencia string) string {
-		partes := padraoDeVariavel.FindStringSubmatch(ocorrencia)
-		if valor, existe := variaveis[partes[1]]; existe {
-			return valor
+	return varPattern.ReplaceAllStringFunc(text, func(occurrence string) string {
+		parts := varPattern.FindStringSubmatch(occurrence)
+		if value, exists := vars[parts[1]]; exists {
+			return value
 		}
-		if valor, definida := os.LookupEnv(partes[1]); definida {
-			return valor
+		if value, definida := os.LookupEnv(parts[1]); definida {
+			return value
 		}
-		return partes[2]
+		return parts[2]
 	})
 }
 
-func lerCarga(no *yaml.Node) (PlanoDeCarga, error) {
-	plano := PlanoDeCarga{Modelo: ChegadaAberta}
+func readLoad(no *yaml.Node) (LoadPlan, error) {
+	plan := LoadPlan{Model: OpenArrival}
 	if no.Kind != yaml.MappingNode {
-		return plano, erroNo(no, "carga precisa ser um mapa, por exemplo:\n"+
+		return plan, nodeError(no, "carga precisa ser um mapa, por exemplo:\n"+
 			"  carga:\n"+
 			"    perfis:\n"+
 			"      - patamar: { taxa: 300/s, durante: 1m }")
 	}
-	for indice := 0; indice+1 < len(no.Content); indice += 2 {
-		chave := no.Content[indice]
-		valor := no.Content[indice+1]
-		switch chave.Value {
+	for index := 0; index+1 < len(no.Content); index += 2 {
+		key := no.Content[index]
+		value := no.Content[index+1]
+		switch key.Value {
 		case "modelo":
-			switch valor.Value {
-			case string(ChegadaAberta):
-				plano.Modelo = ChegadaAberta
-			case string(ChegadaFechada):
-				return plano, erroNo(valor, "modelo fechado ainda nao e suportado; o padrao e aberto")
+			switch value.Value {
+			case string(OpenArrival):
+				plan.Model = OpenArrival
+			case string(ClosedArrival):
+				return plan, nodeError(value, "modelo fechado ainda nao e suportado; o padrao e aberto")
 			default:
-				return plano, erroNo(valor, "modelo de carga desconhecido: %q (o unico modelo e 'aberto', e ele e o padrao: pode omitir a linha)", valor.Value)
+				return plan, nodeError(value, "modelo de carga desconhecido: %q (o unico modelo e 'aberto', e ele e o padrao: pode omitir a linha)", value.Value)
 			}
 		case "perfis":
-			if valor.Kind != yaml.SequenceNode {
-				return plano, erroNo(valor, "perfis precisa ser uma lista, um trecho por linha:\n"+
+			if value.Kind != yaml.SequenceNode {
+				return plan, nodeError(value, "perfis precisa ser uma lista, um trecho por linha:\n"+
 					"  perfis:\n"+
 					"    - rampa: { de: 50/s, ate: 300/s, durante: 30s }\n"+
 					"    - patamar: { taxa: 300/s, durante: 5m }")
 			}
-			for _, itemNo := range valor.Content {
-				fase, err := lerFase(itemNo)
+			for _, itemNode := range value.Content {
+				phase, err := readPhase(itemNode)
 				if err != nil {
-					return plano, err
+					return plan, err
 				}
-				plano.Fases = append(plano.Fases, fase)
+				plan.Phases = append(plan.Phases, phase)
 			}
 		default:
-			return plano, erroNo(chave, "chave desconhecida em carga: %q\n%s", chave.Value, sugerir(chave.Value, []string{"modelo", "perfis"}))
+			return plan, nodeError(key, "chave desconhecida em carga: %q\n%s", key.Value, sugerir(key.Value, []string{"modelo", "perfis"}))
 		}
 	}
-	return plano, nil
+	return plan, nil
 }
 
-func lerFase(no *yaml.Node) (Fase, error) {
+func readPhase(no *yaml.Node) (Phase, error) {
 	if no.Kind != yaml.MappingNode || len(no.Content) < 2 {
-		return Fase{}, erroNo(no, "cada perfil precisa ser um mapa com um tipo (rampa, patamar, pico, constante), por exemplo:\n"+
+		return Phase{}, nodeError(no, "cada perfil precisa ser um mapa com um tipo (rampa, patamar, pico, constante), por exemplo:\n"+
 			"  - patamar: { taxa: 300/s, durante: 5m }")
 	}
-	tipoNo := no.Content[0]
-	corpo := no.Content[1]
-	fase := Fase{Linha: no.Line}
+	kindNode := no.Content[0]
+	body := no.Content[1]
+	phase := Phase{Line: no.Line}
 
-	switch tipoNo.Value {
+	switch kindNode.Value {
 	case "rampa":
-		fase.Tipo = FaseRampa
+		phase.Kind = PhaseRamp
 	case "patamar":
-		fase.Tipo = FasePatamar
+		phase.Kind = PhasePlateau
 	case "pico":
-		fase.Tipo = FasePico
+		phase.Kind = PhaseSpike
 	case "constante":
-		fase.Tipo = FaseConstante
+		phase.Kind = PhaseConstant
 	default:
-		return fase, erroNo(tipoNo, "tipo de perfil desconhecido: %q\n%s\nexemplo: - patamar: { taxa: 300/s, durante: 5m }",
-			tipoNo.Value, sugerir(tipoNo.Value, []string{"rampa", "patamar", "pico", "constante"}))
+		return phase, nodeError(kindNode, "tipo de perfil desconhecido: %q\n%s\nexemplo: - patamar: { taxa: 300/s, durante: 5m }",
+			kindNode.Value, sugerir(kindNode.Value, []string{"rampa", "patamar", "pico", "constante"}))
 	}
 
-	if corpo.Kind != yaml.MappingNode {
-		return fase, erroNo(corpo, "o perfil %q precisa de um mapa de parametros, por exemplo: %s: { taxa: 300/s, durante: 5m }", tipoNo.Value, tipoNo.Value)
+	if body.Kind != yaml.MappingNode {
+		return phase, nodeError(body, "o perfil %q precisa de um mapa de parametros, por exemplo: %s: { taxa: 300/s, durante: 5m }", kindNode.Value, kindNode.Value)
 	}
-	for indice := 0; indice+1 < len(corpo.Content); indice += 2 {
-		chave := corpo.Content[indice]
-		valor := corpo.Content[indice+1]
-		switch chave.Value {
+	for index := 0; index+1 < len(body.Content); index += 2 {
+		key := body.Content[index]
+		value := body.Content[index+1]
+		switch key.Value {
 		case "de":
-			taxa, err := lerTaxa(valor)
+			rate, err := readRate(value)
 			if err != nil {
-				return fase, err
+				return phase, err
 			}
-			fase.De = taxa
+			phase.From = rate
 		case "ate", "taxa":
-			taxa, err := lerTaxa(valor)
+			rate, err := readRate(value)
 			if err != nil {
-				return fase, err
+				return phase, err
 			}
-			fase.Ate = taxa
+			phase.To = rate
 		case "durante":
-			duracao, err := time.ParseDuration(valor.Value)
+			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return fase, erroNo(valor, "duracao invalida: %q (use 30s, 5m, 1h30m)", valor.Value)
+				return phase, nodeError(value, "duracao invalida: %q (use 30s, 5m, 1h30m)", value.Value)
 			}
-			fase.Durante = duracao
+			phase.For = duration
 		default:
-			return fase, erroNo(chave, "chave desconhecida no perfil %q: %q\n%s", tipoNo.Value, chave.Value,
-				sugerir(chave.Value, []string{"de", "ate", "taxa", "durante"}))
+			return phase, nodeError(key, "chave desconhecida no perfil %q: %q\n%s", kindNode.Value, key.Value,
+				sugerir(key.Value, []string{"de", "ate", "taxa", "durante"}))
 		}
 	}
-	if fase.Tipo == FaseRampa && fase.De == 0 && fase.Ate == 0 {
-		return fase, erroNo(corpo, "rampa precisa de 'de' e 'ate', por exemplo: - rampa: { de: 50/s, ate: 300/s, durante: 30s }")
+	if phase.Kind == PhaseRamp && phase.From == 0 && phase.To == 0 {
+		return phase, nodeError(body, "rampa precisa de 'de' e 'ate', por exemplo: - rampa: { de: 50/s, ate: 300/s, durante: 30s }")
 	}
-	return fase, nil
+	return phase, nil
 }
 
-func lerTaxa(no *yaml.Node) (float64, error) {
-	texto := strings.TrimSpace(no.Value)
+func readRate(no *yaml.Node) (float64, error) {
+	text := strings.TrimSpace(no.Value)
 	divisor := 1.0
 	switch {
-	case strings.HasSuffix(texto, "/s"):
-		texto = strings.TrimSuffix(texto, "/s")
-	case strings.HasSuffix(texto, "/m"):
-		texto = strings.TrimSuffix(texto, "/m")
+	case strings.HasSuffix(text, "/s"):
+		text = strings.TrimSuffix(text, "/s")
+	case strings.HasSuffix(text, "/m"):
+		text = strings.TrimSuffix(text, "/m")
 		divisor = 60
-	case strings.HasSuffix(texto, "/h"):
-		texto = strings.TrimSuffix(texto, "/h")
+	case strings.HasSuffix(text, "/h"):
+		text = strings.TrimSuffix(text, "/h")
 		divisor = 3600
 	}
-	valor, err := strconv.ParseFloat(strings.TrimSpace(texto), 64)
+	value, err := strconv.ParseFloat(strings.TrimSpace(text), 64)
 	if err != nil {
-		return 0, erroNo(no, "taxa invalida: %q (use por exemplo 50/s)", no.Value)
+		return 0, nodeError(no, "taxa invalida: %q (use por exemplo 50/s)", no.Value)
 	}
-	if valor <= 0 {
-		return 0, erroNo(no, "taxa precisa ser maior que zero")
+	if value <= 0 {
+		return 0, nodeError(no, "taxa precisa ser maior que zero")
 	}
-	return valor / divisor, nil
+	return value / divisor, nil
 }
 
-func lerPassos(no *yaml.Node) ([]Passo, error) {
+func readSteps(no *yaml.Node) ([]Step, error) {
 	if no.Kind != yaml.SequenceNode {
-		return nil, erroNo(no, "cenario precisa ser uma lista de passos, um por linha:\n"+
+		return nil, nodeError(no, "cenario precisa ser uma lista de passos, um por linha:\n"+
 			"  cenario:\n"+
 			"    - http: GET /pedidos/1")
 	}
-	passos := make([]Passo, 0, len(no.Content))
-	for _, itemNo := range no.Content {
-		passo, err := lerPasso(itemNo)
+	steps := make([]Step, 0, len(no.Content))
+	for _, itemNode := range no.Content {
+		step, err := readStep(itemNode)
 		if err != nil {
 			return nil, err
 		}
-		passos = append(passos, passo)
+		steps = append(steps, step)
 	}
-	return passos, nil
+	return steps, nil
 }
 
-func lerPasso(no *yaml.Node) (Passo, error) {
-	passo := Passo{Linha: no.Line}
+func readStep(no *yaml.Node) (Step, error) {
+	step := Step{Line: no.Line}
 	if no.Kind != yaml.MappingNode {
-		return passo, erroNo(no, "cada passo precisa ser um mapa, por exemplo:\n"+
+		return step, nodeError(no, "cada passo precisa ser um mapa, por exemplo:\n"+
 			"  - http: GET /pedidos/1\n"+
 			"    nome: consultar pedido")
 	}
-	var configuracaoNo *yaml.Node
-	for indice := 0; indice+1 < len(no.Content); indice += 2 {
-		chave := no.Content[indice]
-		valor := no.Content[indice+1]
-		switch chave.Value {
+	var configNode *yaml.Node
+	for index := 0; index+1 < len(no.Content); index += 2 {
+		key := no.Content[index]
+		value := no.Content[index+1]
+		switch key.Value {
 		case "nome":
-			passo.Nome = valor.Value
+			step.Name = value.Value
 		case "verificar", "espera":
-			verificacoes, assercoes, err := lerAssercoes(valor)
+			checks, assertions, err := readAssertions(value)
 			if err != nil {
-				return passo, err
+				return step, err
 			}
-			passo.Verificacoes = verificacoes
-			passo.Assercoes = assercoes
+			step.Checks = checks
+			step.Assertions = assertions
 		case "captura":
-			capturas, err := lerCapturas(valor)
+			captures, err := readCaptures(value)
 			if err != nil {
-				return passo, err
+				return step, err
 			}
-			passo.Capturas = capturas
+			step.Captures = captures
 		case "peso":
-			return passo, erroNo(chave, "a chave %q ainda nao existe: mix ponderado de operacoes entra junto com o GraphQL", chave.Value)
+			return step, nodeError(key, "a chave %q ainda nao existe: mix ponderado de operacoes entra junto com o GraphQL", key.Value)
 		default:
-			if _, existe := protocol.Buscar(chave.Value); !existe {
-				return passo, erroNo(chave, "nao reconheco %q como tipo de passo\n%s",
-					chave.Value, sugerir(chave.Value, append(protocol.Registrados(), ChavesDePasso...)))
+			if _, exists := protocol.Lookup(key.Value); !exists {
+				return step, nodeError(key, "nao reconheco %q como tipo de passo\n%s",
+					key.Value, sugerir(key.Value, append(protocol.Registered(), StepKeys...)))
 			}
-			if passo.Protocolo != "" {
-				return passo, erroNo(chave, "o passo declara mais de um protocolo: %q e %q", passo.Protocolo, chave.Value)
+			if step.Protocol != "" {
+				return step, nodeError(key, "o passo declara mais de um protocolo: %q e %q", step.Protocol, key.Value)
 			}
-			passo.Protocolo = chave.Value
-			configuracaoNo = valor
+			step.Protocol = key.Value
+			configNode = value
 		}
 	}
-	if passo.Protocolo == "" {
-		return passo, erroNo(no, "passo sem protocolo (compilados: %s), por exemplo:\n"+
-			"  - http: GET /pedidos/1", strings.Join(protocol.Registrados(), ", "))
+	if step.Protocol == "" {
+		return step, nodeError(no, "passo sem protocolo (compilados: %s), por exemplo:\n"+
+			"  - http: GET /pedidos/1", strings.Join(protocol.Registered(), ", "))
 	}
-	implementacao, _ := protocol.Buscar(passo.Protocolo)
-	configuracao, err := implementacao.Decodificar(configuracaoNo)
+	implementation, _ := protocol.Lookup(step.Protocol)
+	config, err := implementation.Decode(configNode)
 	if err != nil {
-		if _, jaEhErroDeCenario := err.(ErroDeCenario); !jaEhErroDeCenario {
-			return passo, erroNo(configuracaoNo, "%v", err)
+		if _, alreadyScenarioError := err.(ScenarioError); !alreadyScenarioError {
+			return step, nodeError(configNode, "%v", err)
 		}
-		return passo, err
+		return step, err
 	}
-	passo.Configuracao = configuracao
-	if passo.Nome == "" {
-		passo.Nome = configuracao.ChaveDeAgregacao()
+	step.Config = config
+	if step.Name == "" {
+		step.Name = config.AggregationKey()
 	}
-	return passo, nil
+	return step, nil
 }
 
-func sugerir(recebido string, validas []string) string {
-	melhor, menorDistancia := "", 1<<30
-	for _, valida := range validas {
-		distancia := distanciaDeEdicao(strings.ToLower(recebido), strings.ToLower(valida))
-		if distancia < menorDistancia {
-			melhor, menorDistancia = valida, distancia
+func sugerir(received string, valid []string) string {
+	best, shortestDistance := "", 1<<30
+	for _, valid := range valid {
+		distance := editDistance(strings.ToLower(received), strings.ToLower(valid))
+		if distance < shortestDistance {
+			best, shortestDistance = valid, distance
 		}
 	}
-	linhas := ""
-	if melhor != "" && menorDistancia <= 3 {
-		linhas += fmt.Sprintf("    voce quis dizer %q?\n", melhor)
+	lines := ""
+	if best != "" && shortestDistance <= 3 {
+		lines += fmt.Sprintf("    voce quis dizer %q?\n", best)
 	}
-	return linhas + "    disponiveis: " + strings.Join(validas, ", ")
+	return lines + "    disponiveis: " + strings.Join(valid, ", ")
 }
 
-func distanciaDeEdicao(primeira, segunda string) int {
-	anterior := make([]int, len(segunda)+1)
-	atual := make([]int, len(segunda)+1)
-	for j := range anterior {
-		anterior[j] = j
+func editDistance(first, second string) int {
+	previous := make([]int, len(second)+1)
+	current := make([]int, len(second)+1)
+	for j := range previous {
+		previous[j] = j
 	}
-	for i := 1; i <= len(primeira); i++ {
-		atual[0] = i
-		for j := 1; j <= len(segunda); j++ {
-			custo := 1
-			if primeira[i-1] == segunda[j-1] {
-				custo = 0
+	for i := 1; i <= len(first); i++ {
+		current[0] = i
+		for j := 1; j <= len(second); j++ {
+			cost := 1
+			if first[i-1] == second[j-1] {
+				cost = 0
 			}
-			atual[j] = min(min(atual[j-1]+1, anterior[j]+1), anterior[j-1]+custo)
+			current[j] = min(min(current[j-1]+1, previous[j]+1), previous[j-1]+cost)
 		}
-		copy(anterior, atual)
+		copy(previous, current)
 	}
-	return anterior[len(segunda)]
+	return previous[len(second)]
 }

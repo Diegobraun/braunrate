@@ -9,7 +9,7 @@ import (
 	"github.com/Diegobraun/braunrate/internal/scenario"
 )
 
-const planoDeJMeter = `<?xml version="1.0" encoding="UTF-8"?>
+const jmeterPlan = `<?xml version="1.0" encoding="UTF-8"?>
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
   <hashTree>
     <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Cobranca" enabled="true"/>
@@ -76,73 +76,73 @@ const planoDeJMeter = `<?xml version="1.0" encoding="UTF-8"?>
 </jmeterTestPlan>
 `
 
-func TestImportaJMXEGeraCenarioQueOParserAceita(t *testing.T) {
-	importacao, err := importer.DeJMX([]byte(planoDeJMeter))
+func TestImportsJMXIntoParsableScenario(t *testing.T) {
+	importResult, err := importer.FromJMX([]byte(jmeterPlan))
 	if err != nil {
 		t.Fatalf("nao importou: %v", err)
 	}
 
-	c, err := scenario.Carregar([]byte(importacao.YAML))
+	c, err := scenario.Parse([]byte(importResult.YAML))
 	if err != nil {
-		t.Fatalf("gerei um cenario que o parser recusa:\n%v\n%s", err, importacao.YAML)
+		t.Fatalf("gerei um cenario que o parser recusa:\n%v\n%s", err, importResult.YAML)
 	}
-	if err := c.Validar(); err != nil {
-		t.Fatalf("cenario invalido: %v\n%s", err, importacao.YAML)
+	if err := c.Validate(); err != nil {
+		t.Fatalf("cenario invalido: %v\n%s", err, importResult.YAML)
 	}
-	if len(c.Passos) != 2 {
-		t.Fatalf("esperava 2 passos, veio %d:\n%s", len(c.Passos), importacao.YAML)
+	if len(c.Steps) != 2 {
+		t.Fatalf("esperava 2 passos, veio %d:\n%s", len(c.Steps), importResult.YAML)
 	}
-	if c.Alvo != "https://api.exemplo.com" {
-		t.Errorf("alvo = %q", c.Alvo)
+	if c.Target != "https://api.exemplo.com" {
+		t.Errorf("alvo = %q", c.Target)
 	}
-	if c.Passos[0].Nome != "consultar pedido" || c.Passos[1].Nome != "pagar fatura" {
-		t.Errorf("nomes dos passos: %q e %q", c.Passos[0].Nome, c.Passos[1].Nome)
+	if c.Steps[0].Name != "consultar pedido" || c.Steps[1].Name != "pagar fatura" {
+		t.Errorf("nomes dos passos: %q e %q", c.Steps[0].Name, c.Steps[1].Name)
 	}
-	if len(c.Dados) != 1 || c.Dados[0].Arquivo != "dados/assinantes.csv" {
-		t.Errorf("bloco de dados nao veio do CSVDataSet: %+v", c.Dados)
+	if len(c.Data) != 1 || c.Data[0].File != "dados/assinantes.csv" {
+		t.Errorf("bloco de dados nao veio do CSVDataSet: %+v", c.Data)
 	}
 }
 
-func TestTokenDoJMXNaoVaiParaOArquivo(t *testing.T) {
-	importacao, err := importer.DeJMX([]byte(planoDeJMeter))
+func TestJMXTokenNeverReachesFile(t *testing.T) {
+	importResult, err := importer.FromJMX([]byte(jmeterPlan))
 	if err != nil {
 		t.Fatalf("nao importou: %v", err)
 	}
-	if strings.Contains(importacao.YAML, "token-secreto-de-verdade") {
-		t.Fatalf("o token do .jmx foi escrito no cenario:\n%s", importacao.YAML)
+	if strings.Contains(importResult.YAML, "token-secreto-de-verdade") {
+		t.Fatalf("o token do .jmx foi escrito no cenario:\n%s", importResult.YAML)
 	}
-	if !strings.Contains(importacao.YAML, "${token}") {
-		t.Errorf("o cabecalho de credencial devia virar variavel:\n%s", importacao.YAML)
+	if !strings.Contains(importResult.YAML, "${token}") {
+		t.Errorf("o cabecalho de credencial devia virar variavel:\n%s", importResult.YAML)
 	}
 }
 
 // Traducao silenciosa de thread para taxa importaria a omissao coordenada
 // junto com o cenario: a pessoa acharia que mediu 50/s.
-func TestAvisaQueThreadNaoViraTaxa(t *testing.T) {
-	importacao, err := importer.DeJMX([]byte(planoDeJMeter))
+func TestWarnsThreadsAreNotArrivalRate(t *testing.T) {
+	importResult, err := importer.FromJMX([]byte(jmeterPlan))
 	if err != nil {
 		t.Fatalf("nao importou: %v", err)
 	}
-	if !contemTrecho(importacao.Avisos, "50 threads") || !contemTrecho(importacao.Avisos, "nao vira taxa de chegada") {
-		t.Errorf("faltou o aviso sobre thread nao virar taxa: %v", importacao.Avisos)
+	if !containsFragment(importResult.Warnings, "50 threads") || !containsFragment(importResult.Warnings, "nao vira taxa de chegada") {
+		t.Errorf("faltou o aviso sobre thread nao virar taxa: %v", importResult.Warnings)
 	}
 }
 
-func TestDeclaraOQueNaoFoiTraduzido(t *testing.T) {
-	importacao, err := importer.DeJMX([]byte(planoDeJMeter))
+func TestDeclaresWhatWasNotTranslated(t *testing.T) {
+	importResult, err := importer.FromJMX([]byte(jmeterPlan))
 	if err != nil {
 		t.Fatalf("nao importou: %v", err)
 	}
-	if !contemTrecho(importacao.Avisos, "BeanShellPreProcessor") {
-		t.Errorf("elemento ignorado precisa ser declarado: %v", importacao.Avisos)
+	if !containsFragment(importResult.Warnings, "BeanShellPreProcessor") {
+		t.Errorf("elemento ignorado precisa ser declarado: %v", importResult.Warnings)
 	}
-	if !contemTrecho(importacao.Avisos, "faturaId") {
-		t.Errorf("a correlacao do .jmx precisa virar instrucao de captura: %v", importacao.Avisos)
+	if !containsFragment(importResult.Warnings, "faturaId") {
+		t.Errorf("a correlacao do .jmx precisa virar instrucao de captura: %v", importResult.Warnings)
 	}
 }
 
-func TestJMXSemRequisicaoHTTPExplicaOQueOImportadorCobre(t *testing.T) {
-	_, err := importer.DeJMX([]byte(`<?xml version="1.0"?><jmeterTestPlan><hashTree><TestPlan testname="vazio"/></hashTree></jmeterTestPlan>`))
+func TestJMXWithoutHTTPRequestExplainsImporterCoverage(t *testing.T) {
+	_, err := importer.FromJMX([]byte(`<?xml version="1.0"?><jmeterTestPlan><hashTree><TestPlan testname="vazio"/></hashTree></jmeterTestPlan>`))
 	if err == nil {
 		t.Fatal("plano sem requisicao precisa falhar")
 	}
@@ -151,9 +151,9 @@ func TestJMXSemRequisicaoHTTPExplicaOQueOImportadorCobre(t *testing.T) {
 	}
 }
 
-func contemTrecho(avisos []string, trecho string) bool {
-	for _, aviso := range avisos {
-		if strings.Contains(aviso, trecho) {
+func containsFragment(warnings []string, fragment string) bool {
+	for _, warning := range warnings {
+		if strings.Contains(warning, fragment) {
 			return true
 		}
 	}

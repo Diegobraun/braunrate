@@ -9,74 +9,74 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func decodificar(t *testing.T, texto string) (protocol.Configuracao, error) {
+func decode(t *testing.T, text string) (protocol.Config, error) {
 	t.Helper()
-	var documento yaml.Node
-	if err := yaml.Unmarshal([]byte(texto), &documento); err != nil {
+	var document yaml.Node
+	if err := yaml.Unmarshal([]byte(text), &document); err != nil {
 		t.Fatalf("yaml invalido no teste: %v", err)
 	}
-	return kafka.Novo(protocol.OpcoesPadrao()).Decodificar(documento.Content[0])
+	return kafka.New(protocol.DefaultOptions()).Decode(document.Content[0])
 }
 
 // O topico e o fluxo de negocio; o broker e infraestrutura. Quem le o relatorio
 // precisa saber qual fluxo ficou lento.
-func TestChaveDeAgregacaoEhOTopico(t *testing.T) {
-	configuracao, err := decodificar(t, "topico: pedidos\nchave: \"1\"\nvalor: { id: 1 }\n")
+func TestAggregationKeyIsTopic(t *testing.T) {
+	config, err := decode(t, "topico: pedidos\nchave: \"1\"\nvalor: { id: 1 }\n")
 	if err != nil {
 		t.Fatalf("nao decodificou: %v", err)
 	}
-	if configuracao.ChaveDeAgregacao() != "kafka produzir pedidos" {
-		t.Errorf("chave = %q", configuracao.ChaveDeAgregacao())
+	if config.AggregationKey() != "kafka produzir pedidos" {
+		t.Errorf("chave = %q", config.AggregationKey())
 	}
 }
 
-func TestChaveDaMensagemEhResolvidaPorIteracao(t *testing.T) {
-	configuracao, err := decodificar(t, "topico: pedidos\nchave: \"${pedidos.id}\"\nvalor: { id: \"${pedidos.id}\" }\n")
+func TestMessageKeyIsResolvedPerIteration(t *testing.T) {
+	config, err := decode(t, "topico: pedidos\nchave: \"${pedidos.id}\"\nvalor: { id: \"${pedidos.id}\" }\n")
 	if err != nil {
 		t.Fatalf("nao decodificou: %v", err)
 	}
-	resolvida := configuracao.Resolver(func(texto string) string {
-		return strings.ReplaceAll(texto, "${pedidos.id}", "abc-123")
+	resolvida := config.Resolve(func(text string) string {
+		return strings.ReplaceAll(text, "${pedidos.id}", "abc-123")
 	})
-	descricao := strings.Join(resolvida.(protocol.ConfiguracaoDescritivel).Descrever(), " ")
-	if !strings.Contains(descricao, "abc-123") {
-		t.Errorf("chave e valor precisam ser resolvidos por iteracao: %s", descricao)
+	description := strings.Join(resolvida.(protocol.Describable).Describe(), " ")
+	if !strings.Contains(description, "abc-123") {
+		t.Errorf("chave e valor precisam ser resolvidos por iteracao: %s", description)
 	}
 }
 
-func TestPassoSemTopicoOuSemValorEnsinaAFormaCerta(t *testing.T) {
-	casos := map[string]string{
+func TestStepWithoutTopicOrValueTeachesRightForm(t *testing.T) {
+	testCases := map[string]string{
 		"sem topico": "valor: { id: 1 }\n",
 		"sem valor":  "topico: pedidos\n",
 	}
-	for nome, texto := range casos {
-		_, err := decodificar(t, texto)
+	for name, text := range testCases {
+		_, err := decode(t, text)
 		if err == nil {
-			t.Fatalf("%s: esperava erro", nome)
+			t.Fatalf("%s: esperava erro", name)
 		}
 		if !strings.Contains(err.Error(), "- kafka:") {
-			t.Errorf("%s: a mensagem precisa mostrar um exemplo: %q", nome, err.Error())
+			t.Errorf("%s: a mensagem precisa mostrar um exemplo: %q", name, err.Error())
 		}
 	}
 }
 
-func TestAcksDesconhecidoListaAsOpcoes(t *testing.T) {
-	_, err := decodificar(t, "topico: pedidos\nvalor: { id: 1 }\nacks: talvez\n")
+func TestUnknownAcksListsOptions(t *testing.T) {
+	_, err := decode(t, "topico: pedidos\nvalor: { id: 1 }\nacks: talvez\n")
 	if err == nil || !strings.Contains(err.Error(), "todos, lider ou nenhum") {
 		t.Errorf("erro = %v", err)
 	}
 }
 
-func TestSemBrokerEnsinaOndeDeclarar(t *testing.T) {
-	configuracao, err := decodificar(t, "topico: pedidos\nvalor: { id: 1 }\n")
+func TestMissingBrokerTeachesWhereToDeclare(t *testing.T) {
+	config, err := decode(t, "topico: pedidos\nvalor: { id: 1 }\n")
 	if err != nil {
 		t.Fatalf("nao decodificou: %v", err)
 	}
-	resposta := kafka.Novo(protocol.OpcoesPadrao()).Executar(t.Context(), protocol.Requisicao{Configuracao: configuracao})
-	if resposta.Classe != protocol.ErroDeConfigacao {
-		t.Fatalf("classe = %q", resposta.Classe)
+	response := kafka.New(protocol.DefaultOptions()).Execute(t.Context(), protocol.Request{Config: config})
+	if response.Class != protocol.ErrConfig {
+		t.Fatalf("classe = %q", response.Class)
 	}
-	if !strings.Contains(resposta.Detalhe, "kafka://") {
-		t.Errorf("detalhe = %q", resposta.Detalhe)
+	if !strings.Contains(response.Detail, "kafka://") {
+		t.Errorf("detalhe = %q", response.Detail)
 	}
 }

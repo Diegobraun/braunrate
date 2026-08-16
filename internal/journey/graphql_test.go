@@ -16,7 +16,7 @@ import (
 	"github.com/Diegobraun/braunrate/internal/testsupport"
 )
 
-const cenarioGraphQL = `
+const graphqlScenario = `
 nome: Cobranca via GraphQL
 alvo: %s
 
@@ -57,80 +57,80 @@ slo:
   - global: { erros: < 0.1 }
 `
 
-func executarGraphQL(t *testing.T, linhas string) (metrics.Documento, slo.Veredito) {
+func executeGraphQL(t *testing.T, lines string) (metrics.Document, slo.Verdict) {
 	t.Helper()
-	servidor := testsupport.Novo(testsupport.Opcoes{Latencia: time.Millisecond})
-	if err := servidor.Iniciar("127.0.0.1:0"); err != nil {
+	server := testsupport.New(testsupport.Options{Latency: time.Millisecond})
+	if err := server.Start("127.0.0.1:0"); err != nil {
 		t.Fatalf("alvo nao subiu: %v", err)
 	}
-	t.Cleanup(func() { _ = servidor.Encerrar() })
+	t.Cleanup(func() { _ = server.Close() })
 
-	raiz := t.TempDir()
-	if err := os.WriteFile(filepath.Join(raiz, "assinantes.csv"), []byte(linhas), 0o644); err != nil {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "assinantes.csv"), []byte(lines), 0o644); err != nil {
 		t.Fatalf("nao consegui escrever o csv: %v", err)
 	}
-	caminho := filepath.Join(raiz, "cenario.yaml")
-	if err := os.WriteFile(caminho, []byte(fmt.Sprintf(cenarioGraphQL, servidor.Endereco())), 0o644); err != nil {
+	path := filepath.Join(root, "cenario.yaml")
+	if err := os.WriteFile(path, []byte(fmt.Sprintf(graphqlScenario, server.Address())), 0o644); err != nil {
 		t.Fatalf("nao consegui escrever o cenario: %v", err)
 	}
 
-	c, err := scenario.CarregarArquivo(caminho)
+	c, err := scenario.ParseFile(path)
 	if err != nil {
 		t.Fatalf("cenario nao carregou: %v", err)
 	}
-	if err := c.Validar(); err != nil {
+	if err := c.Validate(); err != nil {
 		t.Fatalf("cenario invalido: %v", err)
 	}
-	opcoes := engine.OpcoesPadrao()
-	opcoes.RaizDeDados = raiz
-	m, err := engine.Novo(c, opcoes)
+	opts := engine.DefaultOptions()
+	opts.DataRoot = root
+	m, err := engine.New(c, opts)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}
-	documento := m.Executar(context.Background())
-	return documento, slo.Avaliar(c.SLO, documento)
+	document := m.Execute(context.Background())
+	return document, slo.Evaluate(c.SLO, document)
 }
 
-func TestGraphQLRendeUmaLinhaPorOperacao(t *testing.T) {
-	documento, veredito := executarGraphQL(t, "id,nome\n1001,ana\n1002,bruno\n")
+func TestGraphQLYieldsOneRowPerOperation(t *testing.T) {
+	document, verdict := executeGraphQL(t, "id,nome\n1001,ana\n1002,bruno\n")
 
-	if documento.Global.Erros != 0 {
-		t.Fatalf("esperava zero erro, obtive %d: %+v", documento.Global.Erros, documento.Passos)
+	if document.Overall.Errors != 0 {
+		t.Fatalf("esperava zero erro, obtive %d: %+v", document.Overall.Errors, document.Steps)
 	}
-	nomes := map[string]bool{}
-	for _, passo := range documento.Passos {
-		nomes[passo.Nome] = true
-		if passo.Protocolo != "graphql" {
-			t.Errorf("passo %q com protocolo %q", passo.Nome, passo.Protocolo)
+	names := map[string]bool{}
+	for _, step := range document.Steps {
+		names[step.Name] = true
+		if step.Protocol != "graphql" {
+			t.Errorf("passo %q com protocolo %q", step.Name, step.Protocol)
 		}
 	}
-	if !nomes["graphql ConsultarPedido"] || !nomes["graphql PagarFatura"] {
-		t.Fatalf("o relatorio precisa de uma linha por operacao, obtive %v", nomes)
+	if !names["graphql ConsultarPedido"] || !names["graphql PagarFatura"] {
+		t.Fatalf("o relatorio precisa de uma linha por operacao, obtive %v", names)
 	}
-	if len(documento.Passos) != 2 {
-		t.Errorf("consulta e mutation nao podem cair na mesma linha: %d passo(s)", len(documento.Passos))
+	if len(document.Steps) != 2 {
+		t.Errorf("consulta e mutation nao podem cair na mesma linha: %d passo(s)", len(document.Steps))
 	}
-	if !veredito.Passou {
-		t.Errorf("SLO deveria passar: %s", veredito.Frase)
+	if !verdict.Passed {
+		t.Errorf("SLO deveria passar: %s", verdict.Sentence)
 	}
 }
 
 // O alvo devolve NOT_FOUND com status 200 para identificador terminado em 7,
 // que e como o erro de GraphQL chega em producao.
-func TestErroDeGraphQLComStatus200DerrubaOSLO(t *testing.T) {
-	documento, veredito := executarGraphQL(t, "id,nome\n1007,ana\n")
+func TestGraphQLErrorWithStatus200FailsSLO(t *testing.T) {
+	document, verdict := executeGraphQL(t, "id,nome\n1007,ana\n")
 
-	consulta := documento.Passos[0]
-	if consulta.ErrosPorClasse["graphql"] == 0 {
-		t.Fatalf("erro de graphql nao foi contado: %+v", consulta.ErrosPorClasse)
+	query := document.Steps[0]
+	if query.ErrorsByClass["graphql"] == 0 {
+		t.Fatalf("erro de graphql nao foi contado: %+v", query.ErrorsByClass)
 	}
-	if consulta.StatusPorCodigo["200"] == 0 {
-		t.Errorf("o status HTTP era 200 mesmo: %+v", consulta.StatusPorCodigo)
+	if query.StatusByCode["200"] == 0 {
+		t.Errorf("o status HTTP era 200 mesmo: %+v", query.StatusByCode)
 	}
-	if veredito.Passou {
+	if verdict.Passed {
 		t.Error("execucao com 100% de erro de graphql nao pode passar no SLO")
 	}
-	if len(documento.Passos) != 1 {
-		t.Errorf("a mutation nao deveria rodar depois do erro: %d passo(s)", len(documento.Passos))
+	if len(document.Steps) != 1 {
+		t.Errorf("a mutation nao deveria rodar depois do erro: %d passo(s)", len(document.Steps))
 	}
 }

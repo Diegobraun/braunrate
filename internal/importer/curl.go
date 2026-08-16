@@ -7,230 +7,230 @@ import (
 	"unicode"
 )
 
-type Requisicao struct {
-	Metodo         string
-	Alvo           string
-	Caminho        string
-	Cabecalhos     map[string]string
-	Corpo          string
+type Request struct {
+	Method         string
+	Target         string
+	Path           string
+	Headers        map[string]string
+	Body           string
 	SeguirRedirect bool
-	Usuario        string
-	Senha          string
+	User           string
+	Password       string
 }
 
-type Importacao struct {
-	YAML   string
-	Avisos []string
+type Import struct {
+	YAML     string
+	Warnings []string
 }
 
-func DeCurl(comando string) (Importacao, error) {
-	campos, err := separar(comando)
+func FromCurl(command string) (Import, error) {
+	fields, err := split(command)
 	if err != nil {
-		return Importacao{}, err
+		return Import{}, err
 	}
-	requisicao, err := interpretar(campos)
+	request, err := interpretar(fields)
 	if err != nil {
-		return Importacao{}, err
+		return Import{}, err
 	}
-	return montar(requisicao), nil
+	return build(request), nil
 }
 
 // Aspas e barra invertida de continuacao de linha vem coladas no que a pessoa
 // copiou do navegador; separar por espaco simples quebraria todo corpo JSON.
-func separar(comando string) ([]string, error) {
-	var campos []string
-	var atual strings.Builder
-	tem := false
-	aspas := rune(0)
+func split(command string) ([]string, error) {
+	var fields []string
+	var current strings.Builder
+	has := false
+	quote := rune(0)
 
-	runas := []rune(comando)
-	for indice := 0; indice < len(runas); indice++ {
-		caractere := runas[indice]
+	runas := []rune(command)
+	for index := 0; index < len(runas); index++ {
+		char := runas[index]
 		switch {
-		case caractere == '\\' && aspas != '\'':
-			if indice+1 < len(runas) {
-				seguinte := runas[indice+1]
-				if seguinte == '\n' {
-					indice++
+		case char == '\\' && quote != '\'':
+			if index+1 < len(runas) {
+				next := runas[index+1]
+				if next == '\n' {
+					index++
 					continue
 				}
-				if aspas == 0 {
-					atual.WriteRune(seguinte)
-					tem = true
-					indice++
+				if quote == 0 {
+					current.WriteRune(next)
+					has = true
+					index++
 					continue
 				}
-				if seguinte == '"' || seguinte == '\\' {
-					atual.WriteRune(seguinte)
-					tem = true
-					indice++
+				if next == '"' || next == '\\' {
+					current.WriteRune(next)
+					has = true
+					index++
 					continue
 				}
 			}
-			atual.WriteRune(caractere)
-			tem = true
-		case aspas != 0:
-			if caractere == aspas {
-				aspas = 0
+			current.WriteRune(char)
+			has = true
+		case quote != 0:
+			if char == quote {
+				quote = 0
 				continue
 			}
-			atual.WriteRune(caractere)
-			tem = true
-		case caractere == '\'' || caractere == '"':
-			aspas = caractere
-			tem = true
-		case unicode.IsSpace(caractere):
-			if tem {
-				campos = append(campos, atual.String())
-				atual.Reset()
-				tem = false
+			current.WriteRune(char)
+			has = true
+		case char == '\'' || char == '"':
+			quote = char
+			has = true
+		case unicode.IsSpace(char):
+			if has {
+				fields = append(fields, current.String())
+				current.Reset()
+				has = false
 			}
 		default:
-			atual.WriteRune(caractere)
-			tem = true
+			current.WriteRune(char)
+			has = true
 		}
 	}
-	if aspas != 0 {
+	if quote != 0 {
 		return nil, fmt.Errorf("o comando tem aspas abertas que nunca fecham; cole o curl inteiro, inclusive a ultima linha")
 	}
-	if tem {
-		campos = append(campos, atual.String())
+	if has {
+		fields = append(fields, current.String())
 	}
-	if len(campos) == 0 {
+	if len(fields) == 0 {
 		return nil, fmt.Errorf("nao recebi nenhum comando; use:\n  braunrate importar curl \"curl -X POST https://exemplo/pedidos -d '{}'\"\nou passe o comando pela entrada padrao")
 	}
-	return campos, nil
+	return fields, nil
 }
 
-func interpretar(campos []string) (Requisicao, error) {
-	requisicao := Requisicao{Cabecalhos: map[string]string{}}
-	if campos[0] == "curl" {
-		campos = campos[1:]
+func interpretar(fields []string) (Request, error) {
+	request := Request{Headers: map[string]string{}}
+	if fields[0] == "curl" {
+		fields = fields[1:]
 	}
 
-	proximo := func(indice *int, bandeira string) (string, error) {
-		if *indice+1 >= len(campos) {
-			return "", fmt.Errorf("a opcao %s ficou sem valor no fim do comando", bandeira)
+	next := func(index *int, flag string) (string, error) {
+		if *index+1 >= len(fields) {
+			return "", fmt.Errorf("a opcao %s ficou sem valor no fim do comando", flag)
 		}
-		*indice++
-		return campos[*indice], nil
+		*index++
+		return fields[*index], nil
 	}
 
-	var endereco string
-	for indice := 0; indice < len(campos); indice++ {
-		campo := campos[indice]
-		nome, valorColado, colado := strings.Cut(campo, "=")
+	var address string
+	for index := 0; index < len(fields); index++ {
+		field := fields[index]
+		name, attachedValue, attached := strings.Cut(field, "=")
 
 		switch {
-		case campo == "-X" || campo == "--request":
-			valor, err := proximo(&indice, campo)
+		case field == "-X" || field == "--request":
+			value, err := next(&index, field)
 			if err != nil {
-				return requisicao, err
+				return request, err
 			}
-			requisicao.Metodo = strings.ToUpper(valor)
-		case campo == "-H" || campo == "--header":
-			valor, err := proximo(&indice, campo)
+			request.Method = strings.ToUpper(value)
+		case field == "-H" || field == "--header":
+			value, err := next(&index, field)
 			if err != nil {
-				return requisicao, err
+				return request, err
 			}
-			chave, conteudo, tem := strings.Cut(valor, ":")
-			if !tem {
-				return requisicao, fmt.Errorf("o cabecalho %q nao tem dois-pontos; a forma e -H \"Nome: valor\"", valor)
+			key, content, has := strings.Cut(value, ":")
+			if !has {
+				return request, fmt.Errorf("o cabecalho %q nao tem dois-pontos; a forma e -H \"Nome: valor\"", value)
 			}
-			requisicao.Cabecalhos[strings.TrimSpace(chave)] = strings.TrimSpace(conteudo)
-		case campo == "-d" || campo == "--data" || campo == "--data-raw" || campo == "--data-binary" || campo == "--data-ascii":
-			valor, err := proximo(&indice, campo)
+			request.Headers[strings.TrimSpace(key)] = strings.TrimSpace(content)
+		case field == "-d" || field == "--data" || field == "--data-raw" || field == "--data-binary" || field == "--data-ascii":
+			value, err := next(&index, field)
 			if err != nil {
-				return requisicao, err
+				return request, err
 			}
-			requisicao.Corpo = valor
-		case colado && (nome == "--data" || nome == "--data-raw" || nome == "--data-binary"):
-			requisicao.Corpo = valorColado
-		case campo == "-u" || campo == "--user":
-			valor, err := proximo(&indice, campo)
+			request.Body = value
+		case attached && (name == "--data" || name == "--data-raw" || name == "--data-binary"):
+			request.Body = attachedValue
+		case field == "-u" || field == "--user":
+			value, err := next(&index, field)
 			if err != nil {
-				return requisicao, err
+				return request, err
 			}
-			requisicao.Usuario, requisicao.Senha, _ = strings.Cut(valor, ":")
-		case campo == "--url":
-			valor, err := proximo(&indice, campo)
+			request.User, request.Password, _ = strings.Cut(value, ":")
+		case field == "--url":
+			value, err := next(&index, field)
 			if err != nil {
-				return requisicao, err
+				return request, err
 			}
-			endereco = valor
-		case campo == "-L" || campo == "--location":
-			requisicao.SeguirRedirect = true
-		case campo == "-o" || campo == "--output" || campo == "-w" || campo == "--write-out" || campo == "-A" || campo == "--user-agent" || campo == "-b" || campo == "--cookie" || campo == "-e" || campo == "--referer":
-			valor, err := proximo(&indice, campo)
+			address = value
+		case field == "-L" || field == "--location":
+			request.SeguirRedirect = true
+		case field == "-o" || field == "--output" || field == "-w" || field == "--write-out" || field == "-A" || field == "--user-agent" || field == "-b" || field == "--cookie" || field == "-e" || field == "--referer":
+			value, err := next(&index, field)
 			if err != nil {
-				return requisicao, err
+				return request, err
 			}
-			if campo == "-A" || campo == "--user-agent" {
-				requisicao.Cabecalhos["User-Agent"] = valor
+			if field == "-A" || field == "--user-agent" {
+				request.Headers["User-Agent"] = value
 			}
-			if campo == "-b" || campo == "--cookie" {
-				requisicao.Cabecalhos["Cookie"] = valor
+			if field == "-b" || field == "--cookie" {
+				request.Headers["Cookie"] = value
 			}
-		case strings.HasPrefix(campo, "-"):
+		case strings.HasPrefix(field, "-"):
 			continue
 		default:
-			if endereco == "" {
-				endereco = campo
+			if address == "" {
+				address = field
 			}
 		}
 	}
 
-	if endereco == "" {
-		return requisicao, fmt.Errorf("nao achei a URL no comando; o curl precisa ter o endereco, como em:\n  curl https://exemplo/pedidos")
+	if address == "" {
+		return request, fmt.Errorf("nao achei a URL no comando; o curl precisa ter o endereco, como em:\n  curl https://exemplo/pedidos")
 	}
-	if !strings.Contains(endereco, "://") {
-		endereco = "https://" + endereco
+	if !strings.Contains(address, "://") {
+		address = "https://" + address
 	}
-	partes, err := url.Parse(endereco)
+	parts, err := url.Parse(address)
 	if err != nil {
-		return requisicao, fmt.Errorf("nao consegui entender a URL %q: %v", endereco, err)
+		return request, fmt.Errorf("nao consegui entender a URL %q: %v", address, err)
 	}
 
-	requisicao.Alvo = partes.Scheme + "://" + partes.Host
-	requisicao.Caminho = partes.RequestURI()
-	if requisicao.Metodo == "" {
-		requisicao.Metodo = "GET"
-		if requisicao.Corpo != "" {
-			requisicao.Metodo = "POST"
+	request.Target = parts.Scheme + "://" + parts.Host
+	request.Path = parts.RequestURI()
+	if request.Method == "" {
+		request.Method = "GET"
+		if request.Body != "" {
+			request.Method = "POST"
 		}
 	}
-	return requisicao, nil
+	return request, nil
 }
 
-func montar(requisicao Requisicao) Importacao {
-	roteiro := Roteiro{
-		Nome: nomeDoCenario(requisicao),
-		Alvo: requisicao.Alvo,
-		Passos: []PassoImportado{{
-			Nome:           nomeDoPasso(requisicao),
-			Metodo:         requisicao.Metodo,
-			Caminho:        requisicao.Caminho,
-			Cabecalhos:     requisicao.Cabecalhos,
-			Corpo:          requisicao.Corpo,
-			SeguirRedirect: requisicao.SeguirRedirect,
+func build(request Request) Import {
+	script := Script{
+		Name:   scenarioName(request),
+		Target: request.Target,
+		Steps: []ImportedStep{{
+			Name:           stepName(request),
+			Method:         request.Method,
+			Path:           request.Path,
+			Headers:        request.Headers,
+			Body:           request.Body,
+			SeguirRedirect: request.SeguirRedirect,
 		}},
 	}
 
-	if requisicao.Usuario != "" {
-		roteiro.Avisos = append(roteiro.Avisos,
-			fmt.Sprintf("o comando usava -u %s:...; declare isso no bloco 'autenticacao' com tipo: basica, e deixe a senha em variavel de ambiente", requisicao.Usuario))
+	if request.User != "" {
+		script.Warnings = append(script.Warnings,
+			fmt.Sprintf("o comando usava -u %s:...; declare isso no bloco 'autenticacao' com tipo: basica, e deixe a senha em variavel de ambiente", request.User))
 	}
-	if strings.Contains(requisicao.Caminho, "?") || temIdentificador(requisicao.Caminho) {
-		roteiro.Avisos = append(roteiro.Avisos,
+	if strings.Contains(request.Path, "?") || hasIdentifier(request.Path) {
+		script.Warnings = append(script.Warnings,
 			"o caminho tem valor fixo: com um valor so, o alvo responde de cache e o numero fica otimista. Troque por ${dados.coluna} e declare um bloco 'dados'")
 	}
-	return GerarYAML(roteiro)
+	return RenderYAML(script)
 }
 
-func nomeDoCenario(requisicao Requisicao) string {
-	return "Importado de curl " + strings.ToUpper(requisicao.Metodo) + " " + recurso(requisicao.Caminho)
+func scenarioName(request Request) string {
+	return "Importado de curl " + strings.ToUpper(request.Method) + " " + resource(request.Path)
 }
 
-func nomeDoPasso(requisicao Requisicao) string {
-	return strings.ToLower(requisicao.Metodo) + " " + recurso(requisicao.Caminho)
+func stepName(request Request) string {
+	return strings.ToLower(request.Method) + " " + resource(request.Path)
 }

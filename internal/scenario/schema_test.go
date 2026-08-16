@@ -15,86 +15,86 @@ import (
 	_ "github.com/Diegobraun/braunrate/internal/protocol/wait"
 )
 
-type esquema struct {
-	Propriedades map[string]json.RawMessage `json:"properties"`
-	Definicoes   map[string]struct {
-		Propriedades map[string]json.RawMessage `json:"properties"`
+type schema struct {
+	Properties  map[string]json.RawMessage `json:"properties"`
+	Definitions map[string]struct {
+		Properties map[string]json.RawMessage `json:"properties"`
 	} `json:"$defs"`
 }
 
-func lerEsquema(t *testing.T) esquema {
+func readSchema(t *testing.T) schema {
 	t.Helper()
-	conteudo, err := os.ReadFile(filepath.Join("..", "..", "docs", "braunrate.schema.json"))
+	content, err := os.ReadFile(filepath.Join("..", "..", "docs", "braunrate.schema.json"))
 	if err != nil {
 		t.Fatalf("nao consegui ler o schema publicado: %v", err)
 	}
-	var lido esquema
-	if err := json.Unmarshal(conteudo, &lido); err != nil {
+	var read schema
+	if err := json.Unmarshal(content, &read); err != nil {
 		t.Fatalf("o schema publicado nao e JSON valido: %v", err)
 	}
-	return lido
+	return read
 }
 
-func TestSchemaPublicadoTemAsMesmasChavesDeTopoQueOParser(t *testing.T) {
-	lido := lerEsquema(t)
-	compararChaves(t, "topo", ChavesDeTopo, chavesDe(lido.Propriedades))
+func TestPublishedSchemaHasSameTopKeysAsParser(t *testing.T) {
+	read := readSchema(t)
+	compareKeys(t, "topo", TopKeys, keysOf(read.Properties))
 }
 
-func TestSchemaPublicadoTemAsMesmasChavesDePassoQueOParser(t *testing.T) {
-	lido := lerEsquema(t)
-	esperadas := append(append([]string{}, ChavesDePasso...), protocol.Registrados()...)
-	compararChaves(t, "passo", esperadas, chavesDe(lido.Definicoes["passo"].Propriedades))
+func TestPublishedSchemaHasSameStepKeysAsParser(t *testing.T) {
+	read := readSchema(t)
+	expected := append(append([]string{}, StepKeys...), protocol.Registered()...)
+	compareKeys(t, "passo", expected, keysOf(read.Definitions["passo"].Properties))
 }
 
-func compararChaves(t *testing.T, onde string, parser, schema []string) {
+func compareKeys(t *testing.T, where string, parser, schema []string) {
 	t.Helper()
 	sort.Strings(parser)
 	sort.Strings(schema)
 
-	noSchema := map[string]bool{}
-	for _, chave := range schema {
-		noSchema[chave] = true
+	schemaNode := map[string]bool{}
+	for _, key := range schema {
+		schemaNode[key] = true
 	}
-	for _, chave := range parser {
-		if !noSchema[chave] {
-			t.Errorf("o parser aceita %q no %s e o schema nao documenta: o editor vai marcar erro em cenario valido", chave, onde)
+	for _, key := range parser {
+		if !schemaNode[key] {
+			t.Errorf("o parser aceita %q no %s e o schema nao documenta: o editor vai marcar erro em cenario valido", key, where)
 		}
 	}
 
-	noParser := map[string]bool{}
-	for _, chave := range parser {
-		noParser[chave] = true
+	parserNode := map[string]bool{}
+	for _, key := range parser {
+		parserNode[key] = true
 	}
-	for _, chave := range schema {
-		if !noParser[chave] {
-			t.Errorf("o schema oferece %q no %s e o parser recusa: o editor vai completar chave que nao roda", chave, onde)
+	for _, key := range schema {
+		if !parserNode[key] {
+			t.Errorf("o schema oferece %q no %s e o parser recusa: o editor vai completar chave que nao roda", key, where)
 		}
 	}
 }
 
-func chavesDe(propriedades map[string]json.RawMessage) []string {
-	chaves := make([]string, 0, len(propriedades))
-	for chave := range propriedades {
-		chaves = append(chaves, chave)
+func keysOf(properties map[string]json.RawMessage) []string {
+	keys := make([]string, 0, len(properties))
+	for key := range properties {
+		keys = append(keys, key)
 	}
-	return chaves
+	return keys
 }
 
-func TestCenariosDeExemploApontamParaOSchema(t *testing.T) {
-	arquivos, err := filepath.Glob(filepath.Join("..", "..", "examples", "*.yaml"))
-	if err != nil || len(arquivos) == 0 {
+func TestExampleScenariosPointToSchema(t *testing.T) {
+	files, err := filepath.Glob(filepath.Join("..", "..", "examples", "*.yaml"))
+	if err != nil || len(files) == 0 {
 		t.Fatalf("nao encontrei cenarios de exemplo em examples/: %v", err)
 	}
-	for _, arquivo := range arquivos {
-		conteudo, err := os.ReadFile(arquivo)
+	for _, file := range files {
+		content, err := os.ReadFile(file)
 		if err != nil {
-			t.Fatalf("%s: %v", arquivo, err)
+			t.Fatalf("%s: %v", file, err)
 		}
-		if len(conteudo) < 20 || string(conteudo[:19]) != "# yaml-language-ser" {
-			t.Errorf("%s nao comeca com a linha de yaml-language-server: quem abrir no editor nao ganha autocompletar", arquivo)
+		if len(content) < 20 || string(content[:19]) != "# yaml-language-ser" {
+			t.Errorf("%s nao comeca com a linha de yaml-language-server: quem abrir no editor nao ganha autocompletar", file)
 		}
-		if _, err := Carregar(conteudo); err != nil {
-			t.Errorf("%s nao carrega: %v", arquivo, err)
+		if _, err := Parse(content); err != nil {
+			t.Errorf("%s nao carrega: %v", file, err)
 		}
 	}
 }

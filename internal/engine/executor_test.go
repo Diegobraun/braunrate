@@ -11,145 +11,145 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type configuracaoFalsa struct{ chave string }
+type fakeConfig struct{ key string }
 
-func (c configuracaoFalsa) Protocolo() string        { return "falso" }
-func (c configuracaoFalsa) ChaveDeAgregacao() string { return c.chave }
+func (c fakeConfig) Protocol() string       { return "falso" }
+func (c fakeConfig) AggregationKey() string { return c.key }
 
-func (c configuracaoFalsa) Resolver(func(string) string) protocol.Configuracao { return c }
+func (c fakeConfig) Resolve(func(string) string) protocol.Config { return c }
 
-type protocoloFalso struct {
-	nome     string
-	entrou   chan struct{}
-	libera   chan struct{}
-	chamadas chan struct{}
+type fakeProtocol struct {
+	name    string
+	entrou  chan struct{}
+	release chan struct{}
+	calls   chan struct{}
 }
 
-func (p *protocoloFalso) Nome() string { return p.nome }
+func (p *fakeProtocol) Name() string { return p.name }
 
-func (p *protocoloFalso) Decodificar(*yaml.Node) (protocol.Configuracao, error) {
-	return configuracaoFalsa{chave: "falso"}, nil
+func (p *fakeProtocol) Decode(*yaml.Node) (protocol.Config, error) {
+	return fakeConfig{key: "falso"}, nil
 }
 
-func (p *protocoloFalso) Encerrar() error { return nil }
+func (p *fakeProtocol) Close() error { return nil }
 
-func (p *protocoloFalso) Executar(context.Context, protocol.Requisicao) protocol.Resposta {
+func (p *fakeProtocol) Execute(context.Context, protocol.Request) protocol.Response {
 	if p.entrou != nil {
 		select {
 		case p.entrou <- struct{}{}:
 		default:
 		}
 	}
-	if p.chamadas != nil {
-		p.chamadas <- struct{}{}
+	if p.calls != nil {
+		p.calls <- struct{}{}
 	}
-	if p.libera != nil {
-		<-p.libera
+	if p.release != nil {
+		<-p.release
 	}
-	return protocol.Resposta{Status: 200, Classe: protocol.Sucesso, Bytes: 7}
+	return protocol.Response{Status: 200, Class: protocol.Success, Bytes: 7}
 }
 
-func registrarFalso(t *testing.T, nome string, falso *protocoloFalso) {
+func registerFake(t *testing.T, name string, fake *fakeProtocol) {
 	t.Helper()
-	falso.nome = nome
-	protocol.Registrar(falso)
+	fake.name = name
+	protocol.Record(fake)
 }
 
-func cenarioFalso(nome string, taxa float64, duracao time.Duration) scenario.Cenario {
-	return scenario.Cenario{
-		Nome: "teste",
-		Alvo: "http://alvo.invalido",
-		Carga: scenario.PlanoDeCarga{
-			Modelo: scenario.ChegadaAberta,
-			Fases:  []scenario.Fase{{Tipo: scenario.FaseConstante, Ate: taxa, Durante: duracao}},
+func fakeScenario(name string, rate float64, duration time.Duration) scenario.Scenario {
+	return scenario.Scenario{
+		Name:   "teste",
+		Target: "http://alvo.invalido",
+		Load: scenario.LoadPlan{
+			Model:  scenario.OpenArrival,
+			Phases: []scenario.Phase{{Kind: scenario.PhaseConstant, To: rate, For: duration}},
 		},
-		Passos: []scenario.Passo{{
-			Nome:         "passo falso",
-			Protocolo:    nome,
-			Configuracao: configuracaoFalsa{chave: "falso"},
+		Steps: []scenario.Step{{
+			Name:     "passo falso",
+			Protocol: name,
+			Config:   fakeConfig{key: "falso"},
 		}},
 	}
 }
 
-func TestDespachoSegueOInstanteAgendadoComRelogioInjetado(t *testing.T) {
-	registrarFalso(t, "falso-pontual", &protocoloFalso{})
-	relogio := engine.NovoRelogioVirtual(time.Unix(1_700_000_000, 0))
+func TestDispatchFollowsScheduledInstantWithInjectedClock(t *testing.T) {
+	registerFake(t, "falso-pontual", &fakeProtocol{})
+	clock := engine.NewVirtualClock(time.Unix(1_700_000_000, 0))
 
-	opcoes := engine.OpcoesPadrao()
-	opcoes.Relogio = relogio
-	opcoes.MaximoSimultaneas = 1000
+	opts := engine.DefaultOptions()
+	opts.Clock = clock
+	opts.MaxInflight = 1000
 
-	m, err := engine.Novo(cenarioFalso("falso-pontual", 100, time.Second), opcoes)
+	m, err := engine.New(fakeScenario("falso-pontual", 100, time.Second), opts)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}
-	documento := m.Executar(context.Background())
+	document := m.Execute(context.Background())
 
-	if documento.Agendamento.Enviadas != 100 {
-		t.Errorf("enviadas = %d, esperado 100", documento.Agendamento.Enviadas)
+	if document.Scheduling.Sent != 100 {
+		t.Errorf("enviadas = %d, esperado 100", document.Scheduling.Sent)
 	}
-	if documento.Agendamento.DespachosAtrasados != 0 {
-		t.Errorf("despachos atrasados = %d, esperado 0 com relogio virtual", documento.Agendamento.DespachosAtrasados)
+	if document.Scheduling.LateDispatches != 0 {
+		t.Errorf("despachos atrasados = %d, esperado 0 com relogio virtual", document.Scheduling.LateDispatches)
 	}
-	if documento.Global.Contagem != 100 {
-		t.Errorf("contagem = %d, esperado 100", documento.Global.Contagem)
+	if document.Overall.Count != 100 {
+		t.Errorf("contagem = %d, esperado 100", document.Overall.Count)
 	}
-	if !documento.ResultadoValido() {
-		t.Errorf("resultado deveria ser valido, avisos: %+v", documento.Avisos)
+	if !document.Valid() {
+		t.Errorf("resultado deveria ser valido, avisos: %+v", document.Warnings)
 	}
 }
 
-func TestLimiteDeVooDescartaEInvalidaOResultado(t *testing.T) {
-	falso := &protocoloFalso{entrou: make(chan struct{}, 1), libera: make(chan struct{})}
-	registrarFalso(t, "falso-preso", falso)
+func TestInflightLimitDropsAndInvalidatesResult(t *testing.T) {
+	fake := &fakeProtocol{entrou: make(chan struct{}, 1), release: make(chan struct{})}
+	registerFake(t, "falso-preso", fake)
 
-	opcoes := engine.OpcoesPadrao()
-	opcoes.Relogio = engine.NovoRelogioVirtual(time.Unix(1_700_000_000, 0))
-	opcoes.MaximoSimultaneas = 1
+	opts := engine.DefaultOptions()
+	opts.Clock = engine.NewVirtualClock(time.Unix(1_700_000_000, 0))
+	opts.MaxInflight = 1
 
-	concluido := make(chan struct{})
-	var documento = make(chan any, 1)
+	finished := make(chan struct{})
+	var document = make(chan any, 1)
 	go func() {
-		m, err := engine.Novo(cenarioFalso("falso-preso", 3, time.Second), opcoes)
+		m, err := engine.New(fakeScenario("falso-preso", 3, time.Second), opts)
 		if err != nil {
 			panic(err)
 		}
-		documento <- m.Executar(context.Background())
-		close(concluido)
+		document <- m.Execute(context.Background())
+		close(finished)
 	}()
 
-	<-falso.entrou
-	close(falso.libera)
-	<-concluido
+	<-fake.entrou
+	close(fake.release)
+	<-finished
 
-	resultado := (<-documento).(interface {
-		ResultadoValido() bool
+	result := (<-document).(interface {
+		Valid() bool
 	})
 
-	if resultado.ResultadoValido() {
+	if result.Valid() {
 		t.Fatal("resultado com descarte por limite de voo nao pode ser valido")
 	}
 }
 
-func TestVerificacaoDeStatusClassificaErro(t *testing.T) {
-	registrarFalso(t, "falso-status", &protocoloFalso{})
-	c := cenarioFalso("falso-status", 10, time.Second)
-	c.Passos[0].Verificacoes = []scenario.Verificacao{{Tipo: scenario.VerificarStatus, Status: 201}}
+func TestStatusCheckClassifiesError(t *testing.T) {
+	registerFake(t, "falso-status", &fakeProtocol{})
+	c := fakeScenario("falso-status", 10, time.Second)
+	c.Steps[0].Checks = []scenario.Check{{Kind: scenario.CheckStatus, Status: 201}}
 
-	opcoes := engine.OpcoesPadrao()
-	opcoes.Relogio = engine.NovoRelogioVirtual(time.Unix(1_700_000_000, 0))
+	opts := engine.DefaultOptions()
+	opts.Clock = engine.NewVirtualClock(time.Unix(1_700_000_000, 0))
 
-	m, err := engine.Novo(c, opcoes)
+	m, err := engine.New(c, opts)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}
-	documento := m.Executar(context.Background())
+	document := m.Execute(context.Background())
 
-	if documento.Global.Erros != documento.Global.Contagem {
+	if document.Overall.Errors != document.Overall.Count {
 		t.Fatalf("esperava todas as requisicoes como erro de status, obtido %d de %d",
-			documento.Global.Erros, documento.Global.Contagem)
+			document.Overall.Errors, document.Overall.Count)
 	}
-	if documento.Passos[0].ErrosPorClasse["status"] == 0 {
-		t.Errorf("erro nao foi classificado como status: %+v", documento.Passos[0].ErrosPorClasse)
+	if document.Steps[0].ErrorsByClass["status"] == 0 {
+		t.Errorf("erro nao foi classificado como status: %+v", document.Steps[0].ErrorsByClass)
 	}
 }

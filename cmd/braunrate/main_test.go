@@ -12,50 +12,50 @@ import (
 
 // A opcao colada depois do arquivo era ignorada em silencio: o relatorio nao
 // era gravado e nada avisava. Silencio e o pior modo de falhar.
-func TestOpcaoValeAntesEDepoisDoArquivo(t *testing.T) {
-	casos := [][]string{
+func TestFlagWorksBeforeAndAfterFile(t *testing.T) {
+	testCases := [][]string{
 		{"-html", "relatorio.html", "cenario.yaml"},
 		{"cenario.yaml", "-html", "relatorio.html"},
 		{"cenario.yaml", "-html=relatorio.html"},
 	}
-	for _, argumentos := range casos {
-		conjunto := flag.NewFlagSet("executar", flag.ContinueOnError)
-		html := conjunto.String("html", "", "arquivo HTML")
-		posicionais := analisar(conjunto, argumentos)
+	for _, args := range testCases {
+		set := flag.NewFlagSet("executar", flag.ContinueOnError)
+		html := set.String("html", "", "arquivo HTML")
+		positional := analisar(set, args)
 
-		if len(posicionais) != 1 || posicionais[0] != "cenario.yaml" {
-			t.Fatalf("%v: o arquivo de cenario nao foi lido: %v", argumentos, posicionais)
+		if len(positional) != 1 || positional[0] != "cenario.yaml" {
+			t.Fatalf("%v: o arquivo de cenario nao foi lido: %v", args, positional)
 		}
 		if *html != "relatorio.html" {
-			t.Errorf("%v: a opcao foi ignorada", argumentos)
+			t.Errorf("%v: a opcao foi ignorada", args)
 		}
 	}
 }
 
 // De uma pasta vazia nao havia caminho ate o primeiro cenario: todo comando
 // recebia um arquivo e nenhum criava um.
-func TestNovoGeraCenarioQueValidaEQueNaoSobrescreve(t *testing.T) {
-	raiz := t.TempDir()
-	destino := filepath.Join(raiz, "cenario.yaml")
+func TestNewCommandWritesValidScenarioAndNeverOverwrites(t *testing.T) {
+	root := t.TempDir()
+	destination := filepath.Join(root, "cenario.yaml")
 
-	if codigo := novo([]string{destino}); codigo != 0 {
-		t.Fatalf("novo devolveu %d", codigo)
+	if code := newOne([]string{destination}); code != 0 {
+		t.Fatalf("novo devolveu %d", code)
 	}
-	conteudo, err := os.ReadFile(destino)
+	content, err := os.ReadFile(destination)
 	if err != nil {
 		t.Fatalf("o arquivo nao foi criado: %v", err)
 	}
-	c, err := scenario.Carregar(conteudo)
+	c, err := scenario.Parse(content)
 	if err != nil {
 		t.Fatalf("o cenario de partida nao carrega:\n%v", err)
 	}
-	if err := c.Validar(); err != nil {
+	if err := c.Validate(); err != nil {
 		t.Fatalf("o cenario de partida nao e valido: %v", err)
 	}
 	if len(c.SLO) == 0 {
 		t.Error("o cenario de partida precisa mostrar como se declara slo")
 	}
-	if codigo := novo([]string{destino}); codigo == 0 {
+	if code := newOne([]string{destination}); code == 0 {
 		t.Error("novo sobre arquivo existente nao pode sobrescrever em silencio")
 	}
 }

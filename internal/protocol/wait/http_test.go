@@ -14,83 +14,83 @@ import (
 	"github.com/Diegobraun/braunrate/internal/protocol/wait"
 )
 
-func configuracaoHTTP(t *testing.T, corpo string) protocol.Configuracao {
+func configuracaoHTTP(t *testing.T, body string) protocol.Config {
 	t.Helper()
-	configuracao, err := decodificar(t, corpo)
+	config, err := decode(t, body)
 	if err != nil {
 		t.Fatalf("cenario nao decodificou: %v", err)
 	}
-	return configuracao
+	return config
 }
 
 // Muito sistema assincrono so mostra o efeito por API: sem sondagem, a cadeia
 // ponta a ponta nao se mede neles.
-func TestEsperaPorHTTPAteOEfeitoAparecer(t *testing.T) {
-	var chamadas atomic.Int64
-	servidor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestHTTPWaitPollsUntilEffectAppears(t *testing.T) {
+	var calls atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if chamadas.Add(1) < 3 {
+		if calls.Add(1) < 3 {
 			fmt.Fprint(w, `{"status":"PENDENTE"}`)
 			return
 		}
 		fmt.Fprint(w, `{"status":"PROCESSADO"}`)
 	}))
-	t.Cleanup(servidor.Close)
+	t.Cleanup(server.Close)
 
-	configuracao := configuracaoHTTP(t, `
+	config := configuracaoHTTP(t, `
 http: { caminho: /pedidos/1 }
 ate: { $.status: PROCESSADO }
 intervalo: 20ms
 timeout: 2s
 `)
 
-	inicio := time.Now()
-	resposta := wait.Novo(protocol.OpcoesPadrao()).Executar(context.Background(), protocol.Requisicao{
-		URLBase: servidor.URL, Configuracao: configuracao,
+	start := time.Now()
+	response := wait.New(protocol.DefaultOptions()).Execute(context.Background(), protocol.Request{
+		URLBase: server.URL, Config: config,
 	})
-	decorrido := time.Since(inicio)
+	elapsed := time.Since(start)
 
-	if resposta.Classe != protocol.Sucesso {
-		t.Fatalf("classe = %q, detalhe = %q", resposta.Classe, resposta.Detalhe)
+	if response.Class != protocol.Success {
+		t.Fatalf("classe = %q, detalhe = %q", response.Class, response.Detail)
 	}
-	if chamadas.Load() < 3 {
-		t.Errorf("sondou %d vezes; a espera terminou antes do efeito", chamadas.Load())
+	if calls.Load() < 3 {
+		t.Errorf("sondou %d vezes; a espera terminou antes do efeito", calls.Load())
 	}
-	if decorrido < 40*time.Millisecond {
-		t.Errorf("a espera levou %s: o tempo ate o efeito precisa entrar na medicao", decorrido)
+	if elapsed < 40*time.Millisecond {
+		t.Errorf("a espera levou %s: o tempo ate o efeito precisa entrar na medicao", elapsed)
 	}
 }
 
-func TestEsperaPorHTTPQueEstouraDizOQueViuEQuantoSondou(t *testing.T) {
-	servidor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestHTTPWaitTimeoutSaysWhatItSawAndHowManyPolls(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"status":"PENDENTE"}`)
 	}))
-	t.Cleanup(servidor.Close)
+	t.Cleanup(server.Close)
 
-	configuracao := configuracaoHTTP(t, `
+	config := configuracaoHTTP(t, `
 http: { caminho: /pedidos/1 }
 ate: { $.status: PROCESSADO }
 intervalo: 20ms
 timeout: 120ms
 `)
 
-	resposta := wait.Novo(protocol.OpcoesPadrao()).Executar(context.Background(), protocol.Requisicao{
-		URLBase: servidor.URL, Configuracao: configuracao,
+	response := wait.New(protocol.DefaultOptions()).Execute(context.Background(), protocol.Request{
+		URLBase: server.URL, Config: config,
 	})
 
-	if resposta.Classe != protocol.ErroDeTimeout {
-		t.Fatalf("classe = %q", resposta.Classe)
+	if response.Class != protocol.ErrTimeout {
+		t.Fatalf("classe = %q", response.Class)
 	}
-	for _, esperado := range []string{"PENDENTE", "sondagens", "$.status"} {
-		if !strings.Contains(resposta.Detalhe, esperado) {
-			t.Errorf("o detalhe precisa conter %q para a pessoa saber o que aconteceu: %q", esperado, resposta.Detalhe)
+	for _, expected := range []string{"PENDENTE", "sondagens", "$.status"} {
+		if !strings.Contains(response.Detail, expected) {
+			t.Errorf("o detalhe precisa conter %q para a pessoa saber o que aconteceu: %q", expected, response.Detail)
 		}
 	}
 }
 
 // Sondar sem condicao mediria o tempo de responder, e nao o tempo ate o efeito.
-func TestEsperaPorHTTPSemCondicaoEhRecusadaComExplicacao(t *testing.T) {
-	_, err := decodificar(t, "http: { caminho: /pedidos/1 }\n")
+func TestHTTPWaitWithoutConditionIsRefusedWithExplanation(t *testing.T) {
+	_, err := decode(t, "http: { caminho: /pedidos/1 }\n")
 	if err == nil {
 		t.Fatal("aguardar por http sem 'ate' precisa ser recusado")
 	}

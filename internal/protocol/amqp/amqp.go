@@ -15,97 +15,97 @@ import (
 )
 
 func init() {
-	protocol.Registrar(Novo(protocol.OpcoesPadrao()))
+	protocol.Record(New(protocol.DefaultOptions()))
 }
 
-type Configuracao struct {
-	Troca       string
-	Rota        string
-	Fila        string
-	Corpo       []byte
-	Identidade  string
-	Cabecalhos  map[string]string
-	URL         string
-	Persistente bool
-	Confirmar   bool
-	Timeout     time.Duration
+type Config struct {
+	Exchange   string
+	Route      string
+	Queue      string
+	Body       []byte
+	Identity   string
+	Headers    map[string]string
+	URL        string
+	Persistent bool
+	Confirm    bool
+	Timeout    time.Duration
 }
 
-func (c *Configuracao) Protocolo() string { return "amqp" }
+func (c *Config) Protocol() string { return "amqp" }
 
 // A chave e a rota do negocio, e nao a conexao: e o que aparece no relatorio
 // quando uma rota especifica fica lenta.
-func (c *Configuracao) ChaveDeAgregacao() string {
-	destino := c.Rota
-	if c.Troca != "" {
-		destino = c.Troca + "/" + c.Rota
+func (c *Config) AggregationKey() string {
+	destination := c.Route
+	if c.Exchange != "" {
+		destination = c.Exchange + "/" + c.Route
 	}
-	return "amqp publicar " + destino
+	return "amqp publicar " + destination
 }
 
-func (c *Configuracao) Resolver(resolver func(string) string) protocol.Configuracao {
-	copia := *c
-	copia.Troca = resolver(c.Troca)
-	copia.Rota = resolver(c.Rota)
-	copia.Fila = resolver(c.Fila)
-	copia.Identidade = resolver(c.Identidade)
-	if len(c.Corpo) > 0 {
-		copia.Corpo = []byte(resolver(string(c.Corpo)))
+func (c *Config) Resolve(resolve func(string) string) protocol.Config {
+	clone := *c
+	clone.Exchange = resolve(c.Exchange)
+	clone.Route = resolve(c.Route)
+	clone.Queue = resolve(c.Queue)
+	clone.Identity = resolve(c.Identity)
+	if len(c.Body) > 0 {
+		clone.Body = []byte(resolve(string(c.Body)))
 	}
-	copia.Cabecalhos = make(map[string]string, len(c.Cabecalhos))
-	for nome, valor := range c.Cabecalhos {
-		copia.Cabecalhos[nome] = resolver(valor)
+	clone.Headers = make(map[string]string, len(c.Headers))
+	for name, value := range c.Headers {
+		clone.Headers[name] = resolve(value)
 	}
-	return &copia
+	return &clone
 }
 
-func (c *Configuracao) Descrever() []string {
-	linhas := []string{fmt.Sprintf("publicar em troca %q com rota %q", c.Troca, c.Rota)}
-	if c.Identidade != "" {
-		linhas = append(linhas, "identidade da mensagem: "+c.Identidade)
+func (c *Config) Describe() []string {
+	lines := []string{fmt.Sprintf("publicar em troca %q com rota %q", c.Exchange, c.Route)}
+	if c.Identity != "" {
+		lines = append(lines, "identidade da mensagem: "+c.Identity)
 	}
-	if c.Confirmar {
-		linhas = append(linhas, "espera confirmacao do broker")
+	if c.Confirm {
+		lines = append(lines, "espera confirmacao do broker")
 	}
-	if len(c.Corpo) > 0 {
-		linhas = append(linhas, "corpo: "+string(c.Corpo))
+	if len(c.Body) > 0 {
+		lines = append(lines, "corpo: "+string(c.Body))
 	}
-	return linhas
+	return lines
 }
 
-type Protocolo struct {
-	mutex    sync.Mutex
-	conexoes map[string]*conexao
+type Protocol struct {
+	mu    sync.Mutex
+	conns map[string]*conn
 }
 
-type conexao struct {
-	ligacao  *amqp.Connection
-	mutex    sync.Mutex
+type conn struct {
+	link     *amqp.Connection
+	mu       sync.Mutex
 	canais   chan *amqp.Channel
-	confirma bool
+	confirms bool
 }
 
-func Novo(protocol.Opcoes) *Protocolo {
-	return &Protocolo{conexoes: map[string]*conexao{}}
+func New(protocol.Options) *Protocol {
+	return &Protocol{conns: map[string]*conn{}}
 }
 
-func (p *Protocolo) Nome() string { return "amqp" }
+func (p *Protocol) Name() string { return "amqp" }
 
-func (p *Protocolo) Encerrar() error {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	for endereco, aberta := range p.conexoes {
-		close(aberta.canais)
-		for canal := range aberta.canais {
+func (p *Protocol) Close() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for address, open := range p.conns {
+		close(open.canais)
+		for canal := range open.canais {
 			_ = canal.Close()
 		}
-		_ = aberta.ligacao.Close()
-		delete(p.conexoes, endereco)
+		_ = open.link.Close()
+		delete(p.conns, address)
 	}
 	return nil
 }
 
-func (p *Protocolo) Decodificar(no *yaml.Node) (protocol.Configuracao, error) {
+func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
 	if no == nil || no.Kind != yaml.MappingNode {
 		return nil, errors.New(`passo amqp precisa ser um mapa, por exemplo:
   - amqp:
@@ -113,201 +113,201 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocol.Configuracao, error) {
       corpo: { id: "${assinantes.id}" }`)
 	}
 
-	configuracao := Padrao()
-	for indice := 0; indice+1 < len(no.Content); indice += 2 {
-		chave := no.Content[indice]
-		valor := no.Content[indice+1]
-		switch chave.Value {
+	config := Default()
+	for index := 0; index+1 < len(no.Content); index += 2 {
+		key := no.Content[index]
+		value := no.Content[index+1]
+		switch key.Value {
 		case "troca":
-			configuracao.Troca = valor.Value
+			config.Exchange = value.Value
 		case "rota":
-			configuracao.Rota = valor.Value
+			config.Route = value.Value
 		case "fila":
-			configuracao.Fila = valor.Value
-			if configuracao.Rota == "" {
-				configuracao.Rota = valor.Value
+			config.Queue = value.Value
+			if config.Route == "" {
+				config.Route = value.Value
 			}
 		case "corpo":
-			corpo, err := lerCorpo(valor)
+			body, err := readBody(value)
 			if err != nil {
 				return nil, err
 			}
-			configuracao.Corpo = corpo
+			config.Body = body
 		case "identidade":
-			configuracao.Identidade = valor.Value
+			config.Identity = value.Value
 		case "cabecalhos":
-			if valor.Kind != yaml.MappingNode {
+			if value.Kind != yaml.MappingNode {
 				return nil, errors.New("cabecalhos precisa ser um mapa")
 			}
-			for i := 0; i+1 < len(valor.Content); i += 2 {
-				configuracao.Cabecalhos[valor.Content[i].Value] = valor.Content[i+1].Value
+			for i := 0; i+1 < len(value.Content); i += 2 {
+				config.Headers[value.Content[i].Value] = value.Content[i+1].Value
 			}
 		case "url":
-			configuracao.URL = valor.Value
+			config.URL = value.Value
 		case "persistente":
-			configuracao.Persistente = valor.Value == "true"
+			config.Persistent = value.Value == "true"
 		case "confirmar":
-			configuracao.Confirmar = valor.Value == "true"
+			config.Confirm = value.Value == "true"
 		case "timeout":
-			duracao, err := time.ParseDuration(valor.Value)
+			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout invalido: %q (use 5s, 30s)", valor.Value)
+				return nil, fmt.Errorf("timeout invalido: %q (use 5s, 30s)", value.Value)
 			}
-			configuracao.Timeout = duracao
+			config.Timeout = duration
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo amqp: %q (use fila, troca, rota, corpo, identidade, cabecalhos, url, persistente, confirmar ou timeout)", chave.Value)
+			return nil, fmt.Errorf("chave desconhecida no passo amqp: %q (use fila, troca, rota, corpo, identidade, cabecalhos, url, persistente, confirmar ou timeout)", key.Value)
 		}
 	}
 
-	if err := Validar(configuracao); err != nil {
+	if err := Validate(config); err != nil {
 		return nil, err
 	}
-	return configuracao, nil
+	return config, nil
 }
 
-func Padrao() *Configuracao {
-	return &Configuracao{Cabecalhos: map[string]string{}, Persistente: true, Confirmar: true}
+func Default() *Config {
+	return &Config{Headers: map[string]string{}, Persistent: true, Confirm: true}
 }
 
-func Validar(configuracao *Configuracao) error {
-	if configuracao.Rota == "" && configuracao.Fila == "" {
+func Validate(config *Config) error {
+	if config.Route == "" && config.Queue == "" {
 		return errors.New(`passo amqp sem destino: declare 'fila' (caso comum) ou 'troca' com 'rota'.
   - amqp: { fila: pedidos, corpo: { id: "${assinantes.id}" } }`)
 	}
-	if len(configuracao.Corpo) == 0 {
+	if len(config.Body) == 0 {
 		return errors.New(`passo amqp sem corpo: uma mensagem vazia nao exercita o consumidor.
   - amqp: { fila: pedidos, corpo: { id: "${assinantes.id}" } }`)
 	}
 	return nil
 }
 
-func lerCorpo(no *yaml.Node) ([]byte, error) {
+func readBody(no *yaml.Node) ([]byte, error) {
 	if no.Kind == yaml.ScalarNode {
 		return []byte(no.Value), nil
 	}
-	var estrutura any
-	if err := no.Decode(&estrutura); err != nil {
+	var structure any
+	if err := no.Decode(&structure); err != nil {
 		return nil, fmt.Errorf("corpo invalido: %v", err)
 	}
-	corpo, err := json.Marshal(estrutura)
+	body, err := json.Marshal(structure)
 	if err != nil {
 		return nil, fmt.Errorf("corpo nao serializa para JSON: %v", err)
 	}
-	return corpo, nil
+	return body, nil
 }
 
-func (p *Protocolo) Executar(ctx context.Context, requisicao protocol.Requisicao) protocol.Resposta {
-	configuracao, ok := requisicao.Configuracao.(*Configuracao)
+func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protocol.Response {
+	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Resposta{Classe: protocol.ErroDeConfigacao, Detalhe: "configuracao nao e de amqp"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de amqp"}
 	}
 
-	endereco := configuracao.URL
-	if endereco == "" {
-		endereco = requisicao.URLBase
+	address := config.URL
+	if address == "" {
+		address = request.URLBase
 	}
-	if endereco == "" || strings.HasPrefix(endereco, "http") {
-		return protocol.Resposta{
-			Classe:  protocol.ErroDeConfigacao,
-			Detalhe: "sem endereco: declare 'url' no passo ou aponte o alvo do cenario para amqp://usuario:senha@host:5672/",
+	if address == "" || strings.HasPrefix(address, "http") {
+		return protocol.Response{
+			Class:  protocol.ErrConfig,
+			Detail: "sem endereco: declare 'url' no passo ou aponte o alvo do cenario para amqp://usuario:senha@host:5672/",
 		}
 	}
 
-	aberta, err := p.conexaoDe(normalizar(endereco), configuracao)
+	open, err := p.conexaoDe(normalize(address), config)
 	if err != nil {
-		return protocol.Resposta{Classe: protocol.ErroDeRede, Detalhe: resumir(err.Error())}
+		return protocol.Response{Class: protocol.ErrNetwork, Detail: summarize(err.Error())}
 	}
 
-	canal, err := aberta.pegarCanal()
+	canal, err := open.pegarCanal()
 	if err != nil {
-		return protocol.Resposta{Classe: protocol.ErroDeRede, Detalhe: resumir(err.Error())}
+		return protocol.Response{Class: protocol.ErrNetwork, Detail: summarize(err.Error())}
 	}
-	defer aberta.devolverCanal(canal)
+	defer open.devolverCanal(canal)
 
-	if configuracao.Timeout > 0 {
-		var cancelar context.CancelFunc
-		ctx, cancelar = context.WithTimeout(ctx, configuracao.Timeout)
-		defer cancelar()
+	if config.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, config.Timeout)
+		defer cancel()
 	}
 
-	entrega := amqp.Publishing{
-		Body:        configuracao.Corpo,
+	delivery := amqp.Publishing{
+		Body:        config.Body,
 		ContentType: "application/json",
-		MessageId:   configuracao.Identidade,
+		MessageId:   config.Identity,
 		Timestamp:   time.Now(),
 	}
-	if configuracao.Persistente {
-		entrega.DeliveryMode = amqp.Persistent
+	if config.Persistent {
+		delivery.DeliveryMode = amqp.Persistent
 	}
-	if len(configuracao.Cabecalhos) > 0 {
-		entrega.Headers = amqp.Table{}
-		for nome, valor := range configuracao.Cabecalhos {
-			entrega.Headers[nome] = valor
+	if len(config.Headers) > 0 {
+		delivery.Headers = amqp.Table{}
+		for name, value := range config.Headers {
+			delivery.Headers[name] = value
 		}
 	}
 
-	confirmacao, err := canal.PublishWithDeferredConfirmWithContext(ctx, configuracao.Troca, configuracao.Rota, false, false, entrega)
+	confirmation, err := canal.PublishWithDeferredConfirmWithContext(ctx, config.Exchange, config.Route, false, false, delivery)
 	if err != nil {
-		return protocol.Resposta{Classe: classificar(err), Detalhe: resumir(err.Error())}
+		return protocol.Response{Class: classificar(err), Detail: summarize(err.Error())}
 	}
 
 	// Sem esperar a confirmacao, o tempo medido seria o de escrever no socket,
 	// e nao o de o broker aceitar a mensagem — mediria a rede local.
-	if configuracao.Confirmar && confirmacao != nil {
-		aceita, err := confirmacao.WaitContext(ctx)
+	if config.Confirm && confirmation != nil {
+		accepts, err := confirmation.WaitContext(ctx)
 		if err != nil {
-			return protocol.Resposta{Classe: classificar(err), Detalhe: resumir(err.Error())}
+			return protocol.Response{Class: classificar(err), Detail: summarize(err.Error())}
 		}
-		if !aceita {
-			return protocol.Resposta{
-				Classe:  protocol.ErroDeMensageria,
-				Detalhe: fmt.Sprintf("o broker recusou a mensagem para a rota %q", configuracao.Rota),
+		if !accepts {
+			return protocol.Response{
+				Class:  protocol.ErrMessaging,
+				Detail: fmt.Sprintf("o broker recusou a mensagem para a rota %q", config.Route),
 			}
 		}
 	}
 
-	return protocol.Resposta{
-		Bytes:     int64(len(configuracao.Corpo)),
-		Classe:    protocol.Sucesso,
-		Atributos: map[string]string{"amqp.rota": configuracao.Rota},
+	return protocol.Response{
+		Bytes:      int64(len(config.Body)),
+		Class:      protocol.Success,
+		Attributes: map[string]string{"amqp.rota": config.Route},
 	}
 }
 
-func (p *Protocolo) conexaoDe(endereco string, configuracao *Configuracao) (*conexao, error) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	if existente, tem := p.conexoes[endereco]; tem {
-		return existente, nil
+func (p *Protocol) conexaoDe(address string, config *Config) (*conn, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if existing, has := p.conns[address]; has {
+		return existing, nil
 	}
 
-	ligacao, err := amqp.Dial(endereco)
+	link, err := amqp.Dial(address)
 	if err != nil {
 		return nil, err
 	}
-	nova := &conexao{ligacao: ligacao, canais: make(chan *amqp.Channel, 64), confirma: configuracao.Confirmar}
+	created := &conn{link: link, canais: make(chan *amqp.Channel, 64), confirms: config.Confirm}
 
-	if configuracao.Fila != "" {
-		canal, err := ligacao.Channel()
+	if config.Queue != "" {
+		canal, err := link.Channel()
 		if err != nil {
-			_ = ligacao.Close()
+			_ = link.Close()
 			return nil, err
 		}
-		if _, err := canal.QueueDeclare(configuracao.Fila, true, false, false, false, nil); err != nil {
+		if _, err := canal.QueueDeclare(config.Queue, true, false, false, false, nil); err != nil {
 			_ = canal.Close()
-			_ = ligacao.Close()
-			return nil, fmt.Errorf("nao consegui declarar a fila %q: %v", configuracao.Fila, err)
+			_ = link.Close()
+			return nil, fmt.Errorf("nao consegui declarar a fila %q: %v", config.Queue, err)
 		}
 		_ = canal.Close()
 	}
 
-	p.conexoes[endereco] = nova
-	return nova, nil
+	p.conns[address] = created
+	return created, nil
 }
 
 // Um canal AMQP nao e seguro para uso concorrente, entao cada requisicao pega
 // um do pool e devolve; abrir um canal por mensagem custaria um ida e volta a
 // mais dentro da medicao.
-func (c *conexao) pegarCanal() (*amqp.Channel, error) {
+func (c *conn) pegarCanal() (*amqp.Channel, error) {
 	select {
 	case canal := <-c.canais:
 		if canal != nil && !canal.IsClosed() {
@@ -316,11 +316,11 @@ func (c *conexao) pegarCanal() (*amqp.Channel, error) {
 	default:
 	}
 
-	canal, err := c.ligacao.Channel()
+	canal, err := c.link.Channel()
 	if err != nil {
 		return nil, err
 	}
-	if c.confirma {
+	if c.confirms {
 		if err := canal.Confirm(false); err != nil {
 			_ = canal.Close()
 			return nil, err
@@ -329,7 +329,7 @@ func (c *conexao) pegarCanal() (*amqp.Channel, error) {
 	return canal, nil
 }
 
-func (c *conexao) devolverCanal(canal *amqp.Channel) {
+func (c *conn) devolverCanal(canal *amqp.Channel) {
 	if canal == nil || canal.IsClosed() {
 		return
 	}
@@ -340,31 +340,31 @@ func (c *conexao) devolverCanal(canal *amqp.Channel) {
 	}
 }
 
-func normalizar(endereco string) string {
-	if strings.HasPrefix(endereco, "amqp://") || strings.HasPrefix(endereco, "amqps://") {
-		return endereco
+func normalize(address string) string {
+	if strings.HasPrefix(address, "amqp://") || strings.HasPrefix(address, "amqps://") {
+		return address
 	}
-	return "amqp://" + endereco
+	return "amqp://" + address
 }
 
-func classificar(err error) protocol.ClasseDeErro {
+func classificar(err error) protocol.ErrorClass {
 	if errors.Is(err, context.DeadlineExceeded) {
-		return protocol.ErroDeTimeout
+		return protocol.ErrTimeout
 	}
-	texto := err.Error()
-	if strings.Contains(texto, "timeout") || strings.Contains(texto, "deadline") {
-		return protocol.ErroDeTimeout
+	text := err.Error()
+	if strings.Contains(text, "timeout") || strings.Contains(text, "deadline") {
+		return protocol.ErrTimeout
 	}
-	if strings.Contains(texto, "closed") || strings.Contains(texto, "connection") {
-		return protocol.ErroDeRede
+	if strings.Contains(text, "closed") || strings.Contains(text, "connection") {
+		return protocol.ErrNetwork
 	}
-	return protocol.ErroDeMensageria
+	return protocol.ErrMessaging
 }
 
-func resumir(texto string) string {
-	texto = strings.Join(strings.Fields(texto), " ")
-	if len(texto) > 140 {
-		return texto[:140] + "…"
+func summarize(text string) string {
+	text = strings.Join(strings.Fields(text), " ")
+	if len(text) > 140 {
+		return text[:140] + "…"
 	}
-	return texto
+	return text
 }

@@ -13,26 +13,26 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func decodificar(t *testing.T, texto string) protocol.Configuracao {
+func decode(t *testing.T, text string) protocol.Config {
 	t.Helper()
-	var documento yaml.Node
-	if err := yaml.Unmarshal([]byte(texto), &documento); err != nil {
+	var document yaml.Node
+	if err := yaml.Unmarshal([]byte(text), &document); err != nil {
 		t.Fatalf("yaml invalido no teste: %v", err)
 	}
-	configuracao, err := graphql.Novo(protocol.OpcoesPadrao()).Decodificar(documento.Content[0])
+	config, err := graphql.New(protocol.DefaultOptions()).Decode(document.Content[0])
 	if err != nil {
 		t.Fatalf("nao decodificou: %v", err)
 	}
-	return configuracao
+	return config
 }
 
-func erroAoDecodificar(t *testing.T, texto string) error {
+func decodeErr(t *testing.T, text string) error {
 	t.Helper()
-	var documento yaml.Node
-	if err := yaml.Unmarshal([]byte(texto), &documento); err != nil {
+	var document yaml.Node
+	if err := yaml.Unmarshal([]byte(text), &document); err != nil {
 		t.Fatalf("yaml invalido no teste: %v", err)
 	}
-	_, err := graphql.Novo(protocol.OpcoesPadrao()).Decodificar(documento.Content[0])
+	_, err := graphql.New(protocol.DefaultOptions()).Decode(document.Content[0])
 	if err == nil {
 		t.Fatal("esperava erro e decodificou")
 	}
@@ -41,25 +41,25 @@ func erroAoDecodificar(t *testing.T, texto string) error {
 
 // Em GraphQL toda operacao chega no mesmo endereco: agregar por URL juntaria a
 // consulta mais barata com a mutation mais cara numa linha so.
-func TestAChaveDeAgregacaoEhAOperacaoENaoAURL(t *testing.T) {
-	configuracao := decodificar(t, "|\n  query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }\n")
-	if configuracao.ChaveDeAgregacao() != "graphql ConsultarPedido" {
-		t.Errorf("chave = %q", configuracao.ChaveDeAgregacao())
+func TestAggregationKeyIsOperationNotURL(t *testing.T) {
+	config := decode(t, "|\n  query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }\n")
+	if config.AggregationKey() != "graphql ConsultarPedido" {
+		t.Errorf("chave = %q", config.AggregationKey())
 	}
-	if configuracao.Protocolo() != "graphql" {
-		t.Errorf("protocolo = %q", configuracao.Protocolo())
-	}
-}
-
-func TestNomeDaOperacaoSaiDaPropriaConsulta(t *testing.T) {
-	configuracao := decodificar(t, "consulta: |\n  mutation PagarFatura($f: ID!) { pagarFatura(id: $f) { status } }\n")
-	if configuracao.ChaveDeAgregacao() != "graphql PagarFatura" {
-		t.Errorf("chave = %q: o nome da operacao deveria vir da consulta", configuracao.ChaveDeAgregacao())
+	if config.Protocol() != "graphql" {
+		t.Errorf("protocolo = %q", config.Protocol())
 	}
 }
 
-func TestOperacaoAnonimaEhRecusadaComMensagemQueEnsina(t *testing.T) {
-	err := erroAoDecodificar(t, "|\n  { pedido(id: \"1\") { status } }\n")
+func TestOperationNameComesFromQuery(t *testing.T) {
+	config := decode(t, "consulta: |\n  mutation PagarFatura($f: ID!) { pagarFatura(id: $f) { status } }\n")
+	if config.AggregationKey() != "graphql PagarFatura" {
+		t.Errorf("chave = %q: o nome da operacao deveria vir da consulta", config.AggregationKey())
+	}
+}
+
+func TestAnonymousOperationIsRefusedWithTeachingMessage(t *testing.T) {
+	err := decodeErr(t, "|\n  { pedido(id: \"1\") { status } }\n")
 	if !strings.Contains(err.Error(), "precisa de nome") {
 		t.Errorf("mensagem = %q", err.Error())
 	}
@@ -68,85 +68,85 @@ func TestOperacaoAnonimaEhRecusadaComMensagemQueEnsina(t *testing.T) {
 	}
 }
 
-func TestVariaveisSaoResolvidasAcadaIteracao(t *testing.T) {
-	configuracao := decodificar(t, "consulta: |\n  query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }\nvariaveis: { id: \"${assinantes.id}\" }\n")
-	resolvida := configuracao.Resolver(func(texto string) string {
-		return strings.ReplaceAll(texto, "${assinantes.id}", "1002")
+func TestVarsAreResolvedEachIteration(t *testing.T) {
+	config := decode(t, "consulta: |\n  query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }\nvariaveis: { id: \"${assinantes.id}\" }\n")
+	resolvida := config.Resolve(func(text string) string {
+		return strings.ReplaceAll(text, "${assinantes.id}", "1002")
 	})
-	descritivel, sabe := resolvida.(protocol.ConfiguracaoDescritivel)
-	if !sabe {
+	describable, knows := resolvida.(protocol.Describable)
+	if !knows {
 		t.Fatal("a configuracao de graphql precisa saber se descrever para o modo de depuracao")
 	}
-	if !strings.Contains(strings.Join(descritivel.Descrever(), " "), `{"id":"1002"}`) {
-		t.Errorf("variaveis nao resolvidas: %v", descritivel.Descrever())
+	if !strings.Contains(strings.Join(describable.Describe(), " "), `{"id":"1002"}`) {
+		t.Errorf("variaveis nao resolvidas: %v", describable.Describe())
 	}
 }
 
-func TestTokenNaoApareceInteiroNaDepuracao(t *testing.T) {
-	configuracao := decodificar(t, "consulta: |\n  query ConsultarPedido { pedido { status } }\n")
-	comCabecalho := configuracao.(protocol.ConfiguracaoComCabecalhos).ComCabecalho("Authorization", "Bearer abcdefghijklmno")
-	descricao := strings.Join(comCabecalho.(protocol.ConfiguracaoDescritivel).Descrever(), " ")
-	if strings.Contains(descricao, "abcdefghijklmno") {
-		t.Errorf("o token apareceu inteiro na depuracao: %s", descricao)
+func TestTokenIsNeverPrintedInFullWhenDebugging(t *testing.T) {
+	config := decode(t, "consulta: |\n  query ConsultarPedido { pedido { status } }\n")
+	withHeader := config.(protocol.WithHeaders).WithHeader("Authorization", "Bearer abcdefghijklmno")
+	description := strings.Join(withHeader.(protocol.Describable).Describe(), " ")
+	if strings.Contains(description, "abcdefghijklmno") {
+		t.Errorf("o token apareceu inteiro na depuracao: %s", description)
 	}
 }
 
-func executarContra(t *testing.T, corpo string, status int) protocol.Resposta {
+func runAgainst(t *testing.T, body string, status int) protocol.Response {
 	t.Helper()
-	servidor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
-		fmt.Fprint(w, corpo)
+		fmt.Fprint(w, body)
 	}))
-	t.Cleanup(servidor.Close)
+	t.Cleanup(server.Close)
 
-	configuracao := decodificar(t, "|\n  query ConsultarPedido { pedido { status } }\n")
-	return graphql.Novo(protocol.OpcoesPadrao()).Executar(context.Background(), protocol.Requisicao{
-		NomeDoPasso:  "consultar",
-		Configuracao: configuracao,
-		URLBase:      servidor.URL,
+	config := decode(t, "|\n  query ConsultarPedido { pedido { status } }\n")
+	return graphql.New(protocol.DefaultOptions()).Execute(context.Background(), protocol.Request{
+		StepName: "consultar",
+		Config:   config,
+		URLBase:  server.URL,
 	})
 }
 
 // O erro de GraphQL chega com status 200: contar isso como sucesso e aprovar um
 // servico que esta respondendo erro em todas as requisicoes.
-func TestErroNoCorpoComStatus200ContaComoErro(t *testing.T) {
-	resposta := executarContra(t, `{"errors":[{"message":"pedido nao encontrado","path":["pedido"],"extensions":{"code":"NOT_FOUND"}}]}`, 200)
-	if resposta.Classe != protocol.ErroDeGraphQL {
-		t.Fatalf("classe = %q, esperava erro de graphql", resposta.Classe)
+func TestBodyErrorWithStatus200CountsAsError(t *testing.T) {
+	response := runAgainst(t, `{"errors":[{"message":"pedido nao encontrado","path":["pedido"],"extensions":{"code":"NOT_FOUND"}}]}`, 200)
+	if response.Class != protocol.ErrGraphQL {
+		t.Fatalf("classe = %q, esperava erro de graphql", response.Class)
 	}
-	if !strings.Contains(resposta.Detalhe, "NOT_FOUND") || !strings.Contains(resposta.Detalhe, "em pedido") {
-		t.Errorf("o detalhe precisa dizer o codigo e onde falhou: %q", resposta.Detalhe)
-	}
-}
-
-func TestRespostaParcialEhErroEhDeclaradaComoParcial(t *testing.T) {
-	resposta := executarContra(t, `{"data":{"pedido":null},"errors":[{"message":"sem permissao"}]}`, 200)
-	if resposta.Classe != protocol.ErroDeGraphQL {
-		t.Fatalf("classe = %q", resposta.Classe)
-	}
-	if !strings.HasPrefix(resposta.Detalhe, "resposta parcial") {
-		t.Errorf("resposta com data e errors precisa ser declarada parcial: %q", resposta.Detalhe)
+	if !strings.Contains(response.Detail, "NOT_FOUND") || !strings.Contains(response.Detail, "em pedido") {
+		t.Errorf("o detalhe precisa dizer o codigo e onde falhou: %q", response.Detail)
 	}
 }
 
-func TestRespostaSemErroEhSucesso(t *testing.T) {
-	resposta := executarContra(t, `{"data":{"pedido":{"status":"ABERTO"}}}`, 200)
-	if resposta.Classe != protocol.Sucesso {
-		t.Fatalf("classe = %q, detalhe = %q", resposta.Classe, resposta.Detalhe)
+func TestPartialResponseIsErrorAndDeclaredPartial(t *testing.T) {
+	response := runAgainst(t, `{"data":{"pedido":null},"errors":[{"message":"sem permissao"}]}`, 200)
+	if response.Class != protocol.ErrGraphQL {
+		t.Fatalf("classe = %q", response.Class)
+	}
+	if !strings.HasPrefix(response.Detail, "resposta parcial") {
+		t.Errorf("resposta com data e errors precisa ser declarada parcial: %q", response.Detail)
 	}
 }
 
-func TestStatusDeErroContinuaSendoErroDeStatus(t *testing.T) {
-	resposta := executarContra(t, `{"errors":[{"message":"nao autorizado"}]}`, 401)
-	if resposta.Classe != protocol.ErroDeStatus {
-		t.Errorf("classe = %q: erro de transporte continua sendo erro de status", resposta.Classe)
+func TestResponseWithoutErrorsIsSuccess(t *testing.T) {
+	response := runAgainst(t, `{"data":{"pedido":{"status":"ABERTO"}}}`, 200)
+	if response.Class != protocol.Success {
+		t.Fatalf("classe = %q, detalhe = %q", response.Class, response.Detail)
 	}
 }
 
-func TestCorpoQueNaoEhGraphQLNaoPassaComoSucesso(t *testing.T) {
-	resposta := executarContra(t, `<html>gateway</html>`, 200)
-	if resposta.Classe != protocol.ErroDeGraphQL {
-		t.Errorf("classe = %q: pagina HTML com status 200 nao e resposta de GraphQL", resposta.Classe)
+func TestErrorStatusStaysStatusError(t *testing.T) {
+	response := runAgainst(t, `{"errors":[{"message":"nao autorizado"}]}`, 401)
+	if response.Class != protocol.ErrStatus {
+		t.Errorf("classe = %q: erro de transporte continua sendo erro de status", response.Class)
+	}
+}
+
+func TestNonGraphQLBodyIsNotSuccess(t *testing.T) {
+	response := runAgainst(t, `<html>gateway</html>`, 200)
+	if response.Class != protocol.ErrGraphQL {
+		t.Errorf("classe = %q: pagina HTML com status 200 nao e resposta de GraphQL", response.Class)
 	}
 }

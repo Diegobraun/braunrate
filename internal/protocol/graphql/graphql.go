@@ -18,104 +18,104 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const caminhoPadrao = "/graphql"
+const defaultPath = "/graphql"
 
 func init() {
-	protocol.Registrar(Novo(protocol.OpcoesPadrao()))
+	protocol.Record(New(protocol.DefaultOptions()))
 }
 
-type Configuracao struct {
-	Operacao   string
-	Tipo       string
-	Consulta   string
-	Variaveis  string
-	Caminho    string
-	Cabecalhos map[string]string
-	Timeout    time.Duration
+type Config struct {
+	Operation string
+	Kind      string
+	Query     string
+	Vars      string
+	Path      string
+	Headers   map[string]string
+	Timeout   time.Duration
 }
 
-func (c *Configuracao) Protocolo() string { return "graphql" }
+func (c *Config) Protocol() string { return "graphql" }
 
 // A chave e a operacao, nunca a URL: em GraphQL todas as operacoes chegam no
 // mesmo endereco, e agregar por URL juntaria a consulta mais barata com a
 // mutation mais cara numa linha so.
-func (c *Configuracao) ChaveDeAgregacao() string {
-	return "graphql " + c.Operacao
+func (c *Config) AggregationKey() string {
+	return "graphql " + c.Operation
 }
 
-func (c *Configuracao) Resolver(resolver func(string) string) protocol.Configuracao {
-	copia := *c
-	copia.Variaveis = resolver(c.Variaveis)
-	copia.Caminho = resolver(c.Caminho)
-	copia.Cabecalhos = make(map[string]string, len(c.Cabecalhos))
-	for nome, valor := range c.Cabecalhos {
-		copia.Cabecalhos[nome] = resolver(valor)
+func (c *Config) Resolve(resolve func(string) string) protocol.Config {
+	clone := *c
+	clone.Vars = resolve(c.Vars)
+	clone.Path = resolve(c.Path)
+	clone.Headers = make(map[string]string, len(c.Headers))
+	for name, value := range c.Headers {
+		clone.Headers[name] = resolve(value)
 	}
-	return &copia
+	return &clone
 }
 
-func (c *Configuracao) ComCabecalho(nome, valor string) protocol.Configuracao {
-	copia := *c
-	copia.Cabecalhos = make(map[string]string, len(c.Cabecalhos)+1)
-	for chave, conteudo := range c.Cabecalhos {
-		copia.Cabecalhos[chave] = conteudo
+func (c *Config) WithHeader(name, value string) protocol.Config {
+	clone := *c
+	clone.Headers = make(map[string]string, len(c.Headers)+1)
+	for key, content := range c.Headers {
+		clone.Headers[key] = content
 	}
-	copia.Cabecalhos[nome] = valor
-	return &copia
+	clone.Headers[name] = value
+	return &clone
 }
 
-func (c *Configuracao) Descrever() []string {
-	linhas := []string{fmt.Sprintf("%s %s em POST %s", c.Tipo, c.Operacao, c.Caminho)}
+func (c *Config) Describe() []string {
+	lines := []string{fmt.Sprintf("%s %s em POST %s", c.Kind, c.Operation, c.Path)}
 
-	nomes := make([]string, 0, len(c.Cabecalhos))
-	for nome := range c.Cabecalhos {
-		nomes = append(nomes, nome)
+	names := make([]string, 0, len(c.Headers))
+	for name := range c.Headers {
+		names = append(names, name)
 	}
-	sort.Strings(nomes)
-	for _, nome := range nomes {
-		linhas = append(linhas, fmt.Sprintf("%s: %s", nome, transport.EsconderSegredo(nome, c.Cabecalhos[nome])))
+	sort.Strings(names)
+	for _, name := range names {
+		lines = append(lines, fmt.Sprintf("%s: %s", name, transport.MaskSecret(name, c.Headers[name])))
 	}
-	if c.Variaveis != "" && c.Variaveis != "{}" {
-		linhas = append(linhas, "variaveis: "+c.Variaveis)
+	if c.Vars != "" && c.Vars != "{}" {
+		lines = append(lines, "variaveis: "+c.Vars)
 	}
-	linhas = append(linhas, "consulta: "+resumirConsulta(c.Consulta))
-	return linhas
+	lines = append(lines, "consulta: "+summarizeQuery(c.Query))
+	return lines
 }
 
-func resumirConsulta(consulta string) string {
-	campos := strings.Join(strings.Fields(consulta), " ")
-	if len(campos) > 160 {
-		return campos[:160] + "…"
+func summarizeQuery(query string) string {
+	fields := strings.Join(strings.Fields(query), " ")
+	if len(fields) > 160 {
+		return fields[:160] + "…"
 	}
-	return campos
+	return fields
 }
 
-type Protocolo struct {
-	cliente *http.Client
+type Protocol struct {
+	client *http.Client
 }
 
-func Novo(opcoes protocol.Opcoes) *Protocolo {
-	return &Protocolo{cliente: transport.NovoCliente(opcoes)}
+func New(opts protocol.Options) *Protocol {
+	return &Protocol{client: transport.NewClient(opts)}
 }
 
-func (p *Protocolo) Nome() string { return "graphql" }
+func (p *Protocol) Name() string { return "graphql" }
 
-func (p *Protocolo) Encerrar() error {
-	p.cliente.CloseIdleConnections()
+func (p *Protocol) Close() error {
+	p.client.CloseIdleConnections()
 	return nil
 }
 
-var padraoDeOperacao = regexp.MustCompile(`(?s)\b(query|mutation|subscription)\s+([A-Za-z_][A-Za-z0-9_]*)`)
+var operationPattern = regexp.MustCompile(`(?s)\b(query|mutation|subscription)\s+([A-Za-z_][A-Za-z0-9_]*)`)
 
-func (p *Protocolo) Decodificar(no *yaml.Node) (protocol.Configuracao, error) {
+func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
 	if no == nil {
 		return nil, errors.New("passo graphql sem configuracao")
 	}
-	configuracao := Padrao()
+	config := Default()
 
 	if no.Kind == yaml.ScalarNode {
-		configuracao.Consulta = no.Value
-		return Finalizar(configuracao)
+		config.Query = no.Value
+		return Finish(config)
 	}
 	if no.Kind != yaml.MappingNode {
 		return nil, errors.New(`passo graphql precisa ser a consulta ou um mapa, por exemplo:
@@ -123,232 +123,232 @@ func (p *Protocolo) Decodificar(no *yaml.Node) (protocol.Configuracao, error) {
       query ConsultarPedido { pedido(id: "1") { status } }`)
 	}
 
-	for indice := 0; indice+1 < len(no.Content); indice += 2 {
-		chave := no.Content[indice]
-		valor := no.Content[indice+1]
-		switch chave.Value {
+	for index := 0; index+1 < len(no.Content); index += 2 {
+		key := no.Content[index]
+		value := no.Content[index+1]
+		switch key.Value {
 		case "consulta", "query":
-			configuracao.Consulta = valor.Value
+			config.Query = value.Value
 		case "operacao":
-			configuracao.Operacao = valor.Value
+			config.Operation = value.Value
 		case "variaveis":
-			variaveis, err := lerVariaveis(valor)
+			vars, err := readVars(value)
 			if err != nil {
 				return nil, err
 			}
-			configuracao.Variaveis = variaveis
+			config.Vars = vars
 		case "caminho", "url":
-			configuracao.Caminho = valor.Value
+			config.Path = value.Value
 		case "cabecalhos":
-			if valor.Kind != yaml.MappingNode {
+			if value.Kind != yaml.MappingNode {
 				return nil, errors.New("cabecalhos precisa ser um mapa")
 			}
-			for i := 0; i+1 < len(valor.Content); i += 2 {
-				configuracao.Cabecalhos[valor.Content[i].Value] = valor.Content[i+1].Value
+			for i := 0; i+1 < len(value.Content); i += 2 {
+				config.Headers[value.Content[i].Value] = value.Content[i+1].Value
 			}
 		case "timeout":
-			duracao, err := time.ParseDuration(valor.Value)
+			duration, err := time.ParseDuration(value.Value)
 			if err != nil {
-				return nil, fmt.Errorf("timeout invalido: %q (use 30s, 2m)", valor.Value)
+				return nil, fmt.Errorf("timeout invalido: %q (use 30s, 2m)", value.Value)
 			}
-			configuracao.Timeout = duracao
+			config.Timeout = duration
 		default:
-			return nil, fmt.Errorf("chave desconhecida no passo graphql: %q (use consulta, operacao, variaveis, caminho, cabecalhos ou timeout)", chave.Value)
+			return nil, fmt.Errorf("chave desconhecida no passo graphql: %q (use consulta, operacao, variaveis, caminho, cabecalhos ou timeout)", key.Value)
 		}
 	}
-	return Finalizar(configuracao)
+	return Finish(config)
 }
 
 // Padrao e Finalizar sao o caminho unico de construcao: a DSL em Go monta a
 // mesma configuracao que o YAML monta, incluindo a extracao do nome da operacao.
-func Padrao() *Configuracao {
-	return &Configuracao{Caminho: caminhoPadrao, Cabecalhos: map[string]string{}, Variaveis: "{}"}
+func Default() *Config {
+	return &Config{Path: defaultPath, Headers: map[string]string{}, Vars: "{}"}
 }
 
-func Finalizar(configuracao *Configuracao) (protocol.Configuracao, error) {
-	if strings.TrimSpace(configuracao.Consulta) == "" {
+func Finish(config *Config) (protocol.Config, error) {
+	if strings.TrimSpace(config.Query) == "" {
 		return nil, errors.New(`passo graphql sem consulta, por exemplo:
   - graphql: |
       query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }`)
 	}
 
-	partes := padraoDeOperacao.FindStringSubmatch(configuracao.Consulta)
-	if partes != nil {
-		configuracao.Tipo = partes[1]
-		if configuracao.Operacao == "" {
-			configuracao.Operacao = partes[2]
+	parts := operationPattern.FindStringSubmatch(config.Query)
+	if parts != nil {
+		config.Kind = parts[1]
+		if config.Operation == "" {
+			config.Operation = parts[2]
 		}
 	}
-	if configuracao.Tipo == "" {
-		configuracao.Tipo = "query"
+	if config.Kind == "" {
+		config.Kind = "query"
 	}
-	if configuracao.Operacao == "" {
+	if config.Operation == "" {
 		return nil, errors.New(`a operacao graphql precisa de nome: e o nome que vira a linha do relatorio.
 Sem nome, todas as operacoes cairiam na mesma linha e a mais cara ficaria escondida na media.
   - graphql: |
       query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }`)
 	}
-	if configuracao.Caminho == "" {
-		configuracao.Caminho = caminhoPadrao
+	if config.Path == "" {
+		config.Path = defaultPath
 	}
-	return configuracao, nil
+	return config, nil
 }
 
-func lerVariaveis(no *yaml.Node) (string, error) {
+func readVars(no *yaml.Node) (string, error) {
 	if no.Kind == yaml.ScalarNode {
 		return no.Value, nil
 	}
-	var estrutura any
-	if err := no.Decode(&estrutura); err != nil {
+	var structure any
+	if err := no.Decode(&structure); err != nil {
 		return "", fmt.Errorf("variaveis invalidas: %v", err)
 	}
-	conteudo, err := json.Marshal(estrutura)
+	content, err := json.Marshal(structure)
 	if err != nil {
 		return "", fmt.Errorf("variaveis nao serializam para JSON: %v", err)
 	}
-	return string(conteudo), nil
+	return string(content), nil
 }
 
-type corpoDeRequisicao struct {
-	Consulta      string          `json:"query"`
+type requestBody struct {
+	Query         string          `json:"query"`
 	OperationName string          `json:"operationName,omitempty"`
-	Variaveis     json.RawMessage `json:"variables,omitempty"`
+	Vars          json.RawMessage `json:"variables,omitempty"`
 }
 
-type corpoDeResposta struct {
+type responseBody struct {
 	Data   json.RawMessage `json:"data"`
-	Erros  []erroGraphQL   `json:"errors"`
+	Errors []graphQLError  `json:"errors"`
 	Extras json.RawMessage `json:"extensions,omitempty"`
 }
 
-type erroGraphQL struct {
-	Mensagem  string `json:"message"`
-	Caminho   []any  `json:"path"`
-	Extensoes struct {
-		Codigo string `json:"code"`
+type graphQLError struct {
+	Message    string `json:"message"`
+	Path       []any  `json:"path"`
+	Extensions struct {
+		Code string `json:"code"`
 	} `json:"extensions"`
 }
 
-func (p *Protocolo) Executar(ctx context.Context, requisicao protocol.Requisicao) protocol.Resposta {
-	configuracao, ok := requisicao.Configuracao.(*Configuracao)
+func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protocol.Response {
+	config, ok := request.Config.(*Config)
 	if !ok {
-		return protocol.Resposta{Classe: protocol.ErroDeConfigacao, Detalhe: "configuracao nao e de graphql"}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de graphql"}
 	}
 
-	endereco, err := transport.MontarURL(requisicao.URLBase, configuracao.Caminho)
+	address, err := transport.BuildURL(request.URLBase, config.Path)
 	if err != nil {
-		return protocol.Resposta{Classe: protocol.ErroDeConfigacao, Detalhe: err.Error()}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
 	}
 
-	corpo := corpoDeRequisicao{Consulta: configuracao.Consulta, OperationName: configuracao.Operacao}
-	if variaveis := strings.TrimSpace(configuracao.Variaveis); variaveis != "" && variaveis != "{}" {
-		if !json.Valid([]byte(variaveis)) {
-			return protocol.Resposta{
-				Classe:  protocol.ErroDeConfigacao,
-				Detalhe: "as variaveis nao formaram JSON valido depois da interpolacao: " + resumir(variaveis),
+	body := requestBody{Query: config.Query, OperationName: config.Operation}
+	if vars := strings.TrimSpace(config.Vars); vars != "" && vars != "{}" {
+		if !json.Valid([]byte(vars)) {
+			return protocol.Response{
+				Class:  protocol.ErrConfig,
+				Detail: "as variaveis nao formaram JSON valido depois da interpolacao: " + summarize(vars),
 			}
 		}
-		corpo.Variaveis = json.RawMessage(variaveis)
+		body.Vars = json.RawMessage(vars)
 	}
-	serializado, err := json.Marshal(corpo)
+	serialized, err := json.Marshal(body)
 	if err != nil {
-		return protocol.Resposta{Classe: protocol.ErroDeConfigacao, Detalhe: err.Error()}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
 	}
 
-	if configuracao.Timeout > 0 {
-		var cancelar context.CancelFunc
-		ctx, cancelar = context.WithTimeout(ctx, configuracao.Timeout)
-		defer cancelar()
+	if config.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, config.Timeout)
+		defer cancel()
 	}
 
-	pedido, err := http.NewRequestWithContext(ctx, http.MethodPost, endereco, bytes.NewReader(serializado))
+	order, err := http.NewRequestWithContext(ctx, http.MethodPost, address, bytes.NewReader(serialized))
 	if err != nil {
-		return protocol.Resposta{Classe: protocol.ErroDeConfigacao, Detalhe: err.Error()}
+		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
 	}
-	pedido.Header.Set("Content-Type", "application/json")
-	pedido.Header.Set("Accept", "application/json")
-	for nome, valor := range configuracao.Cabecalhos {
-		pedido.Header.Set(nome, valor)
+	order.Header.Set("Content-Type", "application/json")
+	order.Header.Set("Accept", "application/json")
+	for name, value := range config.Headers {
+		order.Header.Set(name, value)
 	}
 
-	resposta, err := p.cliente.Do(pedido)
+	response, err := p.client.Do(order)
 	if err != nil {
-		return protocol.Resposta{Classe: transport.Classificar(err), Detalhe: transport.ResumirErro(err)}
+		return protocol.Response{Class: transport.Classify(err), Detail: transport.SummarizeError(err)}
 	}
-	defer resposta.Body.Close()
+	defer response.Body.Close()
 
-	conteudo, err := io.ReadAll(resposta.Body)
+	content, err := io.ReadAll(response.Body)
 	if err != nil {
-		return protocol.Resposta{Status: resposta.StatusCode, Classe: transport.Classificar(err), Detalhe: transport.ResumirErro(err)}
+		return protocol.Response{Status: response.StatusCode, Class: transport.Classify(err), Detail: transport.SummarizeError(err)}
 	}
 
-	saida := protocol.Resposta{
-		Status:     resposta.StatusCode,
-		Corpo:      conteudo,
-		Cabecalhos: resposta.Header,
-		Bytes:      int64(len(conteudo)),
-		Classe:     protocol.Sucesso,
+	out := protocol.Response{
+		Status:  response.StatusCode,
+		Body:    content,
+		Headers: response.Header,
+		Bytes:   int64(len(content)),
+		Class:   protocol.Success,
 	}
 
-	if resposta.StatusCode >= 400 {
-		saida.Classe = protocol.ErroDeStatus
-		saida.Detalhe = fmt.Sprintf("status %d", resposta.StatusCode)
-		return saida
+	if response.StatusCode >= 400 {
+		out.Class = protocol.ErrStatus
+		out.Detail = fmt.Sprintf("status %d", response.StatusCode)
+		return out
 	}
 
-	classe, detalhe := classificarCorpo(conteudo)
-	saida.Classe = classe
-	saida.Detalhe = detalhe
-	return saida
+	class, detail := classifyBody(content)
+	out.Class = class
+	out.Detail = detail
+	return out
 }
 
 // O erro de GraphQL chega com status 200: tratar o passo como sucesso porque o
 // HTTP deu 200 e o jeito mais comum de um teste de carga aprovar um servico
 // que esta respondendo erro em todas as requisicoes.
-func classificarCorpo(conteudo []byte) (protocol.ClasseDeErro, string) {
-	var corpo corpoDeResposta
-	if err := json.Unmarshal(conteudo, &corpo); err != nil {
-		return protocol.ErroDeGraphQL, "a resposta nao e JSON de GraphQL: " + resumir(string(conteudo))
+func classifyBody(content []byte) (protocol.ErrorClass, string) {
+	var body responseBody
+	if err := json.Unmarshal(content, &body); err != nil {
+		return protocol.ErrGraphQL, "a resposta nao e JSON de GraphQL: " + summarize(string(content))
 	}
-	if len(corpo.Erros) == 0 {
-		if len(corpo.Data) == 0 || string(corpo.Data) == "null" {
-			return protocol.ErroDeGraphQL, "resposta sem data e sem errors"
+	if len(body.Errors) == 0 {
+		if len(body.Data) == 0 || string(body.Data) == "null" {
+			return protocol.ErrGraphQL, "resposta sem data e sem errors"
 		}
-		return protocol.Sucesso, ""
+		return protocol.Success, ""
 	}
 
-	primeiro := corpo.Erros[0]
-	detalhe := primeiro.Mensagem
-	if primeiro.Extensoes.Codigo != "" {
-		detalhe = primeiro.Extensoes.Codigo + ": " + detalhe
+	first := body.Errors[0]
+	detail := first.Message
+	if first.Extensions.Code != "" {
+		detail = first.Extensions.Code + ": " + detail
 	}
-	if caminho := formatarCaminho(primeiro.Caminho); caminho != "" {
-		detalhe += " (em " + caminho + ")"
+	if path := formatPath(first.Path); path != "" {
+		detail += " (em " + path + ")"
 	}
-	if len(corpo.Erros) > 1 {
-		detalhe = fmt.Sprintf("%s (+%d erro(s))", detalhe, len(corpo.Erros)-1)
+	if len(body.Errors) > 1 {
+		detail = fmt.Sprintf("%s (+%d erro(s))", detail, len(body.Errors)-1)
 	}
-	if len(corpo.Data) > 0 && string(corpo.Data) != "null" {
-		detalhe = "resposta parcial — " + detalhe
+	if len(body.Data) > 0 && string(body.Data) != "null" {
+		detail = "resposta parcial — " + detail
 	}
-	return protocol.ErroDeGraphQL, resumir(detalhe)
+	return protocol.ErrGraphQL, summarize(detail)
 }
 
-func formatarCaminho(caminho []any) string {
-	if len(caminho) == 0 {
+func formatPath(path []any) string {
+	if len(path) == 0 {
 		return ""
 	}
-	partes := make([]string, 0, len(caminho))
-	for _, item := range caminho {
-		partes = append(partes, fmt.Sprint(item))
+	parts := make([]string, 0, len(path))
+	for _, item := range path {
+		parts = append(parts, fmt.Sprint(item))
 	}
-	return strings.Join(partes, ".")
+	return strings.Join(parts, ".")
 }
 
-func resumir(texto string) string {
-	texto = strings.Join(strings.Fields(texto), " ")
-	if len(texto) > 140 {
-		return texto[:140] + "…"
+func summarize(text string) string {
+	text = strings.Join(strings.Fields(text), " ")
+	if len(text) > 140 {
+		return text[:140] + "…"
 	}
-	return texto
+	return text
 }
