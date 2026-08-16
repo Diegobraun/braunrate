@@ -92,5 +92,6 @@ jobs:
           sleep 1
           chmod +x .github/executar-exemplo.sh
           .github/executar-exemplo.sh examples/ci.yaml
+          .github/executar-exemplo.sh examples/http-basico.yaml
           .github/executar-exemplo.sh examples/jornada-autenticada.yaml
           .github/executar-exemplo.sh examples/graphql-cobranca.yaml

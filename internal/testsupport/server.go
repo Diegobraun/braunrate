@@ -23,6 +23,7 @@ type Options struct {
 type Server struct {
 	opts       Options
 	served     atomic.Int64
+	created    atomic.Int64
 	mutexPausa sync.RWMutex
 	fimDaPausa time.Time
 	random     *rand.Rand
@@ -54,6 +55,7 @@ func (s *Server) Start(address string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handle)
 	mux.HandleFunc("/auth/token", s.wrap(s.handleToken))
+	mux.HandleFunc("/pedidos", s.wrap(s.requireToken(s.handleOrder)))
 	mux.HandleFunc("/pedidos/", s.wrap(s.requireToken(s.handleOrder)))
 	mux.HandleFunc("/faturas/", s.wrap(s.requireToken(s.handlePayment)))
 	mux.HandleFunc("/graphql", s.wrap(s.requireToken(s.handleGraphQL)))
@@ -172,8 +174,14 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleOrder(w http.ResponseWriter, r *http.Request) {
-	order := strings.TrimPrefix(r.URL.Path, "/pedidos/")
+	order := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/pedidos"), "/")
 	if order == "" {
+		if r.Method == http.MethodPost {
+			s.created.Add(1)
+			w.WriteHeader(http.StatusCreated)
+			_, _ = fmt.Fprintf(w, `{"id":"p-%d","status":"ABERTO"}`, s.created.Load())
+			return
+		}
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = fmt.Fprint(w, `{"erro":"informe o pedido"}`)
 		return

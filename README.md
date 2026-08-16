@@ -306,6 +306,13 @@ Atencao: o gate mede 2 passos isolados e deixa de fora a jornada inteira, que e 
     declare tambem:  - jornada: { p95: < 2s, p99: < 5s }
 ```
 
+Quando nao ha criterio nenhum, o relatorio diz isso em vez de calar:
+
+```
+SLO
+  --    nenhum criterio declarado — o cenario roda e reporta, mas nao serve de gate
+```
+
 **Taxa efetiva abaixo do alvo tem duas causas opostas**: o alvo nao aguentou, ou o gerador nao produziu. A segunda e medicao invalida e sai com codigo 3 antes de qualquer SLO ser lido — nunca vira falha de servico.
 
 ### Comparar com a execucao anterior como gate

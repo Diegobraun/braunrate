@@ -60,7 +60,11 @@ func generate(t *testing.T, document metrics.Document) string {
 
 func TestReportTopIsSentenceNotTable(t *testing.T) {
 	document := sampleDocument()
-	document.SLO = metrics.Verdict{Passed: true, Sentence: "Passou: as 3 regras de SLO foram atendidas."}
+	document.SLO = metrics.Verdict{
+		Passed:      true,
+		Evaluations: []metrics.Evaluation{{Step: "consultar pedido", Metrica: "p95", Passed: true}},
+		Sentence:    "Passou: as 3 regras de SLO foram atendidas.",
+	}
 	page := generate(t, document)
 
 	title := regexp.MustCompile(`(?s)<h1[^>]*>(.*?)</h1>`).FindStringSubmatch(page)
@@ -96,7 +100,11 @@ func TestFailureReportShowsReasonOnTop(t *testing.T) {
 
 func TestInvalidResultIsNotPresentedAsTargetNumber(t *testing.T) {
 	document := sampleDocument()
-	document.SLO = metrics.Verdict{Passed: true, Sentence: "Passou: as 3 regras de SLO foram atendidas."}
+	document.SLO = metrics.Verdict{
+		Passed:      true,
+		Evaluations: []metrics.Evaluation{{Step: "consultar pedido", Metrica: "p95", Passed: true}},
+		Sentence:    "Passou: as 3 regras de SLO foram atendidas.",
+	}
 	document.Warnings = []metrics.Warning{{
 		Kind: "gerador_saturado", Severity: metrics.SeverityHigh,
 		Message:  "o gerador nao sustentou a taxa alvo",

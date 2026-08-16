@@ -167,7 +167,7 @@ func buildVerdict(document metrics.Document) htmlVerdict {
 	}
 
 	switch {
-	case len(document.SLO.Evaluations) == 0 && document.SLO.Sentence == "":
+	case len(document.SLO.Evaluations) == 0:
 		verdict.Class = "neutro"
 		verdict.Sentence = fmt.Sprintf("%s respondeu %s requisicoes com %s de erro.",
 			document.Run.Target, thousands(document.Overall.Count), percentage(document.Overall.ErrorRate*100))
@@ -498,7 +498,7 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 </div>
 {{end}}
 
-{{if .Verdict.Evaluations}}
+{{if or .Verdict.Evaluations .Verdict.Undeclared}}
 <h2>SLO</h2>
 <ul class="frases slo">
   {{range .Verdict.Evaluations}}

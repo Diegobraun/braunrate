@@ -93,7 +93,7 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 	}
 	write("")
 
-	if len(verdict.Evaluations) > 0 {
+	if len(verdict.Evaluations) > 0 || len(verdict.Undeclared) > 0 {
 		write("SLO")
 		for _, evaluation := range verdict.Evaluations {
 			mark := "ok  "

@@ -1,6 +1,7 @@
 package slo_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -66,13 +67,69 @@ func TestUndeclaredCriteriaAreReportedAsInformation(t *testing.T) {
 	}, journeyDocument(100, 200), nil)
 
 	together := strings.Join(verdict.Undeclared, " | ")
-	for _, expected := range []string{"jornada: sem criterio declarado", "global: sem criterio declarado", "regressao: sem criterio declarado"} {
+	for _, expected := range []string{
+		"jornada: sem criterio declarado",
+		"global: sem criterio declarado",
+		"passos sem criterio declarado (1 de 2): pagar fatura",
+		"regressao: sem criterio declarado",
+	} {
 		if !strings.Contains(together, expected) {
 			t.Errorf("faltou declarar a ausencia de %q: %v", expected, verdict.Undeclared)
 		}
 	}
 	if !verdict.Passed {
 		t.Error("criterio nao declarado nao pode reprovar a execucao, so ser informado")
+	}
+}
+
+// One line per scope, never one per step: with twenty steps the useful part
+// would be buried by the list.
+func TestStepsWithoutCriterionAreGroupedIntoOneLine(t *testing.T) {
+	document := journeyDocument(100, 200)
+	for index := 3; index <= 20; index++ {
+		document.Steps = append(document.Steps, metrics.StepResult{
+			Name: fmt.Sprintf("passo %d", index), Count: 10, Successes: 10,
+		})
+	}
+
+	verdict := slo.Evaluate([]scenario.SLORule{
+		parse(t, "consultar pedido", "p95", "< 150ms"),
+		parse(t, "jornada", "p95", "< 2s"),
+		parse(t, "global", "erros", "< 0.1"),
+		parse(t, "regressao", "jornada_p95", "<= 10% pior"),
+	}, document, regressionBaseline(100, 100))
+
+	if len(verdict.Undeclared) != 1 {
+		t.Fatalf("esperava uma linha so sobre passos, veio %d: %v", len(verdict.Undeclared), verdict.Undeclared)
+	}
+	line := verdict.Undeclared[0]
+	if !strings.Contains(line, "(19 de 20)") || !strings.Contains(line, "e mais 16") {
+		t.Errorf("a linha precisa contar e resumir em vez de listar tudo: %q", line)
+	}
+}
+
+func TestEveryScopeDeclaredLeavesNothingToReport(t *testing.T) {
+	verdict := slo.Evaluate([]scenario.SLORule{
+		parse(t, "consultar pedido", "p95", "< 150ms"),
+		parse(t, "pagar fatura", "p95", "< 150ms"),
+		parse(t, "jornada", "p95", "< 2s"),
+		parse(t, "global", "erros", "< 0.1"),
+		parse(t, "regressao", "jornada_p95", "<= 10% pior"),
+	}, journeyDocument(100, 200), regressionBaseline(100, 100))
+
+	if len(verdict.Undeclared) > 0 {
+		t.Errorf("com todos os escopos declarados nao ha o que informar: %v", verdict.Undeclared)
+	}
+}
+
+func TestNoCriterionAtAllSaysTheRunIsNotAGate(t *testing.T) {
+	verdict := slo.Evaluate(nil, journeyDocument(100, 200), nil)
+
+	if len(verdict.Undeclared) != 1 {
+		t.Fatalf("sem nenhum criterio, uma frase so: %v", verdict.Undeclared)
+	}
+	if !strings.Contains(verdict.Undeclared[0], "nao serve de gate") {
+		t.Errorf("a frase precisa dizer que o cenario roda mas nao e gate: %q", verdict.Undeclared[0])
 	}
 }
 

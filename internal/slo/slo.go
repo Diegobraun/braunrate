@@ -293,14 +293,19 @@ func phraseRegression(evaluation Evaluation, rule scenario.SLORule, difference c
 }
 
 // A gate made only of step rules approves a scenario whose journey nobody
-// measured, so what is missing is reported too.
+// measured, so what is missing is reported too — one line per scope, grouped,
+// because a line per step would turn the useful part into noise.
 func undeclared(rules []scenario.SLORule, document metrics.Document, baseline *Baseline) []string {
 	if len(rules) == 0 {
-		return nil
+		return []string{"nenhum criterio declarado — o cenario roda e reporta, mas nao serve de gate"}
 	}
 	declared := map[scenario.SLOScope]bool{}
+	declaredStep := map[string]bool{}
 	for _, rule := range rules {
 		declared[rule.Scope] = true
+		if rule.Scope == scenario.ScopeStep {
+			declaredStep[rule.Step] = true
+		}
 	}
 
 	var missing []string
@@ -308,14 +313,40 @@ func undeclared(rules []scenario.SLORule, document metrics.Document, baseline *B
 		missing = append(missing, "jornada: sem criterio declarado — o gate mede passo isolado e deixa de fora o tempo que o usuario espera")
 	}
 	if !declared[scenario.ScopeOverall] {
-		missing = append(missing, "global: sem criterio declarado — taxa de erro e taxa efetiva nao entram no gate")
+		missing = append(missing, "global: sem criterio declarado — taxa de erro, taxa de sucesso e taxa efetiva nao entram no gate")
 	}
-	if !declared[scenario.ScopeRegression] {
+	if line, had := stepsWithoutRule(document, declaredStep); had {
+		missing = append(missing, line)
+	}
+	switch {
+	case !declared[scenario.ScopeRegression]:
 		missing = append(missing, "regressao: sem criterio declarado — o gate aprova sem comparar com a execucao anterior")
-	} else if baseline == nil {
+	case baseline == nil:
 		missing = append(missing, "regressao: declarada, mas nenhuma base foi passada em -baseline")
 	}
 	return missing
+}
+
+func stepsWithoutRule(document metrics.Document, declaredStep map[string]bool) (string, bool) {
+	var without []string
+	for _, step := range document.Steps {
+		if !declaredStep[step.Name] {
+			without = append(without, step.Name)
+		}
+	}
+	if len(without) == 0 {
+		return "", false
+	}
+	return fmt.Sprintf("passos sem criterio declarado (%d de %d): %s",
+		len(without), len(document.Steps), shortList(without)), true
+}
+
+func shortList(names []string) string {
+	const shown = 3
+	if len(names) <= shown {
+		return strings.Join(names, ", ")
+	}
+	return fmt.Sprintf("%s e mais %d", strings.Join(names[:shown], ", "), len(names)-shown)
 }
 
 func phrase(verdict Verdict) string {
