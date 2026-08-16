@@ -104,8 +104,8 @@ type Generator struct {
 
 func ParseGenerator(recipe string) Generator { return Generator{Recipe: recipe} }
 
-func (f DataSource) Synthetic() bool {
-	return f.File == ""
+func (dataSource DataSource) Synthetic() bool {
+	return dataSource.File == ""
 }
 
 type SLOScope string
@@ -128,4 +128,4 @@ type SLORule struct {
 	Line     int
 }
 
-func (r SLORule) Overall() bool { return r.Scope == ScopeOverall }
+func (sloRule SLORule) Overall() bool { return sloRule.Scope == ScopeOverall }

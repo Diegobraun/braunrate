@@ -73,14 +73,14 @@ func buildVarieties(counters map[string]*varietyCounter, available Availability)
 	return varieties
 }
 
-func phraseVariety(v Variety) string {
-	if v.Capped {
-		return fmt.Sprintf("mais de %d valores distintos de %s em %s usos", distinctValuesCap-1, v.Name, thousands(v.Uses))
+func phraseVariety(variety Variety) string {
+	if variety.Capped {
+		return fmt.Sprintf("mais de %d valores distintos de %s em %s usos", distinctValuesCap-1, variety.Name, thousands(variety.Uses))
 	}
-	if v.Distinct == 1 {
-		return fmt.Sprintf("1 unico valor de %s em %s usos", v.Name, thousands(v.Uses))
+	if variety.Distinct == 1 {
+		return fmt.Sprintf("1 unico valor de %s em %s usos", variety.Name, thousands(variety.Uses))
 	}
-	return fmt.Sprintf("%d valores distintos de %s em %s usos", v.Distinct, v.Name, thousands(v.Uses))
+	return fmt.Sprintf("%d valores distintos de %s em %s usos", variety.Distinct, variety.Name, thousands(variety.Uses))
 }
 
 // VarietyWarnings reports load that concentrated on a single value.

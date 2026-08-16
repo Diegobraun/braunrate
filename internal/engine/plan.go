@@ -33,16 +33,16 @@ func CompilePlan(plan scenario.LoadPlan) Plan {
 	var accumulated float64
 
 	for _, phase := range plan.Phases {
-		f := compiledPhase{
+		current := compiledPhase{
 			initialRate:   phase.InitialRate(),
 			finalRate:     phase.FinalRate(),
 			duration:      phase.For,
 			start:         start,
 			acumuladoAtes: accumulated,
 		}
-		accumulated += countInPhase(f, phase.For)
+		accumulated += countInPhase(current, phase.For)
 		start += phase.For
-		compiled.phases = append(compiled.phases, f)
+		compiled.phases = append(compiled.phases, current)
 	}
 
 	compiled.duration = start
@@ -50,22 +50,22 @@ func CompilePlan(plan scenario.LoadPlan) Plan {
 	return compiled
 }
 
-func countInPhase(f compiledPhase, until time.Duration) float64 {
-	if f.duration <= 0 {
+func countInPhase(phase compiledPhase, until time.Duration) float64 {
+	if phase.duration <= 0 {
 		return 0
 	}
-	t := until.Seconds()
-	d := f.duration.Seconds()
-	slope := (f.finalRate - f.initialRate) / d
-	return f.initialRate*t + slope*t*t/2
+	elapsed := until.Seconds()
+	span := phase.duration.Seconds()
+	slope := (phase.finalRate - phase.initialRate) / span
+	return phase.initialRate*elapsed + slope*elapsed*elapsed/2
 }
 
-func (p Plan) Duration() time.Duration { return p.duration }
+func (plan Plan) Duration() time.Duration { return plan.duration }
 
-func (p Plan) TotalRequests() int64 { return p.totalRequests }
+func (plan Plan) TotalRequests() int64 { return plan.totalRequests }
 
-func (p Plan) RateAt(instant time.Duration) float64 {
-	for _, phase := range p.phases {
+func (plan Plan) RateAt(instant time.Duration) float64 {
+	for _, phase := range plan.phases {
 		if instant < phase.start || instant >= phase.start+phase.duration {
 			continue
 		}
@@ -76,36 +76,36 @@ func (p Plan) RateAt(instant time.Duration) float64 {
 	return 0
 }
 
-func (p Plan) InstantOf(index int64) time.Duration {
+func (plan Plan) InstantOf(index int64) time.Duration {
 	target := float64(index)
-	for position, phase := range p.phases {
+	for position, phase := range plan.phases {
 		inPhase := target - phase.acumuladoAtes
-		last := position == len(p.phases)-1
+		last := position == len(plan.phases)-1
 		if !last && inPhase >= countInPhase(phase, phase.duration) {
 			continue
 		}
 		instant := phase.start + instantInPhase(phase, inPhase)
-		if instant > p.duration {
-			return p.duration
+		if instant > plan.duration {
+			return plan.duration
 		}
 		return instant
 	}
-	return p.duration
+	return plan.duration
 }
 
-func instantInPhase(f compiledPhase, count float64) time.Duration {
+func instantInPhase(phase compiledPhase, count float64) time.Duration {
 	if count <= 0 {
 		return 0
 	}
-	d := f.duration.Seconds()
-	slope := (f.finalRate - f.initialRate) / d
+	span := phase.duration.Seconds()
+	slope := (phase.finalRate - phase.initialRate) / span
 	var seconds float64
 	if math.Abs(slope) < 1e-12 {
-		seconds = count / f.initialRate
+		seconds = count / phase.initialRate
 	} else {
-		a := slope / 2
-		b := f.initialRate
-		seconds = (-b + math.Sqrt(b*b+4*a*count)) / (2 * a)
+		quadratic := slope / 2
+		linear := phase.initialRate
+		seconds = (-linear + math.Sqrt(linear*linear+4*quadratic*count)) / (2 * quadratic)
 	}
 	return time.Duration(seconds * float64(time.Second))
 }

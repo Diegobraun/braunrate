@@ -20,17 +20,17 @@ type ScenarioError struct {
 	Message string
 }
 
-func (e ScenarioError) Error() string {
-	if e.File == "" {
-		return fmt.Sprintf("linha %d: %s", e.Line, e.Message)
+func (scenarioError ScenarioError) Error() string {
+	if scenarioError.File == "" {
+		return fmt.Sprintf("linha %d: %s", scenarioError.Line, scenarioError.Message)
 	}
-	return fmt.Sprintf("%s:%d:%d: %s", e.File, e.Line, e.Column, e.Message)
+	return fmt.Sprintf("%s:%d:%d: %s", scenarioError.File, scenarioError.Line, scenarioError.Column, scenarioError.Message)
 }
 
-func nodeError(no *yaml.Node, format string, args ...any) error {
+func nodeError(node *yaml.Node, format string, args ...any) error {
 	line, column := 0, 0
-	if no != nil {
-		line, column = no.Line, no.Column
+	if node != nil {
+		line, column = node.Line, node.Column
 	}
 	return ScenarioError{Line: line, Column: column, Message: fmt.Sprintf(format, args...)}
 }
@@ -70,7 +70,7 @@ func Parse(content []byte) (Spec, error) {
 			"  alvo: http://127.0.0.1:8080")
 	}
 
-	c := Spec{
+	spec := Spec{
 		FormatVersion: FormatVersion,
 		Vars:          map[string]string{},
 		Load:          LoadPlan{Model: OpenArrival},
@@ -81,71 +81,71 @@ func Parse(content []byte) (Spec, error) {
 		value := document.Content[index+1]
 		switch key.Value {
 		case "nome":
-			c.Name = value.Value
+			spec.Name = value.Value
 		case "alvo":
-			c.Target = value.Value
+			spec.Target = value.Value
 		case "variaveis":
 			vars, err := readVars(value)
 			if err != nil {
-				return c, err
+				return spec, err
 			}
-			c.Vars = vars
+			spec.Vars = vars
 		case "carga":
 			load, err := readLoad(value)
 			if err != nil {
-				return c, err
+				return spec, err
 			}
-			c.Load = load
+			spec.Load = load
 		case "cenario":
 			steps, err := readSteps(value)
 			if err != nil {
-				return c, err
+				return spec, err
 			}
-			c.Steps = steps
+			spec.Steps = steps
 		case "autenticacao":
 			auth, err := readAuth(value)
 			if err != nil {
-				return c, err
+				return spec, err
 			}
-			c.Auth = auth
+			spec.Auth = auth
 		case "dados":
 			sources, err := readData(value)
 			if err != nil {
-				return c, err
+				return spec, err
 			}
-			c.Data = sources
+			spec.Data = sources
 		case "requer":
 			requirements, err := readRequirements(value)
 			if err != nil {
-				return c, err
+				return spec, err
 			}
-			c.Requires = requirements
+			spec.Requires = requirements
 		case "slo":
 			rules, err := readSLO(value)
 			if err != nil {
-				return c, err
+				return spec, err
 			}
-			c.SLO = rules
+			spec.SLO = rules
 		default:
-			return c, nodeError(key, "chave desconhecida no topo do cenario: %q\n%s",
+			return spec, nodeError(key, "chave desconhecida no topo do cenario: %q\n%s",
 				key.Value, sugerir(key.Value, TopKeys))
 		}
 	}
 
-	c.Target = Interpolate(c.Target, c.Vars)
-	return c, nil
+	spec.Target = Interpolate(spec.Target, spec.Vars)
+	return spec, nil
 }
 
-func readVars(no *yaml.Node) (map[string]string, error) {
+func readVars(node *yaml.Node) (map[string]string, error) {
 	vars := map[string]string{}
-	if no.Kind != yaml.MappingNode {
-		return nil, nodeError(no, "variaveis precisa ser um mapa, por exemplo:\n"+
+	if node.Kind != yaml.MappingNode {
+		return nil, nodeError(node, "variaveis precisa ser um mapa, por exemplo:\n"+
 			"  variaveis:\n"+
 			"    usuario: ${USUARIO:-ana}")
 	}
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		name := no.Content[index].Value
-		vars[name] = ExpandFromEnv(no.Content[index+1].Value)
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		name := node.Content[index].Value
+		vars[name] = ExpandFromEnv(node.Content[index+1].Value)
 	}
 	return vars, nil
 }
@@ -186,10 +186,10 @@ const closedExample = "  carga:\n" +
 
 var loadKeys = []string{"modelo", "perfis", "usuarios", "duracao", "intervalo_entre_iteracoes"}
 
-func readLoad(no *yaml.Node) (LoadPlan, error) {
+func readLoad(node *yaml.Node) (LoadPlan, error) {
 	plan := LoadPlan{Model: OpenArrival}
-	if no.Kind != yaml.MappingNode {
-		return plan, nodeError(no, "carga precisa ser um mapa, por exemplo:\n"+
+	if node.Kind != yaml.MappingNode {
+		return plan, nodeError(node, "carga precisa ser um mapa, por exemplo:\n"+
 			"  carga:\n"+
 			"    perfis:\n"+
 			"      - patamar: { taxa: 300/s, durante: 1m }")
@@ -198,9 +198,9 @@ func readLoad(no *yaml.Node) (LoadPlan, error) {
 	// Collected before being judged: the model may be declared after the key
 	// that only makes sense under it, and reading in order blames the wrong line.
 	nodes := map[string]*yaml.Node{}
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		key := no.Content[index]
-		value := no.Content[index+1]
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key := node.Content[index]
+		value := node.Content[index+1]
 		if !slices.Contains(loadKeys, key.Value) {
 			return plan, nodeError(key, "chave desconhecida em carga: %q\n%s", key.Value, sugerir(key.Value, loadKeys))
 		}
@@ -293,14 +293,14 @@ func readClosedLoad(plan LoadPlan, nodes map[string]*yaml.Node) (LoadPlan, error
 	return plan, nil
 }
 
-func readPhase(no *yaml.Node) (Phase, error) {
-	if no.Kind != yaml.MappingNode || len(no.Content) < 2 {
-		return Phase{}, nodeError(no, "cada perfil precisa ser um mapa com um tipo (rampa, patamar, pico, constante), por exemplo:\n"+
+func readPhase(node *yaml.Node) (Phase, error) {
+	if node.Kind != yaml.MappingNode || len(node.Content) < 2 {
+		return Phase{}, nodeError(node, "cada perfil precisa ser um mapa com um tipo (rampa, patamar, pico, constante), por exemplo:\n"+
 			"  - patamar: { taxa: 300/s, durante: 5m }")
 	}
-	kindNode := no.Content[0]
-	body := no.Content[1]
-	phase := Phase{Line: no.Line}
+	kindNode := node.Content[0]
+	body := node.Content[1]
+	phase := Phase{Line: node.Line}
 
 	switch kindNode.Value {
 	case "rampa":
@@ -352,16 +352,16 @@ func readPhase(no *yaml.Node) (Phase, error) {
 	return phase, nil
 }
 
-func readDuration(no *yaml.Node) (time.Duration, error) {
-	duration, err := time.ParseDuration(no.Value)
+func readDuration(node *yaml.Node) (time.Duration, error) {
+	duration, err := time.ParseDuration(node.Value)
 	if err != nil {
-		return 0, nodeError(no, "duracao invalida: %q (use 30s, 5m, 1h30m)", no.Value)
+		return 0, nodeError(node, "duracao invalida: %q (use 30s, 5m, 1h30m)", node.Value)
 	}
 	return duration, nil
 }
 
-func readRate(no *yaml.Node) (float64, error) {
-	text := strings.TrimSpace(no.Value)
+func readRate(node *yaml.Node) (float64, error) {
+	text := strings.TrimSpace(node.Value)
 	divisor := 1.0
 	switch {
 	case strings.HasSuffix(text, "/s"):
@@ -375,22 +375,22 @@ func readRate(no *yaml.Node) (float64, error) {
 	}
 	value, err := strconv.ParseFloat(strings.TrimSpace(text), 64)
 	if err != nil {
-		return 0, nodeError(no, "taxa invalida: %q (use por exemplo 50/s)", no.Value)
+		return 0, nodeError(node, "taxa invalida: %q (use por exemplo 50/s)", node.Value)
 	}
 	if value <= 0 {
-		return 0, nodeError(no, "taxa precisa ser maior que zero")
+		return 0, nodeError(node, "taxa precisa ser maior que zero")
 	}
 	return value / divisor, nil
 }
 
-func readSteps(no *yaml.Node) ([]Step, error) {
-	if no.Kind != yaml.SequenceNode {
-		return nil, nodeError(no, "cenario precisa ser uma lista de passos, um por linha:\n"+
+func readSteps(node *yaml.Node) ([]Step, error) {
+	if node.Kind != yaml.SequenceNode {
+		return nil, nodeError(node, "cenario precisa ser uma lista de passos, um por linha:\n"+
 			"  cenario:\n"+
 			"    - http: GET /pedidos/1")
 	}
-	steps := make([]Step, 0, len(no.Content))
-	for _, itemNode := range no.Content {
+	steps := make([]Step, 0, len(node.Content))
+	for _, itemNode := range node.Content {
 		step, err := readStep(itemNode)
 		if err != nil {
 			return nil, err
@@ -400,17 +400,17 @@ func readSteps(no *yaml.Node) ([]Step, error) {
 	return steps, nil
 }
 
-func readStep(no *yaml.Node) (Step, error) {
-	step := Step{Line: no.Line}
-	if no.Kind != yaml.MappingNode {
-		return step, nodeError(no, "cada passo precisa ser um mapa, por exemplo:\n"+
+func readStep(node *yaml.Node) (Step, error) {
+	step := Step{Line: node.Line}
+	if node.Kind != yaml.MappingNode {
+		return step, nodeError(node, "cada passo precisa ser um mapa, por exemplo:\n"+
 			"  - http: GET /pedidos/1\n"+
 			"    nome: consultar pedido")
 	}
 	var configNode *yaml.Node
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		key := no.Content[index]
-		value := no.Content[index+1]
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key := node.Content[index]
+		value := node.Content[index+1]
 		switch key.Value {
 		case "nome":
 			step.Name = value.Value
@@ -442,7 +442,7 @@ func readStep(no *yaml.Node) (Step, error) {
 		}
 	}
 	if step.Protocol == "" {
-		return step, nodeError(no, "passo sem protocolo (compilados: %s), por exemplo:\n"+
+		return step, nodeError(node, "passo sem protocolo (compilados: %s), por exemplo:\n"+
 			"  - http: GET /pedidos/1", strings.Join(protocol.Registered(), ", "))
 	}
 	implementation, _ := protocol.Lookup(step.Protocol)

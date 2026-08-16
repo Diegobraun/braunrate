@@ -150,14 +150,14 @@ func evaluateRegression(rule scenario.SLORule, evaluation Evaluation, baseline *
 	return evaluation
 }
 
-func differenceOf(c comparison.Comparison, metric string) (comparison.Difference, bool) {
+func differenceOf(compared comparison.Comparison, metric string) (comparison.Difference, bool) {
 	prefix, percentile, _ := strings.Cut(metric, "_")
 	var byPercentile map[string]comparison.Difference
 	switch prefix {
 	case "jornada":
-		byPercentile = c.JourneyPercentiles
+		byPercentile = compared.JourneyPercentiles
 	case "global":
-		byPercentile = c.OverallPercentiles
+		byPercentile = compared.OverallPercentiles
 	default:
 		return comparison.Difference{}, false
 	}
@@ -174,9 +174,9 @@ func worsePercentage(difference comparison.Difference) float64 {
 	return difference.Change * 100
 }
 
-func blockingCaveats(c comparison.Comparison) []string {
+func blockingCaveats(compared comparison.Comparison) []string {
 	var blocking []string
-	for _, caveat := range c.Caveats {
+	for _, caveat := range compared.Caveats {
 		if caveat.Blocking {
 			blocking = append(blocking, caveat.Text)
 		}

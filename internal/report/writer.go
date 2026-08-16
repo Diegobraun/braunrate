@@ -12,9 +12,9 @@ type lineWriter struct {
 	err error
 }
 
-func (w *lineWriter) writef(format string, args ...any) {
-	if w.err != nil {
+func (lineWriter *lineWriter) writef(format string, args ...any) {
+	if lineWriter.err != nil {
 		return
 	}
-	_, w.err = fmt.Fprintf(w.out, format+"\n", args...)
+	_, lineWriter.err = fmt.Fprintf(lineWriter.out, format+"\n", args...)
 }

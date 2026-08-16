@@ -114,14 +114,14 @@ func execute(args []string) int {
 		return 2
 	}
 
-	opts := engine.DefaultOptions()
-	opts.Version = version
-	opts.MaxInflight = *maxInflight
-	opts.DataRoot = filepath.Dir(scenarioPath)
-	opts.LateThreshold = *lateThreshold
+	options := engine.DefaultOptions()
+	options.Version = version
+	options.MaxInflight = *maxInflight
+	options.DataRoot = filepath.Dir(scenarioPath)
+	options.LateThreshold = *lateThreshold
 	if !*silencioso {
 		closed := c.Load.Closed()
-		opts.OnProgress = func(snapshot metrics.Snapshot, targetRate float64, remaining time.Duration) {
+		options.OnProgress = func(snapshot metrics.Snapshot, targetRate float64, remaining time.Duration) {
 			if closed {
 				fmt.Fprintf(os.Stderr, "\r%s", report.ClosedProgressLine(snapshot, c.Load.Users, remaining))
 				return
@@ -130,10 +130,10 @@ func execute(args []string) int {
 		}
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	m, err := engine.New(c, opts)
+	m, err := engine.New(c, options)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 2
@@ -146,7 +146,7 @@ func execute(args []string) int {
 			c.Name, c.Target, humanizar(m.Plan().TotalRequests()), m.Plan().Duration())
 	}
 
-	document := m.Execute(ctx)
+	document := m.Execute(runContext)
 	protocol.CloseAll()
 	if !*silencioso {
 		fmt.Fprintln(os.Stderr)
@@ -370,11 +370,11 @@ func debug(args []string) int {
 		return 2
 	}
 
-	opts := engine.DefaultOptions()
-	opts.Version = version
-	opts.DataRoot = filepath.Dir(scenarioPath)
+	options := engine.DefaultOptions()
+	options.Version = version
+	options.DataRoot = filepath.Dir(scenarioPath)
 
-	m, err := engine.New(c, opts)
+	m, err := engine.New(c, options)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 2
@@ -382,10 +382,10 @@ func debug(args []string) int {
 
 	fmt.Printf("depurando %q contra %s: 1 usuario, 1 iteracao, sem carga\n", c.Name, c.Target)
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	observations, vars, err := m.Debug(ctx)
+	observations, vars, err := m.Debug(runContext)
 	protocol.CloseAll()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "\nnao consegui chegar ao primeiro passo: %v\n", err)
@@ -612,9 +612,9 @@ func serveTarget(args []string) int {
 		}
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	<-ctx.Done()
+	<-runContext.Done()
 	_ = server.Close()
 	if processor != nil {
 		_ = processor.Close()

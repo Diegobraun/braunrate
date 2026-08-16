@@ -74,9 +74,9 @@ func execute(t *testing.T, content string) (metrics.Document, slo.Verdict) {
 	if err := c.Validate(); err != nil {
 		t.Fatalf("cenario invalido: %v", err)
 	}
-	opts := engine.DefaultOptions()
-	opts.DataRoot = root
-	m, err := engine.New(c, opts)
+	options := engine.DefaultOptions()
+	options.DataRoot = root
+	m, err := engine.New(c, options)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}
@@ -348,11 +348,11 @@ func TestSaturatedGeneratorWhileProducingInvalidatesResult(t *testing.T) {
 		t.Fatalf("cenario nao carregou: %v", err)
 	}
 
-	opts := engine.DefaultOptions()
-	opts.DataRoot = root
-	opts.MaxInflight = 1
+	options := engine.DefaultOptions()
+	options.DataRoot = root
+	options.MaxInflight = 1
 
-	m, err := engine.New(c, opts)
+	m, err := engine.New(c, options)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}

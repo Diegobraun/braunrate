@@ -72,20 +72,20 @@ type valueCollector struct {
 	seen map[string]map[string]struct{}
 }
 
-func (c *valueCollector) note(where, value string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.seen[where] == nil {
-		c.seen[where] = map[string]struct{}{}
+func (valueCollector *valueCollector) note(where, value string) {
+	valueCollector.mu.Lock()
+	defer valueCollector.mu.Unlock()
+	if valueCollector.seen[where] == nil {
+		valueCollector.seen[where] = map[string]struct{}{}
 	}
-	c.seen[where][value] = struct{}{}
+	valueCollector.seen[where][value] = struct{}{}
 }
 
-func (c *valueCollector) distinct(where string) []string {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	values := make([]string, 0, len(c.seen[where]))
-	for value := range c.seen[where] {
+func (valueCollector *valueCollector) distinct(where string) []string {
+	valueCollector.mu.Lock()
+	defer valueCollector.mu.Unlock()
+	values := make([]string, 0, len(valueCollector.seen[where]))
+	for value := range valueCollector.seen[where] {
 		values = append(values, value)
 	}
 	sort.Strings(values)
@@ -219,9 +219,9 @@ func runVarietyScenario(t *testing.T, address, csv string) metrics.Document {
 	if err := c.Validate(); err != nil {
 		t.Fatalf("cenario invalido: %v", err)
 	}
-	opts := engine.DefaultOptions()
-	opts.DataRoot = root
-	m, err := engine.New(c, opts)
+	options := engine.DefaultOptions()
+	options.DataRoot = root
+	m, err := engine.New(c, options)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}

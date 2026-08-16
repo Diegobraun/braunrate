@@ -14,9 +14,11 @@ import (
 
 type testClock struct{ now time.Time }
 
-func (r *testClock) Now() time.Time { return r.now }
+func (testClock *testClock) Now() time.Time { return testClock.now }
 
-func (r *testClock) Advance(duration time.Duration) { r.now = r.now.Add(duration) }
+func (testClock *testClock) Advance(duration time.Duration) {
+	testClock.now = testClock.now.Add(duration)
+}
 
 func tokenConfig(refreshAfter time.Duration) scenario.Auth {
 	return scenario.Auth{

@@ -16,7 +16,7 @@ type pedidoGraphQL struct {
 // The target returns a GraphQL error with status 200 on purpose: that is how
 // the error arrives in production, and exactly the case a tool that only looks
 // at HTTP status counts as a success.
-func (s *Server) handleGraphQL(w http.ResponseWriter, r *http.Request) {
+func (server *Server) handleGraphQL(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return

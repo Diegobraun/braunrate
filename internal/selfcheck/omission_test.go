@@ -53,9 +53,9 @@ func runOpenModel(t *testing.T, address string) metrics.Document {
 		}},
 	}
 
-	opts := engine.DefaultOptions()
-	opts.Version = "teste"
-	m, err := engine.New(c, opts)
+	options := engine.DefaultOptions()
+	options.Version = "teste"
+	m, err := engine.New(c, options)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}

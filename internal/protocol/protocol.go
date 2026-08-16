@@ -80,28 +80,28 @@ type WithAvailability interface {
 // load starts. Without it the first iteration's message can arrive before
 // anyone waits for it, and the timeout would be braunrate's, not the service's.
 type Preparable interface {
-	Prepare(ctx context.Context, request Request) error
+	Prepare(runContext context.Context, request Request) error
 }
 
 type Protocol interface {
 	Name() string
-	Decode(no *yaml.Node) (Config, error)
-	Execute(ctx context.Context, request Request) Response
+	Decode(node *yaml.Node) (Config, error)
+	Execute(runContext context.Context, request Request) Response
 	Close() error
 }
 
 var record = map[string]Protocol{}
 
-func Register(p Protocol) {
-	if _, exists := record[p.Name()]; exists {
-		panic(fmt.Sprintf("protocolo ja registrado: %s", p.Name()))
+func Register(implementation Protocol) {
+	if _, exists := record[implementation.Name()]; exists {
+		panic(fmt.Sprintf("protocolo ja registrado: %s", implementation.Name()))
 	}
-	record[p.Name()] = p
+	record[implementation.Name()] = implementation
 }
 
 func Lookup(name string) (Protocol, bool) {
-	p, exists := record[name]
-	return p, exists
+	implementation, exists := record[name]
+	return implementation, exists
 }
 
 func Registered() []string {
@@ -114,8 +114,8 @@ func Registered() []string {
 }
 
 func CloseAll() {
-	for _, p := range record {
-		_ = p.Close()
+	for _, implementation := range record {
+		_ = implementation.Close()
 	}
 }
 

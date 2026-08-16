@@ -17,10 +17,10 @@ type Values struct {
 	perUse      map[string]func() (string, error)
 }
 
-func (c *Values) generatorFor(name string) (func() (string, error), bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	generate, found := c.perUse[name]
+func (values *Values) generatorFor(name string) (func() (string, error), bool) {
+	values.mu.RLock()
+	defer values.mu.RUnlock()
+	generate, found := values.perUse[name]
 	return generate, found
 }
 
@@ -32,32 +32,32 @@ func New(virtualUser, iteration int64, base map[string]string) *Values {
 	return &Values{VirtualUser: virtualUser, Iteration: iteration, values: values, uses: map[string]string{}}
 }
 
-func (c *Values) Set(name, value string) {
-	c.mu.Lock()
-	c.values[name] = value
-	c.mu.Unlock()
+func (values *Values) Set(name, value string) {
+	values.mu.Lock()
+	values.values[name] = value
+	values.mu.Unlock()
 }
 
-func (c *Values) SetAll(values map[string]string) {
-	c.mu.Lock()
-	for name, value := range values {
-		c.values[name] = value
+func (values *Values) SetAll(incoming map[string]string) {
+	values.mu.Lock()
+	for name, value := range incoming {
+		values.values[name] = value
 	}
-	c.mu.Unlock()
+	values.mu.Unlock()
 }
 
-func (c *Values) Value(name string) (string, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	value, exists := c.values[name]
+func (values *Values) Value(name string) (string, bool) {
+	values.mu.RLock()
+	defer values.mu.RUnlock()
+	value, exists := values.values[name]
 	return value, exists
 }
 
-func (c *Values) Values() map[string]string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	clone := make(map[string]string, len(c.values))
-	for name, value := range c.values {
+func (values *Values) Values() map[string]string {
+	values.mu.RLock()
+	defer values.mu.RUnlock()
+	clone := make(map[string]string, len(values.values))
+	for name, value := range values.values {
 		clone[name] = value
 	}
 	return clone
@@ -65,30 +65,30 @@ func (c *Values) Values() map[string]string {
 
 // Resolve happens at run time, not at load time: without that, a value
 // captured in one step never reaches the next one.
-func (c *Values) SetPerUse(name string, generate func() (string, error)) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.perUse == nil {
-		c.perUse = map[string]func() (string, error){}
+func (values *Values) SetPerUse(name string, generate func() (string, error)) {
+	values.mu.Lock()
+	defer values.mu.Unlock()
+	if values.perUse == nil {
+		values.perUse = map[string]func() (string, error){}
 	}
-	c.perUse[name] = generate
+	values.perUse[name] = generate
 }
 
-func (c *Values) Resolve(text string) string {
+func (values *Values) Resolve(text string) string {
 	if text == "" {
 		return text
 	}
 	return varPattern.ReplaceAllStringFunc(text, func(occurrence string) string {
 		parts := varPattern.FindStringSubmatch(occurrence)
 		name, fallback := parts[1], parts[2]
-		if generate, perUse := c.generatorFor(name); perUse {
+		if generate, perUse := values.generatorFor(name); perUse {
 			if value, err := generate(); err == nil {
-				c.noteUse(name, value)
+				values.noteUse(name, value)
 				return value
 			}
 		}
-		if value, exists := c.Value(name); exists {
-			c.noteUse(name, value)
+		if value, exists := values.Value(name); exists {
+			values.noteUse(name, value)
 			return value
 		}
 		if value, definida := os.LookupEnv(name); definida {
@@ -101,20 +101,20 @@ func (c *Values) Resolve(text string) string {
 // Every substitution is noted because observed variety comes from here: path,
 // body, header, GraphQL variable and message key all pass through, so a single
 // point covers the whole scenario.
-func (c *Values) noteUse(name, value string) {
-	c.mu.Lock()
-	c.uses[name] = value
-	c.mu.Unlock()
+func (values *Values) noteUse(name, value string) {
+	values.mu.Lock()
+	values.uses[name] = value
+	values.mu.Unlock()
 }
 
-func (c *Values) Uses() map[string]string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if len(c.uses) == 0 {
+func (values *Values) Uses() map[string]string {
+	values.mu.RLock()
+	defer values.mu.RUnlock()
+	if len(values.uses) == 0 {
 		return nil
 	}
-	clone := make(map[string]string, len(c.uses))
-	for name, value := range c.uses {
+	clone := make(map[string]string, len(values.uses))
+	for name, value := range values.uses {
 		clone[name] = value
 	}
 	return clone

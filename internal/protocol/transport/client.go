@@ -18,30 +18,30 @@ import (
 // same connection pool, and different pools per protocol would produce
 // different numbers for the same load with nothing in the scenario explaining
 // the difference.
-func NewClient(opts protocol.Options) *http.Client {
+func NewClient(options protocol.Options) *http.Client {
 	transporte := &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
 		MaxIdleConns:          0,
 		MaxIdleConnsPerHost:   65536,
-		MaxConnsPerHost:       opts.ConnsPerHost,
+		MaxConnsPerHost:       options.ConnsPerHost,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: time.Second,
 		ForceAttemptHTTP2:     true,
 	}
-	client := &http.Client{Transport: transporte, Timeout: opts.Timeout}
-	if opts.KeepCookies {
+	client := &http.Client{Transport: transporte, Timeout: options.Timeout}
+	if options.KeepCookies {
 		if jar, err := cookiejar.New(nil); err == nil {
 			client.Jar = jar
 		}
 	}
-	if !opts.FollowRedirects {
+	if !options.FollowRedirects {
 		client.CheckRedirect = func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		}
 		return client
 	}
-	maximum := opts.MaxRedirects
+	maximum := options.MaxRedirects
 	client.CheckRedirect = func(_ *http.Request, anteriores []*http.Request) error {
 		if len(anteriores) >= maximum {
 			return fmt.Errorf("mais de %d redirects", maximum)

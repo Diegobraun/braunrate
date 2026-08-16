@@ -76,9 +76,9 @@ func TestGoScenarioRunsOnSameEngineWithSameKeys(t *testing.T) {
 
 func execute(t *testing.T, c scenario.Spec) metrics.Document {
 	t.Helper()
-	opts := engine.DefaultOptions()
-	opts.DataRoot = t.TempDir()
-	m, err := engine.New(c, opts)
+	options := engine.DefaultOptions()
+	options.DataRoot = t.TempDir()
+	m, err := engine.New(c, options)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}

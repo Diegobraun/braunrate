@@ -45,39 +45,39 @@ func newSubscription(field string) *subscription {
 	}
 }
 
-func (a *subscription) deliver(correlation string, received message) {
+func (subscription *subscription) deliver(correlation string, received message) {
 	if correlation == "" {
 		return
 	}
-	a.mu.Lock()
-	canal, waiting := a.waiting[correlation]
+	subscription.mu.Lock()
+	canal, waiting := subscription.waiting[correlation]
 	if waiting {
-		delete(a.waiting, correlation)
-		a.mu.Unlock()
+		delete(subscription.waiting, correlation)
+		subscription.mu.Unlock()
 		canal <- received
 		return
 	}
 
-	a.arrivals[correlation] = received
-	a.order = append(a.order, correlation)
-	if len(a.order) > heldMessagesCap {
-		maisAntiga := a.order[0]
-		a.order = a.order[1:]
-		delete(a.arrivals, maisAntiga)
+	subscription.arrivals[correlation] = received
+	subscription.order = append(subscription.order, correlation)
+	if len(subscription.order) > heldMessagesCap {
+		maisAntiga := subscription.order[0]
+		subscription.order = subscription.order[1:]
+		delete(subscription.arrivals, maisAntiga)
 	}
-	a.mu.Unlock()
+	subscription.mu.Unlock()
 }
 
-func (a *subscription) await(ctx context.Context, correlation string, timeout time.Duration) (message, bool) {
-	a.mu.Lock()
-	if received, arrived := a.arrivals[correlation]; arrived {
-		delete(a.arrivals, correlation)
-		a.mu.Unlock()
+func (subscription *subscription) await(runContext context.Context, correlation string, timeout time.Duration) (message, bool) {
+	subscription.mu.Lock()
+	if received, arrived := subscription.arrivals[correlation]; arrived {
+		delete(subscription.arrivals, correlation)
+		subscription.mu.Unlock()
 		return received, true
 	}
 	canal := make(chan message, 1)
-	a.waiting[correlation] = canal
-	a.mu.Unlock()
+	subscription.waiting[correlation] = canal
+	subscription.mu.Unlock()
 
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
@@ -86,12 +86,12 @@ func (a *subscription) await(ctx context.Context, correlation string, timeout ti
 	case received := <-canal:
 		return received, true
 	case <-timer.C:
-	case <-ctx.Done():
+	case <-runContext.Done():
 	}
 
-	a.mu.Lock()
-	delete(a.waiting, correlation)
-	a.mu.Unlock()
+	subscription.mu.Lock()
+	delete(subscription.waiting, correlation)
+	subscription.mu.Unlock()
 	select {
 	case received := <-canal:
 		return received, true
@@ -100,22 +100,22 @@ func (a *subscription) await(ctx context.Context, correlation string, timeout ti
 	return message{}, false
 }
 
-func (a *subscription) shutdown() {
-	a.encerrada.Do(func() {
-		if a.cancel != nil {
-			a.cancel()
+func (subscription *subscription) shutdown() {
+	subscription.encerrada.Do(func() {
+		if subscription.cancel != nil {
+			subscription.cancel()
 		}
-		if a.fechar != nil {
-			a.fechar()
+		if subscription.fechar != nil {
+			subscription.fechar()
 		}
 	})
 }
 
-func (a *subscription) correlationOf(key, value []byte) string {
-	if a.field == "" {
+func (subscription *subscription) correlationOf(key, value []byte) string {
+	if subscription.field == "" {
 		return string(key)
 	}
-	path := strings.TrimPrefix(strings.TrimPrefix(a.field, "$."), "$")
+	path := strings.TrimPrefix(strings.TrimPrefix(subscription.field, "$."), "$")
 	return gjson.GetBytes(value, path).String()
 }
 
@@ -149,7 +149,7 @@ func openKafka(config *Config, brokers []string) (*subscription, error) {
 		return nil, fmt.Errorf("o topico %q nao existe no broker", config.Topic)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	runContext, cancel := context.WithCancel(context.Background())
 	subscription := newSubscription(config.Field)
 	subscription.cancel = cancel
 
@@ -185,9 +185,9 @@ func openKafka(config *Config, brokers []string) (*subscription, error) {
 		number := partition.ID
 		go func() {
 			for {
-				record, err := reader.ReadMessage(ctx)
+				record, err := reader.ReadMessage(runContext)
 				if err != nil {
-					if ctx.Err() != nil {
+					if runContext.Err() != nil {
 						return
 					}
 					continue

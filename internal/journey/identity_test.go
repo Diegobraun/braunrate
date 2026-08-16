@@ -72,9 +72,9 @@ func TestAuthDoesNotFreezeFirstIterationData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cenario nao carregou: %v", err)
 	}
-	opts := engine.DefaultOptions()
-	opts.DataRoot = root
-	m, err := engine.New(c, opts)
+	options := engine.DefaultOptions()
+	options.DataRoot = root
+	m, err := engine.New(c, options)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}

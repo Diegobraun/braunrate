@@ -38,12 +38,12 @@ type Sample struct {
 	Bytes       int64
 }
 
-func (a Sample) CorrectedLatency() time.Duration {
-	return a.FinishedAt.Sub(a.ScheduledAt)
+func (sample Sample) CorrectedLatency() time.Duration {
+	return sample.FinishedAt.Sub(sample.ScheduledAt)
 }
 
-func (a Sample) ServiceLatency() time.Duration {
-	return a.FinishedAt.Sub(a.SentAt)
+func (sample Sample) ServiceLatency() time.Duration {
+	return sample.FinishedAt.Sub(sample.SentAt)
 }
 
 type Aggregate struct {
@@ -74,27 +74,27 @@ func NewAggregate(step, key, protocolName string) *Aggregate {
 	}
 }
 
-func (a *Aggregate) Record(sample Sample) {
-	if a.LatencyKind == "" {
-		a.LatencyKind = sample.LatencyKind
+func (aggregate *Aggregate) Record(sample Sample) {
+	if aggregate.LatencyKind == "" {
+		aggregate.LatencyKind = sample.LatencyKind
 	}
-	a.Count++
-	a.Bytes += sample.Bytes
+	aggregate.Count++
+	aggregate.Bytes += sample.Bytes
 	if sample.Status > 0 {
-		a.StatusByCode[sample.Status]++
+		aggregate.StatusByCode[sample.Status]++
 	}
 	if sample.Class == protocol.Success {
-		a.Successes++
+		aggregate.Successes++
 	} else {
-		a.ErrorsByClass[sample.Class]++
-		if sample.Detail != "" && len(a.Details) < 32 {
-			a.Details[sample.Detail]++
+		aggregate.ErrorsByClass[sample.Class]++
+		if sample.Detail != "" && len(aggregate.Details) < 32 {
+			aggregate.Details[sample.Detail]++
 		}
 	}
 	if !sample.FinishedAt.IsZero() {
-		save(a.correctedLatency, sample.CorrectedLatency())
+		save(aggregate.correctedLatency, sample.CorrectedLatency())
 		if !sample.SentAt.IsZero() {
-			save(a.serviceLatency, sample.ServiceLatency())
+			save(aggregate.serviceLatency, sample.ServiceLatency())
 		}
 	}
 }
@@ -113,33 +113,33 @@ func save(histogram *hdrhistogram.Histogram, value time.Duration) {
 // Add merges another aggregate into this one. It exists so distributed
 // execution needs no rewrite: HDR histograms and counters merge, means and
 // precomputed percentiles do not.
-func (a *Aggregate) Add(other *Aggregate) {
-	a.correctedLatency.Merge(other.correctedLatency)
-	a.serviceLatency.Merge(other.serviceLatency)
-	a.Count += other.Count
-	a.Successes += other.Successes
-	a.Bytes += other.Bytes
+func (aggregate *Aggregate) Add(other *Aggregate) {
+	aggregate.correctedLatency.Merge(other.correctedLatency)
+	aggregate.serviceLatency.Merge(other.serviceLatency)
+	aggregate.Count += other.Count
+	aggregate.Successes += other.Successes
+	aggregate.Bytes += other.Bytes
 	for class, count := range other.ErrorsByClass {
-		a.ErrorsByClass[class] += count
+		aggregate.ErrorsByClass[class] += count
 	}
 	for status, count := range other.StatusByCode {
-		a.StatusByCode[status] += count
+		aggregate.StatusByCode[status] += count
 	}
 	for detail, count := range other.Details {
-		a.Details[detail] += count
+		aggregate.Details[detail] += count
 	}
 }
 
-func (a *Aggregate) Errors() int64 {
-	return a.Count - a.Successes
+func (aggregate *Aggregate) Errors() int64 {
+	return aggregate.Count - aggregate.Successes
 }
 
-func (a *Aggregate) Distribution() Distribution {
-	return distributionOf(a.correctedLatency)
+func (aggregate *Aggregate) Distribution() Distribution {
+	return distributionOf(aggregate.correctedLatency)
 }
 
-func (a *Aggregate) ServiceDistribution() Distribution {
-	return distributionOf(a.serviceLatency)
+func (aggregate *Aggregate) ServiceDistribution() Distribution {
+	return distributionOf(aggregate.serviceLatency)
 }
 
 type Distribution struct {

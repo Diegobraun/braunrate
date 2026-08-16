@@ -81,9 +81,9 @@ func executeGraphQL(t *testing.T, lines string) (metrics.Document, slo.Verdict) 
 	if err := c.Validate(); err != nil {
 		t.Fatalf("cenario invalido: %v", err)
 	}
-	opts := engine.DefaultOptions()
-	opts.DataRoot = root
-	m, err := engine.New(c, opts)
+	options := engine.DefaultOptions()
+	options.DataRoot = root
+	m, err := engine.New(c, options)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}

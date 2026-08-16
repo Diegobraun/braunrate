@@ -99,11 +99,11 @@ func execute(t *testing.T) (metrics.Document, slo.Verdict) {
 	t.Cleanup(func() { _ = server.Close() })
 
 	c, root := prepareScenario(t, server.Address())
-	opts := engine.DefaultOptions()
-	opts.DataRoot = root
-	opts.Version = "teste"
+	options := engine.DefaultOptions()
+	options.DataRoot = root
+	options.Version = "teste"
 
-	m, err := engine.New(c, opts)
+	m, err := engine.New(c, options)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}
@@ -143,9 +143,9 @@ func TestBrokenCorrelationIsCorrelationErrorNotNetworkError(t *testing.T) {
 	c, root := prepareScenario(t, server.Address())
 	c.Steps[0].Captures[0].Expression = "$.campo.que.nao.existe"
 
-	opts := engine.DefaultOptions()
-	opts.DataRoot = root
-	m, err := engine.New(c, opts)
+	options := engine.DefaultOptions()
+	options.DataRoot = root
+	m, err := engine.New(c, options)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}
@@ -182,9 +182,9 @@ func TestFailedAssertionSeparatesFunctionalFromSLOFailure(t *testing.T) {
 		Operator: scenario.OpEqual, Value: "PAGA",
 	}}
 
-	opts := engine.DefaultOptions()
-	opts.DataRoot = root
-	m, _ := engine.New(c, opts)
+	options := engine.DefaultOptions()
+	options.DataRoot = root
+	m, _ := engine.New(c, options)
 	document := m.Execute(context.Background())
 	verdict := slo.Evaluate(c.SLO, document, nil)
 

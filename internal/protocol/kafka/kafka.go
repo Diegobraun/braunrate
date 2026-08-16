@@ -30,88 +30,88 @@ type Config struct {
 	Timeout time.Duration
 }
 
-func (c *Config) Protocol() string { return "kafka" }
+func (config *Config) Protocol() string { return "kafka" }
 
 // AggregationKey is the topic, never the broker: whoever reads the report
 // needs to know which business flow got slow, not which machine took the byte.
-func (c *Config) AggregationKey() string {
-	return "kafka produzir " + c.Topic
+func (config *Config) AggregationKey() string {
+	return "kafka produzir " + config.Topic
 }
 
-func (c *Config) Resolve(resolve func(string) string) protocol.Config {
-	clone := *c
-	clone.Topic = resolve(c.Topic)
-	clone.Key = resolve(c.Key)
-	if len(c.Value) > 0 {
-		clone.Value = []byte(resolve(string(c.Value)))
+func (config *Config) Resolve(resolve func(string) string) protocol.Config {
+	clone := *config
+	clone.Topic = resolve(config.Topic)
+	clone.Key = resolve(config.Key)
+	if len(config.Value) > 0 {
+		clone.Value = []byte(resolve(string(config.Value)))
 	}
-	clone.Headers = make(map[string]string, len(c.Headers))
-	for name, value := range c.Headers {
+	clone.Headers = make(map[string]string, len(config.Headers))
+	for name, value := range config.Headers {
 		clone.Headers[name] = resolve(value)
 	}
 	return &clone
 }
 
-func (c *Config) Describe() []string {
-	lines := []string{fmt.Sprintf("produzir em %s (chave %q)", c.Topic, c.Key)}
-	names := make([]string, 0, len(c.Headers))
-	for name := range c.Headers {
+func (config *Config) Describe() []string {
+	lines := []string{fmt.Sprintf("produzir em %s (chave %q)", config.Topic, config.Key)}
+	names := make([]string, 0, len(config.Headers))
+	for name := range config.Headers {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		lines = append(lines, fmt.Sprintf("cabecalho %s: %s", name, c.Headers[name]))
+		lines = append(lines, fmt.Sprintf("cabecalho %s: %s", name, config.Headers[name]))
 	}
-	if len(c.Brokers) > 0 {
-		lines = append(lines, "brokers: "+strings.Join(c.Brokers, ", "))
+	if len(config.Brokers) > 0 {
+		lines = append(lines, "brokers: "+strings.Join(config.Brokers, ", "))
 	}
-	lines = append(lines, "acks: "+c.Acks)
-	if len(c.Value) > 0 {
-		lines = append(lines, "valor: "+string(c.Value))
+	lines = append(lines, "acks: "+config.Acks)
+	if len(config.Value) > 0 {
+		lines = append(lines, "valor: "+string(config.Value))
 	}
 	return lines
 }
 
 type Protocol struct {
-	opts       protocol.Options
+	options    protocol.Options
 	mu         sync.Mutex
 	writers    map[string]*kafka.Writer
 	partitions map[string]int64
 }
 
-func New(opts protocol.Options) *Protocol {
-	return &Protocol{opts: opts, writers: map[string]*kafka.Writer{}, partitions: map[string]int64{}}
+func New(options protocol.Options) *Protocol {
+	return &Protocol{options: options, writers: map[string]*kafka.Writer{}, partitions: map[string]int64{}}
 }
 
-func (p *Protocol) Name() string { return "kafka" }
+func (implementation *Protocol) Name() string { return "kafka" }
 
-func (p *Protocol) Close() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (implementation *Protocol) Close() error {
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
 	var last error
-	for key, writer := range p.writers {
+	for key, writer := range implementation.writers {
 		if err := writer.Close(); err != nil {
 			last = err
 		}
-		delete(p.writers, key)
+		delete(implementation.writers, key)
 	}
 	return last
 }
 
 // Available reports how many partitions each topic has. It is what lets the
 // report tell a bad partition key from a topic that only has one partition.
-func (p *Protocol) Available() map[string]int64 {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	available := make(map[string]int64, len(p.partitions))
-	for topic, howMany := range p.partitions {
+func (implementation *Protocol) Available() map[string]int64 {
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	available := make(map[string]int64, len(implementation.partitions))
+	for topic, howMany := range implementation.partitions {
 		available["kafka.particao."+topic] = howMany
 	}
 	return available
 }
 
-func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
-	if no == nil || no.Kind != yaml.MappingNode {
+func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
+	if node == nil || node.Kind != yaml.MappingNode {
 		return nil, errors.New(`passo kafka precisa ser um mapa, por exemplo:
   - kafka:
       topico: pedidos
@@ -120,9 +120,9 @@ func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
 	}
 
 	config := Default()
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		key := no.Content[index]
-		value := no.Content[index+1]
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key := node.Content[index]
+		value := node.Content[index+1]
 		switch key.Value {
 		case "topico":
 			config.Topic = value.Value
@@ -191,12 +191,12 @@ func Validate(config *Config) error {
 	return nil
 }
 
-func readValue(no *yaml.Node) ([]byte, error) {
-	if no.Kind == yaml.ScalarNode {
-		return []byte(no.Value), nil
+func readValue(node *yaml.Node) ([]byte, error) {
+	if node.Kind == yaml.ScalarNode {
+		return []byte(node.Value), nil
 	}
 	var structure any
-	if err := no.Decode(&structure); err != nil {
+	if err := node.Decode(&structure); err != nil {
 		return nil, fmt.Errorf("valor invalido: %v", err)
 	}
 	body, err := json.Marshal(structure)
@@ -206,7 +206,7 @@ func readValue(no *yaml.Node) ([]byte, error) {
 	return body, nil
 }
 
-func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protocol.Response {
+func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
 		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de kafka"}
@@ -223,14 +223,14 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 		}
 	}
 
-	writer, err := p.writerOf(brokers, config)
+	writer, err := implementation.writerOf(brokers, config)
 	if err != nil {
 		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
 	}
 
 	if config.Timeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, config.Timeout)
+		runContext, cancel = context.WithTimeout(runContext, config.Timeout)
 		defer cancel()
 	}
 
@@ -242,11 +242,11 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 		message.Headers = append(message.Headers, kafka.Header{Key: name, Value: []byte(value)})
 	}
 
-	if err := writer.WriteMessages(ctx, message); err != nil {
+	if err := writer.WriteMessages(runContext, message); err != nil {
 		return protocol.Response{Class: classificar(err), Detail: summarize(err.Error())}
 	}
 
-	partition := p.partitionOf(brokers, config.Topic, message.Key)
+	partition := implementation.partitionOf(brokers, config.Topic, message.Key)
 	response := protocol.Response{
 		Bytes: int64(len(config.Value) + len(message.Key)),
 		Class: protocol.Success,
@@ -259,12 +259,12 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 	return response
 }
 
-func (p *Protocol) writerOf(brokers []string, config *Config) (*kafka.Writer, error) {
+func (implementation *Protocol) writerOf(brokers []string, config *Config) (*kafka.Writer, error) {
 	key := strings.Join(brokers, ",") + "|" + config.Topic + "|" + config.Acks
 
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if writer, exists := p.writers[key]; exists {
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	if writer, exists := implementation.writers[key]; exists {
 		return writer, nil
 	}
 
@@ -281,11 +281,11 @@ func (p *Protocol) writerOf(brokers []string, config *Config) (*kafka.Writer, er
 		AllowAutoTopicCreation: true,
 		Async:                  false,
 	}
-	p.writers[key] = writer
+	implementation.writers[key] = writer
 
-	if _, measured := p.partitions[config.Topic]; !measured {
+	if _, measured := implementation.partitions[config.Topic]; !measured {
 		if howMany := countPartitions(brokers, config.Topic); howMany > 0 {
-			p.partitions[config.Topic] = int64(howMany)
+			implementation.partitions[config.Topic] = int64(howMany)
 		}
 	}
 	return writer, nil
@@ -306,10 +306,10 @@ func acksOf(acks string) kafka.RequiredAcks {
 // does not return the chosen partition, and the alternative would be declaring
 // nothing about distribution, which is exactly where load turns optimistic
 // unseen.
-func (p *Protocol) partitionOf(brokers []string, topic string, key []byte) int {
-	p.mu.Lock()
-	howMany, known := p.partitions[topic]
-	p.mu.Unlock()
+func (implementation *Protocol) partitionOf(brokers []string, topic string, key []byte) int {
+	implementation.mu.Lock()
+	howMany, known := implementation.partitions[topic]
+	implementation.mu.Unlock()
 	if !known || howMany <= 0 {
 		return -1
 	}

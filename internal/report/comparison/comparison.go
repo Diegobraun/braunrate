@@ -72,25 +72,25 @@ const (
 )
 
 func Compare(before, after metrics.Document) Comparison {
-	c := Comparison{
+	compared := Comparison{
 		Before:     identify(before),
 		After:      identify(after),
 		Comparable: true,
 	}
 
-	c.Caveats = collectCaveats(before, after)
+	compared.Caveats = collectCaveats(before, after)
 	if !before.Valid() || !after.Valid() {
-		c.Comparable = false
+		compared.Comparable = false
 	}
 
-	c.Journey = compareDistribution("jornada inteira (95%)", before.Journey.Reported().P95, after.Journey.Reported().P95)
-	c.Overall = compareDistribution("todas as requisicoes (95%)", before.Overall.Reported().P95, after.Overall.Reported().P95)
-	c.JourneyPercentiles = comparePercentiles("jornada inteira", before.Journey.Reported(), after.Journey.Reported())
-	c.OverallPercentiles = comparePercentiles("todas as requisicoes", before.Overall.Reported(), after.Overall.Reported())
-	c.Steps = compareSteps(before, after)
-	c.Error = compareErrors(before, after)
-	c.Sentence = phrase(c, before, after)
-	return c
+	compared.Journey = compareDistribution("jornada inteira (95%)", before.Journey.Reported().P95, after.Journey.Reported().P95)
+	compared.Overall = compareDistribution("todas as requisicoes (95%)", before.Overall.Reported().P95, after.Overall.Reported().P95)
+	compared.JourneyPercentiles = comparePercentiles("jornada inteira", before.Journey.Reported(), after.Journey.Reported())
+	compared.OverallPercentiles = comparePercentiles("todas as requisicoes", before.Overall.Reported(), after.Overall.Reported())
+	compared.Steps = compareSteps(before, after)
+	compared.Error = compareErrors(before, after)
+	compared.Sentence = phrase(compared, before, after)
+	return compared
 }
 
 func identify(document metrics.Document) Identification {
@@ -283,14 +283,14 @@ func compareErrors(before, after metrics.Document) CountDifference {
 	return difference
 }
 
-func phrase(c Comparison, before, after metrics.Document) string {
-	if !c.Comparable {
+func phrase(compared Comparison, before, after metrics.Document) string {
+	if !compared.Comparable {
 		return "Nao da para comparar: pelo menos uma das execucoes tem resultado invalido porque o gerador saturou."
 	}
 
-	main := c.Journey
+	main := compared.Journey
 	if before.Journey.Started == 0 || after.Journey.Started == 0 {
-		main = c.Overall
+		main = compared.Overall
 	}
 
 	prefix := "Sem mudanca que valha leitura"
@@ -302,11 +302,11 @@ func phrase(c Comparison, before, after metrics.Document) string {
 	}
 
 	sentence := fmt.Sprintf("%s: %s", prefix, main.Sentence)
-	if c.Error.After != c.Error.Before {
-		sentence += " " + c.Error.Sentence
+	if compared.Error.After != compared.Error.Before {
+		sentence += " " + compared.Error.Sentence
 	}
-	if len(c.Caveats) > 0 {
-		sentence += fmt.Sprintf(" Com %d ressalva(s) que podem explicar a diferenca sozinhas.", len(c.Caveats))
+	if len(compared.Caveats) > 0 {
+		sentence += fmt.Sprintf(" Com %d ressalva(s) que podem explicar a diferenca sozinhas.", len(compared.Caveats))
 	}
 	return sentence
 }

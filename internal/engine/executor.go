@@ -57,47 +57,47 @@ type Observation struct {
 type Executor struct {
 	scenario      scenario.Spec
 	plan          Plan
-	opts          Options
+	options       Options
 	sources       []data.Source
 	authenticator *auth.Manager
 	collector     atomic.Pointer[metrics.Collector]
 }
 
-func New(c scenario.Spec, opts Options) (*Executor, error) {
-	if opts.Clock == nil {
-		opts.Clock = SystemClock{}
+func New(spec scenario.Spec, options Options) (*Executor, error) {
+	if options.Clock == nil {
+		options.Clock = SystemClock{}
 	}
-	if opts.LateThreshold <= 0 {
-		opts.LateThreshold = 10 * time.Millisecond
+	if options.LateThreshold <= 0 {
+		options.LateThreshold = 10 * time.Millisecond
 	}
-	if opts.MaxInflight <= 0 {
-		opts.MaxInflight = 20000
+	if options.MaxInflight <= 0 {
+		options.MaxInflight = 20000
 	}
 
-	m := &Executor{scenario: c, plan: CompilePlan(c.Load), opts: opts}
+	executor := &Executor{scenario: spec, plan: CompilePlan(spec.Load), options: options}
 
-	for _, source := range c.Data {
-		open, err := data.Open(source, opts.DataRoot)
+	for _, source := range spec.Data {
+		open, err := data.Open(source, options.DataRoot)
 		if err != nil {
 			return nil, err
 		}
-		m.sources = append(m.sources, open)
+		executor.sources = append(executor.sources, open)
 	}
 
-	if c.Auth != nil {
-		m.authenticator = auth.New(*c.Auth, m.runAuthStep, opts.Clock)
+	if spec.Auth != nil {
+		executor.authenticator = auth.New(*spec.Auth, executor.runAuthStep, options.Clock)
 	}
-	return m, nil
+	return executor, nil
 }
 
-func (m *Executor) Plan() Plan { return m.plan }
+func (executor *Executor) Plan() Plan { return executor.plan }
 
 // Debug runs a single iteration through the load path: same engine, same
 // variable resolution, same capture. Only the load is missing.
-func (m *Executor) Debug(ctx context.Context) ([]Observation, map[string]string, error) {
-	values := runtime.New(0, 0, m.scenario.Vars)
+func (executor *Executor) Debug(runContext context.Context) ([]Observation, map[string]string, error) {
+	values := runtime.New(0, 0, executor.scenario.Vars)
 
-	for _, source := range m.sources {
+	for _, source := range executor.sources {
 		record, err := source.Next(0)
 		if err != nil {
 			return nil, values.Values(), err
@@ -113,8 +113,8 @@ func (m *Executor) Debug(ctx context.Context) ([]Observation, map[string]string,
 	}
 
 	var authHeader [2]string
-	if m.authenticator != nil {
-		name, value, err := m.authenticator.Header(ctx, values)
+	if executor.authenticator != nil {
+		name, value, err := executor.authenticator.Header(runContext, values)
 		if err != nil {
 			return nil, values.Values(), err
 		}
@@ -122,9 +122,9 @@ func (m *Executor) Debug(ctx context.Context) ([]Observation, map[string]string,
 	}
 
 	var observations []Observation
-	instant := m.opts.Clock.Now()
-	for _, step := range m.scenario.Steps {
-		sample, observation := m.runStep(ctx, step, instant, values, authHeader)
+	instant := executor.options.Clock.Now()
+	for _, step := range executor.scenario.Steps {
+		sample, observation := executor.runStep(runContext, step, instant, values, authHeader)
 		observations = append(observations, observation)
 		instant = sample.FinishedAt
 		if sample.Class != protocol.Success {
@@ -134,87 +134,87 @@ func (m *Executor) Debug(ctx context.Context) ([]Observation, map[string]string,
 	return observations, values.Values(), nil
 }
 
-func (m *Executor) Spec() scenario.Spec { return m.scenario }
+func (executor *Executor) Spec() scenario.Spec { return executor.scenario }
 
-func (m *Executor) DataRoot() string { return filepath.Clean(m.opts.DataRoot) }
+func (executor *Executor) DataRoot() string { return filepath.Clean(executor.options.DataRoot) }
 
-func (m *Executor) Execute(ctx context.Context) metrics.Document {
-	clock := m.opts.Clock
+func (executor *Executor) Execute(runContext context.Context) metrics.Document {
+	clock := executor.options.Clock
 	start := clock.Now()
-	if err := m.prepareProtocols(ctx); err != nil {
+	if err := executor.prepareProtocols(runContext); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 	}
 
-	collector := metrics.NewCollector(start, m.opts.LateThreshold)
-	m.collector.Store(collector)
+	collector := metrics.NewCollector(start, executor.options.LateThreshold)
+	executor.collector.Store(collector)
 
 	stopProgress := make(chan struct{})
-	if m.opts.OnProgress != nil {
-		go m.follow(collector, start, stopProgress)
+	if executor.options.OnProgress != nil {
+		go executor.follow(collector, start, stopProgress)
 	}
 
-	if m.closed() {
-		m.driveClosed(ctx, collector, start)
+	if executor.closed() {
+		executor.driveClosed(runContext, collector, start)
 	} else {
-		m.driveOpen(ctx, collector, start)
+		executor.driveOpen(runContext, collector, start)
 	}
 
 	close(stopProgress)
 	end := clock.Now()
 	collector.Close()
 
-	load := m.scenario.Load
+	load := executor.scenario.Load
 	return metrics.BuildDocument(collector, metrics.DocumentInput{
-		Version:          m.opts.Version,
-		Spec:             m.scenario.Name,
-		Target:           m.scenario.Target,
+		Version:          executor.options.Version,
+		Spec:             executor.scenario.Name,
+		Target:           executor.scenario.Target,
 		Model:            string(load.Model),
 		Start:            start,
 		End:              end,
-		Phases:           m.appliedPhases(),
+		Phases:           executor.appliedPhases(),
 		Users:            load.Users,
 		ThinkTime:        load.ThinkTime,
-		MaxInflight:      m.opts.MaxInflight,
-		Seeds:            m.seeds(),
-		Availability:     m.availability(),
-		AuthObtains:      m.authObtains(),
-		ScenarioWarnings: m.scenarioWarnings(),
-		DeclaredSteps:    m.declaredSteps(),
-		PlannedDuration:  m.plan.Duration(),
-		PlannedRequests:  m.plan.TotalRequests(),
+		MaxInflight:      executor.options.MaxInflight,
+		Seeds:            executor.seeds(),
+		Availability:     executor.availability(),
+		AuthObtains:      executor.authObtains(),
+		ScenarioWarnings: executor.scenarioWarnings(),
+		DeclaredSteps:    executor.declaredSteps(),
+		PlannedDuration:  executor.plan.Duration(),
+		PlannedRequests:  executor.plan.TotalRequests(),
 	})
 }
 
-func (m *Executor) closed() bool { return m.scenario.Load.Closed() }
+func (executor *Executor) closed() bool { return executor.scenario.Load.Closed() }
 
-func (m *Executor) driveOpen(ctx context.Context, collector *metrics.Collector, start time.Time) {
-	clock := m.opts.Clock
+func (executor *Executor) driveOpen(runContext context.Context, collector *metrics.Collector, start time.Time) {
+	clock := executor.options.Clock
 	var inflight atomic.Int64
 	var group sync.WaitGroup
 
-	total := m.plan.TotalRequests()
+	total := executor.plan.TotalRequests()
 	for index := int64(0); index < total; index++ {
-		if ctx.Err() != nil {
+		if runContext.Err() != nil {
 			break
 		}
-		offset := m.plan.InstantOf(index)
+		offset := executor.plan.InstantOf(index)
 		scheduled := start.Add(offset)
 		clock.WaitUntil(scheduled)
 		dispatch := clock.Now()
 
-		if inflight.Load() >= m.opts.MaxInflight {
+		if inflight.Load() >= executor.options.MaxInflight {
 			collector.RecordInflightDrop()
 			continue
 		}
 
 		current := inflight.Add(1)
-		collector.RecordDispatch(scheduled, dispatch, m.plan.RateAt(offset), current)
+		collector.RecordDispatch(scheduled, dispatch, executor.plan.RateAt(offset), current)
 
 		group.Add(1)
 		go func(index int64, scheduled time.Time) {
 			defer group.Done()
 			defer inflight.Add(-1)
-			m.runIteration(ctx, index, index, scheduled, collector)
+			executor.runIteration(runContext, index, index, scheduled, collector)
 		}(index, scheduled)
 	}
 	group.Wait()
@@ -223,9 +223,9 @@ func (m *Executor) driveOpen(ctx context.Context, collector *metrics.Collector, 
 // Each user only asks again after the previous answer arrived. Nothing is
 // scheduled, so nothing can be late — the rate is whatever the target allows,
 // which is the property that makes this model hide a freeze.
-func (m *Executor) driveClosed(ctx context.Context, collector *metrics.Collector, start time.Time) {
-	clock := m.opts.Clock
-	load := m.scenario.Load
+func (executor *Executor) driveClosed(runContext context.Context, collector *metrics.Collector, start time.Time) {
+	clock := executor.options.Clock
+	load := executor.scenario.Load
 	deadline := start.Add(load.For)
 
 	var iterations atomic.Int64
@@ -234,8 +234,8 @@ func (m *Executor) driveClosed(ctx context.Context, collector *metrics.Collector
 		group.Add(1)
 		go func(user int64) {
 			defer group.Done()
-			for ctx.Err() == nil && clock.Now().Before(deadline) {
-				m.runIteration(ctx, user, iterations.Add(1)-1, clock.Now(), collector)
+			for runContext.Err() == nil && clock.Now().Before(deadline) {
+				executor.runIteration(runContext, user, iterations.Add(1)-1, clock.Now(), collector)
 				if load.ThinkTime > 0 {
 					clock.WaitUntil(clock.Now().Add(load.ThinkTime))
 				}
@@ -245,9 +245,9 @@ func (m *Executor) driveClosed(ctx context.Context, collector *metrics.Collector
 	group.Wait()
 }
 
-func (m *Executor) declaredSteps() []string {
-	names := make([]string, 0, len(m.scenario.Steps))
-	for _, step := range m.scenario.Steps {
+func (executor *Executor) declaredSteps() []string {
+	names := make([]string, 0, len(executor.scenario.Steps))
+	for _, step := range executor.scenario.Steps {
 		names = append(names, step.Name)
 	}
 	return names
@@ -256,9 +256,9 @@ func (m *Executor) declaredSteps() []string {
 // Polling measures in steps of the poll interval: the number is always greater
 // than or equal to the real one, and the reader has to know that before
 // comparing it against an SLO.
-func (m *Executor) scenarioWarnings() []metrics.Warning {
+func (executor *Executor) scenarioWarnings() []metrics.Warning {
 	var warnings []metrics.Warning
-	for _, step := range m.scenario.Steps {
+	for _, step := range executor.scenario.Steps {
 		polling, sonda := step.Config.(interface{ PollInterval() time.Duration })
 		if !sonda {
 			continue
@@ -282,15 +282,15 @@ func (m *Executor) scenarioWarnings() []metrics.Warning {
 // value captured in one step into the next. If a step fails the iteration
 // stops, because the following steps would depend on a capture that never
 // happened.
-func (m *Executor) runIteration(ctx context.Context, virtualUser, iteration int64, scheduled time.Time, collector *metrics.Collector) {
-	values := runtime.New(virtualUser, iteration, m.scenario.Vars)
+func (executor *Executor) runIteration(runContext context.Context, virtualUser, iteration int64, scheduled time.Time, collector *metrics.Collector) {
+	values := runtime.New(virtualUser, iteration, executor.scenario.Vars)
 
-	for _, source := range m.sources {
+	for _, source := range executor.sources {
 		record, err := source.Next(iteration)
 		if err != nil {
 			collector.Record(metrics.Sample{
 				Step: "dados: " + source.Name(), Key: source.Name(), Protocol: "dados",
-				ScheduledAt: scheduled, SentAt: scheduled, FinishedAt: m.opts.Clock.Now(),
+				ScheduledAt: scheduled, SentAt: scheduled, FinishedAt: executor.options.Clock.Now(),
 				Class: protocol.ErrConfig, Detail: err.Error(),
 			})
 			return
@@ -306,13 +306,13 @@ func (m *Executor) runIteration(ctx context.Context, virtualUser, iteration int6
 	}
 
 	var authHeader [2]string
-	if m.authenticator != nil {
-		name, value, err := m.authenticator.Header(ctx, values)
+	if executor.authenticator != nil {
+		name, value, err := executor.authenticator.Header(runContext, values)
 		if err != nil {
 			collector.Record(metrics.Sample{
 				Step: "autenticacao", Key: "autenticacao", Protocol: "http",
-				ScheduledAt: scheduled, SentAt: scheduled, FinishedAt: m.opts.Clock.Now(),
-				Class: protocol.ErrAuth, Detail: fmt.Sprintf("%v — alvo %s", err, m.scenario.Target),
+				ScheduledAt: scheduled, SentAt: scheduled, FinishedAt: executor.options.Clock.Now(),
+				Class: protocol.ErrAuth, Detail: fmt.Sprintf("%v — alvo %s", err, executor.scenario.Target),
 			})
 			return
 		}
@@ -321,9 +321,9 @@ func (m *Executor) runIteration(ctx context.Context, virtualUser, iteration int6
 
 	stepInstant := scheduled
 	complete := true
-	for index, step := range m.scenario.Steps {
-		sample, _ := m.runStep(ctx, step, stepInstant, values, authHeader)
-		if index == 0 && !m.closed() {
+	for index, step := range executor.scenario.Steps {
+		sample, _ := executor.runStep(runContext, step, stepInstant, values, authHeader)
+		if index == 0 && !executor.closed() {
 			sample.LatencyKind = metrics.CorrectedLatency
 		} else {
 			sample.LatencyKind = metrics.ServiceLatency
@@ -339,10 +339,10 @@ func (m *Executor) runIteration(ctx context.Context, virtualUser, iteration int6
 	collector.RecordUses(values.Uses())
 }
 
-func (m *Executor) runStep(ctx context.Context, step scenario.Step, scheduled time.Time,
+func (executor *Executor) runStep(runContext context.Context, step scenario.Step, scheduled time.Time,
 	values *runtime.Values, authHeader [2]string) (metrics.Sample, Observation) {
 
-	clock := m.opts.Clock
+	clock := executor.options.Clock
 	observation := Observation{Step: step.Name, Key: step.AggregationKey(), Captured: map[string]string{}}
 	sample := metrics.Sample{
 		Step: step.Name, Key: step.AggregationKey(), Protocol: step.Protocol,
@@ -367,10 +367,10 @@ func (m *Executor) runStep(ctx context.Context, step scenario.Step, scheduled ti
 	observation.Config = config
 
 	sample.SentAt = clock.Now()
-	response := implementation.Execute(ctx, protocol.Request{
+	response := implementation.Execute(runContext, protocol.Request{
 		StepName: step.Name,
 		Config:   config,
-		URLBase:  m.scenario.Target,
+		URLBase:  executor.scenario.Target,
 		Vars:     values.Values(),
 	})
 	sample.FinishedAt = clock.Now()
@@ -381,7 +381,7 @@ func (m *Executor) runStep(ctx context.Context, step scenario.Step, scheduled ti
 	observation.Response = response
 	observation.Duration = sample.FinishedAt.Sub(sample.SentAt)
 
-	if collector := m.collector.Load(); collector != nil && len(response.Attributes) > 0 {
+	if collector := executor.collector.Load(); collector != nil && len(response.Attributes) > 0 {
 		collector.RecordUses(response.Attributes)
 	}
 
@@ -391,7 +391,7 @@ func (m *Executor) runStep(ctx context.Context, step scenario.Step, scheduled ti
 	}
 
 	if sample.Class == protocol.Success {
-		if class, detail := m.verificar(step, response, values); class != protocol.Success {
+		if class, detail := executor.verificar(step, response, values); class != protocol.Success {
 			sample.Class = class
 			sample.Detail = detail
 			observation.Failures = append(observation.Failures, detail)
@@ -420,7 +420,7 @@ func (m *Executor) runStep(ctx context.Context, step scenario.Step, scheduled ti
 	return sample, observation
 }
 
-func (m *Executor) verificar(step scenario.Step, response protocol.Response, values *runtime.Values) (protocol.ErrorClass, string) {
+func (executor *Executor) verificar(step scenario.Step, response protocol.Response, values *runtime.Values) (protocol.ErrorClass, string) {
 	for _, check := range step.Checks {
 		switch check.Kind {
 		case scenario.CheckStatus:
@@ -441,16 +441,16 @@ func (m *Executor) verificar(step scenario.Step, response protocol.Response, val
 	return protocol.Success, ""
 }
 
-func (m *Executor) runAuthStep(ctx context.Context, step scenario.Step, values *runtime.Values) (protocol.Response, error) {
-	sample, observation := m.runStep(ctx, step, m.opts.Clock.Now(), values, [2]string{})
+func (executor *Executor) runAuthStep(runContext context.Context, step scenario.Step, values *runtime.Values) (protocol.Response, error) {
+	sample, observation := executor.runStep(runContext, step, executor.options.Clock.Now(), values, [2]string{})
 	if sample.Class != protocol.Success && sample.Class != protocol.ErrStatus {
 		return observation.Response, fmt.Errorf("%s", sample.Detail)
 	}
 	return observation.Response, nil
 }
 
-func (m *Executor) follow(collector *metrics.Collector, start time.Time, stop <-chan struct{}) {
-	interval := m.opts.ProgressInterval
+func (executor *Executor) follow(collector *metrics.Collector, start time.Time, stop <-chan struct{}) {
+	interval := executor.options.ProgressInterval
 	if interval <= 0 {
 		interval = time.Second
 	}
@@ -462,18 +462,18 @@ func (m *Executor) follow(collector *metrics.Collector, start time.Time, stop <-
 			return
 		case <-tick.C:
 			elapsed := time.Since(start)
-			remaining := m.plan.Duration() - elapsed
+			remaining := executor.plan.Duration() - elapsed
 			if remaining < 0 {
 				remaining = 0
 			}
-			m.opts.OnProgress(collector.Snapshot(), m.plan.RateAt(elapsed), remaining)
+			executor.options.OnProgress(collector.Snapshot(), executor.plan.RateAt(elapsed), remaining)
 		}
 	}
 }
 
-func (m *Executor) appliedPhases() []metrics.AppliedPhase {
-	phases := make([]metrics.AppliedPhase, 0, len(m.scenario.Load.Phases))
-	for _, phase := range m.scenario.Load.Phases {
+func (executor *Executor) appliedPhases() []metrics.AppliedPhase {
+	phases := make([]metrics.AppliedPhase, 0, len(executor.scenario.Load.Phases))
+	for _, phase := range executor.scenario.Load.Phases {
 		phases = append(phases, metrics.AppliedPhase{
 			Kind:       string(phase.Kind),
 			From:       phase.InitialRate(),
@@ -484,9 +484,9 @@ func (m *Executor) appliedPhases() []metrics.AppliedPhase {
 	return phases
 }
 
-func (m *Executor) prepareProtocols(ctx context.Context) error {
-	values := runtime.New(0, 0, m.scenario.Vars)
-	for _, step := range m.scenario.Steps {
+func (executor *Executor) prepareProtocols(runContext context.Context) error {
+	values := runtime.New(0, 0, executor.scenario.Vars)
+	for _, step := range executor.scenario.Steps {
 		implementation, exists := protocol.Lookup(step.Protocol)
 		if !exists {
 			continue
@@ -495,10 +495,10 @@ func (m *Executor) prepareProtocols(ctx context.Context) error {
 		if !needs {
 			continue
 		}
-		err := preparer.Prepare(ctx, protocol.Request{
+		err := preparer.Prepare(runContext, protocol.Request{
 			StepName: step.Name,
 			Config:   step.Config.Resolve(values.Resolve),
-			URLBase:  m.scenario.Target,
+			URLBase:  executor.scenario.Target,
 		})
 		if err != nil {
 			return fmt.Errorf("nao consegui preparar o passo %q: %w", step.Name, err)
@@ -507,9 +507,9 @@ func (m *Executor) prepareProtocols(ctx context.Context) error {
 	return nil
 }
 
-func (m *Executor) availability() metrics.Availability {
+func (executor *Executor) availability() metrics.Availability {
 	availability := metrics.Availability{}
-	for _, source := range m.sources {
+	for _, source := range executor.sources {
 		for name, howMany := range source.Available() {
 			availability[name] = howMany
 		}
@@ -526,8 +526,8 @@ func (m *Executor) availability() metrics.Availability {
 	// here is not a defect: the limitation already shows in the environment
 	// block, and repeating it as a high warning would drown the ones that
 	// matter.
-	if m.scenario.Auth != nil && m.scenario.Auth.Obtain != nil {
-		for _, capture := range m.scenario.Auth.Obtain.Captures {
+	if executor.scenario.Auth != nil && executor.scenario.Auth.Obtain != nil {
+		for _, capture := range executor.scenario.Auth.Obtain.Captures {
 			availability[capture.Variable] = 1
 		}
 	}
@@ -537,9 +537,9 @@ func (m *Executor) availability() metrics.Availability {
 // Only synthetic sources have a seed: recording one for a CSV would suggest
 // the file was drawn at random, and what the report says about variety is the
 // observed variety (ADR 0007), never the declared seed.
-func (m *Executor) seeds() map[string]int64 {
+func (executor *Executor) seeds() map[string]int64 {
 	seeds := map[string]int64{}
-	for _, source := range m.scenario.Data {
+	for _, source := range executor.scenario.Data {
 		if !source.Synthetic() {
 			continue
 		}
@@ -552,9 +552,9 @@ func (m *Executor) seeds() map[string]int64 {
 	return seeds
 }
 
-func (m *Executor) authObtains() int64 {
-	if m.authenticator == nil {
+func (executor *Executor) authObtains() int64 {
+	if executor.authenticator == nil {
 		return 0
 	}
-	return m.authenticator.Obtains
+	return executor.authenticator.Obtains
 }

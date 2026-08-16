@@ -43,34 +43,34 @@ func New(name string) *Builder {
 	}}
 }
 
-func (c *Builder) note(err error) {
+func (builder *Builder) note(err error) {
 	if err != nil {
-		c.errors = append(c.errors, err)
+		builder.errors = append(builder.errors, err)
 	}
 }
 
-func (c *Builder) Target(target string) *Builder {
-	c.scenario.Target = target
-	return c
+func (builder *Builder) Target(target string) *Builder {
+	builder.scenario.Target = target
+	return builder
 }
 
 // Requires declares external infrastructure without which the scenario does not
 // run. It changes nothing at run time; it is read by whoever runs the scenario
 // and by the CI loop over the published examples.
-func (c *Builder) Requires(requirements ...string) *Builder {
+func (builder *Builder) Requires(requirements ...string) *Builder {
 	for _, requirement := range requirements {
 		if !slices.Contains(scenario.KnownRequirements, requirement) {
-			c.note(fmt.Errorf("dependencia desconhecida: %q (use %s)", requirement, strings.Join(scenario.KnownRequirements, ", ")))
+			builder.note(fmt.Errorf("dependencia desconhecida: %q (use %s)", requirement, strings.Join(scenario.KnownRequirements, ", ")))
 			continue
 		}
-		c.scenario.Requires = append(c.scenario.Requires, requirement)
+		builder.scenario.Requires = append(builder.scenario.Requires, requirement)
 	}
-	return c
+	return builder
 }
 
-func (c *Builder) Variable(name, value string) *Builder {
-	c.scenario.Vars[name] = scenario.ExpandFromEnv(value)
-	return c
+func (builder *Builder) Variable(name, value string) *Builder {
+	builder.scenario.Vars[name] = scenario.ExpandFromEnv(value)
+	return builder
 }
 
 type DataOption func(*scenario.DataSource)
@@ -83,28 +83,28 @@ func Seed(seed int64) DataOption {
 	return func(source *scenario.DataSource) { source.Seed = seed }
 }
 
-func (c *Builder) DataFromFile(name, file string, opts ...DataOption) *Builder {
+func (builder *Builder) DataFromFile(name, file string, options ...DataOption) *Builder {
 	source := scenario.DataSource{Name: name, File: file, Consume: scenario.ConsumeCircular}
-	for _, option := range opts {
+	for _, option := range options {
 		option(&source)
 	}
-	c.scenario.Data = append(c.scenario.Data, source)
-	return c
+	builder.scenario.Data = append(builder.scenario.Data, source)
+	return builder
 }
 
-func (c *Builder) GeneratedData(name string, fields map[string]string, opts ...DataOption) *Builder {
+func (builder *Builder) GeneratedData(name string, fields map[string]string, options ...DataOption) *Builder {
 	source := scenario.DataSource{Name: name, Consume: scenario.ConsumeCircular, Fields: map[string]scenario.Generator{}}
 	for field, recipe := range fields {
 		source.Fields[field] = scenario.ParseGenerator(recipe)
 	}
-	for _, option := range opts {
+	for _, option := range options {
 		option(&source)
 	}
 	if len(source.Fields) == 0 {
-		c.note(fmt.Errorf("a fonte de dados %q precisa de pelo menos um campo em 'gerar'", name))
+		builder.note(fmt.Errorf("a fonte de dados %q precisa de pelo menos um campo em 'gerar'", name))
 	}
-	c.scenario.Data = append(c.scenario.Data, source)
-	return c
+	builder.scenario.Data = append(builder.scenario.Data, source)
+	return builder
 }
 
 // Field is the long form of a generated field, for what the short string
@@ -119,69 +119,69 @@ func Generator(recipe string) Field { return Field{recipe: recipe} }
 
 func Pattern(format string) Field { return Field{recipe: "padrao", format: format} }
 
-func (f Field) NewPerUse() Field {
-	f.perUse = true
-	return f
+func (field Field) NewPerUse() Field {
+	field.perUse = true
+	return field
 }
 
-func (c *Builder) GeneratedFields(name string, fields map[string]Field, opts ...DataOption) *Builder {
+func (builder *Builder) GeneratedFields(name string, fields map[string]Field, options ...DataOption) *Builder {
 	source := scenario.DataSource{Name: name, Consume: scenario.ConsumeCircular, Fields: map[string]scenario.Generator{}}
 	for field, declared := range fields {
 		source.Fields[field] = scenario.Generator{
 			Recipe: declared.recipe, Format: declared.format, PerUse: declared.perUse,
 		}
 	}
-	for _, option := range opts {
+	for _, option := range options {
 		option(&source)
 	}
 	if len(source.Fields) == 0 {
-		c.note(fmt.Errorf("a fonte de dados %q precisa de pelo menos um campo em 'gerar'", name))
+		builder.note(fmt.Errorf("a fonte de dados %q precisa de pelo menos um campo em 'gerar'", name))
 	}
-	c.scenario.Data = append(c.scenario.Data, source)
-	return c
+	builder.scenario.Data = append(builder.scenario.Data, source)
+	return builder
 }
 
-func (c *Builder) Ramp(from, to Rate, during time.Duration) *Builder {
-	return c.phase(scenario.Phase{Kind: scenario.PhaseRamp, From: float64(from), To: float64(to), For: during})
+func (builder *Builder) Ramp(from, to Rate, during time.Duration) *Builder {
+	return builder.phase(scenario.Phase{Kind: scenario.PhaseRamp, From: float64(from), To: float64(to), For: during})
 }
 
-func (c *Builder) Plateau(rate Rate, during time.Duration) *Builder {
-	return c.phase(scenario.Phase{Kind: scenario.PhasePlateau, To: float64(rate), For: during})
+func (builder *Builder) Plateau(rate Rate, during time.Duration) *Builder {
+	return builder.phase(scenario.Phase{Kind: scenario.PhasePlateau, To: float64(rate), For: during})
 }
 
-func (c *Builder) Spike(rate Rate, during time.Duration) *Builder {
-	return c.phase(scenario.Phase{Kind: scenario.PhaseSpike, To: float64(rate), For: during})
+func (builder *Builder) Spike(rate Rate, during time.Duration) *Builder {
+	return builder.phase(scenario.Phase{Kind: scenario.PhaseSpike, To: float64(rate), For: during})
 }
 
-func (c *Builder) Constant(rate Rate, during time.Duration) *Builder {
-	return c.phase(scenario.Phase{Kind: scenario.PhaseConstant, To: float64(rate), For: during})
+func (builder *Builder) Constant(rate Rate, during time.Duration) *Builder {
+	return builder.phase(scenario.Phase{Kind: scenario.PhaseConstant, To: float64(rate), For: during})
 }
 
 // ClosedLoop is the declared exception, never the default: the rate stops being
 // something you ask for and becomes whatever the target allows.
-func (c *Builder) ClosedLoop(users int, during, betweenIterations time.Duration) *Builder {
-	c.scenario.Load = scenario.LoadPlan{
+func (builder *Builder) ClosedLoop(users int, during, betweenIterations time.Duration) *Builder {
+	builder.scenario.Load = scenario.LoadPlan{
 		Model: scenario.ClosedArrival, Users: users, For: during, ThinkTime: betweenIterations,
 	}
-	return c
+	return builder
 }
 
-func (c *Builder) phase(phase scenario.Phase) *Builder {
-	c.scenario.Load.Phases = append(c.scenario.Load.Phases, phase)
-	return c
+func (builder *Builder) phase(phase scenario.Phase) *Builder {
+	builder.scenario.Load.Phases = append(builder.scenario.Load.Phases, phase)
+	return builder
 }
 
-func (c *Builder) Step(request Request, opts ...StepOption) *Builder {
-	step, err := buildStep(request, opts...)
+func (builder *Builder) Step(request Request, options ...StepOption) *Builder {
+	step, err := buildStep(request, options...)
 	if err != nil {
-		c.note(err)
-		return c
+		builder.note(err)
+		return builder
 	}
-	c.scenario.Steps = append(c.scenario.Steps, step)
-	return c
+	builder.scenario.Steps = append(builder.scenario.Steps, step)
+	return builder
 }
 
-func buildStep(request Request, opts ...StepOption) (scenario.Step, error) {
+func buildStep(request Request, options ...StepOption) (scenario.Step, error) {
 	if request == nil {
 		return scenario.Step{}, errors.New("passo sem requisicao")
 	}
@@ -190,7 +190,7 @@ func buildStep(request Request, opts ...StepOption) (scenario.Step, error) {
 		return scenario.Step{}, err
 	}
 	step := scenario.Step{Protocol: protocolName, Config: config}
-	for _, option := range opts {
+	for _, option := range options {
 		if err := option(&step); err != nil {
 			return scenario.Step{}, err
 		}
@@ -275,26 +275,26 @@ func CheckHeader(name, value string) StepOption {
 	}
 }
 
-func (c *Builder) SLO(step, metric, limit string) *Builder {
+func (builder *Builder) SLO(step, metric, limit string) *Builder {
 	rule, err := scenario.ParseSLORule(step, metric, limit)
 	if err != nil {
-		c.note(err)
-		return c
+		builder.note(err)
+		return builder
 	}
-	c.scenario.SLO = append(c.scenario.SLO, rule)
-	return c
+	builder.scenario.SLO = append(builder.scenario.SLO, rule)
+	return builder
 }
 
-func (c *Builder) OverallSLO(metric, limit string) *Builder {
-	return c.SLO("global", metric, limit)
+func (builder *Builder) OverallSLO(metric, limit string) *Builder {
+	return builder.SLO("global", metric, limit)
 }
 
-func (c *Builder) JourneySLO(metric, limit string) *Builder {
-	return c.SLO("jornada", metric, limit)
+func (builder *Builder) JourneySLO(metric, limit string) *Builder {
+	return builder.SLO("jornada", metric, limit)
 }
 
-func (c *Builder) RegressionSLO(metric, limit string) *Builder {
-	return c.SLO("regressao", metric, limit)
+func (builder *Builder) RegressionSLO(metric, limit string) *Builder {
+	return builder.SLO("regressao", metric, limit)
 }
 
 type Authenticator struct {
@@ -302,8 +302,8 @@ type Authenticator struct {
 	err  error
 }
 
-func WithToken(request Request, opts ...StepOption) *Authenticator {
-	step, err := buildStep(request, opts...)
+func WithToken(request Request, options ...StepOption) *Authenticator {
+	step, err := buildStep(request, options...)
 	if err != nil {
 		return &Authenticator{err: err}
 	}
@@ -323,42 +323,42 @@ func WithHeaderAuth(header string) *Authenticator {
 	}}
 }
 
-func (a *Authenticator) RefreshAfter(interval time.Duration) *Authenticator {
-	a.auth.RefreshAfter = interval
-	return a
+func (authenticator *Authenticator) RefreshAfter(interval time.Duration) *Authenticator {
+	authenticator.auth.RefreshAfter = interval
+	return authenticator
 }
 
-func (a *Authenticator) Header(header string) *Authenticator {
-	a.auth.Header = header
-	return a
+func (authenticator *Authenticator) Header(header string) *Authenticator {
+	authenticator.auth.Header = header
+	return authenticator
 }
 
-func (c *Builder) Auth(authenticator *Authenticator) *Builder {
+func (builder *Builder) Auth(authenticator *Authenticator) *Builder {
 	if authenticator.err != nil {
-		c.note(authenticator.err)
-		return c
+		builder.note(authenticator.err)
+		return builder
 	}
 	auth := authenticator.auth
 	if auth.Kind == scenario.AuthToken && auth.Obtain == nil {
-		c.note(errors.New("autenticacao por token precisa da requisicao que devolve o token"))
-		return c
+		builder.note(errors.New("autenticacao por token precisa da requisicao que devolve o token"))
+		return builder
 	}
 	if auth.Kind == scenario.AuthBasic && (auth.User == "" || auth.Password == "") {
-		c.note(errors.New("autenticacao basica precisa de usuario e senha"))
-		return c
+		builder.note(errors.New("autenticacao basica precisa de usuario e senha"))
+		return builder
 	}
 	if auth.Header == "" && auth.Kind != scenario.AuthBasic {
 		auth.Header = "Authorization: Bearer ${token}"
 	}
-	c.scenario.Auth = &auth
-	return c
+	builder.scenario.Auth = &auth
+	return builder
 }
 
-func (c *Builder) Build() (scenario.Spec, error) {
-	built := c.scenario
+func (builder *Builder) Build() (scenario.Spec, error) {
+	built := builder.scenario
 	built.Target = scenario.Interpolate(built.Target, built.Vars)
-	if len(c.errors) > 0 {
-		return built, fmt.Errorf("cenario invalido:\n  - %s", strings.Join(messages(c.errors), "\n  - "))
+	if len(builder.errors) > 0 {
+		return built, fmt.Errorf("cenario invalido:\n  - %s", strings.Join(messages(builder.errors), "\n  - "))
 	}
 	if err := built.Validate(); err != nil {
 		return built, err

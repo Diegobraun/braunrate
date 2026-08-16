@@ -53,40 +53,40 @@ func PUT(path string) *HTTPStep    { return HTTP(http.MethodPut, path) }
 func PATCH(path string) *HTTPStep  { return HTTP(http.MethodPatch, path) }
 func DELETE(path string) *HTTPStep { return HTTP(http.MethodDelete, path) }
 
-func (p *HTTPStep) Header(name, value string) *HTTPStep {
-	p.config.Headers[name] = value
-	return p
+func (step *HTTPStep) Header(name, value string) *HTTPStep {
+	step.config.Headers[name] = value
+	return step
 }
 
-func (p *HTTPStep) Body(body any) *HTTPStep {
+func (step *HTTPStep) Body(body any) *HTTPStep {
 	content, kind, err := serialize(body)
 	if err != nil {
-		p.err = err
-		return p
+		step.err = err
+		return step
 	}
-	p.config.Body = content
-	p.config.ContentType = kind
-	return p
+	step.config.Body = content
+	step.config.ContentType = kind
+	return step
 }
 
-func (p *HTTPStep) Timeout(timeout time.Duration) *HTTPStep {
-	p.config.Timeout = timeout
-	return p
+func (step *HTTPStep) Timeout(timeout time.Duration) *HTTPStep {
+	step.config.Timeout = timeout
+	return step
 }
 
-func (p *HTTPStep) FollowRedirects(follow bool) *HTTPStep {
-	p.config.FollowRedirects = &follow
-	return p
+func (step *HTTPStep) FollowRedirects(follow bool) *HTTPStep {
+	step.config.FollowRedirects = &follow
+	return step
 }
 
-func (p *HTTPStep) build() (string, protocol.Config, error) {
-	if p.err != nil {
-		return "", nil, p.err
+func (step *HTTPStep) build() (string, protocol.Config, error) {
+	if step.err != nil {
+		return "", nil, step.err
 	}
-	if err := protocoloHTTP.Validate(p.config); err != nil {
+	if err := protocoloHTTP.Validate(step.config); err != nil {
 		return "", nil, err
 	}
-	return "http", p.config, nil
+	return "http", step.config, nil
 }
 
 type GraphQLStep struct {
@@ -100,41 +100,41 @@ func GraphQL(query string) *GraphQLStep {
 	return &GraphQLStep{config: config}
 }
 
-func (p *GraphQLStep) Operation(name string) *GraphQLStep {
-	p.config.Operation = name
-	return p
+func (step *GraphQLStep) Operation(name string) *GraphQLStep {
+	step.config.Operation = name
+	return step
 }
 
-func (p *GraphQLStep) Vars(vars any) *GraphQLStep {
+func (step *GraphQLStep) Vars(vars any) *GraphQLStep {
 	content, err := json.Marshal(vars)
 	if err != nil {
-		p.err = fmt.Errorf("variaveis de graphql nao serializam para JSON: %v", err)
-		return p
+		step.err = fmt.Errorf("variaveis de graphql nao serializam para JSON: %v", err)
+		return step
 	}
-	p.config.Vars = string(content)
-	return p
+	step.config.Vars = string(content)
+	return step
 }
 
-func (p *GraphQLStep) Path(path string) *GraphQLStep {
-	p.config.Path = path
-	return p
+func (step *GraphQLStep) Path(path string) *GraphQLStep {
+	step.config.Path = path
+	return step
 }
 
-func (p *GraphQLStep) Header(name, value string) *GraphQLStep {
-	p.config.Headers[name] = value
-	return p
+func (step *GraphQLStep) Header(name, value string) *GraphQLStep {
+	step.config.Headers[name] = value
+	return step
 }
 
-func (p *GraphQLStep) Timeout(timeout time.Duration) *GraphQLStep {
-	p.config.Timeout = timeout
-	return p
+func (step *GraphQLStep) Timeout(timeout time.Duration) *GraphQLStep {
+	step.config.Timeout = timeout
+	return step
 }
 
-func (p *GraphQLStep) build() (string, protocol.Config, error) {
-	if p.err != nil {
-		return "", nil, p.err
+func (step *GraphQLStep) build() (string, protocol.Config, error) {
+	if step.err != nil {
+		return "", nil, step.err
 	}
-	config, err := graphql.Finish(p.config)
+	config, err := graphql.Finish(step.config)
 	if err != nil {
 		return "", nil, err
 	}
@@ -152,54 +152,54 @@ func Kafka(topic string) *KafkaStep {
 	return &KafkaStep{config: config}
 }
 
-func (p *KafkaStep) Key(key string) *KafkaStep {
-	p.config.Key = key
-	return p
+func (step *KafkaStep) Key(key string) *KafkaStep {
+	step.config.Key = key
+	return step
 }
 
-func (p *KafkaStep) Value(value any) *KafkaStep {
+func (step *KafkaStep) Value(value any) *KafkaStep {
 	content, _, err := serialize(value)
 	if err != nil {
-		p.err = err
-		return p
+		step.err = err
+		return step
 	}
-	p.config.Value = content
-	return p
+	step.config.Value = content
+	return step
 }
 
-func (p *KafkaStep) Header(name, value string) *KafkaStep {
-	p.config.Headers[name] = value
-	return p
+func (step *KafkaStep) Header(name, value string) *KafkaStep {
+	step.config.Headers[name] = value
+	return step
 }
 
-func (p *KafkaStep) Brokers(brokers ...string) *KafkaStep {
-	p.config.Brokers = brokers
-	return p
+func (step *KafkaStep) Brokers(brokers ...string) *KafkaStep {
+	step.config.Brokers = brokers
+	return step
 }
 
-func (p *KafkaStep) Acks(acks string) *KafkaStep {
+func (step *KafkaStep) Acks(acks string) *KafkaStep {
 	switch acks {
 	case "todos", "lider", "nenhum":
-		p.config.Acks = acks
+		step.config.Acks = acks
 	default:
-		p.err = fmt.Errorf("acks desconhecido: %q (use todos, lider ou nenhum)", acks)
+		step.err = fmt.Errorf("acks desconhecido: %q (use todos, lider ou nenhum)", acks)
 	}
-	return p
+	return step
 }
 
-func (p *KafkaStep) Timeout(timeout time.Duration) *KafkaStep {
-	p.config.Timeout = timeout
-	return p
+func (step *KafkaStep) Timeout(timeout time.Duration) *KafkaStep {
+	step.config.Timeout = timeout
+	return step
 }
 
-func (p *KafkaStep) build() (string, protocol.Config, error) {
-	if p.err != nil {
-		return "", nil, p.err
+func (step *KafkaStep) build() (string, protocol.Config, error) {
+	if step.err != nil {
+		return "", nil, step.err
 	}
-	if err := kafka.Validate(p.config); err != nil {
+	if err := kafka.Validate(step.config); err != nil {
 		return "", nil, err
 	}
-	return "kafka", p.config, nil
+	return "kafka", step.config, nil
 }
 
 type AMQPStep struct {
@@ -221,54 +221,54 @@ func Exchange(exchange, route string) *AMQPStep {
 	return &AMQPStep{config: config}
 }
 
-func (p *AMQPStep) Body(body any) *AMQPStep {
+func (step *AMQPStep) Body(body any) *AMQPStep {
 	content, _, err := serialize(body)
 	if err != nil {
-		p.err = err
-		return p
+		step.err = err
+		return step
 	}
-	p.config.Body = content
-	return p
+	step.config.Body = content
+	return step
 }
 
-func (p *AMQPStep) Identity(identity string) *AMQPStep {
-	p.config.Identity = identity
-	return p
+func (step *AMQPStep) Identity(identity string) *AMQPStep {
+	step.config.Identity = identity
+	return step
 }
 
-func (p *AMQPStep) Header(name, value string) *AMQPStep {
-	p.config.Headers[name] = value
-	return p
+func (step *AMQPStep) Header(name, value string) *AMQPStep {
+	step.config.Headers[name] = value
+	return step
 }
 
-func (p *AMQPStep) URL(url string) *AMQPStep {
-	p.config.URL = url
-	return p
+func (step *AMQPStep) URL(url string) *AMQPStep {
+	step.config.URL = url
+	return step
 }
 
-func (p *AMQPStep) Persistent(persistent bool) *AMQPStep {
-	p.config.Persistent = persistent
-	return p
+func (step *AMQPStep) Persistent(persistent bool) *AMQPStep {
+	step.config.Persistent = persistent
+	return step
 }
 
-func (p *AMQPStep) Confirm(confirm bool) *AMQPStep {
-	p.config.Confirm = confirm
-	return p
+func (step *AMQPStep) Confirm(confirm bool) *AMQPStep {
+	step.config.Confirm = confirm
+	return step
 }
 
-func (p *AMQPStep) Timeout(timeout time.Duration) *AMQPStep {
-	p.config.Timeout = timeout
-	return p
+func (step *AMQPStep) Timeout(timeout time.Duration) *AMQPStep {
+	step.config.Timeout = timeout
+	return step
 }
 
-func (p *AMQPStep) build() (string, protocol.Config, error) {
-	if p.err != nil {
-		return "", nil, p.err
+func (step *AMQPStep) build() (string, protocol.Config, error) {
+	if step.err != nil {
+		return "", nil, step.err
 	}
-	if err := amqp.Validate(p.config); err != nil {
+	if err := amqp.Validate(step.config); err != nil {
 		return "", nil, err
 	}
-	return "amqp", p.config, nil
+	return "amqp", step.config, nil
 }
 
 type WaitStep struct {
@@ -300,49 +300,49 @@ func WaitForAMQP(queue string) *WaitStep {
 
 // Key is required for the same reason it is in the YAML: waiting for any
 // message would time the fastest consumer, not this iteration's journey.
-func (p *WaitStep) Key(expected string) *WaitStep {
-	p.config.Expected = expected
-	return p
+func (step *WaitStep) Key(expected string) *WaitStep {
+	step.config.Expected = expected
+	return step
 }
 
-func (p *WaitStep) Field(field string) *WaitStep {
-	p.config.Field = field
-	return p
+func (step *WaitStep) Field(field string) *WaitStep {
+	step.config.Field = field
+	return step
 }
 
-func (p *WaitStep) Addresses(addresses ...string) *WaitStep {
-	p.config.Addresses = addresses
-	return p
+func (step *WaitStep) Addresses(addresses ...string) *WaitStep {
+	step.config.Addresses = addresses
+	return step
 }
 
-func (p *WaitStep) UntilJSON(path, value string) *WaitStep {
-	p.config.To = wait.Condition{Path: path, Value: value}
-	return p
+func (step *WaitStep) UntilJSON(path, value string) *WaitStep {
+	step.config.To = wait.Condition{Path: path, Value: value}
+	return step
 }
 
-func (p *WaitStep) UntilStatus(status int) *WaitStep {
-	p.config.To = wait.Condition{Status: status}
-	return p
+func (step *WaitStep) UntilStatus(status int) *WaitStep {
+	step.config.To = wait.Condition{Status: status}
+	return step
 }
 
-func (p *WaitStep) UntilBodyContains(fragment string) *WaitStep {
-	p.config.To = wait.Condition{BodyContains: fragment}
-	return p
+func (step *WaitStep) UntilBodyContains(fragment string) *WaitStep {
+	step.config.To = wait.Condition{BodyContains: fragment}
+	return step
 }
 
-func (p *WaitStep) Interval(interval time.Duration) *WaitStep {
-	p.config.Interval = interval
-	return p
+func (step *WaitStep) Interval(interval time.Duration) *WaitStep {
+	step.config.Interval = interval
+	return step
 }
 
-func (p *WaitStep) Timeout(timeout time.Duration) *WaitStep {
-	p.config.Timeout = timeout
-	return p
+func (step *WaitStep) Timeout(timeout time.Duration) *WaitStep {
+	step.config.Timeout = timeout
+	return step
 }
 
-func (p *WaitStep) build() (string, protocol.Config, error) {
-	if err := wait.Validate(p.config); err != nil {
+func (step *WaitStep) build() (string, protocol.Config, error) {
+	if err := wait.Validate(step.config); err != nil {
 		return "", nil, err
 	}
-	return "aguardar", p.config, nil
+	return "aguardar", step.config, nil
 }

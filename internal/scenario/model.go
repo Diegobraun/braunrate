@@ -32,11 +32,11 @@ type Step struct {
 	Line       int
 }
 
-func (p Step) AggregationKey() string {
-	if p.Config == nil {
-		return p.Name
+func (step Step) AggregationKey() string {
+	if step.Config == nil {
+		return step.Name
 	}
-	return p.Config.AggregationKey()
+	return step.Config.AggregationKey()
 }
 
 type Check struct {
@@ -67,7 +67,7 @@ type LoadPlan struct {
 	ThinkTime time.Duration
 }
 
-func (l LoadPlan) Closed() bool { return l.Model == ClosedArrival }
+func (plan LoadPlan) Closed() bool { return plan.Model == ClosedArrival }
 
 type PhaseKind string
 
@@ -86,30 +86,30 @@ type Phase struct {
 	Line int
 }
 
-func (f Phase) InitialRate() float64 {
-	if f.Kind == PhaseRamp {
-		return f.From
+func (phase Phase) InitialRate() float64 {
+	if phase.Kind == PhaseRamp {
+		return phase.From
 	}
-	return f.To
+	return phase.To
 }
 
-func (f Phase) FinalRate() float64 {
-	return f.To
+func (phase Phase) FinalRate() float64 {
+	return phase.To
 }
 
-func (c Spec) Duration() time.Duration {
-	if c.Load.Closed() {
-		return c.Load.For
+func (spec Spec) Duration() time.Duration {
+	if spec.Load.Closed() {
+		return spec.Load.For
 	}
 	var total time.Duration
-	for _, phase := range c.Load.Phases {
+	for _, phase := range spec.Load.Phases {
 		total += phase.For
 	}
 	return total
 }
 
-func (c Spec) FindStep(name string) (Step, error) {
-	for _, step := range c.Steps {
+func (spec Spec) FindStep(name string) (Step, error) {
+	for _, step := range spec.Steps {
 		if step.Name == name {
 			return step, nil
 		}

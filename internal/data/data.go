@@ -77,50 +77,50 @@ func openCSV(source scenario.DataSource, root string) (Source, error) {
 	}, nil
 }
 
-func (f *csvSource) Name() string { return f.name }
+func (csvSource *csvSource) Name() string { return csvSource.name }
 
-func (f *csvSource) Available() map[string]int64 {
+func (csvSource *csvSource) Available() map[string]int64 {
 	available := map[string]int64{}
-	for position, column := range f.columns {
+	for position, column := range csvSource.columns {
 		distinct := map[string]struct{}{}
-		for _, record := range f.records {
+		for _, record := range csvSource.records {
 			if position < len(record) {
 				distinct[record[position]] = struct{}{}
 			}
 		}
-		available[f.name+"."+column] = int64(len(distinct))
+		available[csvSource.name+"."+column] = int64(len(distinct))
 	}
 	return available
 }
 
-func (f *csvSource) Exhausted() bool { return f.exhausted.Load() }
+func (csvSource *csvSource) Exhausted() bool { return csvSource.exhausted.Load() }
 
-func (f *csvSource) Next(virtualUser int64) (map[string]string, error) {
-	total := int64(len(f.records))
+func (csvSource *csvSource) Next(virtualUser int64) (map[string]string, error) {
+	total := int64(len(csvSource.records))
 	var index int64
 
-	switch f.consume {
+	switch csvSource.consume {
 	case scenario.ConsumeRandom:
-		f.mu.Lock()
-		index = f.random.Int63n(total)
-		f.mu.Unlock()
+		csvSource.mu.Lock()
+		index = csvSource.random.Int63n(total)
+		csvSource.mu.Unlock()
 	case scenario.ConsumeUniquePerUser:
 		index = virtualUser % total
 	case scenario.ConsumeSequential:
-		index = f.position.Add(1) - 1
+		index = csvSource.position.Add(1) - 1
 		if index >= total {
-			f.exhausted.Store(true)
-			return nil, fmt.Errorf("os dados de %q acabaram na linha %d; use consumo circular para repetir do inicio", f.name, total)
+			csvSource.exhausted.Store(true)
+			return nil, fmt.Errorf("os dados de %q acabaram na linha %d; use consumo circular para repetir do inicio", csvSource.name, total)
 		}
 	default:
-		index = (f.position.Add(1) - 1) % total
+		index = (csvSource.position.Add(1) - 1) % total
 	}
 
-	record := f.records[index]
-	values := make(map[string]string, len(f.columns))
-	for position, column := range f.columns {
+	record := csvSource.records[index]
+	values := make(map[string]string, len(csvSource.columns))
+	for position, column := range csvSource.columns {
 		if position < len(record) {
-			values[f.name+"."+column] = record[position]
+			values[csvSource.name+"."+column] = record[position]
 		}
 	}
 	return values, nil
@@ -151,16 +151,16 @@ func newSyntheticSource(source scenario.DataSource) (Source, error) {
 		sortedNames: sortedNames, seed: seed}, nil
 }
 
-func (f *syntheticSource) Name() string { return f.name }
+func (syntheticSource *syntheticSource) Name() string { return syntheticSource.name }
 
-func (f *syntheticSource) Exhausted() bool { return false }
+func (syntheticSource *syntheticSource) Exhausted() bool { return false }
 
 // Synthetic data has no closed list of values: all that is known is that
 // always generating the same value would be a defect.
-func (f *syntheticSource) Available() map[string]int64 {
+func (syntheticSource *syntheticSource) Available() map[string]int64 {
 	available := map[string]int64{}
-	for _, field := range f.sortedNames {
-		available[f.name+"."+field] = -1
+	for _, field := range syntheticSource.sortedNames {
+		available[syntheticSource.name+"."+field] = -1
 	}
 	return available
 }
@@ -168,32 +168,32 @@ func (f *syntheticSource) Available() map[string]int64 {
 // The seed goes into the environment block and fields are generated in a fixed
 // order: without both the run is not reproducible, and a non-reproducible
 // result is useless for comparing two runs.
-func (f *syntheticSource) Next(virtualUser int64) (map[string]string, error) {
-	sequence := f.sequence.Add(1)
-	random := rand.New(rand.NewSource(f.seed + sequence))
-	values := make(map[string]string, len(f.fields))
-	for _, field := range f.sortedNames {
-		value, err := generate(f.fields[field], random, sequence)
+func (syntheticSource *syntheticSource) Next(virtualUser int64) (map[string]string, error) {
+	sequence := syntheticSource.sequence.Add(1)
+	random := rand.New(rand.NewSource(syntheticSource.seed + sequence))
+	values := make(map[string]string, len(syntheticSource.fields))
+	for _, field := range syntheticSource.sortedNames {
+		value, err := generate(syntheticSource.fields[field], random, sequence)
 		if err != nil {
-			return nil, fmt.Errorf("campo %q da fonte %q: %w", field, f.name, err)
+			return nil, fmt.Errorf("campo %q da fonte %q: %w", field, syntheticSource.name, err)
 		}
-		values[f.name+"."+field] = value
+		values[syntheticSource.name+"."+field] = value
 	}
 	return values, nil
 }
 
 // PerUse fields are handed over as a function instead of a value: substitution
 // calls it at every occurrence, so the report counts each one as a distinct use.
-func (f *syntheticSource) PerUse() map[string]func() (string, error) {
+func (syntheticSource *syntheticSource) PerUse() map[string]func() (string, error) {
 	perUse := map[string]func() (string, error){}
-	for _, field := range f.sortedNames {
-		generator := f.fields[field]
+	for _, field := range syntheticSource.sortedNames {
+		generator := syntheticSource.fields[field]
 		if !generator.PerUse {
 			continue
 		}
-		perUse[f.name+"."+field] = func() (string, error) {
-			sequence := f.sequence.Add(1)
-			return generate(generator, rand.New(rand.NewSource(f.seed+sequence)), sequence)
+		perUse[syntheticSource.name+"."+field] = func() (string, error) {
+			sequence := syntheticSource.sequence.Add(1)
+			return generate(generator, rand.New(rand.NewSource(syntheticSource.seed+sequence)), sequence)
 		}
 	}
 	return perUse

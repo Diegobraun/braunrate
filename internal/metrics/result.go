@@ -181,7 +181,7 @@ type DocumentInput struct {
 	ThinkTime        time.Duration
 }
 
-func BuildDocument(c *Collector, input DocumentInput) Document {
+func BuildDocument(collector *Collector, input DocumentInput) Document {
 	maquina, _ := os.Hostname()
 	document := Document{
 		FormatVersion: VersaoDoFormatoDeResultado,
@@ -210,19 +210,19 @@ func BuildDocument(c *Collector, input DocumentInput) Document {
 			AuthObtains:  input.AuthObtains,
 		},
 		Scheduling: Scheduling{
-			Sent:                   c.Sent,
-			Completed:              c.Completed,
-			LateDispatches:         c.LateDispatches,
-			DroppedByInflightLimit: c.DroppedByInflightLimit,
-			LostSamples:            c.LostSamples,
-			PeakInflight:           c.PeakInflight,
-			LateThresholdMs:        float64(c.LateThreshold.Microseconds()) / 1000,
-			Skew:                   c.SchedulingSkew(),
+			Sent:                   collector.Sent,
+			Completed:              collector.Completed,
+			LateDispatches:         collector.LateDispatches,
+			DroppedByInflightLimit: collector.DroppedByInflightLimit,
+			LostSamples:            collector.LostSamples,
+			PeakInflight:           collector.PeakInflight,
+			LateThresholdMs:        float64(collector.LateThreshold.Microseconds()) / 1000,
+			Skew:                   collector.SchedulingSkew(),
 		},
-		Series: c.Buckets(),
+		Series: collector.Buckets(),
 	}
 
-	aggregates := c.Aggregates()
+	aggregates := collector.Aggregates()
 	overall := NewAggregate("global", "global", "")
 	for _, key := range SortKeys(aggregates) {
 		aggregate := aggregates[key]
@@ -246,17 +246,17 @@ func BuildDocument(c *Collector, input DocumentInput) Document {
 	}
 
 	document.Journey = Journey{
-		Started:   c.JourneysStarted,
-		Completed: c.JourneysCompleted,
-		Latency:   c.Journeys(),
+		Started:   collector.JourneysStarted,
+		Completed: collector.JourneysCompleted,
+		Latency:   collector.Journeys(),
 	}
 	if document.Closed() {
 		dropCorrectedLatency(&document)
 	}
 	document.Journey.Sentence = phraseJourney(document.Journey, document.Closed())
 
-	document.Variety = c.Varieties(input.Availability)
-	document.Warnings = append(evaluateWarnings(c, document), input.ScenarioWarnings...)
+	document.Variety = collector.Varieties(input.Availability)
+	document.Warnings = append(evaluateWarnings(collector, document), input.ScenarioWarnings...)
 	document.Sanity = CheckSanity(document, input)
 	return document
 }
@@ -322,7 +322,7 @@ func dispatchWasLate(scheduling Scheduling) bool {
 	return lateProportion(scheduling) >= lateDispatchLimit || scheduling.DroppedByInflightLimit > 0
 }
 
-func evaluateWarnings(c *Collector, document Document) []Warning {
+func evaluateWarnings(collector *Collector, document Document) []Warning {
 	var warnings []Warning
 	scheduling := document.Scheduling
 

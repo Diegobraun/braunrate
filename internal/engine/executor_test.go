@@ -13,10 +13,10 @@ import (
 
 type fakeConfig struct{ key string }
 
-func (c fakeConfig) Protocol() string       { return "falso" }
-func (c fakeConfig) AggregationKey() string { return c.key }
+func (fakeConfig fakeConfig) Protocol() string       { return "falso" }
+func (fakeConfig fakeConfig) AggregationKey() string { return fakeConfig.key }
 
-func (c fakeConfig) Resolve(func(string) string) protocol.Config { return c }
+func (fakeConfig fakeConfig) Resolve(func(string) string) protocol.Config { return fakeConfig }
 
 type fakeProtocol struct {
 	name    string
@@ -25,26 +25,26 @@ type fakeProtocol struct {
 	calls   chan struct{}
 }
 
-func (p *fakeProtocol) Name() string { return p.name }
+func (fakeProtocol *fakeProtocol) Name() string { return fakeProtocol.name }
 
-func (p *fakeProtocol) Decode(*yaml.Node) (protocol.Config, error) {
+func (fakeProtocol *fakeProtocol) Decode(*yaml.Node) (protocol.Config, error) {
 	return fakeConfig{key: "falso"}, nil
 }
 
-func (p *fakeProtocol) Close() error { return nil }
+func (fakeProtocol *fakeProtocol) Close() error { return nil }
 
-func (p *fakeProtocol) Execute(context.Context, protocol.Request) protocol.Response {
-	if p.entrou != nil {
+func (fakeProtocol *fakeProtocol) Execute(context.Context, protocol.Request) protocol.Response {
+	if fakeProtocol.entrou != nil {
 		select {
-		case p.entrou <- struct{}{}:
+		case fakeProtocol.entrou <- struct{}{}:
 		default:
 		}
 	}
-	if p.calls != nil {
-		p.calls <- struct{}{}
+	if fakeProtocol.calls != nil {
+		fakeProtocol.calls <- struct{}{}
 	}
-	if p.release != nil {
-		<-p.release
+	if fakeProtocol.release != nil {
+		<-fakeProtocol.release
 	}
 	return protocol.Response{Status: 200, Class: protocol.Success, Bytes: 7}
 }
@@ -75,11 +75,11 @@ func TestDispatchFollowsScheduledInstantWithInjectedClock(t *testing.T) {
 	registerFake(t, "falso-pontual", &fakeProtocol{})
 	clock := engine.NewVirtualClock(time.Unix(1_700_000_000, 0))
 
-	opts := engine.DefaultOptions()
-	opts.Clock = clock
-	opts.MaxInflight = 1000
+	options := engine.DefaultOptions()
+	options.Clock = clock
+	options.MaxInflight = 1000
 
-	m, err := engine.New(fakeScenario("falso-pontual", 100, time.Second), opts)
+	m, err := engine.New(fakeScenario("falso-pontual", 100, time.Second), options)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}
@@ -103,14 +103,14 @@ func TestInflightLimitDropsAndInvalidatesResult(t *testing.T) {
 	fake := &fakeProtocol{entrou: make(chan struct{}, 1), release: make(chan struct{})}
 	registerFake(t, "falso-preso", fake)
 
-	opts := engine.DefaultOptions()
-	opts.Clock = engine.NewVirtualClock(time.Unix(1_700_000_000, 0))
-	opts.MaxInflight = 1
+	options := engine.DefaultOptions()
+	options.Clock = engine.NewVirtualClock(time.Unix(1_700_000_000, 0))
+	options.MaxInflight = 1
 
 	finished := make(chan struct{})
 	var document = make(chan any, 1)
 	go func() {
-		m, err := engine.New(fakeScenario("falso-preso", 3, time.Second), opts)
+		m, err := engine.New(fakeScenario("falso-preso", 3, time.Second), options)
 		if err != nil {
 			panic(err)
 		}
@@ -136,10 +136,10 @@ func TestStatusCheckClassifiesError(t *testing.T) {
 	c := fakeScenario("falso-status", 10, time.Second)
 	c.Steps[0].Checks = []scenario.Check{{Kind: scenario.CheckStatus, Status: 201}}
 
-	opts := engine.DefaultOptions()
-	opts.Clock = engine.NewVirtualClock(time.Unix(1_700_000_000, 0))
+	options := engine.DefaultOptions()
+	options.Clock = engine.NewVirtualClock(time.Unix(1_700_000_000, 0))
 
-	m, err := engine.New(c, opts)
+	m, err := engine.New(c, options)
 	if err != nil {
 		t.Fatalf("motor nao subiu: %v", err)
 	}

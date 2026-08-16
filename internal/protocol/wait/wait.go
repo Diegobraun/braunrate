@@ -32,48 +32,48 @@ type Config struct {
 	Interval time.Duration
 }
 
-func (c *Config) Protocol() string { return "aguardar" }
+func (config *Config) Protocol() string { return "aguardar" }
 
-func (c *Config) AggregationKey() string {
-	if c.Source == "http" {
-		return "aguardar " + c.Path
+func (config *Config) AggregationKey() string {
+	if config.Source == "http" {
+		return "aguardar " + config.Path
 	}
-	return "aguardar " + c.Topic
+	return "aguardar " + config.Topic
 }
 
-func (c *Config) Resolve(resolve func(string) string) protocol.Config {
-	clone := *c
-	clone.Topic = resolve(c.Topic)
-	clone.Expected = resolve(c.Expected)
-	clone.Field = resolve(c.Field)
-	clone.Path = resolve(c.Path)
-	clone.To.Value = resolve(c.To.Value)
-	clone.To.BodyContains = resolve(c.To.BodyContains)
+func (config *Config) Resolve(resolve func(string) string) protocol.Config {
+	clone := *config
+	clone.Topic = resolve(config.Topic)
+	clone.Expected = resolve(config.Expected)
+	clone.Field = resolve(config.Field)
+	clone.Path = resolve(config.Path)
+	clone.To.Value = resolve(config.To.Value)
+	clone.To.BodyContains = resolve(config.To.BodyContains)
 	return &clone
 }
 
-func (c *Config) Describe() []string {
-	if c.Source == "http" {
-		interval := c.Interval
+func (config *Config) Describe() []string {
+	if config.Source == "http" {
+		interval := config.Interval
 		if interval <= 0 {
 			interval = defaultInterval
 		}
 		return []string{
-			fmt.Sprintf("aguardar em GET %s ate %s", c.Path, c.To.describe()),
-			fmt.Sprintf("sondando a cada %s, desiste depois de %s", interval, c.Timeout),
+			fmt.Sprintf("aguardar em GET %s ate %s", config.Path, config.To.describe()),
+			fmt.Sprintf("sondando a cada %s, desiste depois de %s", interval, config.Timeout),
 			"a latencia medida tem a granularidade da sondagem",
 		}
 	}
 	where := "chave da mensagem"
-	if c.Field != "" {
-		where = c.Field
+	if config.Field != "" {
+		where = config.Field
 	}
 	lines := []string{
-		fmt.Sprintf("aguardar em %s %s por %s = %q", c.Source, c.Topic, where, c.Expected),
-		"desiste depois de " + c.Timeout.String(),
+		fmt.Sprintf("aguardar em %s %s por %s = %q", config.Source, config.Topic, where, config.Expected),
+		"desiste depois de " + config.Timeout.String(),
 	}
-	if len(c.Addresses) > 0 {
-		lines = append(lines, "enderecos: "+strings.Join(c.Addresses, ", "))
+	if len(config.Addresses) > 0 {
+		lines = append(lines, "enderecos: "+strings.Join(config.Addresses, ", "))
 	}
 	return lines
 }
@@ -88,20 +88,20 @@ func New(protocol.Options) *Protocol {
 	return &Protocol{subscriptions: map[string]*subscription{}}
 }
 
-func (p *Protocol) Name() string { return "aguardar" }
+func (implementation *Protocol) Name() string { return "aguardar" }
 
-func (p *Protocol) Close() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	for key, subscription := range p.subscriptions {
+func (implementation *Protocol) Close() error {
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	for key, subscription := range implementation.subscriptions {
 		subscription.shutdown()
-		delete(p.subscriptions, key)
+		delete(implementation.subscriptions, key)
 	}
 	return nil
 }
 
-func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
-	if no == nil || no.Kind != yaml.MappingNode {
+func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
+	if node == nil || node.Kind != yaml.MappingNode {
 		return nil, errors.New(`passo aguardar precisa ser um mapa, por exemplo:
   - aguardar:
       kafka: { topico: pedidos-processados }
@@ -110,9 +110,9 @@ func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
 	}
 
 	config := Default()
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		key := no.Content[index]
-		value := no.Content[index+1]
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key := node.Content[index]
+		value := node.Content[index+1]
 		switch key.Value {
 		case "kafka", "amqp":
 			config.Source = key.Value
@@ -213,17 +213,17 @@ e a medicao seria do tempo de responder, nao do tempo ate o efeito acontecer:
 	return nil
 }
 
-func readHTTPSource(config *Config, no *yaml.Node) error {
-	if no.Kind == yaml.ScalarNode {
-		config.Path = no.Value
+func readHTTPSource(config *Config, node *yaml.Node) error {
+	if node.Kind == yaml.ScalarNode {
+		config.Path = node.Value
 		return nil
 	}
-	if no.Kind != yaml.MappingNode {
+	if node.Kind != yaml.MappingNode {
 		return errors.New("aguardar.http precisa ser o caminho ou um mapa com 'caminho'")
 	}
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		key := no.Content[index]
-		value := no.Content[index+1]
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key := node.Content[index]
+		value := node.Content[index+1]
 		switch key.Value {
 		case "caminho", "url":
 			config.Path = value.Value
@@ -234,17 +234,17 @@ func readHTTPSource(config *Config, no *yaml.Node) error {
 	return nil
 }
 
-func readSource(config *Config, no *yaml.Node) error {
-	if no.Kind == yaml.ScalarNode {
-		config.Topic = no.Value
+func readSource(config *Config, node *yaml.Node) error {
+	if node.Kind == yaml.ScalarNode {
+		config.Topic = node.Value
 		return nil
 	}
-	if no.Kind != yaml.MappingNode {
+	if node.Kind != yaml.MappingNode {
 		return fmt.Errorf("a fonte %q precisa ser o nome do topico ou um mapa", config.Source)
 	}
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		key := no.Content[index]
-		value := no.Content[index+1]
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key := node.Content[index]
+		value := node.Content[index+1]
 		switch key.Value {
 		case "topico", "fila":
 			config.Topic = value.Value
@@ -268,26 +268,26 @@ func readSource(config *Config, no *yaml.Node) error {
 
 // Prepare opens the subscription before the load: the read offset is fixed
 // now, not after the first message has already been produced.
-func (p *Protocol) Prepare(_ context.Context, request protocol.Request) error {
+func (implementation *Protocol) Prepare(_ context.Context, request protocol.Request) error {
 	config, ok := request.Config.(*Config)
 	if !ok || config.Source == "http" {
 		return nil
 	}
-	_, err := p.subscribe(config, request.URLBase)
+	_, err := implementation.subscribe(config, request.URLBase)
 	return err
 }
 
-func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protocol.Response {
+func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
 		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de aguardar"}
 	}
 
 	if config.Source == "http" {
-		return p.awaitOverHTTP(ctx, request, config)
+		return implementation.awaitOverHTTP(runContext, request, config)
 	}
 
-	subscription, err := p.subscribe(config, request.URLBase)
+	subscription, err := implementation.subscribe(config, request.URLBase)
 	if err != nil {
 		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
 	}
@@ -297,7 +297,7 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 		timeout = defaultTimeout
 	}
 
-	message, arrived := subscription.await(ctx, config.Expected, timeout)
+	message, arrived := subscription.await(runContext, config.Expected, timeout)
 	if !arrived {
 		return protocol.Response{
 			Class: protocol.ErrTimeout,
@@ -321,7 +321,7 @@ func lookupField(config *Config) string {
 	return "chave"
 }
 
-func (p *Protocol) subscribe(config *Config, target string) (*subscription, error) {
+func (implementation *Protocol) subscribe(config *Config, target string) (*subscription, error) {
 	addresses := config.Addresses
 	if len(addresses) == 0 {
 		addresses = targetAddresses(target)
@@ -332,9 +332,9 @@ func (p *Protocol) subscribe(config *Config, target string) (*subscription, erro
 
 	key := config.Source + "|" + strings.Join(addresses, ",") + "|" + config.Topic
 
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if existing, has := p.subscriptions[key]; has {
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	if existing, has := implementation.subscriptions[key]; has {
 		return existing, nil
 	}
 
@@ -342,7 +342,7 @@ func (p *Protocol) subscribe(config *Config, target string) (*subscription, erro
 	if err != nil {
 		return nil, err
 	}
-	p.subscriptions[key] = created
+	implementation.subscriptions[key] = created
 	return created, nil
 }
 

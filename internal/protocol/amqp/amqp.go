@@ -31,44 +31,44 @@ type Config struct {
 	Timeout    time.Duration
 }
 
-func (c *Config) Protocol() string { return "amqp" }
+func (config *Config) Protocol() string { return "amqp" }
 
 // AggregationKey is the business route, never the connection: it is what shows
 // in the report when one specific route gets slow.
-func (c *Config) AggregationKey() string {
-	destination := c.Route
-	if c.Exchange != "" {
-		destination = c.Exchange + "/" + c.Route
+func (config *Config) AggregationKey() string {
+	destination := config.Route
+	if config.Exchange != "" {
+		destination = config.Exchange + "/" + config.Route
 	}
 	return "amqp publicar " + destination
 }
 
-func (c *Config) Resolve(resolve func(string) string) protocol.Config {
-	clone := *c
-	clone.Exchange = resolve(c.Exchange)
-	clone.Route = resolve(c.Route)
-	clone.Queue = resolve(c.Queue)
-	clone.Identity = resolve(c.Identity)
-	if len(c.Body) > 0 {
-		clone.Body = []byte(resolve(string(c.Body)))
+func (config *Config) Resolve(resolve func(string) string) protocol.Config {
+	clone := *config
+	clone.Exchange = resolve(config.Exchange)
+	clone.Route = resolve(config.Route)
+	clone.Queue = resolve(config.Queue)
+	clone.Identity = resolve(config.Identity)
+	if len(config.Body) > 0 {
+		clone.Body = []byte(resolve(string(config.Body)))
 	}
-	clone.Headers = make(map[string]string, len(c.Headers))
-	for name, value := range c.Headers {
+	clone.Headers = make(map[string]string, len(config.Headers))
+	for name, value := range config.Headers {
 		clone.Headers[name] = resolve(value)
 	}
 	return &clone
 }
 
-func (c *Config) Describe() []string {
-	lines := []string{fmt.Sprintf("publicar em troca %q com rota %q", c.Exchange, c.Route)}
-	if c.Identity != "" {
-		lines = append(lines, "identidade da mensagem: "+c.Identity)
+func (config *Config) Describe() []string {
+	lines := []string{fmt.Sprintf("publicar em troca %q com rota %q", config.Exchange, config.Route)}
+	if config.Identity != "" {
+		lines = append(lines, "identidade da mensagem: "+config.Identity)
 	}
-	if c.Confirm {
+	if config.Confirm {
 		lines = append(lines, "espera confirmacao do broker")
 	}
-	if len(c.Body) > 0 {
-		lines = append(lines, "corpo: "+string(c.Body))
+	if len(config.Body) > 0 {
+		lines = append(lines, "corpo: "+string(config.Body))
 	}
 	return lines
 }
@@ -88,24 +88,24 @@ func New(protocol.Options) *Protocol {
 	return &Protocol{conns: map[string]*conn{}}
 }
 
-func (p *Protocol) Name() string { return "amqp" }
+func (implementation *Protocol) Name() string { return "amqp" }
 
-func (p *Protocol) Close() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	for address, open := range p.conns {
+func (implementation *Protocol) Close() error {
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	for address, open := range implementation.conns {
 		close(open.canais)
 		for canal := range open.canais {
 			_ = canal.Close()
 		}
 		_ = open.link.Close()
-		delete(p.conns, address)
+		delete(implementation.conns, address)
 	}
 	return nil
 }
 
-func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
-	if no == nil || no.Kind != yaml.MappingNode {
+func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
+	if node == nil || node.Kind != yaml.MappingNode {
 		return nil, errors.New(`passo amqp precisa ser um mapa, por exemplo:
   - amqp:
       fila: pedidos
@@ -113,9 +113,9 @@ func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
 	}
 
 	config := Default()
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		key := no.Content[index]
-		value := no.Content[index+1]
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key := node.Content[index]
+		value := node.Content[index+1]
 		switch key.Value {
 		case "troca":
 			config.Exchange = value.Value
@@ -180,12 +180,12 @@ func Validate(config *Config) error {
 	return nil
 }
 
-func readBody(no *yaml.Node) ([]byte, error) {
-	if no.Kind == yaml.ScalarNode {
-		return []byte(no.Value), nil
+func readBody(node *yaml.Node) ([]byte, error) {
+	if node.Kind == yaml.ScalarNode {
+		return []byte(node.Value), nil
 	}
 	var structure any
-	if err := no.Decode(&structure); err != nil {
+	if err := node.Decode(&structure); err != nil {
 		return nil, fmt.Errorf("corpo invalido: %v", err)
 	}
 	body, err := json.Marshal(structure)
@@ -195,7 +195,7 @@ func readBody(no *yaml.Node) ([]byte, error) {
 	return body, nil
 }
 
-func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protocol.Response {
+func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
 		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de amqp"}
@@ -212,7 +212,7 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 		}
 	}
 
-	open, err := p.conexaoDe(normalize(address), config)
+	open, err := implementation.conexaoDe(normalize(address), config)
 	if err != nil {
 		return protocol.Response{Class: protocol.ErrNetwork, Detail: summarize(err.Error())}
 	}
@@ -225,7 +225,7 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 
 	if config.Timeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, config.Timeout)
+		runContext, cancel = context.WithTimeout(runContext, config.Timeout)
 		defer cancel()
 	}
 
@@ -245,7 +245,7 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 		}
 	}
 
-	confirmation, err := canal.PublishWithDeferredConfirmWithContext(ctx, config.Exchange, config.Route, false, false, delivery)
+	confirmation, err := canal.PublishWithDeferredConfirmWithContext(runContext, config.Exchange, config.Route, false, false, delivery)
 	if err != nil {
 		return protocol.Response{Class: classificar(err), Detail: summarize(err.Error())}
 	}
@@ -254,7 +254,7 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 	// socket write, not the broker accepting the message: it would time the
 	// local network.
 	if config.Confirm && confirmation != nil {
-		accepts, err := confirmation.WaitContext(ctx)
+		accepts, err := confirmation.WaitContext(runContext)
 		if err != nil {
 			return protocol.Response{Class: classificar(err), Detail: summarize(err.Error())}
 		}
@@ -273,10 +273,10 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 	}
 }
 
-func (p *Protocol) conexaoDe(address string, config *Config) (*conn, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if existing, has := p.conns[address]; has {
+func (implementation *Protocol) conexaoDe(address string, config *Config) (*conn, error) {
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	if existing, has := implementation.conns[address]; has {
 		return existing, nil
 	}
 
@@ -300,27 +300,27 @@ func (p *Protocol) conexaoDe(address string, config *Config) (*conn, error) {
 		_ = canal.Close()
 	}
 
-	p.conns[address] = created
+	implementation.conns[address] = created
 	return created, nil
 }
 
 // An AMQP channel is not safe for concurrent use, so each request takes one
 // from the pool and returns it; opening a channel per message would put an
 // extra round trip inside the measurement.
-func (c *conn) pegarCanal() (*amqp.Channel, error) {
+func (conn *conn) pegarCanal() (*amqp.Channel, error) {
 	select {
-	case canal := <-c.canais:
+	case canal := <-conn.canais:
 		if canal != nil && !canal.IsClosed() {
 			return canal, nil
 		}
 	default:
 	}
 
-	canal, err := c.link.Channel()
+	canal, err := conn.link.Channel()
 	if err != nil {
 		return nil, err
 	}
-	if c.confirms {
+	if conn.confirms {
 		if err := canal.Confirm(false); err != nil {
 			_ = canal.Close()
 			return nil, err
@@ -329,12 +329,12 @@ func (c *conn) pegarCanal() (*amqp.Channel, error) {
 	return canal, nil
 }
 
-func (c *conn) devolverCanal(canal *amqp.Channel) {
+func (conn *conn) devolverCanal(canal *amqp.Channel) {
 	if canal == nil || canal.IsClosed() {
 		return
 	}
 	select {
-	case c.canais <- canal:
+	case conn.canais <- canal:
 	default:
 		_ = canal.Close()
 	}

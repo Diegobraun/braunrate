@@ -15,8 +15,8 @@ type element struct {
 	Text       string     `xml:",chardata"`
 }
 
-func (e *element) attribute(name string) string {
-	for _, attribute := range e.Attributes {
+func (node *element) attribute(name string) string {
+	for _, attribute := range node.Attributes {
 		if attribute.Name.Local == name {
 			return attribute.Value
 		}
@@ -26,8 +26,8 @@ func (e *element) attribute(name string) string {
 
 // A JMeter property is always "<stringProp name=...>value</stringProp>",
 // including inside nested elementProp, so the lookup walks down the tree.
-func (e *element) property(name string) string {
-	for _, child := range e.Children {
+func (node *element) property(name string) string {
+	for _, child := range node.Children {
 		if child.attribute("name") == name && len(child.Children) == 0 {
 			return strings.TrimSpace(child.Text)
 		}
@@ -38,12 +38,12 @@ func (e *element) property(name string) string {
 	return ""
 }
 
-func (e *element) findAll(name string) []*element {
+func (node *element) findAll(name string) []*element {
 	var findings []*element
-	if e.XMLName.Local == name {
-		findings = append(findings, e)
+	if node.XMLName.Local == name {
+		findings = append(findings, node)
 	}
-	for _, child := range e.Children {
+	for _, child := range node.Children {
 		findings = append(findings, child.findAll(name)...)
 	}
 	return findings

@@ -39,23 +39,23 @@ func NewVirtualClock(start time.Time) *VirtualClock {
 	return &VirtualClock{now: start}
 }
 
-func (r *VirtualClock) Now() time.Time {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.now
+func (virtualClock *VirtualClock) Now() time.Time {
+	virtualClock.mu.Lock()
+	defer virtualClock.mu.Unlock()
+	return virtualClock.now
 }
 
-func (r *VirtualClock) WaitUntil(instant time.Time) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.Esperas = append(r.Esperas, instant)
-	if instant.After(r.now) {
-		r.now = instant
+func (virtualClock *VirtualClock) WaitUntil(instant time.Time) {
+	virtualClock.mu.Lock()
+	defer virtualClock.mu.Unlock()
+	virtualClock.Esperas = append(virtualClock.Esperas, instant)
+	if instant.After(virtualClock.now) {
+		virtualClock.now = instant
 	}
 }
 
-func (r *VirtualClock) Advance(duration time.Duration) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.now = r.now.Add(duration)
+func (virtualClock *VirtualClock) Advance(duration time.Duration) {
+	virtualClock.mu.Lock()
+	defer virtualClock.mu.Unlock()
+	virtualClock.now = virtualClock.now.Add(duration)
 }

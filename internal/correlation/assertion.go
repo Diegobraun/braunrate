@@ -16,8 +16,8 @@ type AssertionFailure struct {
 	Obtained    string
 }
 
-func (f AssertionFailure) Error() string {
-	return fmt.Sprintf("%s: esperava %s, obteve %s", f.Description, f.Expected, f.Obtained)
+func (assertionFailure AssertionFailure) Error() string {
+	return fmt.Sprintf("%s: esperava %s, obteve %s", assertionFailure.Description, assertionFailure.Expected, assertionFailure.Obtained)
 }
 
 func Evaluate(assertion scenario.Assertion, response protocol.Response, resolve func(string) string) error {

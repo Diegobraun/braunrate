@@ -25,7 +25,7 @@ type ProcessorOptions struct {
 // It exists so end-to-end chain measurement can be reproduced without a real
 // service.
 type Processor struct {
-	opts      ProcessorOptions
+	options   ProcessorOptions
 	readers   []*kafka.Reader
 	writer    *kafka.Writer
 	processed atomic.Int64
@@ -33,11 +33,11 @@ type Processor struct {
 	finished  chan struct{}
 }
 
-func NewProcessor(opts ProcessorOptions) *Processor {
-	return &Processor{opts: opts, finished: make(chan struct{})}
+func NewProcessor(options ProcessorOptions) *Processor {
+	return &Processor{options: options, finished: make(chan struct{})}
 }
 
-func (p *Processor) Processed() int64 { return p.processed.Load() }
+func (processor *Processor) Processed() int64 { return processor.processed.Load() }
 
 // Start reads each partition's offset before running, with no consumer group:
 // a group negotiates partitions on the first poll and loses whatever was
@@ -111,8 +111,8 @@ func waitForLeader(conn *kafka.Conn, topic string) error {
 	})
 }
 
-func (p *Processor) Start() error {
-	conn, err := kafka.Dial("tcp", p.opts.Brokers[0])
+func (processor *Processor) Start() error {
+	conn, err := kafka.Dial("tcp", processor.options.Brokers[0])
 	if err != nil {
 		return fmt.Errorf("nao consegui falar com o broker: %w", err)
 	}
@@ -122,18 +122,18 @@ func (p *Processor) Start() error {
 	// auto-creation on, because auto-creation happens on the first write. The
 	// test target creates both topics up front so the run does not depend on
 	// whoever got there first.
-	if err := createTopics(conn, p.opts.Input, p.opts.Output); err != nil {
+	if err := createTopics(conn, processor.options.Input, processor.options.Output); err != nil {
 		return err
 	}
 
-	partitions, err := conn.ReadPartitions(p.opts.Input)
+	partitions, err := conn.ReadPartitions(processor.options.Input)
 	if err != nil {
-		return fmt.Errorf("nao consegui ler as particoes de %q: %w", p.opts.Input, err)
+		return fmt.Errorf("nao consegui ler as particoes de %q: %w", processor.options.Input, err)
 	}
 
-	p.writer = &kafka.Writer{
-		Addr:                   kafka.TCP(p.opts.Brokers...),
-		Topic:                  p.opts.Output,
+	processor.writer = &kafka.Writer{
+		Addr:                   kafka.TCP(processor.options.Brokers...),
+		Topic:                  processor.options.Output,
 		Balancer:               &kafka.Hash{},
 		BatchSize:              1,
 		BatchTimeout:           time.Millisecond,
@@ -141,20 +141,20 @@ func (p *Processor) Start() error {
 		AllowAutoTopicCreation: true,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	p.cancel = cancel
+	runContext, cancel := context.WithCancel(context.Background())
+	processor.cancel = cancel
 
 	var working sync.WaitGroup
 	for _, partition := range partitions {
-		offset, err := lastOffset(p.opts.Brokers[0], p.opts.Input, partition.ID)
+		offset, err := lastOffset(processor.options.Brokers[0], processor.options.Input, partition.ID)
 		if err != nil {
 			cancel()
 			return err
 		}
 
 		reader := kafka.NewReader(kafka.ReaderConfig{
-			Brokers:   p.opts.Brokers,
-			Topic:     p.opts.Input,
+			Brokers:   processor.options.Brokers,
+			Topic:     processor.options.Input,
 			Partition: partition.ID,
 			MinBytes:  1,
 			MaxBytes:  10 << 20,
@@ -165,36 +165,36 @@ func (p *Processor) Start() error {
 			_ = reader.Close()
 			return fmt.Errorf("nao consegui posicionar a leitura da particao %d: %w", partition.ID, err)
 		}
-		p.readers = append(p.readers, reader)
+		processor.readers = append(processor.readers, reader)
 
 		working.Add(1)
 		go func() {
 			defer working.Done()
 			for {
-				message, err := reader.ReadMessage(ctx)
+				message, err := reader.ReadMessage(runContext)
 				if err != nil {
-					if ctx.Err() != nil {
+					if runContext.Err() != nil {
 						return
 					}
 					continue
 				}
-				if p.opts.Delay > 0 {
-					time.Sleep(p.opts.Delay)
+				if processor.options.Delay > 0 {
+					time.Sleep(processor.options.Delay)
 				}
-				if err := p.writer.WriteMessages(ctx, kafka.Message{
+				if err := processor.writer.WriteMessages(runContext, kafka.Message{
 					Key:   message.Key,
 					Value: message.Value,
-				}); err != nil && ctx.Err() != nil {
+				}); err != nil && runContext.Err() != nil {
 					return
 				}
-				p.processed.Add(1)
+				processor.processed.Add(1)
 			}
 		}()
 	}
 
 	go func() {
 		working.Wait()
-		close(p.finished)
+		close(processor.finished)
 	}()
 	return nil
 }
@@ -217,18 +217,18 @@ func lastOffset(broker, topic string, partition int) (int64, error) {
 	return offset, err
 }
 
-func (p *Processor) Close() error {
-	if p.cancel != nil {
-		p.cancel()
+func (processor *Processor) Close() error {
+	if processor.cancel != nil {
+		processor.cancel()
 	}
-	for _, reader := range p.readers {
+	for _, reader := range processor.readers {
 		_ = reader.Close()
 	}
-	if p.writer != nil {
-		_ = p.writer.Close()
+	if processor.writer != nil {
+		_ = processor.writer.Close()
 	}
 	select {
-	case <-p.finished:
+	case <-processor.finished:
 	case <-time.After(2 * time.Second):
 	}
 	return nil

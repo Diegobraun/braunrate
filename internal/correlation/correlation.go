@@ -37,8 +37,8 @@ type CaptureError struct {
 	Reason     string
 }
 
-func (e CaptureError) Error() string {
-	return fmt.Sprintf("nao consegui capturar %q com %s: %s", e.Variable, e.Expression, e.Reason)
+func (captureError CaptureError) Error() string {
+	return fmt.Sprintf("nao consegui capturar %q com %s: %s", captureError.Variable, captureError.Expression, captureError.Reason)
 }
 
 func Extract(capture scenario.Capture, response protocol.Response) (string, error) {

@@ -12,14 +12,14 @@ import (
 // The shape of the expression picks the origin: "$.field" is JSON,
 // "cabecalho:X-Id" is a header, "/pattern/" is a regular expression. QA writes
 // one line and is done.
-func readCaptures(no *yaml.Node) ([]Capture, error) {
-	if no.Kind != yaml.MappingNode {
-		return nil, nodeError(no, "captura precisa ser um mapa, por exemplo: captura: { faturaId: $.fatura.id }")
+func readCaptures(node *yaml.Node) ([]Capture, error) {
+	if node.Kind != yaml.MappingNode {
+		return nil, nodeError(node, "captura precisa ser um mapa, por exemplo: captura: { faturaId: $.fatura.id }")
 	}
-	captures := make([]Capture, 0, len(no.Content)/2)
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		name := no.Content[index]
-		value := no.Content[index+1]
+	captures := make([]Capture, 0, len(node.Content)/2)
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		name := node.Content[index]
+		value := node.Content[index+1]
 
 		if value.Kind == yaml.MappingNode {
 			capture, err := readFullCapture(name.Value, value)
@@ -70,20 +70,20 @@ func ParseCapture(name, text string) (Capture, error) {
 	return capture, nil
 }
 
-func parseCaptureExpression(name string, no *yaml.Node) (Capture, error) {
-	capture, err := ParseCapture(name, no.Value)
+func parseCaptureExpression(name string, node *yaml.Node) (Capture, error) {
+	capture, err := ParseCapture(name, node.Value)
 	if err != nil {
-		return capture, nodeError(no, "%v", err)
+		return capture, nodeError(node, "%v", err)
 	}
-	capture.Line = no.Line
+	capture.Line = node.Line
 	return capture, nil
 }
 
-func readFullCapture(name string, no *yaml.Node) (Capture, error) {
-	capture := Capture{Variable: name, Required: true, Line: no.Line}
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		key := no.Content[index]
-		value := no.Content[index+1]
+func readFullCapture(name string, node *yaml.Node) (Capture, error) {
+	capture := Capture{Variable: name, Required: true, Line: node.Line}
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key := node.Content[index]
+		value := node.Content[index+1]
 		switch key.Value {
 		case "de":
 			parsed, err := parseCaptureExpression(name, value)
@@ -102,21 +102,21 @@ func readFullCapture(name string, no *yaml.Node) (Capture, error) {
 		}
 	}
 	if capture.Origin == "" {
-		return capture, nodeError(no, "a captura %q precisa de 'de', por exemplo: de: $.fatura.id", name)
+		return capture, nodeError(node, "a captura %q precisa de 'de', por exemplo: de: $.fatura.id", name)
 	}
 	return capture, nil
 }
 
-func readAssertions(no *yaml.Node) ([]Check, []Assertion, error) {
-	if no.Kind != yaml.MappingNode {
-		return nil, nil, nodeError(no, "verificar precisa ser um mapa, por exemplo: verificar: { status: 200 }")
+func readAssertions(node *yaml.Node) ([]Check, []Assertion, error) {
+	if node.Kind != yaml.MappingNode {
+		return nil, nil, nodeError(node, "verificar precisa ser um mapa, por exemplo: verificar: { status: 200 }")
 	}
 	var checks []Check
 	var assertions []Assertion
 
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		key := no.Content[index]
-		value := no.Content[index+1]
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key := node.Content[index]
+		value := node.Content[index+1]
 		switch key.Value {
 		case "status":
 			status, err := strconv.Atoi(strings.TrimSpace(value.Value))
@@ -158,9 +158,9 @@ func readAssertions(no *yaml.Node) ([]Check, []Assertion, error) {
 	return checks, assertions, nil
 }
 
-func parseComparison(target string, no *yaml.Node) (Assertion, error) {
-	assertion := ParseComparison(target, no.Value)
-	assertion.Line = no.Line
+func parseComparison(target string, node *yaml.Node) (Assertion, error) {
+	assertion := ParseComparison(target, node.Value)
+	assertion.Line = node.Line
 	return assertion, nil
 }
 
@@ -190,20 +190,20 @@ func ParseComparison(target, raw string) Assertion {
 	return assertion
 }
 
-func readAuth(no *yaml.Node) (*Auth, error) {
-	if no.Kind != yaml.MappingNode {
-		return nil, nodeError(no, "autenticacao precisa ser um mapa, por exemplo:\n"+
+func readAuth(node *yaml.Node) (*Auth, error) {
+	if node.Kind != yaml.MappingNode {
+		return nil, nodeError(node, "autenticacao precisa ser um mapa, por exemplo:\n"+
 			"  autenticacao:\n"+
 			"    tipo: token\n"+
 			"    obter:\n"+
 			"      http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: \"${SENHA}\" } }\n"+
 			"      captura: { token: $.access_token }")
 	}
-	auth := &Auth{Kind: AuthToken, Line: no.Line}
+	auth := &Auth{Kind: AuthToken, Line: node.Line}
 
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		key := no.Content[index]
-		value := no.Content[index+1]
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key := node.Content[index]
+		value := node.Content[index+1]
 		switch key.Value {
 		case "tipo":
 			switch value.Value {
@@ -242,13 +242,13 @@ func readAuth(no *yaml.Node) (*Auth, error) {
 	}
 
 	if auth.Kind == AuthToken && auth.Obtain == nil {
-		return nil, nodeError(no, "autenticacao por token precisa do bloco 'obter' com a requisicao que devolve o token:\n"+
+		return nil, nodeError(node, "autenticacao por token precisa do bloco 'obter' com a requisicao que devolve o token:\n"+
 			"    obter:\n"+
 			"      http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: \"${SENHA}\" } }\n"+
 			"      captura: { token: $.access_token }")
 	}
 	if auth.Kind == AuthBasic && (auth.User == "" || auth.Password == "") {
-		return nil, nodeError(no, "autenticacao basica precisa de usuario e senha, por exemplo:\n"+
+		return nil, nodeError(node, "autenticacao basica precisa de usuario e senha, por exemplo:\n"+
 			"  autenticacao: { tipo: basica, usuario: ana, senha: \"${SENHA}\" }")
 	}
 	if auth.Header == "" && auth.Kind != AuthBasic {
@@ -257,16 +257,16 @@ func readAuth(no *yaml.Node) (*Auth, error) {
 	return auth, nil
 }
 
-func readData(no *yaml.Node) ([]DataSource, error) {
-	if no.Kind != yaml.MappingNode {
-		return nil, nodeError(no, "dados precisa ser um mapa de fontes, por exemplo:\n"+
+func readData(node *yaml.Node) ([]DataSource, error) {
+	if node.Kind != yaml.MappingNode {
+		return nil, nodeError(node, "dados precisa ser um mapa de fontes, por exemplo:\n"+
 			"    dados:\n      assinantes:\n        arquivo: dados/assinantes.csv")
 	}
-	sources := make([]DataSource, 0, len(no.Content)/2)
+	sources := make([]DataSource, 0, len(node.Content)/2)
 
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		name := no.Content[index]
-		body := no.Content[index+1]
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		name := node.Content[index]
+		body := node.Content[index+1]
 		if body.Kind != yaml.MappingNode {
 			return nil, nodeError(body, "a fonte de dados %q precisa de um mapa com 'arquivo' ou 'gerar', por exemplo:\n"+
 				"  %s: { arquivo: dados/assinantes.csv, consumo: circular }", name.Value, name.Value)
@@ -324,13 +324,13 @@ func readData(no *yaml.Node) ([]DataSource, error) {
 	return sources, nil
 }
 
-func readGenerator(field string, no *yaml.Node) (Generator, error) {
-	if no.Kind != yaml.MappingNode {
-		return ParseGenerator(no.Value), nil
+func readGenerator(field string, node *yaml.Node) (Generator, error) {
+	if node.Kind != yaml.MappingNode {
+		return ParseGenerator(node.Value), nil
 	}
 	generator := Generator{}
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		key, value := no.Content[index], no.Content[index+1]
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key, value := node.Content[index], node.Content[index+1]
 		switch key.Value {
 		case "tipo":
 			generator.Recipe = value.Value
@@ -353,23 +353,23 @@ func readGenerator(field string, no *yaml.Node) (Generator, error) {
 		}
 	}
 	if generator.Recipe == "" {
-		return generator, nodeError(no, "o campo %q precisa de 'tipo', por exemplo: %s: { tipo: padrao, formato: \"PED-######\" }", field, field)
+		return generator, nodeError(node, "o campo %q precisa de 'tipo', por exemplo: %s: { tipo: padrao, formato: \"PED-######\" }", field, field)
 	}
 	if generator.Recipe == "padrao" && generator.Format == "" {
-		return generator, nodeError(no, "o campo %q e do tipo padrao e precisa de 'formato', por exemplo: { tipo: padrao, formato: \"PED-######\" }\n"+
+		return generator, nodeError(node, "o campo %q e do tipo padrao e precisa de 'formato', por exemplo: { tipo: padrao, formato: \"PED-######\" }\n"+
 			"    # vira digito e @ vira letra; o resto sai literal", field)
 	}
 	return generator, nil
 }
 
-func readSLO(no *yaml.Node) ([]SLORule, error) {
-	if no.Kind != yaml.SequenceNode {
-		return nil, nodeError(no, "slo precisa ser uma lista, por exemplo:\n"+
+func readSLO(node *yaml.Node) ([]SLORule, error) {
+	if node.Kind != yaml.SequenceNode {
+		return nil, nodeError(node, "slo precisa ser uma lista, por exemplo:\n"+
 			"    slo:\n      - consultar pedido: { p95: < 150ms }\n      - global: { erros: < 0.1 }")
 	}
 	var rules []SLORule
 
-	for _, item := range no.Content {
+	for _, item := range node.Content {
 		if item.Kind != yaml.MappingNode || len(item.Content) < 2 {
 			return nil, nodeError(item, "cada regra de slo e um mapa com o nome do passo (ou 'global') e os limites, por exemplo:\n"+
 				"  - consultar pedido: { p95: < 150ms }")

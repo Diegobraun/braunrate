@@ -34,51 +34,51 @@ type Config struct {
 	Timeout   time.Duration
 }
 
-func (c *Config) Protocol() string { return "graphql" }
+func (config *Config) Protocol() string { return "graphql" }
 
 // AggregationKey is the operation, never the URL: in GraphQL every operation
 // arrives at the same address, and aggregating by URL would put the cheapest
 // query and the most expensive mutation on the same row.
-func (c *Config) AggregationKey() string {
-	return "graphql " + c.Operation
+func (config *Config) AggregationKey() string {
+	return "graphql " + config.Operation
 }
 
-func (c *Config) Resolve(resolve func(string) string) protocol.Config {
-	clone := *c
-	clone.Vars = resolve(c.Vars)
-	clone.Path = resolve(c.Path)
-	clone.Headers = make(map[string]string, len(c.Headers))
-	for name, value := range c.Headers {
+func (config *Config) Resolve(resolve func(string) string) protocol.Config {
+	clone := *config
+	clone.Vars = resolve(config.Vars)
+	clone.Path = resolve(config.Path)
+	clone.Headers = make(map[string]string, len(config.Headers))
+	for name, value := range config.Headers {
 		clone.Headers[name] = resolve(value)
 	}
 	return &clone
 }
 
-func (c *Config) WithHeader(name, value string) protocol.Config {
-	clone := *c
-	clone.Headers = make(map[string]string, len(c.Headers)+1)
-	for key, content := range c.Headers {
+func (config *Config) WithHeader(name, value string) protocol.Config {
+	clone := *config
+	clone.Headers = make(map[string]string, len(config.Headers)+1)
+	for key, content := range config.Headers {
 		clone.Headers[key] = content
 	}
 	clone.Headers[name] = value
 	return &clone
 }
 
-func (c *Config) Describe() []string {
-	lines := []string{fmt.Sprintf("%s %s em POST %s", c.Kind, c.Operation, c.Path)}
+func (config *Config) Describe() []string {
+	lines := []string{fmt.Sprintf("%s %s em POST %s", config.Kind, config.Operation, config.Path)}
 
-	names := make([]string, 0, len(c.Headers))
-	for name := range c.Headers {
+	names := make([]string, 0, len(config.Headers))
+	for name := range config.Headers {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		lines = append(lines, fmt.Sprintf("%s: %s", name, transport.MaskSecret(name, c.Headers[name])))
+		lines = append(lines, fmt.Sprintf("%s: %s", name, transport.MaskSecret(name, config.Headers[name])))
 	}
-	if c.Vars != "" && c.Vars != "{}" {
-		lines = append(lines, "variaveis: "+c.Vars)
+	if config.Vars != "" && config.Vars != "{}" {
+		lines = append(lines, "variaveis: "+config.Vars)
 	}
-	lines = append(lines, "consulta: "+summarizeQuery(c.Query))
+	lines = append(lines, "consulta: "+summarizeQuery(config.Query))
 	return lines
 }
 
@@ -94,38 +94,38 @@ type Protocol struct {
 	client *http.Client
 }
 
-func New(opts protocol.Options) *Protocol {
-	return &Protocol{client: transport.NewClient(opts)}
+func New(options protocol.Options) *Protocol {
+	return &Protocol{client: transport.NewClient(options)}
 }
 
-func (p *Protocol) Name() string { return "graphql" }
+func (implementation *Protocol) Name() string { return "graphql" }
 
-func (p *Protocol) Close() error {
-	p.client.CloseIdleConnections()
+func (implementation *Protocol) Close() error {
+	implementation.client.CloseIdleConnections()
 	return nil
 }
 
 var operationPattern = regexp.MustCompile(`(?s)\b(query|mutation|subscription)\s+([A-Za-z_][A-Za-z0-9_]*)`)
 
-func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
-	if no == nil {
+func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
+	if node == nil {
 		return nil, errors.New("passo graphql sem configuracao")
 	}
 	config := Default()
 
-	if no.Kind == yaml.ScalarNode {
-		config.Query = no.Value
+	if node.Kind == yaml.ScalarNode {
+		config.Query = node.Value
 		return Finish(config)
 	}
-	if no.Kind != yaml.MappingNode {
+	if node.Kind != yaml.MappingNode {
 		return nil, errors.New(`passo graphql precisa ser a consulta ou um mapa, por exemplo:
   - graphql: |
       query ConsultarPedido { pedido(id: "1") { status } }`)
 	}
 
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		key := no.Content[index]
-		value := no.Content[index+1]
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key := node.Content[index]
+		value := node.Content[index+1]
 		switch key.Value {
 		case "consulta", "query":
 			config.Query = value.Value
@@ -194,12 +194,12 @@ Sem nome, todas as operacoes cairiam na mesma linha e a mais cara ficaria escond
 	return config, nil
 }
 
-func readVars(no *yaml.Node) (string, error) {
-	if no.Kind == yaml.ScalarNode {
-		return no.Value, nil
+func readVars(node *yaml.Node) (string, error) {
+	if node.Kind == yaml.ScalarNode {
+		return node.Value, nil
 	}
 	var structure any
-	if err := no.Decode(&structure); err != nil {
+	if err := node.Decode(&structure); err != nil {
 		return "", fmt.Errorf("variaveis invalidas: %v", err)
 	}
 	content, err := json.Marshal(structure)
@@ -229,7 +229,7 @@ type graphQLError struct {
 	} `json:"extensions"`
 }
 
-func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protocol.Response {
+func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
 		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de graphql"}
@@ -257,11 +257,11 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 
 	if config.Timeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, config.Timeout)
+		runContext, cancel = context.WithTimeout(runContext, config.Timeout)
 		defer cancel()
 	}
 
-	order, err := http.NewRequestWithContext(ctx, http.MethodPost, address, bytes.NewReader(serialized))
+	order, err := http.NewRequestWithContext(runContext, http.MethodPost, address, bytes.NewReader(serialized))
 	if err != nil {
 		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
 	}
@@ -271,7 +271,7 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 		order.Header.Set(name, value)
 	}
 
-	response, err := p.client.Do(order)
+	response, err := implementation.client.Do(order)
 	if err != nil {
 		return protocol.Response{Class: transport.Classify(err), Detail: transport.SummarizeError(err)}
 	}

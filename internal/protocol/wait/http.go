@@ -28,33 +28,33 @@ type Condition struct {
 	BodyContains string
 }
 
-func (c Condition) empty() bool {
-	return c.Status == 0 && c.Path == "" && c.BodyContains == ""
+func (condition Condition) empty() bool {
+	return condition.Status == 0 && condition.Path == "" && condition.BodyContains == ""
 }
 
-func (c Condition) describe() string {
+func (condition Condition) describe() string {
 	switch {
-	case c.Path != "":
-		return fmt.Sprintf("%s = %q", c.Path, c.Value)
-	case c.BodyContains != "":
-		return fmt.Sprintf("o corpo conter %q", c.BodyContains)
+	case condition.Path != "":
+		return fmt.Sprintf("%s = %q", condition.Path, condition.Value)
+	case condition.BodyContains != "":
+		return fmt.Sprintf("o corpo conter %q", condition.BodyContains)
 	default:
-		return fmt.Sprintf("status %d", c.Status)
+		return fmt.Sprintf("status %d", condition.Status)
 	}
 }
 
-func (c Condition) satisfied(status int, body []byte) bool {
+func (condition Condition) satisfied(status int, body []byte) bool {
 	switch {
-	case c.Path != "":
-		return gjson.GetBytes(body, strings.TrimPrefix(strings.TrimPrefix(c.Path, "$."), "$")).String() == c.Value
-	case c.BodyContains != "":
-		return strings.Contains(string(body), c.BodyContains)
+	case condition.Path != "":
+		return gjson.GetBytes(body, strings.TrimPrefix(strings.TrimPrefix(condition.Path, "$."), "$")).String() == condition.Value
+	case condition.BodyContains != "":
+		return strings.Contains(string(body), condition.BodyContains)
 	default:
-		return status == c.Status
+		return status == condition.Status
 	}
 }
 
-func (p *Protocol) awaitOverHTTP(ctx context.Context, request protocol.Request, config *Config) protocol.Response {
+func (implementation *Protocol) awaitOverHTTP(runContext context.Context, request protocol.Request, config *Config) protocol.Response {
 	address, err := transport.BuildURL(request.URLBase, config.Path)
 	if err != nil {
 		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
@@ -69,7 +69,7 @@ func (p *Protocol) awaitOverHTTP(ctx context.Context, request protocol.Request, 
 		interval = defaultInterval
 	}
 
-	limit, cancel := context.WithTimeout(ctx, timeout)
+	limit, cancel := context.WithTimeout(runContext, timeout)
 	defer cancel()
 
 	var lastStatus int
@@ -78,7 +78,7 @@ func (p *Protocol) awaitOverHTTP(ctx context.Context, request protocol.Request, 
 	polls := 0
 
 	for {
-		status, body, err := p.poll(limit, address)
+		status, body, err := implementation.poll(limit, address)
 		polls++
 		if err != nil {
 			lastErr = err.Error()
@@ -122,12 +122,12 @@ func waitDetail(config *Config, address string, timeout, interval time.Duration,
 		timeout, config.To.describe(), address, status, sample, polls, interval)
 }
 
-func (p *Protocol) poll(ctx context.Context, address string) (int, []byte, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
+func (implementation *Protocol) poll(runContext context.Context, address string) (int, []byte, error) {
+	request, err := http.NewRequestWithContext(runContext, http.MethodGet, address, nil)
 	if err != nil {
 		return 0, nil, err
 	}
-	response, err := p.client().Do(request)
+	response, err := implementation.client().Do(request)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -140,13 +140,13 @@ func (p *Protocol) poll(ctx context.Context, address string) (int, []byte, error
 	return response.StatusCode, body, nil
 }
 
-func (p *Protocol) client() *http.Client {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.http == nil {
-		p.http = transport.NewClient(protocol.Options{})
+func (implementation *Protocol) client() *http.Client {
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	if implementation.http == nil {
+		implementation.http = transport.NewClient(protocol.Options{})
 	}
-	return p.http
+	return implementation.http
 }
 
 func readCondition(key string, raw map[string]string) (Condition, error) {
@@ -172,12 +172,12 @@ func readCondition(key string, raw map[string]string) (Condition, error) {
 // PollInterval lets the engine declare in the report that the step was
 // measured by polling: without it, the interval step would read as target
 // latency.
-func (c *Config) PollInterval() time.Duration {
-	if c.Source != "http" {
+func (config *Config) PollInterval() time.Duration {
+	if config.Source != "http" {
 		return 0
 	}
-	if c.Interval > 0 {
-		return c.Interval
+	if config.Interval > 0 {
+		return config.Interval
 	}
 	return defaultInterval
 }

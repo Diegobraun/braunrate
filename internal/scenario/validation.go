@@ -77,38 +77,38 @@ func (c Spec) Validate() error {
 // The rate is shown at three response times because that is the whole point: in
 // the closed model it is the target that decides the load, so a single number
 // would be the very promise this model cannot keep.
-func ClosedModelWarning(c Spec) (string, bool) {
-	if !c.Load.Closed() {
+func ClosedModelWarning(spec Spec) (string, bool) {
+	if !spec.Load.Closed() {
 		return "", false
 	}
-	think := c.Load.ThinkTime.Seconds()
-	rate := func(response float64) float64 { return float64(c.Load.Users) / (think + response) }
+	think := spec.Load.ThinkTime.Seconds()
+	rate := func(response float64) float64 { return float64(spec.Load.Users) / (think + response) }
 
-	line := fmt.Sprintf("Atencao: 'modelo: fechado' nao declara carga, declara %d lacos.\n", c.Load.Users)
+	line := fmt.Sprintf("Atencao: 'modelo: fechado' nao declara carga, declara %d lacos.\n", spec.Load.Users)
 	line += "    Cada usuario so pede de novo depois da resposta anterior: se o alvo travar, eles param de pedir\n"
 	line += "    junto e o atraso nao aparece na medicao — e o oposto do modelo aberto, que insiste na taxa.\n"
 	line += fmt.Sprintf("    Taxa aproximada com esses %d usuarios: %.0f/s se o alvo responder em 100 ms, %.0f/s em 500 ms, %.0f/s em 2s.",
-		c.Load.Users, rate(0.1), rate(0.5), rate(2))
+		spec.Load.Users, rate(0.1), rate(0.5), rate(2))
 	return line, true
 }
 
 // GateWarnings reports what a declared gate leaves out. A scenario with several
 // steps and only step rules approves each piece and says nothing about the wait
 // the user actually feels, which is the sum of them.
-func GateWarnings(c Spec) []string {
-	if len(c.SLO) == 0 {
+func GateWarnings(spec Spec) []string {
+	if len(spec.SLO) == 0 {
 		return nil
 	}
 	declared := map[SLOScope]bool{}
-	for _, rule := range c.SLO {
+	for _, rule := range spec.SLO {
 		declared[rule.Scope] = true
 	}
 
 	var warnings []string
-	if len(c.Steps) > 1 && !declared[ScopeJourney] {
+	if len(spec.Steps) > 1 && !declared[ScopeJourney] {
 		warnings = append(warnings, fmt.Sprintf(
 			"Atencao: o gate mede %d passos isolados e deixa de fora a jornada inteira, que e o tempo que o usuario espera.\n"+
-				"    declare tambem:  - jornada: { p95: < 2s, p99: < 5s }", len(c.Steps)))
+				"    declare tambem:  - jornada: { p95: < 2s, p99: < 5s }", len(spec.Steps)))
 	}
 	if declared[ScopeRegression] {
 		warnings = append(warnings, "Atencao: ha regra de regressao declarada; ela so e verificada com 'braunrate execute ... -baseline=execucao-anterior.json'.")

@@ -31,82 +31,82 @@ type Config struct {
 	FollowRedirects *bool
 }
 
-func (c *Config) Protocol() string { return "http" }
+func (config *Config) Protocol() string { return "http" }
 
-func (c *Config) AggregationKey() string {
-	return fmt.Sprintf("%s %s", c.Method, c.Path)
+func (config *Config) AggregationKey() string {
+	return fmt.Sprintf("%s %s", config.Method, config.Path)
 }
 
-func (c *Config) Resolve(resolve func(string) string) protocol.Config {
-	clone := *c
-	clone.Path = resolve(c.Path)
-	clone.Headers = make(map[string]string, len(c.Headers))
-	for name, value := range c.Headers {
+func (config *Config) Resolve(resolve func(string) string) protocol.Config {
+	clone := *config
+	clone.Path = resolve(config.Path)
+	clone.Headers = make(map[string]string, len(config.Headers))
+	for name, value := range config.Headers {
 		clone.Headers[name] = resolve(value)
 	}
-	if len(c.Body) > 0 {
-		clone.Body = []byte(resolve(string(c.Body)))
+	if len(config.Body) > 0 {
+		clone.Body = []byte(resolve(string(config.Body)))
 	}
 	return &clone
 }
 
-func (c *Config) WithHeader(name, value string) protocol.Config {
-	clone := *c
-	clone.Headers = make(map[string]string, len(c.Headers)+1)
-	for key, content := range c.Headers {
+func (config *Config) WithHeader(name, value string) protocol.Config {
+	clone := *config
+	clone.Headers = make(map[string]string, len(config.Headers)+1)
+	for key, content := range config.Headers {
 		clone.Headers[key] = content
 	}
 	clone.Headers[name] = value
 	return &clone
 }
 
-func (c *Config) Describe() []string {
-	lines := []string{fmt.Sprintf("%s %s", c.Method, c.Path)}
+func (config *Config) Describe() []string {
+	lines := []string{fmt.Sprintf("%s %s", config.Method, config.Path)}
 
-	names := make([]string, 0, len(c.Headers))
-	for name := range c.Headers {
+	names := make([]string, 0, len(config.Headers))
+	for name := range config.Headers {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		lines = append(lines, fmt.Sprintf("%s: %s", name, transport.MaskSecret(name, c.Headers[name])))
+		lines = append(lines, fmt.Sprintf("%s: %s", name, transport.MaskSecret(name, config.Headers[name])))
 	}
-	if c.ContentType != "" {
-		lines = append(lines, "Content-Type: "+c.ContentType)
+	if config.ContentType != "" {
+		lines = append(lines, "Content-Type: "+config.ContentType)
 	}
-	if len(c.Body) > 0 {
-		lines = append(lines, "corpo: "+string(c.Body))
+	if len(config.Body) > 0 {
+		lines = append(lines, "corpo: "+string(config.Body))
 	}
-	if c.Timeout > 0 {
-		lines = append(lines, "timeout: "+c.Timeout.String())
+	if config.Timeout > 0 {
+		lines = append(lines, "timeout: "+config.Timeout.String())
 	}
 	return lines
 }
 
 type Protocol struct {
-	client *http.Client
-	opts   protocol.Options
+	client  *http.Client
+	options protocol.Options
 }
 
-func New(opts protocol.Options) *Protocol {
-	return &Protocol{client: transport.NewClient(opts), opts: opts}
+func New(options protocol.Options) *Protocol {
+	return &Protocol{client: transport.NewClient(options), options: options}
 }
 
-func (p *Protocol) Name() string { return "http" }
+func (implementation *Protocol) Name() string { return "http" }
 
-func (p *Protocol) Close() error {
-	p.client.CloseIdleConnections()
+func (implementation *Protocol) Close() error {
+	implementation.client.CloseIdleConnections()
 	return nil
 }
 
-func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
-	if no == nil {
+func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
+	if node == nil {
 		return nil, errors.New("passo http sem configuracao")
 	}
 	config := Default()
 
-	if no.Kind == yaml.ScalarNode {
-		parts := strings.Fields(no.Value)
+	if node.Kind == yaml.ScalarNode {
+		parts := strings.Fields(node.Value)
 		switch len(parts) {
 		case 1:
 			config.Path = parts[0]
@@ -114,18 +114,18 @@ func (p *Protocol) Decode(no *yaml.Node) (protocol.Config, error) {
 			config.Method = strings.ToUpper(parts[0])
 			config.Path = parts[1]
 		default:
-			return nil, fmt.Errorf("forma curta do passo http deve ser \"METODO /caminho\", recebido %q", no.Value)
+			return nil, fmt.Errorf("forma curta do passo http deve ser \"METODO /caminho\", recebido %q", node.Value)
 		}
 		return config, nil
 	}
 
-	if no.Kind != yaml.MappingNode {
+	if node.Kind != yaml.MappingNode {
 		return nil, errors.New("passo http precisa ser um texto ou um mapa")
 	}
 
-	for index := 0; index+1 < len(no.Content); index += 2 {
-		key := no.Content[index]
-		value := no.Content[index+1]
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key := node.Content[index]
+		value := node.Content[index+1]
 		switch key.Value {
 		case "metodo":
 			config.Method = strings.ToUpper(value.Value)
@@ -179,12 +179,12 @@ func Validate(config *Config) error {
 	return nil
 }
 
-func readBody(no *yaml.Node) ([]byte, string, error) {
-	if no.Kind == yaml.ScalarNode {
-		return []byte(no.Value), "text/plain", nil
+func readBody(node *yaml.Node) ([]byte, string, error) {
+	if node.Kind == yaml.ScalarNode {
+		return []byte(node.Value), "text/plain", nil
 	}
 	var structure any
-	if err := no.Decode(&structure); err != nil {
+	if err := node.Decode(&structure); err != nil {
 		return nil, "", fmt.Errorf("corpo invalido: %v", err)
 	}
 	body, err := json.Marshal(structure)
@@ -194,7 +194,7 @@ func readBody(no *yaml.Node) ([]byte, string, error) {
 	return body, "application/json", nil
 }
 
-func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protocol.Response {
+func (implementation *Protocol) Execute(runContext context.Context, request protocol.Request) protocol.Response {
 	config, ok := request.Config.(*Config)
 	if !ok {
 		return protocol.Response{Class: protocol.ErrConfig, Detail: "configuracao nao e de http"}
@@ -212,11 +212,11 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 
 	if config.Timeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, config.Timeout)
+		runContext, cancel = context.WithTimeout(runContext, config.Timeout)
 		defer cancel()
 	}
 
-	order, err := http.NewRequestWithContext(ctx, config.Method, address, body)
+	order, err := http.NewRequestWithContext(runContext, config.Method, address, body)
 	if err != nil {
 		return protocol.Response{Class: protocol.ErrConfig, Detail: err.Error()}
 	}
@@ -227,7 +227,7 @@ func (p *Protocol) Execute(ctx context.Context, request protocol.Request) protoc
 		order.Header.Set(name, value)
 	}
 
-	response, err := p.client.Do(order)
+	response, err := implementation.client.Do(order)
 	if err != nil {
 		return protocol.Response{Class: transport.Classify(err), Detail: transport.SummarizeError(err)}
 	}
