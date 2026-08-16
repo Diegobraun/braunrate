@@ -98,7 +98,7 @@ func TestEmptyFieldInTheBodyIsSaidOutLoud(t *testing.T) {
 
 	warned := false
 	for _, warning := range document.Warnings {
-		if warning.Kind == "corpo_com_campo_vazio" {
+		if warning.Kind == "bodyWithEmptyField" {
 			warned = true
 			if warning.Severity != metrics.SeverityMedium {
 				t.Fatalf("campo vazio pode ser proposital; gravidade saiu %q", warning.Severity)

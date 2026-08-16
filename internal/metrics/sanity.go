@@ -37,10 +37,10 @@ type sanityCheck struct {
 }
 
 var sanityChecks = []sanityCheck{
-	{"jornada_incompleta", noJourneyCompleted},
-	{"passo_sem_amostra", declaredStepWithoutSamples},
-	{"tudo_falhou", everythingFailed},
-	{"execucao_curta", runShorterThanPlan},
+	{"incompleteJourney", noJourneyCompleted},
+	{"stepWithoutSample", declaredStepWithoutSamples},
+	{"everythingFailed", everythingFailed},
+	{"shortRun", runShorterThanPlan},
 	{"medicao_invalidada", invalidatingWarnings},
 }
 
@@ -65,7 +65,7 @@ func noJourneyCompleted(document Document, _ DocumentInput) []SanityFinding {
 		return nil
 	}
 	return []SanityFinding{{
-		Kind:     "jornada_incompleta",
+		Kind:     "incompleteJourney",
 		Message:  "no journey reached the end, so the scenario never exercised the sequence it declared. Run 'braunrate debug' to see where the iteration stops",
 		Evidence: fmt.Sprintf("%s jornadas iniciadas, 0 completas", thousands(document.Journey.Started)),
 	}}
@@ -87,7 +87,7 @@ func declaredStepWithoutSamples(document Document, input DocumentInput) []Sanity
 			continue
 		}
 		findings = append(findings, SanityFinding{
-			Kind:     "passo_sem_amostra",
+			Kind:     "stepWithoutSample",
 			Message:  fmt.Sprintf("the step %q was declared and recorded no sample at all; it stayed out of the measurement", declared),
 			Evidence: fmt.Sprintf("passos com amostra: %s", listOrNone(sortedNames(withSamples))),
 		})
@@ -114,7 +114,7 @@ func everythingFailed(document Document, _ DocumentInput) []SanityFinding {
 	}
 	if len(failed) == ran && ran > 1 {
 		return []SanityFinding{{
-			Kind:    "tudo_falhou",
+			Kind:    "everythingFailed",
 			Message: fmt.Sprintf("all %d steps failed on 100%% of the requests; the response time above is how long the target took to refuse, not the time of the work the scenario meant to measure", ran),
 			Evidence: fmt.Sprintf("%s requests, %s errors (%s)",
 				thousands(document.Overall.Count), thousands(document.Overall.Errors), dominantClasses(document.Steps)),
@@ -123,7 +123,7 @@ func everythingFailed(document Document, _ DocumentInput) []SanityFinding {
 	findings := make([]SanityFinding, 0, len(failed))
 	for _, step := range failed {
 		findings = append(findings, SanityFinding{
-			Kind:     "passo_totalmente_falho",
+			Kind:     "stepFullyFailed",
 			Message:  fmt.Sprintf("the step %q failed on 100%% of the requests; no successful response entered its measurement", step.Name),
 			Evidence: fmt.Sprintf("%s requisições, %s erros (%s)", thousands(step.Count), thousands(step.Errors), dominantClasses([]StepResult{step})),
 		})
@@ -149,7 +149,7 @@ func runShorterThanPlan(document Document, input DocumentInput) []SanityFinding 
 	}
 	actual := time.Duration(document.Run.DurationMs) * time.Millisecond
 	return []SanityFinding{{
-		Kind: "execucao_curta",
+		Kind: "shortRun",
 		Message: fmt.Sprintf("the run stopped at %s with %s of %s requests of the declared profile; the declared load never got applied in full, and what was measured is only the piece that ran",
 			readableDuration(actual), thousands(applied), thousands(input.PlannedRequests)),
 		Evidence: fmt.Sprintf("declared profile: %s requests in %s; run: %s requests in %s",
@@ -168,7 +168,7 @@ func runShorterThanWindow(document Document, input DocumentInput) []SanityFindin
 		return nil
 	}
 	return []SanityFinding{{
-		Kind: "execucao_curta",
+		Kind: "shortRun",
 		Message: fmt.Sprintf("the run stopped at %s of the declared %s window; the declared load never got applied in full, and what was measured is only the piece that ran",
 			readableDuration(actual), readableDuration(input.PlannedDuration)),
 		Evidence: fmt.Sprintf("%d users in a closed loop, %s journeys started", document.Run.Users, thousands(document.Journey.Started)),

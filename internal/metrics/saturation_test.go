@@ -46,9 +46,9 @@ func TestSaturationVerdictSitsExactlyOnOnePercent(t *testing.T) {
 		kind    string
 		invalid bool
 	}{
-		{"abaixo de 1% e atraso pontual", 1000, 9, "gerador_com_atraso_pontual", false},
-		{"exatamente 1% já inválida", 1000, 10, "gerador_saturado", true},
-		{"acima de 1% inválida", 1000, 40, "gerador_saturado", true},
+		{"abaixo de 1% e atraso pontual", 1000, 9, "generatorOccasionallyLate", false},
+		{"exatamente 1% já inválida", 1000, 10, "generatorSaturated", true},
+		{"acima de 1% inválida", 1000, 40, "generatorSaturated", true},
 		{"nenhum atraso não gera aviso", 1000, 0, "", false},
 	}
 
@@ -63,7 +63,7 @@ func TestSaturationVerdictSitsExactlyOnOnePercent(t *testing.T) {
 					c.late, c.total, document.Valid(), c.invalid, document.Sanity.Findings)
 			}
 			if c.kind == "" {
-				if _, had := warningOfKind(document.Warnings, "gerador_saturado"); had {
+				if _, had := warningOfKind(document.Warnings, "generatorSaturated"); had {
 					t.Error("execução pontual acusou saturacao")
 				}
 				return

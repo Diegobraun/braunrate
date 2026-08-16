@@ -78,7 +78,7 @@ func TestComparisonOfInvalidRunShowsNoNumbers(t *testing.T) {
 	after := slower(sampleDocument())
 	after.Sanity = metrics.Sanity{
 		Checked: true, Valid: false,
-		Findings: []metrics.SanityFinding{{Kind: "gerador_saturado", Message: "o gerador não sustentou a carga"}},
+		Findings: []metrics.SanityFinding{{Kind: "generatorSaturated", Message: "o gerador não sustentou a carga"}},
 	}
 
 	page := comparisonPage(t, before, after)

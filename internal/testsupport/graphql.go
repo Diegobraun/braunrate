@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-type pedidoGraphQL struct {
+type graphQLRequest struct {
 	Query         string         `json:"query"`
 	OperationName string         `json:"operationName"`
 	Vars          map[string]any `json:"variables"`
@@ -22,9 +22,9 @@ func (server *Server) handleGraphQL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var order pedidoGraphQL
+	var order graphQLRequest
 	if err := json.NewDecoder(r.Body).Decode(&order); err != nil {
-		serveGraphQL(w, "", `{"errors":[{"message":"corpo não é JSON","extensions":{"code":"BAD_REQUEST"}}]}`)
+		serveGraphQL(w, "", `{"errors":[{"message":"body is not JSON","extensions":{"code":"BAD_REQUEST"}}]}`)
 		return
 	}
 
@@ -35,30 +35,30 @@ func (server *Server) handleGraphQL(w http.ResponseWriter, r *http.Request) {
 	identifier := text(order.Vars["id"])
 
 	switch operation {
-	case "ConsultarPedido":
+	case "LookUpOrder":
 		if strings.HasSuffix(identifier, "7") {
 			serveGraphQL(w, operation, fmt.Sprintf(
-				`{"data":{"pedido":null},"errors":[{"message":"pedido %s não encontrado","path":["pedido"],"extensions":{"code":"NOT_FOUND"}}]}`,
+				`{"data":{"order":null},"errors":[{"message":"order %s not found","path":["order"],"extensions":{"code":"NOT_FOUND"}}]}`,
 				identifier))
 			return
 		}
 		serveGraphQL(w, operation, fmt.Sprintf(
-			`{"data":{"pedido":{"id":%q,"status":"ABERTO","ultimaFatura":{"id":"f-%s","valor":199.90,"status":"ABERTA"}}}}`,
+			`{"data":{"order":{"id":%q,"status":"OPEN","lastInvoice":{"id":"f-%s","amount":199.90,"status":"OPEN"}}}}`,
 			identifier, identifier))
-	case "PagarFatura":
-		invoice := text(order.Vars["fatura"])
+	case "PayInvoice":
+		invoice := text(order.Vars["invoice"])
 		serveGraphQL(w, operation, fmt.Sprintf(
-			`{"data":{"pagarFatura":{"id":%q,"status":"PAGA","pagoEm":"2026-08-15T00:00:00Z"}}}`, invoice))
+			`{"data":{"payInvoice":{"id":%q,"status":"PAID","paidAt":"2026-08-15T00:00:00Z"}}}`, invoice))
 	default:
 		serveGraphQL(w, operation, fmt.Sprintf(
-			`{"errors":[{"message":"operação %q não existe no schema","extensions":{"code":"GRAPHQL_VALIDATION_FAILED"}}]}`, operation))
+			`{"errors":[{"message":"operation %q does not exist in the schema","extensions":{"code":"GRAPHQL_VALIDATION_FAILED"}}]}`, operation))
 	}
 }
 
 func serveGraphQL(w http.ResponseWriter, operation, body string) {
 	w.Header().Set("Content-Type", "application/json")
 	if operation != "" {
-		w.Header().Set("X-Operacao", operation)
+		w.Header().Set("X-Operation", operation)
 	}
 	_, _ = fmt.Fprint(w, body)
 }

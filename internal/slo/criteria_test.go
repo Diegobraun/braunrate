@@ -170,7 +170,7 @@ func TestSaturatedRunNeverBecomesAnSLOFailure(t *testing.T) {
 	document := journeyDocument(100, 200)
 	document.Sanity = metrics.Sanity{
 		Checked: true, Valid: false,
-		Findings: []metrics.SanityFinding{{Kind: "gerador_saturado"}},
+		Findings: []metrics.SanityFinding{{Kind: "generatorSaturated"}},
 	}
 	if document.Valid() {
 		t.Fatal("execução saturada se declarou valida")

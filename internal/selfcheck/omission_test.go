@@ -85,7 +85,7 @@ func TestTargetFreezeIsNotConfusedWithGeneratorSaturation(t *testing.T) {
 	document := runOpenModel(t, server.Address())
 
 	for _, warning := range document.Warnings {
-		if warning.Kind == "gerador_saturado" {
+		if warning.Kind == "generatorSaturated" {
 			t.Fatalf("alvo congelado foi reportado como saturacao do gerador: %s | %s", warning.Message, warning.Evidence)
 		}
 	}
@@ -101,7 +101,7 @@ func TestTargetFreezeIsNotConfusedWithGeneratorSaturation(t *testing.T) {
 
 	found := false
 	for _, warning := range document.Warnings {
-		if warning.Kind == "alvo_degradado" {
+		if warning.Kind == "targetDegraded" {
 			found = true
 			t.Logf("aviso correto: %s | %s", warning.Message, warning.Evidence)
 		}

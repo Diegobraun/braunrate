@@ -187,7 +187,7 @@ func TestFixedPartitionKeyInvalidatesResult(t *testing.T) {
 
 	var found bool
 	for _, warning := range document.Warnings {
-		if warning.Kind != "variedade_ausente" || !strings.Contains(warning.Message, "partição") {
+		if warning.Kind != "missingVariety" || !strings.Contains(warning.Message, "partição") {
 			continue
 		}
 		found = true
@@ -361,7 +361,7 @@ func TestSaturatedGeneratorWhileProducingInvalidatesResult(t *testing.T) {
 
 	var found bool
 	for _, warning := range document.Warnings {
-		if warning.Kind != "gerador_saturado" {
+		if warning.Kind != "generatorSaturated" {
 			continue
 		}
 		found = true

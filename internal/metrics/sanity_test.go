@@ -52,8 +52,8 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 	}{
 		{
 			name:    "nenhuma jornada chegou ao fim",
-			check:   "jornada_incompleta",
-			kind:    "jornada_incompleta",
+			check:   "incompleteJourney",
+			kind:    "incompleteJourney",
 			mention: "nenhuma jornada chegou ao fim",
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Journey.Completed = 0
@@ -61,8 +61,8 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 		},
 		{
 			name:    "todos os passos falharam",
-			check:   "tudo_falhou",
-			kind:    "tudo_falhou",
+			check:   "everythingFailed",
+			kind:    "everythingFailed",
 			mention: "todos os 2 passos falharam",
 			break_: func(d *Document, _ *DocumentInput) {
 				for index := range d.Steps {
@@ -75,8 +75,8 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 		},
 		{
 			name:    "um passo teve 100% de erro",
-			check:   "tudo_falhou",
-			kind:    "passo_totalmente_falho",
+			check:   "everythingFailed",
+			kind:    "stepFullyFailed",
 			mention: `o passo "consultar pedido" falhou em 100% das requisições`,
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Steps[1].Successes = 0
@@ -87,8 +87,8 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 		},
 		{
 			name:    "a execução durou menos que o perfil declarado",
-			check:   "execucao_curta",
-			kind:    "execucao_curta",
+			check:   "shortRun",
+			kind:    "shortRun",
 			mention: "parou em 4s com 38 de 100 requisições do perfil declarado",
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Run.DurationMs = 4_000
@@ -97,8 +97,8 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 		},
 		{
 			name:    "um passo declarado não registrou amostra",
-			check:   "passo_sem_amostra",
-			kind:    "passo_sem_amostra",
+			check:   "stepWithoutSample",
+			kind:    "stepWithoutSample",
 			mention: `o passo "consultar pedido" foi declarado e não registrou nenhuma amostra`,
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Steps = d.Steps[:1]
@@ -108,7 +108,7 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 		{
 			name:    "variedade colapsada em fonte com varios valores",
 			check:   "medicao_invalidada",
-			kind:    "variedade_ausente",
+			kind:    "missingVariety",
 			mention: "um único valor",
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Variety = []Variety{{Name: "pedidos.id", Distinct: 1, Uses: 200, Available: 500}}
@@ -118,7 +118,7 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 		{
 			name:    "gerador saturado",
 			check:   "medicao_invalidada",
-			kind:    "gerador_saturado",
+			kind:    "generatorSaturated",
 			mention: "limite de requisições em voo",
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Scheduling = Scheduling{Sent: 200, DroppedByInflightLimit: 40, PeakInflight: 512}
@@ -175,7 +175,7 @@ func TestSingleFailingStepIsNamedInsteadOfCounted(t *testing.T) {
 	input.PlannedRequests = 60
 	document.Scheduling.Sent = 60
 
-	finding, found := findingOfKind(CheckSanity(document, input), "passo_totalmente_falho")
+	finding, found := findingOfKind(CheckSanity(document, input), "stepFullyFailed")
 	if !found {
 		t.Fatal("passo único que falhou inteiro não foi apontado pelo nome")
 	}
@@ -229,7 +229,7 @@ func TestDocumentWithoutSanityBlockFallsBackToWarnings(t *testing.T) {
 	if !document.Valid() {
 		t.Error("documento antigo sem aviso grave foi tratado como inválido")
 	}
-	document.Warnings = []Warning{{Kind: "gerador_saturado", Severity: SeverityHigh}}
+	document.Warnings = []Warning{{Kind: "generatorSaturated", Severity: SeverityHigh}}
 	if document.Valid() {
 		t.Error("documento antigo com aviso grave foi tratado como válido")
 	}

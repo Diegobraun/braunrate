@@ -106,7 +106,7 @@ func TestInvalidResultIsNotPresentedAsTargetNumber(t *testing.T) {
 		Sentence:    "Passou: as 3 regras de SLO foram atendidas.",
 	}
 	document.Warnings = []metrics.Warning{{
-		Kind: "gerador_saturado", Severity: metrics.SeverityHigh,
+		Kind: "generatorSaturated", Severity: metrics.SeverityHigh,
 		Message:  "o gerador não sustentou a taxa alvo",
 		Evidence: "12% dos despachos atrasaram",
 	}}

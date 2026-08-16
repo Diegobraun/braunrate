@@ -116,7 +116,7 @@ func TestBackPressureAboveOnePercentInvalidatesResult(t *testing.T) {
 	}
 	found := false
 	for _, warning := range document.Warnings {
-		if warning.Kind == "gerador_saturado" && warning.Severity == metrics.SeverityHigh {
+		if warning.Kind == "generatorSaturated" && warning.Severity == metrics.SeverityHigh {
 			found = true
 			if !strings.Contains(warning.Evidence, "%") {
 				t.Errorf("evidencia sem proporção: %q", warning.Evidence)
@@ -147,7 +147,7 @@ func TestOccasionalDelayDoesNotInvalidateButIsReported(t *testing.T) {
 	}
 	found := false
 	for _, warning := range document.Warnings {
-		if warning.Kind == "gerador_com_atraso_pontual" {
+		if warning.Kind == "generatorOccasionallyLate" {
 			found = true
 		}
 	}

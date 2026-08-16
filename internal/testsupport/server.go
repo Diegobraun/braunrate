@@ -56,14 +56,14 @@ func (server *Server) Start(address string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", server.handle)
 	mux.HandleFunc("/auth/token", server.wrap(server.handleToken))
-	// /pedidos e o passo que o 'braunrate new' escreve: exigir token aqui fazia
-	// new, target e execute devolverem 401 no primeiro contato de quem chega.
-	mux.HandleFunc("/pedidos", server.wrap(server.handleOrder))
-	mux.HandleFunc("/pedidos/", server.wrap(server.handleOrder))
-	mux.HandleFunc("/faturas/", server.wrap(server.requireToken(server.handlePayment)))
+	// /orders is the step 'braunrate new' writes: asking for a token here made
+	// new, target and execute answer 401 on the first contact of whoever arrives.
+	mux.HandleFunc("/orders", server.wrap(server.handleOrder))
+	mux.HandleFunc("/orders/", server.wrap(server.handleOrder))
+	mux.HandleFunc("/invoices/", server.wrap(server.requireToken(server.handlePayment)))
 	mux.HandleFunc("/graphql", server.wrap(server.requireToken(server.handleGraphQL)))
-	mux.HandleFunc("/saude", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
-	mux.HandleFunc("/congelar", server.handleFreeze)
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+	mux.HandleFunc("/freeze", server.handleFreeze)
 	server.server = &http.Server{Handler: mux}
 
 	go func() { _ = server.server.Serve(listener) }()
@@ -113,9 +113,9 @@ func (server *Server) waitForResume() {
 }
 
 func (server *Server) handleFreeze(w http.ResponseWriter, r *http.Request) {
-	duration, err := time.ParseDuration(r.URL.Query().Get("por"))
+	duration, err := time.ParseDuration(r.URL.Query().Get("for"))
 	if err != nil {
-		http.Error(w, "parâmetro 'por' inválido", http.StatusBadRequest)
+		http.Error(w, "invalid 'for' parameter", http.StatusBadRequest)
 		return
 	}
 	server.Freeze(duration)
@@ -170,37 +170,37 @@ func (server *Server) requireToken(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer "+server.token() {
 			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = fmt.Fprint(w, `{"erro":"token ausente ou inválido"}`)
+			_, _ = fmt.Fprint(w, `{"error":"missing or invalid token"}`)
 			return
 		}
 		handler(w, r)
 	}
 }
 
-func (server *Server) token() string { return "token-de-teste" }
+func (server *Server) token() string { return "test-token" }
 
 func (server *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	_, _ = fmt.Fprintf(w, `{"access_token":%q,"expira_em":1800}`, server.token())
+	_, _ = fmt.Fprintf(w, `{"access_token":%q,"expiresIn":1800}`, server.token())
 }
 
 func (server *Server) handleOrder(w http.ResponseWriter, r *http.Request) {
-	order := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/pedidos"), "/")
+	order := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/orders"), "/")
 	if order == "" {
 		if r.Method == http.MethodPost {
 			server.created.Add(1)
 			w.WriteHeader(http.StatusCreated)
-			_, _ = fmt.Fprintf(w, `{"id":"p-%d","status":"ABERTO"}`, server.created.Load())
+			_, _ = fmt.Fprintf(w, `{"id":"p-%d","status":"OPEN"}`, server.created.Load())
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
-		_, _ = fmt.Fprint(w, `{"erro":"informe o pedido"}`)
+		_, _ = fmt.Fprint(w, `{"error":"name the order"}`)
 		return
 	}
-	_, _ = fmt.Fprintf(w, `{"id":%q,"status":"ABERTO","ultimaFatura":{"id":"f-%s","valor":199.90,"status":"ABERTA"}}`,
+	_, _ = fmt.Fprintf(w, `{"id":%q,"status":"OPEN","lastInvoice":{"id":"f-%s","amount":199.90,"status":"OPEN"}}`,
 		order, order)
 }
 
@@ -209,6 +209,6 @@ func (server *Server) handlePayment(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	invoice := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/faturas/"), "/pagar")
-	_, _ = fmt.Fprintf(w, `{"id":%q,"status":"PAGA","pagoEm":"2026-08-15T00:00:00Z"}`, invoice)
+	invoice := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/invoices/"), "/pay")
+	_, _ = fmt.Fprintf(w, `{"id":%q,"status":"PAID","paidAt":"2026-08-15T00:00:00Z"}`, invoice)
 }

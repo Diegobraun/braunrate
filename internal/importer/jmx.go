@@ -63,7 +63,7 @@ var translatedElements = map[string]bool{
 func FromJMX(content []byte) (Import, error) {
 	var root element
 	if err := xml.Unmarshal(content, &root); err != nil {
-		return Import{}, fmt.Errorf("não consegui ler o arquivo como .jmx: %v", err)
+		return Import{}, fmt.Errorf("I could not read the file as a .jmx: %v", err)
 	}
 
 	samplers := root.findAll("HTTPSamplerProxy")
@@ -100,11 +100,11 @@ extratores JSON e regex, e assercao de resposta. Sampler de JDBC, JMS ou script 
 	if script.Target == "" {
 		script.Target = "http://127.0.0.1:8080"
 		script.Warnings = append(script.Warnings,
-			"o .jmx não declara domínio nas requisições (provavelmente usa variável de plano): troque o alvo antes de rodar")
+			"the .jmx declares no domain on the requests (it probably uses a plan variable): change the target before running")
 	}
 	if len(targets) > 1 {
 		script.Warnings = append(script.Warnings,
-			fmt.Sprintf("o .jmx aponta para %d domínios diferentes; ficou o mais frequente e os outros viraram caminho fixo", len(targets)))
+			fmt.Sprintf("the .jmx points at %d different domains; the most frequent one stayed and the others became fixed paths", len(targets)))
 	}
 
 	for _, set := range root.findAll("CSVDataSet") {
@@ -114,7 +114,7 @@ extratores JSON e regex, e assercao de resposta. Sampler de JDBC, JMS ou script 
 	for _, step := range script.Steps {
 		if hasIdentifier(step.Path) {
 			script.Warnings = append(script.Warnings, fmt.Sprintf(
-				"o passo %q tem valor fixo no caminho (%s): com um valor só, o alvo responde de cache e o número fica otimista. "+
+				"the step %q has a fixed value in the path (%s): with a single value the target answers from cache and the number comes out optimistic. "+
 					"Troque por ${dados.coluna} e aponte para o CSV", step.Name, step.Path))
 		}
 	}
@@ -233,11 +233,11 @@ func loadWarnings(root *element) []string {
 			description += ", rampa de " + ramp + "s"
 		}
 		if duration != "" && duration != "0" {
-			description += ", " + duration + "s de duração"
+			description += ", " + duration + "s of duration"
 		}
 		warnings = append(warnings, fmt.Sprintf(
-			"o grupo %q declara %s: número de thread não vira taxa de chegada, porque thread só envia depois da resposta anterior. "+
-				"O bloco 'carga' ficou com um chute; troque pela taxa que você quer sustentar (requisições por segundo)",
+			"the group %q declares %s: a thread count does not turn into an arrival rate, because a thread only sends after the previous response. "+
+				"The 'load' block came out as a guess; swap it for the rate you want to sustain (requests per second)",
 			group.attribute("testname"), description))
 	}
 	return warnings
@@ -268,7 +268,7 @@ func correlationWarnings(root *element) []string {
 	for _, assertion := range root.findAll("ResponseAssertion") {
 		name := assertion.attribute("testname")
 		warnings = append(warnings, fmt.Sprintf(
-			"a assercao %q não foi traduzida: todo passo saiu com 'verificar: { status: 200 }', ajuste o que era diferente disso", name))
+			"the assertion %q was not translated: every step came out with 'expect: { status: 200 }', adjust whatever was different from that", name))
 	}
 	return warnings
 }
@@ -299,7 +299,7 @@ func untranslatedWarnings(root *element) []string {
 	}
 	sort.Strings(names)
 	return []string{fmt.Sprintf(
-		"%d elemento(s) do .jmx não foram traduzidos e ficaram de fora do cenário: %s. "+
+		"%d element(s) of the .jmx were not translated and stayed out of the scenario: %s. "+
 			"Confira se algum deles mudava o que era medido", total, strings.Join(names, ", "))}
 }
 

@@ -7,37 +7,37 @@ import "fmt"
 // something with no file behind it teaches that a secret path exists — and
 // leaves whoever liked the result with nothing to edit.
 func healthyScenario(target string) string {
-	return fmt.Sprintf(`# Escrito por 'braunrate demo'. E um cenário comum: aponte o alvo para o seu
-# serviço, edite os passos e rode com 'braunrate execute'.
-nome: Demonstração
-alvo: %s
+	return fmt.Sprintf(`# Written by 'braunrate demo'. It is an ordinary scenario: point the target at
+# your service, edit the steps and run it with 'braunrate execute'.
+name: Demonstration
+target: %s
 
-# O alvo embutido exige token, como uma API de verdade exigiria. Sem este bloco
-# a execução inteira toma 401 e sai inválida.
-autenticacao:
-  tipo: token
-  obter:
-    http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana } }
-    captura: { token: $.access_token }
+# The built-in target asks for a token, the way a real API would. Without this
+# block the whole run takes 401 and comes out invalid.
+auth:
+  type: token
+  obtain:
+    http: { method: POST, path: /auth/token, body: { user: ana } }
+    capture: { token: $.access_token }
 
-# taxa: quantas requisições por segundo o braunrate dispara. Ele dispara nesse
-# ritmo esteja o alvo rápido ou lento, que e o que usuários de verdade fazem.
-carga:
-  perfis:
-    - patamar: { taxa: %s, durante: %s }
+# rate: how many requests per second braunrate fires. It fires at that pace
+# whether the target is fast or slow, which is what real users do.
+load:
+  profiles:
+    - steady: { rate: %s, duration: %s }
 
-cenario:
-  # Caminho fixo: toda requisição vai ser idêntica, e o relatório avisa que o
-  # número fica otimista. Para medir o serviço, e não o cache dele, troque por
-  # /pedidos/${id} e declare de onde ${id} vem.
-  - http: GET /pedidos/1
-    nome: consultar pedido
-    verificar: { status: 200 }
+scenario:
+  # Fixed path: every request will be identical, and the report says the number
+  # comes out optimistic. To measure the service instead of its cache, swap it
+  # for /orders/${id} and declare where ${id} comes from.
+  - http: GET /orders/1
+    name: look up order
+    expect: { status: 200 }
 
-# critério de aceite: se estourar, 'braunrate execute' sai com código 1 e o seu
-# CI reprova.
+# acceptance criterion: if it goes over, 'braunrate execute' exits with code 1
+# and your CI fails.
 slo:
-  - global: { erros: < 0.1 }
+  - global: { errors: < 0.1 }
 `, target, rate, duration)
 }
 
@@ -46,24 +46,25 @@ slo:
 // differ because of when the request is counted, not because of what it asked
 // for.
 func freezingScenario(target string) string {
-	return fmt.Sprintf(`# Escrito por 'braunrate demo --com-falha'. O alvo desta demonstracao trava de
-# proposito no meio da execução, como um GC longo ou um failover fariam.
-nome: Demonstração com falha
-alvo: %s
+	return fmt.Sprintf(`# Written by 'braunrate demo --with-failure'. The target of this demonstration
+# freezes on purpose halfway through, the way a long GC or a failover would.
+name: Demonstration with a failure
+target: %s
 
-carga:
-  perfis:
-    - patamar: { taxa: %s, durante: %s }
+load:
+  profiles:
+    - steady: { rate: %s, duration: %s }
 
-cenario:
-  - http: GET /pedido
-    nome: consultar pedido
-    verificar: { status: 200 }
+scenario:
+  - http: GET /order
+    name: look up order
+    expect: { status: 200 }
 
-# critério de aceite: este cenário existe para estourar. Numa ferramenta de
-# laço fechado a mesma pausa passaria despercebida e o critério aprovaria.
+# acceptance criterion: this scenario exists to blow through it. On a
+# closed-loop tool the same freeze would go unnoticed and the criterion would
+# approve the run.
 slo:
-  - global: { erros: < 0.1 }
+  - global: { errors: < 0.1 }
   - global: { p95: < 100ms }
 `, target, rate, duration)
 }

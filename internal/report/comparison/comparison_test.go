@@ -122,7 +122,7 @@ func TestReasonForNotComparingIsTheOneTheRunReported(t *testing.T) {
 	after.Sanity = metrics.Sanity{
 		Checked: true, Valid: false,
 		Findings: []metrics.SanityFinding{{
-			Kind:    "jornada_incompleta",
+			Kind:    "incompleteJourney",
 			Message: "nenhuma jornada chegou ao fim, então o cenário não exercitou a sequência que declarou",
 		}},
 	}

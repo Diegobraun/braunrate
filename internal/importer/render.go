@@ -82,7 +82,7 @@ func maskCookies(header string, vars map[string]string) (string, []string) {
 		if _, announced := vars[local]; !announced {
 			vars[local] = environment
 			notices = append(notices, fmt.Sprintf(
-				"o cookie %q não nasceu em nenhuma resposta gravada e virou ${%s}: rode com %s=... no ambiente, para não versionar sessão",
+				"the cookie %q was not born in any recorded response and became ${%s}: run with %s=... in the environment, so a session does not get versioned",
 				name, local, environment))
 		}
 		pairs[index] = name + "=${" + local + "}"
@@ -144,7 +144,7 @@ func maskBody(body string, vars map[string]string) (string, []string) {
 		if _, announced := vars[local]; !announced {
 			vars[local] = variable
 			notices = append(notices,
-				fmt.Sprintf("o campo %q do corpo virou ${%s}: rode com %s=... no ambiente, para não versionar credencial", parts[1], local, variable))
+				fmt.Sprintf("the body field %q became ${%s}: run with %s=... in the environment, so a credential does not get versioned", parts[1], local, variable))
 		}
 		return fmt.Sprintf("%q: %q", parts[1], "${"+local+"}")
 	})
@@ -180,7 +180,7 @@ func RenderYAML(script Script) Import {
 			if _, announced := vars[local]; !announced {
 				vars[local] = variable
 				importResult.Warnings = append(importResult.Warnings,
-					fmt.Sprintf("o cabeçalho %s virou ${%s}: rode com %s=... no ambiente, para não versionar credencial", name, local, variable))
+					fmt.Sprintf("the header %s became ${%s}: run with %s=... in the environment, so a credential does not get versioned", name, local, variable))
 			}
 		}
 		steps[index].Headers = withoutSecret
@@ -276,7 +276,7 @@ func RenderYAML(script Script) Import {
 			for _, capture := range step.Captures {
 				suffix := ""
 				if capture.Suggested {
-					suffix = "   # sugestão do gravador: confira se é mesmo este valor que a próxima chamada precisa"
+					suffix = "   # the recorder's guess: check that this is really the value the next call needs"
 				}
 				write("      %s: %s%s", capture.Variable, capture.Expression, suffix)
 			}
@@ -293,7 +293,7 @@ func RenderYAML(script Script) Import {
 	write("  - global: { erros: < 1 }")
 
 	importResult.Warnings = append(importResult.Warnings,
-		"os números de carga e de slo são um chute de partida, não uma medição: ajuste antes de usar como gate")
+		"the load and slo numbers are a starting guess, not a measurement: tune them before using this as a gate")
 	importResult.YAML = strings.Join(lines, "\n") + "\n"
 	return importResult
 }

@@ -140,7 +140,7 @@ func emptyFieldWarnings(variety Variety) []Warning {
 	}
 	step := strings.TrimPrefix(variety.Name, BodyShapeName)
 	return []Warning{{
-		Kind:     "corpo_com_campo_vazio",
+		Kind:     "bodyWithEmptyField",
 		Severity: SeverityMedium,
 		Message:  fmt.Sprintf("the body of %q went out with an empty field; unless that is on purpose, the target exercised a path production never sees", step),
 		Evidence: strings.Join(empty, " | "),

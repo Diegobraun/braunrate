@@ -28,7 +28,7 @@ const (
 	freezeDuration = 2 * time.Second
 	preferredPort  = "127.0.0.1:8080"
 	anyFreePort    = "127.0.0.1:0"
-	closedLoopPath = "/pedido"
+	closedLoopPath = "/order"
 )
 
 type Options struct {
@@ -47,8 +47,8 @@ func Run(runContext context.Context, options Options) error {
 
 func runHealthy(runContext context.Context, options Options) error {
 	say(options, `
-Esta demonstração roda contra um serviço de mentira que sobe aqui mesmo, então
-você pode experimentar sem afetar nada.
+This demonstration runs against a fake service started right here, so you can
+try it out without affecting anything.
 
 `)
 
@@ -58,8 +58,8 @@ você pode experimentar sem afetar nada.
 	}
 	defer stop()
 
-	say(options, `[1/3] Subindo um serviço de exemplo em %s
-      Ele responde em ~%d ms, como uma API saudável responderia.
+	say(options, `[1/3] Starting an example service at %s
+      It answers in ~%d ms, the way a healthy API would.
 
 `, address(target), targetLatency.Milliseconds())
 
@@ -68,14 +68,14 @@ você pode experimentar sem afetar nada.
 		return err
 	}
 
-	say(options, `[2/3] Rodando: %s requisições por segundo, durante %s.
+	say(options, `[2/3] Running: %s requests per second, for %s.
 
-      Essa é a taxa: o braunrate dispara nesse ritmo esteja o serviço rápido ou
-      lento — como usuários de verdade fazem. Ferramentas que esperam a
-      resposta anterior antes de mandar a próxima aliviam o sistema justamente
-      quando ele está sofrendo.
+      That is the rate: braunrate fires at that pace whether the service is
+      fast or slow — the way real users do. Tools that wait for the previous
+      response before sending the next one go easy on the system exactly when
+      it is struggling.
 
-      O cenário que está rodando ficou em %s, comentado.
+      The scenario that is running was left at %s, commented.
 
 `, strings.TrimSuffix(rate, "/s"), duration, scenarioPath)
 
@@ -85,22 +85,22 @@ você pode experimentar sem afetar nada.
 	}
 	document := result.Document
 
-	say(options, "[3/3] Pronto. O que os números dizem:\n\n")
+	say(options, "[3/3] Done. What the numbers say:\n\n")
 	sayMeasurement(options, document)
 	sayVerdict(options, document)
 	sayFixedDataCaveat(options, document, scenarioPath)
 
-	htmlPath := filepath.Join(options.Directory, "demo-relatorio.html")
+	htmlPath := filepath.Join(options.Directory, "demo-report.html")
 	if err := runner.WriteHTML(htmlPath, document); err != nil {
 		return err
 	}
 
-	say(options, `Relatório completo: %s
-Os dois arquivos ficaram aqui no diretório atual; apague quando quiser.
+	say(options, `Full report: %s
+Both files were left in the current directory; delete them whenever you want.
 
-Quer ver a ferramenta pegando um problema de verdade?
+Want to see the tool catching a real problem?
 
-    braunrate demo --com-falha
+    braunrate demo --with-failure
 
 `, htmlPath)
 	return nil
@@ -108,8 +108,8 @@ Quer ver a ferramenta pegando um problema de verdade?
 
 func runFreezing(runContext context.Context, options Options) error {
 	say(options, `
-Esta demonstração mede o mesmo serviço travado de duas formas, e mostra o que
-cada uma reporta.
+This demonstration measures the same frozen service in two ways, and shows what
+each one reports.
 
 `)
 
@@ -124,18 +124,18 @@ cada uma reporta.
 	}
 	defer stop()
 
-	say(options, `[1/4] Subindo um serviço de exemplo em %s, com uma diferença: ele
-      trava por %d segundos no meio da execução. É o que um GC longo, um lock
-      ou um failover fazem com um serviço de verdade.
+	say(options, `[1/4] Starting an example service at %s, with one difference: it
+      freezes for %d seconds halfway through the run. It is what a long GC, a
+      lock or a failover does to a real service.
 
 `, address(target), int(freezeDuration.Seconds()))
 
-	scenarioPath := filepath.Join(options.Directory, "demo-com-falha.yaml")
+	scenarioPath := filepath.Join(options.Directory, "demo-with-failure.yaml")
 	if err := write(scenarioPath, freezingScenario(target)); err != nil {
 		return err
 	}
 
-	say(options, "[2/4] Rodando o braunrate: %s por segundo durante %s.\n\n",
+	say(options, "[2/4] Running braunrate: %s per second for %s.\n\n",
 		strings.TrimSuffix(rate, "/s"), duration)
 
 	result, err := runner.Execute(runContext, scenarioPath, runner.DefaultOptions(options.Version))
@@ -144,9 +144,9 @@ cada uma reporta.
 	}
 	document := result.Document
 
-	say(options, `[3/4] Agora um laço fechado, contra um serviço idêntico que trava igual.
-      Laço fechado é como JMeter e Locust medem: a próxima requisição só sai
-      depois que a anterior responde.
+	say(options, `[3/4] Now a closed loop, against an identical service that freezes the same
+      way. A closed loop is how JMeter and Locust measure: the next request
+      only goes out after the previous one answers.
 
 `)
 
@@ -158,35 +158,35 @@ cada uma reporta.
 	closed := selfcheck.RunClosedLoop(runContext, closedTarget, closedLoopPath, runDuration)
 
 	open := document.Overall.Reported()
-	say(options, `[4/4] Mesma pausa, mesmo tipo de alvo, mesma requisição, duas medições:
+	say(options, `[4/4] Same freeze, same kind of target, same request, two measurements:
 
-      laço fechado (JMeter, Locust):  99%% em até %.1f ms sobre %d requisições
-      braunrate (modelo aberto):      99%% em até %.1f ms sobre %d requisições
+      closed loop (JMeter, Locust):  99%% within %.1f ms over %d requests
+      braunrate (open model):        99%% within %.1f ms over %d requests
 
-      %.1f ms escondidos pelo laço fechado.
+      %.1f ms the closed loop never counted.
 
-      O laço fechado não mente por bug. Quando o alvo trava, ele para de
-      enviar, e as requisições que deveriam ter partido nunca entram na conta —
-      inclusive as que um usuário de verdade teria mandado. O braunrate conta
-      do instante em que a requisição deveria ter partido, então a pausa
-      aparece.
+      The closed loop does not lie because of a bug. When the target freezes it
+      stops sending, and the requests that should have gone out never enter the
+      count — including the ones a real user would have sent. braunrate counts
+      from the instant the request should have gone out, so the freeze shows up.
 
 `, closed.P99, closed.Samples, open.P99, document.Overall.Count, open.P99-closed.P99)
 
 	sayMeasurement(options, document)
 	sayVerdict(options, document)
 	if result.Exit == runner.ExitSLO {
-		say(options, `      Se isto fosse o seu CI, o braunrate teria saído com código 1 e a esteira
-      reprovaria. Com a medição de laço fechado, o mesmo critério passaria.
+		say(options, `      If this were your CI, braunrate would have exited with code 1 and the
+      pipeline would fail. With a closed-loop measurement, the same criterion
+      would pass.
 
 `)
 	}
 
-	htmlPath := filepath.Join(options.Directory, "demo-com-falha-relatorio.html")
+	htmlPath := filepath.Join(options.Directory, "demo-with-failure-report.html")
 	if err := runner.WriteHTML(htmlPath, document); err != nil {
 		return err
 	}
-	say(options, "Relatório completo: %s\n\n", htmlPath)
+	say(options, "Full report: %s\n\n", htmlPath)
 	return nil
 }
 
@@ -194,13 +194,13 @@ func sayMeasurement(options Options, document metrics.Document) {
 	overall := document.Overall
 	latency := overall.Reported()
 	elapsed := (time.Duration(document.Run.DurationMs) * time.Millisecond).Round(100 * time.Millisecond)
-	say(options, `  %d requisições em %s, %.0f por segundo, %.2f%% de erro
-  Metade das respostas em até %.1f ms; 95%% em até %.1f ms; a pior levou %.0f ms
+	say(options, `  %d requests in %s, %.0f per second, %.2f%% of them errors
+  Half the responses within %.1f ms; 95%% within %.1f ms; the worst took %.0f ms
 
-      Repare que não existe média nessa linha. Média esconde: se 95 respostas
-      levam 5 ms e 5 levam 2 segundos, a média dá 105 ms e ninguém percebe as
-      cinco lentas. "95%% em até %.1f ms" quer dizer que 5%% das pessoas
-      esperaram mais que isso.
+      Notice there is no average on that line. An average hides things: if 95
+      responses take 5 ms and 5 take 2 seconds, the average reads 105 ms and
+      nobody notices the five slow ones. "95%% within %.1f ms" means 5%% of the
+      people waited longer than that.
 
 `, overall.Count, elapsed, overall.EffectiveRate, overall.ErrorRate*100,
 		latency.P50, latency.P95, latency.Max, latency.P95)
@@ -213,9 +213,9 @@ func sayVerdict(options Options, document metrics.Document) {
 			say(options, "      %s\n", finding.Message)
 		}
 		say(options, `
-      Resultado inválido não e o mesmo que resultado ruim: quer dizer que a
-      execução não mediu o que se propôs, e nenhum número acima vale como
-      resposta.
+      An invalid result is not the same as a bad result: it means the run did
+      not measure what it set out to measure, and no number above works as an
+      answer.
 
 `)
 		return
@@ -223,14 +223,15 @@ func sayVerdict(options Options, document metrics.Document) {
 	for _, evaluation := range document.SLO.Evaluations {
 		mark := "ok  "
 		if !evaluation.Passed {
-			mark = "FALHA"
+			mark = "FAIL"
 		}
 		say(options, "  %-5s %s\n", mark, evaluation.Sentence)
 	}
 	if len(document.SLO.Evaluations) > 0 {
 		say(options, `
-      Isso é um critério de aceite: um limite que você declara no arquivo. Se
-      estourar, o braunrate sai com código 1 — dá para usar direto no seu CI.
+      That is an acceptance criterion: a limit you declare in the file. If the
+      run goes over it, braunrate exits with code 1 — you can wire it straight
+      into your CI.
 
 `)
 	}
@@ -241,13 +242,13 @@ func sayVerdict(options Options, document metrics.Document) {
 // cache, and the demo is exactly where that is learned.
 func sayFixedDataCaveat(options Options, document metrics.Document, scenarioPath string) {
 	for _, warning := range document.Warnings {
-		if warning.Kind != "passo_sem_variacao" && warning.Kind != "valor_fixo" && warning.Kind != "variedade_ausente" {
+		if warning.Kind != "stepWithoutVariation" && warning.Kind != "fixedValue" && warning.Kind != "missingVariety" {
 			continue
 		}
-		say(options, `  Uma ressalva que o próprio relatório levanta:
+		say(options, `  A caveat the report itself raises:
       %s
-      Requisição sempre igual mede o cache do alvo, não o alvo. Em %s, troque
-      /pedidos/1 por /pedidos/${id} e declare de onde ${id} vem.
+      An always-identical request measures the target cache, not the target. In
+      %s, swap /orders/1 for /orders/${id} and declare where ${id} comes from.
 
 `, warning.Message, scenarioPath)
 		return
@@ -262,9 +263,9 @@ func startTarget(options Options, targetOptions testsupport.Options) (string, fu
 	server := testsupport.New(targetOptions)
 	if err := server.Start(preferredPort); err != nil {
 		if err := server.Start(anyFreePort); err != nil {
-			return "", nil, fmt.Errorf("não consegui subir o alvo de exemplo: %w", err)
+			return "", nil, fmt.Errorf("I could not start the example target: %w", err)
 		}
-		say(options, "      (%s está ocupado, então o alvo subiu em %s)\n\n",
+		say(options, "      (%s is busy, so the target came up at %s)\n\n",
 			preferredPort, address(server.Address()))
 	}
 	return server.Address(), func() { _ = server.Close() }, nil
@@ -276,7 +277,7 @@ func startTarget(options Options, targetOptions testsupport.Options) (string, fu
 func startTwinTarget(targetOptions testsupport.Options) (string, func(), error) {
 	server := testsupport.New(targetOptions)
 	if err := server.Start(anyFreePort); err != nil {
-		return "", nil, fmt.Errorf("não consegui subir o segundo alvo de exemplo: %w", err)
+		return "", nil, fmt.Errorf("I could not start the second example target: %w", err)
 	}
 	return server.Address(), func() { _ = server.Close() }, nil
 }
@@ -285,7 +286,7 @@ func address(target string) string { return strings.TrimPrefix(target, "http://"
 
 func write(path, content string) error {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return fmt.Errorf("não consegui gravar %s: %w", path, err)
+		return fmt.Errorf("I could not write %s: %w", path, err)
 	}
 	return nil
 }

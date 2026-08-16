@@ -302,7 +302,7 @@ func (executor *Executor) scenarioWarnings() []metrics.Warning {
 	var warnings []metrics.Warning
 	for _, warning := range scenario.FixedStepWarnings(executor.scenario) {
 		warnings = append(warnings, metrics.Warning{
-			Kind:     "passo_sem_variacao",
+			Kind:     "stepWithoutVariation",
 			Severity: metrics.SeverityLow,
 			Message:  firstLine(warning),
 			Evidence: "no ${} in the step, so it does not enter the observed variety",

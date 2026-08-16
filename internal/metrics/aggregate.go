@@ -21,8 +21,8 @@ const (
 	// The step that opens the iteration counts from the scheduled instant, so
 	// it is protected against coordinated omission. The following ones count
 	// from when the previous step ended: they have no scheduled instant.
-	CorrectedLatency LatencyKind = "corrigida"
-	ServiceLatency   LatencyKind = "servico"
+	CorrectedLatency LatencyKind = "corrected"
+	ServiceLatency   LatencyKind = "service"
 )
 
 type Sample struct {

@@ -154,7 +154,7 @@ func TestEveryDeclaredValueReachesTarget(t *testing.T) {
 		t.Errorf("o relatório declarou %d valores distintos de assinantes.regiao, esperava 3", variety.Distinct)
 	}
 	for _, warning := range document.Warnings {
-		if warning.Kind == "variedade_ausente" {
+		if warning.Kind == "missingVariety" {
 			t.Errorf("execução com variedade não pode gerar aviso de variedade ausente: %s", warning.Evidence)
 		}
 	}

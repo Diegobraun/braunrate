@@ -40,7 +40,7 @@ func TestPreparationIsPaidBeforeTheClockStarts(t *testing.T) {
 		t.Fatalf("a preparacao invalidou a medição: %+v", document.Sanity.Findings)
 	}
 	for _, warning := range document.Warnings {
-		if warning.Kind == "gerador_saturado" {
+		if warning.Kind == "generatorSaturated" {
 			t.Fatalf("o custo de abrir virou saturacao do gerador: %s | %s", warning.Message, warning.Evidence)
 		}
 	}

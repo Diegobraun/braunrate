@@ -367,7 +367,7 @@ func evaluateWarnings(collector *Collector, document Document) []Warning {
 
 	if scheduling.DroppedByInflightLimit > 0 {
 		warnings = append(warnings, Warning{
-			Kind:     "gerador_saturado",
+			Kind:     "generatorSaturated",
 			Severity: SeverityHigh,
 			Message:  "the generator hit the in-flight limit and stopped sending scheduled requests; the result does not hold",
 			Evidence: fmt.Sprintf("%d requests dropped, peak of %d in flight", scheduling.DroppedByInflightLimit, scheduling.PeakInflight),
@@ -378,14 +378,14 @@ func evaluateWarnings(collector *Collector, document Document) []Warning {
 		proportion := lateProportion(scheduling)
 		if proportion >= lateDispatchLimit {
 			warnings = append(warnings, Warning{
-				Kind:     "gerador_saturado",
+				Kind:     "generatorSaturated",
 				Severity: SeverityHigh,
 				Message:  "the generator did not sustain the target rate: dispatches went out after their scheduled instant; the result does not hold",
 				Evidence: fmt.Sprintf("%.2f%% dos despachos atrasaram mais de %.1f ms (desvio p99 de %.1f ms)", proportion*100, scheduling.LateThresholdMs, scheduling.Skew.P99),
 			})
 		} else if scheduling.LateDispatches > 0 {
 			warnings = append(warnings, Warning{
-				Kind:     "gerador_com_atraso_pontual",
+				Kind:     "generatorOccasionallyLate",
 				Severity: SeverityLow,
 				Message:  "there was occasional dispatch delay, below 1% of the requests",
 				Evidence: fmt.Sprintf("%d despachos atrasados de %d (desvio p99 de %.1f ms)", scheduling.LateDispatches, scheduling.Sent, scheduling.Skew.P99),
@@ -395,7 +395,7 @@ func evaluateWarnings(collector *Collector, document Document) []Warning {
 
 	if scheduling.LostSamples > 0 {
 		warnings = append(warnings, Warning{
-			Kind:     "amostras_perdidas",
+			Kind:     "lostSamples",
 			Severity: SeverityHigh,
 			Message:  "the metric collector did not keep up with the volume and lost samples; the distribution is incomplete",
 			Evidence: fmt.Sprintf("%d amostras perdidas", scheduling.LostSamples),
@@ -439,7 +439,7 @@ func detectTargetDegradation(document Document) (Warning, bool) {
 			message = "the target response time grew over the run; in a closed loop that also drags the load down, so the drop in rate is part of the same event, not a second finding"
 		}
 		return Warning{
-			Kind:     "alvo_degradado",
+			Kind:     "targetDegraded",
 			Severity: SeverityMedium,
 			Message:  message,
 			Evidence: fmt.Sprintf("p99 por segundo passou de %.1f ms para %.1f ms", first, worst),

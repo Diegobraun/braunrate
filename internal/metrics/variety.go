@@ -45,8 +45,8 @@ type Range struct {
 }
 
 const (
-	NumericRange = "numerica"
-	PrefixRange  = "prefixo"
+	NumericRange = "numeric"
+	PrefixRange  = "prefix"
 )
 
 type varietyCounter struct {
@@ -260,7 +260,7 @@ func VarietyWarnings(varieties []Variety) []Warning {
 
 		if variety.Available == 0 {
 			warnings = append(warnings, Warning{
-				Kind:     "valor_fixo",
+				Kind:     "fixedValue",
 				Severity: SeverityMedium,
 				Message: fmt.Sprintf("the whole load used the same value of %s; if the target caches by that value, the number comes out optimistic",
 					variety.Name),
@@ -290,7 +290,7 @@ func VarietyWarnings(varieties []Variety) []Warning {
 				variety.Name, thousands(variety.Uses))
 		}
 		warnings = append(warnings, Warning{
-			Kind:     "variedade_ausente",
+			Kind:     "missingVariety",
 			Severity: severity,
 			Message:  message,
 			Evidence: evidence,
