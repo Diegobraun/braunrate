@@ -960,3 +960,114 @@ A flag e ignorada e o arquivo padrao e criado. Nao sobrescreve (com `cenario.yam
 ja existente, recusa e sugere outro nome), entao nao ha perda — mas e a unica forma
 de a ferramenta escrever no disco de alguem que estava pedindo documentacao. Mesma
 familia do 1.4.b: argumento a mais ignorado em silencio.
+
+---
+
+### 2.12 — Gerador saturado: taxa que a maquina nao sustenta
+**A propriedade mais importante da ferramenta, e ela funciona.**
+
+60.000/s numa maquina de 10 nucleos, contra um alvo que nao responde:
+
+```
+Resultado invalido: a execucao nao mediu o que se propos a medir.
+  - nenhuma jornada chegou ao fim ...  74.890 jornadas iniciadas, 0 completas
+  - o passo "consultar" falhou em 100% das requisicoes ...  74.659 requisicoes, 74.659 erros (timeout: 74.243, rede: 416)
+  - o gerador atingiu o limite de requisicoes em voo e deixou de enviar requisicoes agendadas; o resultado nao vale
+    405110 requisicoes descartadas, pico de 20000 em voo
+  - o gerador nao sustentou a taxa alvo: despachos sairam depois do instante agendado; o resultado nao vale
+    80.43% dos despachos atrasaram mais de 10.0 ms (desvio p99 de 11567.1 ms)
+exit=3
+```
+
+Quatro achados independentes, e os dois ultimos acusam **o proprio gerador**. Uma
+ferramenta de carga que confunde a propria saturacao com lentidao do alvo produz o
+numero mais caro que existe — um bug de performance inventado. Esta nao confunde.
+
+---
+
+### 2.11 — Execucao de trinta minutos: RSS e descritores
+**Descritores estaveis. Memoria cresce com o tempo, e o crescimento tem causa medida.**
+
+Cenario de dois passos com autenticacao, 400 requisicoes por segundo contra o alvo
+embutido. Amostragem de RSS, descritores e threads a cada 60 segundos.
+
+```
+  720.000 requisicoes em 30m0s, 400 por segundo, 0% de erro
+  Metade das respostas em ate 2.5 ms; 95% em ate 3.0 ms; 99% em ate 3.5 ms; a pior levou 121 ms
+  Todas as 360000 jornadas chegaram ao fim
+```
+
+| instante | RSS | descritores | threads |
+|---|---|---|---|
+| 0 min | 29,7 MB | 13 | 15 |
+| 8 min | 97 MB | 15 | 15 |
+| 15 min | 170 MB | 14 | 15 |
+| 22 min | 245 MB | 35 | 17 |
+| 29 min | **313 MB** | 26 | 17 |
+
+**Descritores e threads: sem vazamento.** 13 a 35 descritores e 15 a 17 threads em
+trinta minutos e 720 mil requisicoes. Nada acumula.
+
+**RSS: 10,5 vezes em trinta minutos**, com serrilha de coleta e tendencia monotona.
+
+#### A causa, medida e nao suposta
+
+A serie temporal cria um balde por segundo e cada balde guarda um histograma HDR
+proprio, retido ate o fim da execucao (`internal/metrics/collector.go`, `bucketDe`).
+Medi o tamanho de um histograma na configuracao que o codigo usa
+(`hdrhistogram.New(1, 600_000_000, 3)`):
+
+```
+100 histogramas: 16812 KB, ou 168 KB cada
+```
+
+168 KB por segundo de execucao = **10,1 MB por minuto, independente da taxa**.
+
+A previsao bate nos dois pontos, e o controle e o que separa "cresce com o tempo" de
+"cresce com o numero de requisicoes":
+
+| execucao | duracao | taxa | baldes | previsto | medido |
+|---|---|---|---|---|---|
+| longa | 29 min | 400/s | 1.740 | 292 MB | 313 MB |
+| controle | 5 min | **20/s** | 300 | 50 MB | 47 MB (pico) |
+
+Vinte vezes menos requisicoes, a mesma memoria por minuto. Nao e a carga: e o
+relogio.
+
+---
+
+#### Achado 2.11.a — a memoria cresce 10 MB por minuto de execucao, qualquer que seja a taxa
+**Gravidade**: ALTA para adocao — teste de resistencia e caso de uso central e e o unico que nao cabe
+
+Uma execucao de 4 horas — soak test comum — pediria cerca de **2,4 GB** so de
+histogramas de serie temporal. Em runner de CI com limite de memoria, morre.
+
+E o numero que sustenta a decisao de linguagem do [ADR 0001](adr/0001-linguagem-e-runtime.md)
+e **30 MB de RSS sob carga** — que e o que esta ferramenta consome no primeiro
+minuto, e nao no trigesimo. O numero nao esta errado; ele so nao e sobre execucao
+longa, e nada no repositorio diz isso.
+
+**Saidas possiveis, com o custo de cada uma medido:**
+
+```
+atual (1us..600s, 3 digitos)     168 KB por balde  ->  295,6 MB em 30 minutos
+1us..600s, 2 digitos              24 KB por balde  ->   42,4 MB
+1ms..600s, 2 digitos              16 KB por balde  ->   28,3 MB
+1ms..60s,  2 digitos              12 KB por balde  ->   21,4 MB
+```
+
+Baixar a precisao do balde de 3 para 2 digitos custa **um decimo da memoria** e
+afeta apenas o p50 e o p99 por segundo da serie temporal — os percentis do relatorio
+vem de outro histograma, o do passo, que nao muda. A alternativa melhor e fechar o
+balde quando o segundo dele passa: calcular os dois percentis e soltar o histograma.
+
+**Nao corrigido**: escolher entre as duas muda numero ja publicado (a serie temporal
+do HTML) e e decisao de desenho, igual a separacao de histograma do 2.4.a. Vai para
+a lista com a medicao pronta.
+
+**Ressalva de metodologia**: rodei outros testes desta bateria em paralelo durante os
+trinta minutos, e o relatorio da execucao longa acusou degradacao do alvo ao longo do
+tempo (`p99 por segundo passou de 4.2 ms para 104.5 ms`). Essa degradacao e
+provavelmente contaminacao minha, nao do alvo embutido. A medicao de RSS nao depende
+disso — o controle a 20/s rodou com a maquina ociosa e confirmou a mesma curva por
+minuto.
