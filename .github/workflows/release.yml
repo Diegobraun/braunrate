@@ -105,5 +105,5 @@ jobs:
           "$binario" validate examples/http-basico.yaml
           "$binario" execute examples/ci.yaml -quiet -result resultado.json
           # A versao viaja dentro do documento de resultado, e e por ela que a
-          # comparacao entre execucoes recusa binarios de versoes diferentes.
+          # comparacao entre duas execucoes decide se tem veredito.
           grep -q "\"versao\": \"${GITHUB_REF_NAME#v}\"" resultado.json
