@@ -103,8 +103,15 @@ func SummarizeError(err error) string {
 // tickets and screenshots.
 func MaskSecret(name, value string) string {
 	lowerName := strings.ToLower(name)
+	// Um cookie de sessao e credencial como o Bearer e, desde que o gravador
+	// passou a correlacionar sessao, e o que aparece no depurar de qualquer
+	// jornada web. O nome do par fica: e ele que diz o que esta sendo mandado.
+	if lowerName == "cookie" || lowerName == "set-cookie" {
+		return maskCookiePairs(value)
+	}
 	if lowerName != "authorization" && !strings.Contains(lowerName, "token") &&
-		!strings.Contains(lowerName, "senha") && !strings.Contains(lowerName, "secret") {
+		!strings.Contains(lowerName, "senha") && !strings.Contains(lowerName, "secret") &&
+		!strings.Contains(lowerName, "api-key") && !strings.Contains(lowerName, "apikey") {
 		return value
 	}
 	prefix, rest, found := strings.Cut(value, " ")
@@ -115,6 +122,23 @@ func MaskSecret(name, value string) string {
 		return strings.TrimSpace(prefix + " ***")
 	}
 	return strings.TrimSpace(prefix + " " + rest[:6] + "… (" + fmt.Sprint(len(rest)) + " caracteres)")
+}
+
+func maskCookiePairs(value string) string {
+	pairs := strings.Split(value, ";")
+	for index, pair := range pairs {
+		name, content, found := strings.Cut(strings.TrimSpace(pair), "=")
+		if !found || content == "" {
+			pairs[index] = strings.TrimSpace(pair)
+			continue
+		}
+		if len(content) <= 6 {
+			pairs[index] = name + "=***"
+			continue
+		}
+		pairs[index] = name + "=" + content[:6] + "… (" + fmt.Sprint(len(content)) + " caracteres)"
+	}
+	return strings.Join(pairs, "; ")
 }
 
 // The raw x509 error is long, ends in the part that matters, and got cut by the
