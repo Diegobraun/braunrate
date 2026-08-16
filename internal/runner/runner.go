@@ -285,6 +285,7 @@ func Describe(spec scenario.Spec, plan engine.Plan) []string {
 	if len(spec.MissingEnvironment) > 0 {
 		lines = append(lines, missingEnvironmentWarning(spec))
 	}
+	lines = append(lines, scenario.FixedStepWarnings(spec)...)
 	return append(lines, scenario.GateWarnings(spec)...)
 }
 

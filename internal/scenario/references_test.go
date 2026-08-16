@@ -119,3 +119,32 @@ func TestSyntheticSourceChecksTheFieldAndTheCSVDoesNot(t *testing.T) {
 		t.Fatalf("coluna de CSV foi recusada sem o arquivo ter sido lido: %v", err)
 	}
 }
+
+// A7 of the audit: a literal path never goes through interpolation, so it never
+// enters the observed-variety check. The run hits the same URL thousands of
+// times and nothing in the report says so.
+func TestStepWithNothingVaryingIsWarnedAbout(t *testing.T) {
+	spec, err := parseWithSteps(t, "", "http: GET /pedidos/1\n    nome: consultar pedido")
+	if err != nil {
+		t.Fatalf("cenario recusado: %v", err)
+	}
+
+	warnings := strings.Join(scenario.FixedStepWarnings(spec), "\n")
+	if !strings.Contains(warnings, "consultar pedido") || !strings.Contains(warnings, "identica") {
+		t.Fatalf("o passo fixo nao foi avisado:\n%s", warnings)
+	}
+	if !strings.Contains(warnings, "${pedidos.id}") {
+		t.Fatalf("o aviso nao mostra como variar:\n%s", warnings)
+	}
+}
+
+func TestStepThatVariesIsNotWarnedAbout(t *testing.T) {
+	spec, err := parseWithSteps(t, "dados:\n  pedidos: { arquivo: pedidos.csv }\n",
+		"http: GET /pedidos/${pedidos.id}\n    nome: consultar pedido")
+	if err != nil {
+		t.Fatalf("cenario recusado: %v", err)
+	}
+	if warnings := scenario.FixedStepWarnings(spec); len(warnings) > 0 {
+		t.Fatalf("passo que varia foi avisado como fixo: %v", warnings)
+	}
+}

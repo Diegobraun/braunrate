@@ -14,6 +14,9 @@ carga:
     - patamar: { taxa: 200/s, durante: 3s }
 
 cenario:
+  # Caminho fixo de proposito: fumaca so pergunta se o servico responde. A
+  # ferramenta avisa que o numero fica otimista, e aqui isso esta certo — para
+  # medir tempo de resposta de verdade, o caminho precisa variar.
   - http: GET /pedidos/1
     nome: consultar pedido
     verificar: { status: 200 }

@@ -19,7 +19,7 @@ Classificacao: **bloqueia** (a pessoa nao termina sozinha), **atrasa** (termina,
 | 4 | Alvo fora do ar vira "erro de configuracao do cenario" — diagnostico errado | B | bloqueia |
 | 5 | ~~Erro de chave desconhecida lista as chaves validas mas nao mostra a forma certa~~ — **resolvido** | A | atrasa |
 | 6 | ~~Variavel de ambiente nao definida vira texto vazio, sem aviso~~ — **resolvido** | A | atrasa |
-| 7 | Caminho fixo escapa da verificacao de variedade | A | atrasa |
+| 7 | ~~Caminho fixo escapa da verificacao de variedade~~ — **resolvido** | A | atrasa |
 | 8 | ~~Passo que nunca executou some do relatorio~~ — **resolvido** | B | atrasa |
 | 9 | ~~Linha de erro nao diz o status nem o passo~~ — **resolvido** | B | atrasa |
 | 10 | ~~Erro de sintaxe YAML sai cru, em ingles, sem arquivo nem coluna~~ — **resolvido** | C | atrasa |
@@ -111,9 +111,19 @@ o cenario usa SENHA_DA_API, e essa variavel nao esta no ambiente: o campo sairia
     ou declare uma reserva no proprio cenario:  variaveis: { senha_da_api: "${SENHA_DA_API:-valor}" }
 ```
 
-### A7 — Caminho fixo escapa da verificacao de variedade (atrasa)
+### A7 — Caminho fixo escapa da verificacao de variedade (atrasa) — RESOLVIDO
 
 O cenario roda `GET /pedidos/1` 3.000 vezes. O bloco de ambiente informa a variedade de `token`, mas **nada** sobre o caminho: como `/pedidos/1` e literal, ele nunca passa pela interpolacao e por isso nao entra na variedade observada. O alvo responde de cache e o relatorio nao tem uma linha sobre isso — exatamente o ponto cego que o [ADR 0007](adr/0007-variedade-observada.md) fecha para dados que variam.
+
+**Resolvido.** Passo sem nenhum `${}` e avisado na validacao e no relatorio, com a forma de corrigir:
+
+```
+Atencao: o passo "consultar pedido" nao tem nenhum valor que varia — toda requisicao vai ser identica.
+    se o alvo guardar resposta por essa chave, o numero sai otimista.
+    para variar:  dados: { pedidos: { arquivo: pedidos.csv } }  e entao  GET /pedidos/${pedidos.id}
+```
+
+O `examples/ci.yaml` continua com caminho fixo de proposito — fumaca so pergunta se o servico responde — e ganhou comentario dizendo isso.
 
 ### A8 — Variavel que ninguem declarou vira texto vazio, e nada e dito (atrasa) — RESOLVIDO
 

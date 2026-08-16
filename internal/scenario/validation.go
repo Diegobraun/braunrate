@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Diegobraun/braunrate/internal/protocol"
 	"gopkg.in/yaml.v3"
 )
 
@@ -135,4 +136,44 @@ func readRequirements(no *yaml.Node) ([]string, error) {
 		requirements = append(requirements, item.Value)
 	}
 	return requirements, nil
+}
+
+// A7 of the audit: a literal path never goes through interpolation, so it never
+// enters the observed-variety check. The run hits the same URL thousands of
+// times, the target answers from cache, and nothing in the report says so —
+// exactly the blind spot ADR 0007 closes for data that does vary.
+func FixedStepWarnings(spec Spec) []string {
+	var warnings []string
+	for _, step := range spec.Steps {
+		if step.Config == nil || varies(step.Config) {
+			continue
+		}
+		warnings = append(warnings, fmt.Sprintf(
+			"Atencao: o passo %q nao tem nenhum valor que varia — toda requisicao vai ser identica.\n"+
+				"    se o alvo guardar resposta por essa chave, o numero sai otimista.\n"+
+				"    para variar:  dados: { pedidos: { arquivo: pedidos.csv } }  e entao  %s",
+			step.Name, exampleWithVariable(step)))
+	}
+	return warnings
+}
+
+func varies(config protocol.Config) bool {
+	describable, describes := config.(interface{ Describe() []string })
+	if !describes {
+		return strings.Contains(config.AggregationKey(), "${")
+	}
+	for _, line := range describable.Describe() {
+		if strings.Contains(line, "${") {
+			return true
+		}
+	}
+	return false
+}
+
+func exampleWithVariable(step Step) string {
+	key := step.AggregationKey()
+	if at := strings.LastIndex(key, "/"); at >= 0 && at+1 < len(key) {
+		return key[:at+1] + "${pedidos.id}"
+	}
+	return key + " com ${pedidos.id}"
 }

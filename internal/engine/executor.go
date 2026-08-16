@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -265,8 +266,21 @@ func (executor *Executor) declaredSteps() []string {
 // Polling measures in steps of the poll interval: the number is always greater
 // than or equal to the real one, and the reader has to know that before
 // comparing it against an SLO.
+func firstLine(text string) string {
+	line, _, _ := strings.Cut(text, "\n")
+	return strings.TrimPrefix(line, "Atencao: ")
+}
+
 func (executor *Executor) scenarioWarnings() []metrics.Warning {
 	var warnings []metrics.Warning
+	for _, warning := range scenario.FixedStepWarnings(executor.scenario) {
+		warnings = append(warnings, metrics.Warning{
+			Kind:     "passo_sem_variacao",
+			Severity: metrics.SeverityLow,
+			Message:  firstLine(warning),
+			Evidence: "nenhum ${} no passo, entao ele nao entra na variedade observada",
+		})
+	}
 	for _, step := range executor.scenario.Steps {
 		polling, polls := step.Config.(interface{ PollInterval() time.Duration })
 		if !polls {
