@@ -144,7 +144,7 @@ func (implementation *Protocol) client() *http.Client {
 	implementation.mu.Lock()
 	defer implementation.mu.Unlock()
 	if implementation.http == nil {
-		implementation.http = transport.NewClient(protocol.Options{})
+		implementation.http = transport.NewClient(protocol.Options{TLS: implementation.tls})
 	}
 	return implementation.http
 }

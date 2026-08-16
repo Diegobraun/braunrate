@@ -3,6 +3,7 @@ package graphql
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -92,11 +93,18 @@ func summarizeQuery(query string) string {
 }
 
 type Protocol struct {
-	client *http.Client
+	client  *http.Client
+	options protocol.Options
+}
+
+func (implementation *Protocol) UseTLS(settings *tls.Config) {
+	implementation.options.TLS = settings
+	implementation.client.CloseIdleConnections()
+	implementation.client = transport.NewClient(implementation.options)
 }
 
 func New(options protocol.Options) *Protocol {
-	return &Protocol{client: transport.NewClient(options)}
+	return &Protocol{client: transport.NewClient(options), options: options}
 }
 
 func (implementation *Protocol) Name() string { return "graphql" }

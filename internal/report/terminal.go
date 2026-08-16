@@ -109,7 +109,15 @@ func Summary(out io.Writer, document metrics.Document, verdict slo.Verdict) erro
 		write("Erros")
 		write("  %-26s %-34s %10s   %s", "passo", "o que aconteceu", "quantidade", "exemplo")
 		for _, line := range errors {
-			write("  %-26s %-34s %10s   %s", trim(line.step, 26), trim(line.class, 34), thousands(line.count), line.example)
+			write("  %-26s %-34s %10s   %s", trim(line.step, 26), trim(line.class, 34), thousands(line.count), trim(line.example, exampleWidth))
+		}
+		// The column that fits the table was cutting the messages exactly where
+		// the cause is: what survived was the URL, which the reader already
+		// knew, and what was lost was the part that says what to do.
+		for _, line := range errors {
+			if len(line.example) > exampleWidth {
+				write("    %s", line.example)
+			}
 		}
 		write("")
 	}
@@ -251,9 +259,7 @@ func mostFrequent(details map[string]int64, class string) string {
 	if best == "" {
 		return class
 	}
-	// A detail can carry more than one line; here there is room for the first
-	// sentence only, and the whole text is in the JSON.
-	return trim(strings.Join(strings.Fields(best), " "), 44)
+	return strings.Join(strings.Fields(best), " ")
 }
 
 func milliseconds(value float64) string {
@@ -292,6 +298,9 @@ func thousands(value int64) string {
 	parts = append([]string{text}, parts...)
 	return strings.Join(parts, ".")
 }
+
+// Wide enough for a short cause, narrow enough to keep the table readable.
+const exampleWidth = 44
 
 func trim(text string, size int) string {
 	if len(text) <= size {

@@ -22,10 +22,14 @@ type Spec struct {
 	Vars               map[string]string
 	Auth               *Auth
 	Messaging          *messaging.Settings
-	Data               []DataSource
-	Load               LoadPlan
-	Steps              []Step
-	SLO                []SLORule
+	// TLS of the HTTP target. Kafka and AMQP declare theirs inside 'mensageria';
+	// HTTP had nowhere to say it, and homologation behind a private CA could not
+	// be tested at all.
+	TLS   *messaging.TLS
+	Data  []DataSource
+	Load  LoadPlan
+	Steps []Step
+	SLO   []SLORule
 }
 
 type Step struct {

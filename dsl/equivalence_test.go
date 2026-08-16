@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Diegobraun/braunrate/dsl"
+	"github.com/Diegobraun/braunrate/internal/messaging"
 	"github.com/Diegobraun/braunrate/internal/protocol"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/amqp"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/graphql"
@@ -385,6 +386,35 @@ cenario:
 		},
 	},
 	{
+		name: "alvo https com CA propria",
+		yaml: `
+nome: Homologacao atras de CA propria
+alvo: https://api.homolog.interno
+
+tls: { ca: /etc/ssl/ca-interna.pem, certificado: /etc/ssl/cliente.pem, chave: /etc/ssl/cliente.key }
+
+carga:
+  perfis:
+    - patamar: { taxa: 10/s, durante: 5s }
+
+cenario:
+  - http: GET /pedidos/1
+    nome: consultar pedido
+`,
+		dsl: func() (scenario.Spec, error) {
+			return dsl.New("Homologacao atras de CA propria").
+				Target("https://api.homolog.interno").
+				TargetTLS(messaging.TLS{
+					CA:          "/etc/ssl/ca-interna.pem",
+					Certificate: "/etc/ssl/cliente.pem",
+					Key:         "/etc/ssl/cliente.key",
+				}).
+				Plateau(dsl.PerSecond(10), 5*time.Second).
+				Step(dsl.GET("/pedidos/1"), dsl.Name("consultar pedido")).
+				Build()
+		},
+	},
+	{
 		name: "mensageria autenticada",
 		yaml: `
 nome: Cobranca autenticada
@@ -683,6 +713,7 @@ func diferencas(expected, obtained scenario.Spec) []string {
 	compare("variaveis", expected.Vars, obtained.Vars)
 	compare("autenticacao", expected.Auth, obtained.Auth)
 	compare("mensageria", expected.Messaging, obtained.Messaging)
+	compare("tls", expected.TLS, obtained.TLS)
 	compare("dados", expected.Data, obtained.Data)
 	compare("carga", expected.Load, obtained.Load)
 	compare("slo", expected.SLO, obtained.SLO)

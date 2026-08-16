@@ -55,6 +55,10 @@
     "autenticacao": {
       "$ref": "#/$defs/autenticacao"
     },
+    "tls": {
+      "$ref": "#/$defs/tls",
+      "description": "TLS para alcancar o alvo HTTPS: CA propria quando o certificado nao e assinado por uma CA que a maquina ja confia, e certificado de cliente quando o alvo exige mTLS."
+    },
     "mensageria": {
       "type": "object",
       "description": "Como alcancar Kafka e RabbitMQ quando o broker exige credencial. O padrao continua sendo broker local sem autenticacao.",
@@ -1120,32 +1124,35 @@
           }
         },
         "tls": {
-          "oneOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "ca": {
-                  "type": "string",
-                  "description": "CA propria, em PEM."
-                },
-                "certificado": {
-                  "type": "string",
-                  "description": "Certificado de cliente, para mTLS."
-                },
-                "chave": {
-                  "type": "string",
-                  "description": "Chave do certificado de cliente."
-                }
-              }
-            }
-          ],
-          "description": "true para TLS com as CAs do sistema, ou um mapa com CA propria e certificado de cliente."
+          "$ref": "#/$defs/tls"
         }
       }
+    },
+    "tls": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ca": {
+              "type": "string",
+              "description": "CA propria, em PEM."
+            },
+            "certificado": {
+              "type": "string",
+              "description": "Certificado de cliente, para mTLS."
+            },
+            "chave": {
+              "type": "string",
+              "description": "Chave do certificado de cliente."
+            }
+          }
+        }
+      ],
+      "description": "true para TLS com as CAs do sistema, ou um mapa com CA propria e certificado de cliente."
     }
   }
 }

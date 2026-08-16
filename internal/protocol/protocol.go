@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"github.com/Diegobraun/braunrate/internal/messaging"
 	"sort"
@@ -187,6 +188,16 @@ type Options struct {
 	MaxRedirects    int
 	KeepCookies     bool
 	ConnsPerHost    int
+	TLS             *tls.Config
+}
+
+// WithTLS is implemented by protocols that open TLS connections of their own.
+// The scenario declares one set of settings per run, so the client is rebuilt
+// once, before the load, and the connection pool stays single — two pools for
+// the same load would produce two numbers with nothing explaining the
+// difference.
+type WithTLS interface {
+	UseTLS(settings *tls.Config)
 }
 
 func DefaultOptions() Options {

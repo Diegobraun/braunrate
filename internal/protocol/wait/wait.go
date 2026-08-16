@@ -2,6 +2,7 @@ package wait
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	nethttp "net/http"
@@ -88,6 +89,19 @@ type Protocol struct {
 	mu            sync.Mutex
 	subscriptions map[string]*subscription
 	http          *nethttp.Client
+	tls           *tls.Config
+}
+
+// Polling over HTTPS reaches the same target the HTTP steps reach, so it uses
+// the same settings the scenario declared.
+func (implementation *Protocol) UseTLS(settings *tls.Config) {
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	implementation.tls = settings
+	if implementation.http != nil {
+		implementation.http.CloseIdleConnections()
+		implementation.http = nil
+	}
 }
 
 func New(protocol.Options) *Protocol {

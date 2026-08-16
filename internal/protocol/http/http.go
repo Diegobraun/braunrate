@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -92,6 +93,12 @@ type Protocol struct {
 
 func New(options protocol.Options) *Protocol {
 	return &Protocol{client: transport.NewClient(options), options: options}
+}
+
+func (implementation *Protocol) UseTLS(settings *tls.Config) {
+	implementation.options.TLS = settings
+	implementation.client.CloseIdleConnections()
+	implementation.client = transport.NewClient(implementation.options)
 }
 
 func (implementation *Protocol) Name() string { return "http" }

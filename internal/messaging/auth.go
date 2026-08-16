@@ -111,28 +111,37 @@ func (broker *Broker) Describe() string {
 }
 
 func (broker *Broker) TLSConfig() (*tls.Config, error) {
-	if broker == nil || !broker.TLS.Enabled {
+	if broker == nil {
+		return nil, nil
+	}
+	return broker.TLS.Config()
+}
+
+// Config is the same for a broker and for the HTTP target: one way to declare a
+// private CA and a client certificate, one way to read them.
+func (settings TLS) Config() (*tls.Config, error) {
+	if !settings.Enabled {
 		return nil, nil
 	}
 	config := &tls.Config{MinVersion: tls.VersionTLS12}
 
-	if broker.TLS.CA != "" {
-		pem, err := os.ReadFile(broker.TLS.CA)
+	if settings.CA != "" {
+		pem, err := os.ReadFile(settings.CA)
 		if err != nil {
-			return nil, fmt.Errorf("nao consegui ler a CA em %s: %w", broker.TLS.CA, err)
+			return nil, fmt.Errorf("nao consegui ler a CA em %s: %w", settings.CA, err)
 		}
 		pool := x509.NewCertPool()
 		if !pool.AppendCertsFromPEM(pem) {
-			return nil, fmt.Errorf("o arquivo %s nao tem certificado PEM valido", broker.TLS.CA)
+			return nil, fmt.Errorf("o arquivo %s nao tem certificado PEM valido", settings.CA)
 		}
 		config.RootCAs = pool
 	}
 
-	if broker.TLS.Certificate != "" || broker.TLS.Key != "" {
-		if broker.TLS.Certificate == "" || broker.TLS.Key == "" {
+	if settings.Certificate != "" || settings.Key != "" {
+		if settings.Certificate == "" || settings.Key == "" {
 			return nil, fmt.Errorf("certificado de cliente precisa dos dois arquivos: 'certificado' e 'chave'")
 		}
-		pair, err := tls.LoadX509KeyPair(broker.TLS.Certificate, broker.TLS.Key)
+		pair, err := tls.LoadX509KeyPair(settings.Certificate, settings.Key)
 		if err != nil {
 			return nil, fmt.Errorf("nao consegui carregar o par certificado/chave: %w", err)
 		}

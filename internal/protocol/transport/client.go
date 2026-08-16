@@ -28,6 +28,7 @@ func NewClient(options protocol.Options) *http.Client {
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: time.Second,
 		ForceAttemptHTTP2:     true,
+		TLSClientConfig:       options.TLS,
 	}
 	client := &http.Client{Transport: transporte, Timeout: options.Timeout}
 	if options.KeepCookies {
@@ -82,6 +83,9 @@ func Classify(err error) protocol.ErrorClass {
 
 func SummarizeError(err error) string {
 	text := err.Error()
+	if summary := summarizeTLS(text); summary != "" {
+		return summary
+	}
 	for _, known := range []string{"connection refused", "connection reset", "no such host",
 		"too many open files", "cannot assign requested address", "context deadline exceeded",
 		"EOF", "broken pipe"} {
@@ -111,4 +115,22 @@ func MaskSecret(name, value string) string {
 		return strings.TrimSpace(prefix + " ***")
 	}
 	return strings.TrimSpace(prefix + " " + rest[:6] + "… (" + fmt.Sprint(len(rest)) + " caracteres)")
+}
+
+// The raw x509 error is long, ends in the part that matters, and got cut by the
+// column that shows it — the reader was left with the URL and no diagnosis. It
+// also says nothing about the way out, and until there was a 'tls' block there
+// was none; now there is one and the message names it.
+func summarizeTLS(text string) string {
+	switch {
+	case strings.Contains(text, "certificate signed by unknown authority"):
+		return "certificado assinado por CA que esta maquina nao conhece — declare tls: { ca: /caminho/ca.pem }"
+	case strings.Contains(text, "cannot validate certificate for"):
+		return "o certificado do alvo nao vale para o endereco chamado — use o nome que esta no certificado"
+	case strings.Contains(text, "certificate has expired"):
+		return "certificado do alvo expirado ou ainda nao valido"
+	case strings.Contains(text, "tls: bad certificate"), strings.Contains(text, "certificate required"):
+		return "o alvo exigiu certificado de cliente — declare tls: { certificado: /caminho/cliente.pem, chave: /caminho/cliente.key }"
+	}
+	return ""
 }

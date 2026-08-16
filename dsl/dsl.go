@@ -444,6 +444,15 @@ func (authenticator *BrokerAuth) CA(path string) *BrokerAuth {
 	return authenticator
 }
 
+// TargetTLS declares the settings for reaching an HTTPS target whose
+// certificate the machine does not trust on its own — a private CA, or a client
+// certificate the target demands.
+func (builder *Builder) TargetTLS(settings messaging.TLS) *Builder {
+	settings.Enabled = true
+	builder.scenario.TLS = &settings
+	return builder
+}
+
 func (builder *Builder) KafkaBroker(authenticator *BrokerAuth) *Builder {
 	if authenticator.err != nil {
 		builder.note(authenticator.err)

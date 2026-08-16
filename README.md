@@ -411,6 +411,37 @@ requer: [kafka]
 
 **Limitacao conhecida:** nao existe leitura de `.xlsx`. CSV cobre o caso e a dependencia de Excel e pesada demais para o motor. Se aparecer necessidade, sera um `braunrate import xlsx` que converte para CSV — nunca leitura direta durante a execucao.
 
+## Alvo HTTPS com certificado proprio
+
+Homologacao corporativa quase sempre serve HTTPS com uma CA interna, ou exige certificado de cliente. Se a CA ja esta no armazenamento de confianca da maquina, nao ha nada a declarar. Quando nao esta, o bloco `tls` no topo do cenario diz onde ela mora — a mesma forma que Kafka e AMQP ja usavam dentro de `mensageria`:
+
+```yaml
+alvo: https://api.homolog.interno
+
+tls:
+  ca: /etc/ssl/homolog/ca.pem
+```
+
+Para mTLS, o certificado de cliente entra junto:
+
+```yaml
+tls:
+  ca: /etc/ssl/homolog/ca.pem
+  certificado: /etc/ssl/homolog/cliente.pem
+  chave: /etc/ssl/homolog/cliente.key
+```
+
+Vale para os passos `http`, `graphql` e para a sondagem do `aguardar`, que falam com o mesmo alvo. Sem o bloco, o erro diz o que declarar em vez de repassar o texto do x509:
+
+```
+Erros
+  passo                      o que aconteceu                    quantidade   exemplo
+  consultar                  falha de rede                              30   certificado assinado por CA que esta maquin…
+    certificado assinado por CA que esta maquina nao conhece — declare tls: { ca: /caminho/ca.pem }
+```
+
+O caminho do arquivo aceita `${VARIAVEL}`. Nenhuma chave privada e lida para dentro do cenario: o que vai no arquivo e o caminho, nunca o conteudo.
+
 ## O que serve de criterio
 
 Um gate feito so de regra por passo aprova cada pedaco e nao diz nada sobre a espera que o usuario sente, que e a soma deles. Por isso o bloco `slo` tem quatro escopos, e o relatorio mostra tambem **o que nao foi declarado**:

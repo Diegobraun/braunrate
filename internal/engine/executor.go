@@ -91,6 +91,9 @@ func New(spec scenario.Spec, options Options) (*Executor, error) {
 	if err := checkDataFields(spec, executor.sources); err != nil {
 		return nil, err
 	}
+	if err := applyTLS(spec); err != nil {
+		return nil, err
+	}
 
 	if spec.Auth != nil {
 		executor.authenticator = auth.New(*spec.Auth, executor.runAuthStep, options.Clock)
@@ -524,6 +527,29 @@ func (executor *Executor) appliedPhases() []metrics.AppliedPhase {
 		})
 	}
 	return phases
+}
+
+// The scenario declares one set of TLS settings per run, and every protocol
+// that opens its own connections is told before the load starts — inside
+// Prepare it would already be paying handshakes with the wrong root.
+func applyTLS(spec scenario.Spec) error {
+	if spec.TLS == nil {
+		return nil
+	}
+	settings, err := spec.TLS.Config()
+	if err != nil {
+		return err
+	}
+	for _, name := range protocol.Registered() {
+		implementation, found := protocol.Lookup(name)
+		if !found {
+			continue
+		}
+		if configurable, accepts := implementation.(protocol.WithTLS); accepts {
+			configurable.UseTLS(settings)
+		}
+	}
+	return nil
 }
 
 func (executor *Executor) prepareProtocols(runContext context.Context) error {
