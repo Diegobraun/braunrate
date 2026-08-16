@@ -69,32 +69,49 @@ func createTopics(conn *kafka.Conn, topics ...string) error {
 	return nil
 }
 
-// CreateTopics returns before the partition has an elected leader, and reading
-// the offset in that window fails with Not Leader For Partition. The wait is
-// bounded: a broker that does not elect a leader in ten seconds is broken, and
-// pretending otherwise would hide it.
+const topicReadyWait = 10 * time.Second
+
+// CreateTopics returns before the partition is servable, and every read in that
+// window fails with Not Leader For Partition — the protocol classifies it as
+// retriable and expects the client to refresh metadata. Announced metadata is
+// not enough: the broker publishes the leader before answering as one, so what
+// retries here is the read itself. The window is bounded because a broker that
+// does not settle in ten seconds is broken, and hiding that would turn a broken
+// broker into a slow one.
+func untilReady(what string, attempt func() error) error {
+	return untilReadyWithin(topicReadyWait, 200*time.Millisecond, what, attempt)
+}
+
+func untilReadyWithin(wait, interval time.Duration, what string, attempt func() error) error {
+	deadline := time.Now().Add(wait)
+	for {
+		last := attempt()
+		if last == nil {
+			return nil
+		}
+		if !time.Now().Before(deadline) {
+			return fmt.Errorf("%s nao ficou pronto em %s: %w", what, wait, last)
+		}
+		time.Sleep(interval)
+	}
+}
+
 func waitForLeader(conn *kafka.Conn, topic string) error {
-	deadline := time.Now().Add(10 * time.Second)
-	var last error
-	for time.Now().Before(deadline) {
+	return untilReady(fmt.Sprintf("o topico %q", topic), func() error {
 		partitions, err := conn.ReadPartitions(topic)
 		if err != nil {
-			last = err
-		} else {
-			elected := len(partitions) > 0
-			for _, partition := range partitions {
-				if partition.Leader.Host == "" {
-					elected = false
-				}
-			}
-			if elected {
-				return nil
-			}
-			last = fmt.Errorf("nenhuma particao com lider eleito")
+			return err
 		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	return fmt.Errorf("o topico %q nao ficou pronto em 10s: %w", topic, last)
+		if len(partitions) == 0 {
+			return fmt.Errorf("nenhuma particao")
+		}
+		for _, partition := range partitions {
+			if partition.Leader.Host == "" {
+				return fmt.Errorf("particao %d sem lider eleito", partition.ID)
+			}
+		}
+		return nil
+	})
 }
 
 func (p *Processor) Start() error {
@@ -186,17 +203,21 @@ func (p *Processor) Start() error {
 }
 
 func lastOffset(broker, topic string, partition int) (int64, error) {
-	leader, err := kafka.DialLeader(context.Background(), "tcp", broker, topic, partition)
-	if err != nil {
-		return 0, fmt.Errorf("nao consegui falar com o lider da particao %d de %q: %w", partition, topic, err)
-	}
-	defer func() { _ = leader.Close() }()
+	var offset int64
+	err := untilReady(fmt.Sprintf("a particao %d de %q", partition, topic), func() error {
+		leader, err := kafka.DialLeader(context.Background(), "tcp", broker, topic, partition)
+		if err != nil {
+			return fmt.Errorf("nao consegui falar com o lider: %w", err)
+		}
+		defer func() { _ = leader.Close() }()
 
-	offset, err := leader.ReadLastOffset()
-	if err != nil {
-		return 0, fmt.Errorf("nao consegui ler o offset da particao %d: %w", partition, err)
-	}
-	return offset, nil
+		offset, err = leader.ReadLastOffset()
+		if err != nil {
+			return fmt.Errorf("nao consegui ler o offset: %w", err)
+		}
+		return nil
+	})
+	return offset, err
 }
 
 func (p *Processor) Close() error {

@@ -70,7 +70,7 @@ jobs:
         env:
           BRAUNRATE_KAFKA: 127.0.0.1:9092
           BRAUNRATE_AMQP: amqp://guest:guest@127.0.0.1:5672/
-        run: go test ./internal/messaging/... -count=1 -v -timeout 5m
+        run: go test ./internal/messaging/... ./internal/testsupport/... -count=1 -v -timeout 5m
 
       - name: teste de auto-validacao de medicao
         run: go test ./internal/selfcheck/... -count=1 -v
