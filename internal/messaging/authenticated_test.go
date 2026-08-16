@@ -105,6 +105,10 @@ func authenticatedScenario(t *testing.T, broker credential, topic, password stri
 nome: Broker autenticado
 alvo: %s
 
+dados:
+  pedidos:
+    gerar: { id: uuid }
+
 mensageria:
   kafka:
     brokers: [%s]
@@ -116,7 +120,7 @@ carga:
     - patamar: { taxa: 20/s, durante: 2s }
 
 cenario:
-  - kafka: { topico: %s, chave: "${iteracao}", valor: '{"id":"${iteracao}"}' }
+  - kafka: { topico: %s, chave: "${pedidos.id}", valor: '{"id":"${pedidos.id}"}' }
     nome: publicar pedido
 `, broker.address, broker.address, broker.user, broker.ca, topic)
 }
