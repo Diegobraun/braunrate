@@ -251,7 +251,21 @@ func generate(generator scenario.Generator, random *rand.Rand, sequence int64) (
 		}
 		return builder.String(), nil
 	case "padrao":
-		return fromPattern(generator.Format, random), nil
+		// The pattern arrives in two shapes, and only one of them was read:
+		// `{ tipo: padrao, formato: "BR-######" }` fills Format, and
+		// `padrao(BR-######)` fills the argument. Reading only Format made the
+		// second shape produce an empty string with no complaint — the request
+		// went out with a blank field, which is the failure this tool exists to
+		// catch.
+		format := generator.Format
+		if len(args) > 0 {
+			format = strings.Join(args, ",")
+		}
+		if strings.TrimSpace(format) == "" {
+			return "", fmt.Errorf(`padrao sem formato: diga o formato do valor, por exemplo padrao(BR-######) ou { tipo: padrao, formato: "BR-######" }
+    # gera digito, @ gera letra maiuscula; o resto sai como esta`)
+		}
+		return fromPattern(format, random), nil
 	case "cpf":
 		return brazilianDocument(random, cpfLength, cpfWeights), nil
 	case "cnpj":

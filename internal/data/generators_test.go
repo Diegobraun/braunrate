@@ -219,3 +219,45 @@ cenario:
 		t.Fatalf("esperava erro ensinando o formato, recebeu: %v", err)
 	}
 }
+
+// The pattern has two shapes and only one of them was read. `padrao(BR-######)`
+// produced an empty string in silence: the request went out with a blank field,
+// the target answered 404, and nothing connected the two — the failure this
+// tool exists to catch, coming from the tool itself.
+func TestInlinePatternProducesTheValueAndNotSilence(t *testing.T) {
+	generated := value(t, scenario.Generator{Recipe: "padrao(BR-######)"})
+
+	if generated == "" {
+		t.Fatal("padrao(BR-######) devolveu vazio: valor em branco sai para o alvo sem ninguem ser avisado")
+	}
+	if !regexp.MustCompile(`^BR-\d{6}$`).MatchString(generated) {
+		t.Fatalf("formato nao respeitado: %q", generated)
+	}
+}
+
+// The two shapes are the same generator, and a value that changes with the
+// shape used to declare it would be a second behaviour hiding behind one name.
+func TestBothShapesOfThePatternAgree(t *testing.T) {
+	inline := value(t, scenario.Generator{Recipe: "padrao(BR-######)"})
+	declared := value(t, scenario.Generator{Recipe: "padrao", Format: "BR-######"})
+
+	if inline != declared {
+		t.Fatalf("mesma semente e mesmo formato deram valores diferentes: %q e %q", inline, declared)
+	}
+}
+
+func TestInlinePatternWithoutFormatSaysWhatIsMissing(t *testing.T) {
+	source := scenario.DataSource{Name: "pedidos", Seed: 3, Fields: map[string]scenario.Generator{
+		"campo": {Recipe: "padrao()"},
+	}}
+	open, err := data.Open(source, "")
+	if err == nil {
+		_, err = open.Next(0)
+	}
+	if err == nil {
+		t.Fatal("padrao sem formato passou calado")
+	}
+	if !strings.Contains(err.Error(), "formato") || !strings.Contains(err.Error(), "######") {
+		t.Fatalf("o erro nao ensina o formato: %v", err)
+	}
+}
