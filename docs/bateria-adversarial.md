@@ -8,6 +8,12 @@ decidir se recomenda ao time. Achado vale mais que verde.
 > procura e nao acha, o que entende errado — nada disso aparece aqui. A ultima
 > secao lista o que continua descoberto, e ela e o roteiro da sessao com o QA de
 > verdade.
+>
+> **E um achado desta bateria estava errado.** O 1.1.b concluiu que nao ha caminho
+> de entrada para jornada de varios passos **sem tentar o `record`**. O diagnostico
+> refeito, com as cinco jornadas do bloco 1 montadas so pelos caminhos de entrada,
+> esta em [gap-caminhos-de-entrada.md](gap-caminhos-de-entrada.md), e as correcoes
+> estao marcadas no proprio achado e no fechamento do bloco 1.
 
 Cada registro responde tres perguntas, nesta ordem: **o numero esta certo**, **a
 ferramenta se explica**, **da para agir**.
@@ -101,6 +107,27 @@ Para uma jornada, a pessoa precisa descobrir sozinha a forma de `captura:`, de
 **Nao corrigido**: e mudanca de escopo, nao defeito. Entra na lista de bloqueio de
 adocao, e e o primeiro item para observar na sessao com a pessoa de verdade: **o que
 ela faz quando o segundo passo precisa do id que o primeiro devolveu.**
+
+> ### CORRECAO (2026-08-16): este achado esta errado, e a bateria nao apurou
+>
+> A frase "nem `record` que ja saia com as capturas ligadas" e falsa, e a bateria a
+> escreveu **sem tentar**: a jornada 1.1 foi montada por `import curl` e o gravador
+> nunca entrou. Ele ja correlacionava valor de corpo JSON desde a Fase 8.
+>
+> Refeita pelo caminho certo, a mesma jornada de seis passos sai inteira do
+> `record`, com as quatro correlacoes ligadas e **zero edicao manual**. O diagnostico
+> completo, com as cinco jornadas refeitas e cada lacuna classificada, esta em
+> [gap-caminhos-de-entrada.md](gap-caminhos-de-entrada.md).
+>
+> O que existe de verdade e outra coisa, e e pior: o gravador nao olhava
+> `Set-Cookie`, nao reconhecia GraphQL e agrupava repeticao identica em silencio.
+> Tres defeitos, corrigidos com teste. **A pergunta que este achado deixou para a
+> sessao com o QA tambem muda**: nao e o que a pessoa faz quando o segundo passo
+> precisa do id, e sim se ela encontra o `record`.
+>
+> Fica registrado como esta: um achado que concluiu de um caminho de entrada sem
+> executar aquele caminho e o unico tipo de erro que esta bateria se proibiu de
+> cometer.
 
 ---
 
@@ -538,6 +565,14 @@ Cinco jornadas, **nenhuma** montada so pelos caminhos de entrada da ferramenta. 
 `import curl` cobriu um passo de trinta e um; o `new` cobriu a forma do arquivo e
 nada dos protocolos de mensageria. Todo o resto foi escrito a mao — em quatro das
 cinco, com estrutura que so o codigo-fonte ou os exemplos do repositorio ensinam.
+
+> **CORRECAO (2026-08-16).** Esta linha vale para o que a bateria executou, e a
+> bateria executou o caminho errado: ela nao tentou o `record` em nenhuma das cinco.
+> Refeitas com ele, **tres saem sem edicao manual** — o e-commerce de seis passos, o
+> portal com sessao por cookie e as tres operacoes GraphQL. Ver
+> [gap-caminhos-de-entrada.md](gap-caminhos-de-entrada.md), que tambem lista o que
+> continua exigindo edicao e por que cada caso e defeito, falta de perguntar ou
+> edicao legitima.
 
 Duas correcoes entraram com teste que reprova o codigo anterior: o gerador `padrao`
 inline (alta) e o aviso de corpo vazio (media). Uma terceira entrou por consequencia
@@ -1529,15 +1564,19 @@ O relatorio viaja sozinho; colado num ticket, "pior que a base" nao da para conf
 
 ## 2. Achados que bloqueiam o uso
 
+> **Estado em 2026-08-16.** Quatro dos cinco fecharam, e o quinto era achado errado.
+> As linhas ficam como foram escritas, com o que aconteceu depois marcado em cada
+> uma — apagar um bloqueio resolvido tira o registro de que ele existiu.
+
 Em ordem de quantas pessoas param na porta.
 
 | # | achado | quem para |
 |---|---|---|
-| 2.1 | **Nao existe configuracao de TLS para HTTP** (2.6.a) | qualquer homologacao com CA interna ou certificado autoassinado. Nao ha `tls:` no topo, no passo, nem flag. Kafka e AMQP tem; HTTP, que e o protocolo principal e o unico que o `import curl` produz, nao |
-| 2.2 | **Memoria cresce 10 MB por minuto de execucao** (2.11.a) | teste de resistencia. 4 horas pedem ~2,4 GB. Causa medida: um histograma HDR de 168 KB por segundo de execucao, retido ate o fim. Independente da taxa |
-| 2.3 | **Nao ha mix ponderado de operacoes** (1.4.a) | teste de capacidade com mais de uma rota. O contorno — tres processos — e exatamente o que o modo servidor recusa como medicao invalida (4.8.a) |
-| 2.4 | **A semente e fixa e nao aceita ambiente** (4.10.a) | qualquer alvo que deduplique por chave: a segunda execucao do dia manda as chaves da primeira |
-| 2.5 | **Nao ha caminho de entrada para jornada de varios passos** (1.1.b) | o publico de QA que nao escreve codigo. `import curl` traduz uma requisicao; jornada de negocio tem seis |
+| 2.1 | ~~**Nao existe configuracao de TLS para HTTP** (2.6.a)~~ **fechado**: bloco `tls:` no topo, com CA propria e mTLS | qualquer homologacao com CA interna ou certificado autoassinado. Nao ha `tls:` no topo, no passo, nem flag. Kafka e AMQP tem; HTTP, que e o protocolo principal e o unico que o `import curl` produz, nao |
+| 2.2 | ~~**Memoria cresce 10 MB por minuto de execucao** (2.11.a)~~ **fechado**: o balde fechado guarda os quantis e libera o histograma; teste de 10 minutos com RSS em tres pontos | teste de resistencia. 4 horas pedem ~2,4 GB. Causa medida: um histograma HDR de 168 KB por segundo de execucao, retido ate o fim. Independente da taxa |
+| 2.3 | ~~**Nao ha mix ponderado de operacoes** (1.4.a)~~ **fechado**: `peso` no passo, escolha deterministica, proporcao observada no relatorio ([ADR 0016](adr/0016-mix-ponderado-de-operacoes.md)) | teste de capacidade com mais de uma rota. O contorno — tres processos — e exatamente o que o modo servidor recusa como medicao invalida (4.8.a) |
+| 2.4 | ~~**A semente e fixa e nao aceita ambiente** (4.10.a)~~ **fechado**: `semente: ${SEMENTE:-42}`, com a semente que rodou e a origem dela no relatorio | qualquer alvo que deduplique por chave: a segunda execucao do dia manda as chaves da primeira |
+| 2.5 | ~~**Nao ha caminho de entrada para jornada de varios passos** (1.1.b)~~ **achado errado**: a bateria concluiu isso sem tentar o `record`, que monta a jornada inteira com as capturas ligadas. Corrigido em [gap-caminhos-de-entrada.md](gap-caminhos-de-entrada.md) | o que existia de verdade eram tres defeitos de deteccao no gravador — cookie de sessao, GraphQL e repeticao identica —, os tres corrigidos |
 
 ---
 
@@ -1629,10 +1668,12 @@ medir**, porque quem a executou conhece o codigo por dentro.
 
 ### 6.1 O que so uma pessoa de fora responde
 
-1. **O segundo passo.** Ela cria o cenario de um passo pelo `import curl`. O segundo
-   passo precisa do id que o primeiro devolveu. **O que ela faz?** Procura no README,
-   procura na mensagem, chuta, ou desiste? Esse e o momento exato do achado 1.1.b, e
-   e o unico que nao da para simular.
+1. ~~**O segundo passo.**~~ **Substituida em 2026-08-16: ela encontra o `record`?**
+   A pergunta original — o que ela faz quando o segundo passo precisa do id que o
+   primeiro devolveu — supunha que a ferramenta nao tinha resposta. Tem: o gravador
+   monta a jornada inteira com as capturas ligadas. O que nao existe e alguem dizer
+   isso a ela no momento em que esta olhando para uma pasta vazia. **Observe se ela
+   chega ao `record` sozinha, e por onde.**
 2. **Onde ela procura documentacao.** Nao pergunte. Observe se ela abre o navegador,
    se roda `--help`, ou se le o comentario do `new`.
 3. **O que ela entende por "invalido".** Mostre o relatorio 5.3 sem contexto e peca
