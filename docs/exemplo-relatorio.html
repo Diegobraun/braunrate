@@ -72,7 +72,7 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 <main>
 <header>
   <div class="cenario">Jornada de cobranca — http://127.0.0.1:8080</div>
-  <h1 class="falhou">Falhou: &#34;consultar pedido&#34; teve latencia p95 de 598 ms, acima do limite de 150 ms.</h1>
+  <h1 class="falhou">Falhou: &#34;consultar pedido&#34; teve latencia p95 de 582 ms, acima do limite de 150 ms.</h1>
   <p class="subtitulo">2.375 jornadas em 10s, 4.750 requisicoes a 471 por segundo, 0% de erro.</p>
 </header>
 
@@ -82,7 +82,7 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 <div class="aviso media">
   <div class="rotulo">atencao</div>
   <div>a latencia do alvo cresceu ao longo da execucao enquanto o despacho continuou pontual; a degradacao e do alvo, nao do gerador</div>
-  <div class="evidencia">p99 por segundo passou de 64.1 ms para 1039.4 ms</div>
+  <div class="evidencia">p99 por segundo passou de 82.6 ms para 1033.2 ms</div>
 </div>
 
 
@@ -91,18 +91,18 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
   <li><div class="valor">4.750</div><div class="rotulo">requisicoes</div></li>
   <li><div class="valor">471</div><div class="rotulo">por segundo</div></li>
   <li><div class="valor">0%</div><div class="rotulo">de erro</div></li>
-  <li><div class="valor">224 ms</div><div class="rotulo">95% das respostas ate</div></li>
+  <li><div class="valor">200 ms</div><div class="rotulo">95% das respostas ate</div></li>
 </ul>
 
 
 <h2>A jornada inteira</h2>
-<div class="leitura">Todas as 2375 jornadas chegaram ao fim; metade levou ate 81 ms e 95% ate 675 ms, contados do instante em que deveriam ter comecado.</div>
+<div class="leitura">Todas as 2375 jornadas chegaram ao fim; metade levou ate 80 ms e 95% ate 666 ms, contados do instante em que deveriam ter comecado.</div>
 <table>
   <tr><th>jornada</th><th>metade</th><th>95%</th><th>99%</th><th>pior</th></tr>
   <tr>
     <td>do instante agendado ao ultimo passo</td>
-    <td>81 ms</td><td>675 ms</td>
-    <td>1.03 s</td><td>1.09 s</td>
+    <td>80 ms</td><td>666 ms</td>
+    <td>1.03 s</td><td>1.08 s</td>
   </tr>
 </table>
 
@@ -114,15 +114,15 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
   
   <tr>
     <td><span class="marca">(1)</span> consultar pedido</td>
-    <td>2.375</td><td>40 ms</td><td>598 ms</td><td>954 ms</td>
+    <td>2.375</td><td>40 ms</td><td>582 ms</td><td>944 ms</td>
     <td>1.03 s</td><td>1.04 s</td>
     <td>0</td>
   </tr>
   
   <tr>
     <td><span class="marca">(2)</span> pagar fatura</td>
-    <td>2.375</td><td>40 ms</td><td>43 ms</td><td>43 ms</td>
-    <td>1.04 s</td><td>1.04 s</td>
+    <td>2.375</td><td>40 ms</td><td>43 ms</td><td>44 ms</td>
+    <td>1.03 s</td><td>1.04 s</td>
     <td>0</td>
   </tr>
   
@@ -138,7 +138,7 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 
 
 <h2>Ao longo do tempo</h2>
-<svg viewBox="0 0 900 260" role="img" aria-label="latencia por segundo"><line x1="56" y1="16.0" x2="884" y2="16.0" class="grade"/><text x="48" y="20.0" class="eixo" text-anchor="end">1039 ms</text><line x1="56" y1="121.0" x2="884" y2="121.0" class="grade"/><text x="48" y="125.0" class="eixo" text-anchor="end">520 ms</text><line x1="56" y1="226.0" x2="884" y2="226.0" class="grade"/><text x="48" y="230.0" class="eixo" text-anchor="end">0</text><polyline class="p99" points="56.0,213.0 138.8,217.6 221.6,217.7 304.4,217.7 387.2,16.0 470.0,168.0 552.8,217.8 635.6,217.8 718.4,217.8 801.2,217.8 884.0,217.8"/><polyline class="p50" points="56.0,217.7 138.8,217.8 221.6,217.8 304.4,217.8 387.2,136.3 470.0,217.8 552.8,217.9 635.6,217.9 718.4,217.9 801.2,217.9 884.0,217.9"/><text x="56.0" y="248" class="eixo" text-anchor="middle">0s</text><text x="138.8" y="248" class="eixo" text-anchor="middle">1s</text><text x="221.6" y="248" class="eixo" text-anchor="middle">2s</text><text x="304.4" y="248" class="eixo" text-anchor="middle">3s</text><text x="387.2" y="248" class="eixo" text-anchor="middle">4s</text><text x="470.0" y="248" class="eixo" text-anchor="middle">5s</text><text x="552.8" y="248" class="eixo" text-anchor="middle">6s</text><text x="635.6" y="248" class="eixo" text-anchor="middle">7s</text><text x="718.4" y="248" class="eixo" text-anchor="middle">8s</text><text x="801.2" y="248" class="eixo" text-anchor="middle">9s</text><text x="884.0" y="248" class="eixo" text-anchor="middle">10s</text></svg>
+<svg viewBox="0 0 900 260" role="img" aria-label="latencia por segundo"><line x1="56" y1="16.0" x2="884" y2="16.0" class="grade"/><text x="48" y="20.0" class="eixo" text-anchor="end">1033 ms</text><line x1="56" y1="121.0" x2="884" y2="121.0" class="grade"/><text x="48" y="125.0" class="eixo" text-anchor="end">517 ms</text><line x1="56" y1="226.0" x2="884" y2="226.0" class="grade"/><text x="48" y="230.0" class="eixo" text-anchor="end">0</text><polyline class="p99" points="56.0,209.2 138.8,216.9 221.6,217.4 304.4,217.5 387.2,16.0 470.0,52.2 552.8,217.8 635.6,217.8 718.4,217.8 801.2,217.8 884.0,217.8"/><polyline class="p50" points="56.0,217.6 138.8,217.8 221.6,217.8 304.4,217.8 387.2,217.8 470.0,217.1 552.8,217.8 635.6,217.8 718.4,217.8 801.2,217.8 884.0,217.8"/><text x="56.0" y="248" class="eixo" text-anchor="middle">0s</text><text x="138.8" y="248" class="eixo" text-anchor="middle">1s</text><text x="221.6" y="248" class="eixo" text-anchor="middle">2s</text><text x="304.4" y="248" class="eixo" text-anchor="middle">3s</text><text x="387.2" y="248" class="eixo" text-anchor="middle">4s</text><text x="470.0" y="248" class="eixo" text-anchor="middle">5s</text><text x="552.8" y="248" class="eixo" text-anchor="middle">6s</text><text x="635.6" y="248" class="eixo" text-anchor="middle">7s</text><text x="718.4" y="248" class="eixo" text-anchor="middle">8s</text><text x="801.2" y="248" class="eixo" text-anchor="middle">9s</text><text x="884.0" y="248" class="eixo" text-anchor="middle">10s</text></svg>
 <div class="legenda">
   <span><span class="amostra" style="background: var(--neutro)"></span>metade das respostas</span>
   <span><span class="amostra" style="background: var(--atencao)"></span>99% das respostas</span>
@@ -150,12 +150,18 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 <h2>SLO</h2>
 <ul class="frases slo">
   
-  <li><span class="nao">falha</span><span>Falhou: &#34;consultar pedido&#34; teve latencia p95 de 598 ms, acima do limite de 150 ms.</span></li>
+  <li><span class="nao">falha</span><span>Falhou: &#34;consultar pedido&#34; teve latencia p95 de 582 ms, acima do limite de 150 ms.</span></li>
   
   <li><span class="ok">ok</span><span>Passou: &#34;pagar fatura&#34; teve latencia p95 de 43 ms, dentro do limite de 200 ms.</span></li>
   
+  <li><span class="ok">ok</span><span>Passou: a jornada inteira teve latencia p95 de 666 ms, dentro do limite de 2000 ms.</span></li>
+  
+  <li><span class="ok">ok</span><span>Passou: a jornada inteira teve latencia p99 de 1027 ms, dentro do limite de 5000 ms.</span></li>
+  
   <li><span class="ok">ok</span><span>Passou: o cenario inteiro teve taxa de erro de 0.00%, dentro do limite de 0.10%.</span></li>
   
+  
+  <li><span class="sem">nao declarado</span><span>regressao: sem criterio declarado — o gate aprova sem comparar com a execucao anterior</span></li>
   
 </ul>
 
@@ -166,18 +172,18 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 
 <h2>Confiabilidade da medicao</h2>
 <ul class="frases">
-  <li>O gerador disparou todas as requisicoes na hora certa, entao os numeros acima valem.</li><li>Atraso tipico para disparar: 0.001 ms; pior caso: 0.258 ms. O tempo de resposta ja desconta esse atraso.</li><li>Pico de 306 requisicoes ao mesmo tempo, com limite de 20.000.</li>
+  <li>O gerador disparou todas as requisicoes na hora certa, entao os numeros acima valem.</li><li>Atraso tipico para disparar: 0.001 ms; pior caso: 4.6 ms. O tempo de resposta ja desconta esse atraso.</li><li>Pico de 298 requisicoes ao mesmo tempo, com limite de 20.000.</li>
 </ul>
 
 <h2>Como este numero foi produzido</h2>
 <ul class="frases">
   <li>Modelo de chegada aberto: a carga nao espera o alvo responder, entao travada do alvo aparece na conta.</li>
   <li>Plano: rampa de 50/s ate 300/s durante 5s</li><li>Plano: patamar de 300/s durante 5s</li>
-  <li>maquina-de-exemplo, darwin/arm64, 10 nucleos</li><li>braunrate 0.3.0 (go1.26.6), gerador e alvo medidos como declarado acima</li><li>Semente das fontes sinteticas: assinantes=1 — a mesma semente gera os mesmos valores de novo.</li><li>Autenticacao obtida uma vez e reaproveitada por todas as jornadas. Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.</li>
+  <li>Mac, darwin/arm64, 10 nucleos</li><li>braunrate 0.4.0 (go1.26.6), gerador e alvo medidos como declarado acima</li><li>Protocolos compilados neste binario: aguardar, amqp, graphql, http, kafka.</li><li>Variedade observada: 4 valores distintos de assinantes.id em 2.375 usos, entre 1.001 e 1.004.</li><li>Variedade observada: 4 valores distintos de faturaId em 2.375 usos, todos comecando com &#34;f-100&#34;.</li><li>Variedade observada: 1 unico valor de token em 2.375 usos.</li><li>Autenticacao obtida uma vez e reaproveitada por todas as jornadas. Se o alvo tiver cache, rate limit ou sharding por token, este numero fica otimista.</li>
 </ul>
 
 <footer>
-  braunrate 0.3.0 — execucao de 15/08/2026 23:34:38, formato de resultado 1.
+  braunrate 0.4.0 — execucao de 16/08/2026 15:18:10, formato de resultado 2.
   Este arquivo abre sem rede: nao busca script, fonte nem imagem externa.
 </footer>
 </main>

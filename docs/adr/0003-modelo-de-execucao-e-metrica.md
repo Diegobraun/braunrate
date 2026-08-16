@@ -72,18 +72,20 @@ Proibido no formato de resultado: media pre-calculada como fonte de verdade, per
 
 Isso e o que mantem a execucao distribuida possivel sem reescrita (estudo §3.8): N geradores emitem agregados parciais, um coordenador soma.
 
-#### Conformidade: o formato de resultado ainda nao cumpre esta secao (registrado em 2026-08-16)
+#### Conformidade: o desvio registrado em 2026-08-16 e a correcao no mesmo dia
 
-Auditado ao corrigir o crescimento de memoria da serie temporal, e vale registrar antes que alguem confie na promessa:
+O desvio, auditado ao corrigir o crescimento de memoria da serie temporal: em memoria a regra valia — `Aggregate.Add` sempre somou histogramas HDR e contadores —, mas nenhum histograma era serializado. O documento publicava `p50_ms`, `p95_ms`, `p99_ms`, `max_ms` e `media_ms`, que sao exatamente as duas coisas que esta secao proibe como fonte de verdade. Consequencia: dois documentos nao podiam ser somados, nem os de dois geradores nem os de duas janelas da mesma execucao. A preparacao para distribuir existia so em memoria, que e o lugar errado — distribuir passa pela serializacao.
 
-- **Em memoria a regra vale.** `Aggregate.Add` soma histogramas HDR e contadores; e o que a execucao distribuida usaria.
-- **No documento de resultado, nao.** Nenhum histograma e serializado. O bloco por passo publica `p50_ms`, `p95_ms`, `p99_ms`, `max_ms` e `media_ms`; o balde da serie temporal publica `latencia_p50_ms` e `latencia_p99_ms`. Percentil pre-calculado e media pre-calculada sao exatamente as duas coisas que esta secao proibe, e sao o que o formato publica hoje.
+Corrigido no **formato de resultado 2**: cada `Distribution` carrega o campo `histograma`, o histograma HDR na codificacao V2 comprimida, e os percentis e a media continuam publicados como projecao derivada dele. `metrics.Merge` soma passo, agregado global, jornada e agendamento pelos histogramas, nunca pelos percentis.
 
-Consequencia pratica: dois documentos de resultado **nao podem ser somados** — nem os de dois geradores, nem os de duas janelas da mesma execucao. Percentis nao somam. O `comparar` entre execucoes nao esbarra nisso porque compara, nao soma.
+Decisoes que acompanham a correcao:
 
-A correcao do balde (`1c62216`) nao criou esse desvio nem o piorou: os histogramas de balde nunca foram serializados, e o histograma por passo, que e o mergeavel de verdade, continua intacto em memoria.
+- **Formato 1 continua sendo lido** pelo relatorio e pela comparacao, com os percentis que ele ja tem. So a soma e recusada, e a mensagem diz por que: o que falta no arquivo antigo e de onde os percentis vieram.
+- **O que `Merge` nao soma, e nao vai somar:** veredito de SLO e verificacao de sanidade sao lidos da soma, nao somados; variedade observada conta valores distintos, e a uniao de dois conjuntos de distintos e desconhecida; a serie temporal guarda so os dois quantis de cada balde fechado, e quantil nao soma. Produzir qualquer um deles por adicao seria inventar numero.
+- **Custo medido:** +24% no exemplo publicado (15,1 KB, 3.672 bytes de histograma), +41% numa execucao de 60s a 300/s (28,3 KB). O tamanho do histograma depende de quantos baldes foram populados, nao da duracao — o custo relativo cai conforme a execucao cresce. Compressao adicional nao se justifica neste tamanho.
+- **Nada muda no que o usuario ve.** Terminal, HTML e CSV sao identicos, verificado renderizando o mesmo resultado com o binario anterior e com o novo.
 
-Saida proposta, para quando a execucao distribuida deixar de ser hipotese: acrescentar ao documento o histograma HDR por passo em forma serializada (`hdrhistogram` tem codificacao compacta em base64), mantendo os percentis atuais como projecao derivada dele. Isso preserva o formato para quem ja o le e devolve a somabilidade que esta secao promete. Enquanto ninguem somar dois documentos, o custo de nao fazer e zero — o que nao pode continuar e o ADR afirmar uma propriedade que o formato nao tem.
+O teste que a secao pedia desde a Fase 0 existe em `internal/metrics/merge_test.go`: dois documentos gravados em arquivo, relidos e somados produzem os mesmos percentis de uma execucao unica equivalente. Sem o histograma serializado ele falha — o p50 da soma dava 600 ms onde a execucao unica da 400 ms.
 
 ### 6. Formato de resultado como contrato
 

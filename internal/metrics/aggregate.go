@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -153,6 +154,55 @@ type Distribution struct {
 	Max     float64 `json:"max_ms"`
 	Minimum float64 `json:"min_ms"`
 	Mean    float64 `json:"media_ms"`
+	// The histogram every field above is a projection of, in the HDR V2
+	// compressed encoding. Percentiles and means do not add, so this is the only
+	// field through which two documents can be summed — which is what ADR 0003
+	// §5 promised and the format did not deliver.
+	Histogram string `json:"histograma,omitempty"`
+}
+
+// Merged returns the distribution of the two histograms added. It is exact:
+// adding HDR histograms adds their counts bucket by bucket, and the percentiles
+// come out of the sum, never out of the two sets of percentiles.
+func (distribution Distribution) Merged(other Distribution) (Distribution, error) {
+	first, err := decodeHistogram(distribution.Histogram)
+	if err != nil {
+		return Distribution{}, err
+	}
+	second, err := decodeHistogram(other.Histogram)
+	if err != nil {
+		return Distribution{}, err
+	}
+	switch {
+	case first == nil:
+		return other, nil
+	case second == nil:
+		return distribution, nil
+	}
+	first.Merge(second)
+	return distributionOf(first), nil
+}
+
+func encodeHistogram(histogram *hdrhistogram.Histogram) string {
+	if histogram == nil || histogram.TotalCount() == 0 {
+		return ""
+	}
+	encoded, err := histogram.Encode(hdrhistogram.V2CompressedEncodingCookieBase)
+	if err != nil {
+		return ""
+	}
+	return string(encoded)
+}
+
+func decodeHistogram(encoded string) (*hdrhistogram.Histogram, error) {
+	if encoded == "" {
+		return nil, nil
+	}
+	histogram, err := hdrhistogram.Decode([]byte(encoded))
+	if err != nil {
+		return nil, fmt.Errorf("histograma ilegivel no resultado: %w", err)
+	}
+	return histogram, nil
 }
 
 func distributionOf(histogram *hdrhistogram.Histogram) Distribution {
@@ -160,16 +210,17 @@ func distributionOf(histogram *hdrhistogram.Histogram) Distribution {
 		return float64(microseconds) / 1000
 	}
 	return Distribution{
-		Samples: histogram.TotalCount(),
-		P50:     inMilliseconds(histogram.ValueAtQuantile(50)),
-		P75:     inMilliseconds(histogram.ValueAtQuantile(75)),
-		P90:     inMilliseconds(histogram.ValueAtQuantile(90)),
-		P95:     inMilliseconds(histogram.ValueAtQuantile(95)),
-		P99:     inMilliseconds(histogram.ValueAtQuantile(99)),
-		P999:    inMilliseconds(histogram.ValueAtQuantile(99.9)),
-		Max:     inMilliseconds(histogram.Max()),
-		Minimum: inMilliseconds(histogram.Min()),
-		Mean:    histogram.Mean() / 1000,
+		Samples:   histogram.TotalCount(),
+		P50:       inMilliseconds(histogram.ValueAtQuantile(50)),
+		P75:       inMilliseconds(histogram.ValueAtQuantile(75)),
+		P90:       inMilliseconds(histogram.ValueAtQuantile(90)),
+		P95:       inMilliseconds(histogram.ValueAtQuantile(95)),
+		P99:       inMilliseconds(histogram.ValueAtQuantile(99)),
+		P999:      inMilliseconds(histogram.ValueAtQuantile(99.9)),
+		Max:       inMilliseconds(histogram.Max()),
+		Minimum:   inMilliseconds(histogram.Min()),
+		Mean:      histogram.Mean() / 1000,
+		Histogram: encodeHistogram(histogram),
 	}
 }
 

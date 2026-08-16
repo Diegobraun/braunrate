@@ -9,7 +9,15 @@ import (
 	"github.com/Diegobraun/braunrate/internal/protocol"
 )
 
-const ResultFormatVersion = "1"
+// Version 2 added the serialized histogram every percentile is a projection of.
+// Version 1 is still read — the numbers it already carries are the numbers it
+// always carried — and only summing needs the histogram.
+const ResultFormatVersion = "2"
+
+// ReadableResultFormats is what this binary can open. A format outside the list
+// is refused by name instead of being read into fields that do not mean what
+// they used to.
+var ReadableResultFormats = []string{"1", "2"}
 
 type Document struct {
 	FormatVersion string        `json:"versao_do_formato"`

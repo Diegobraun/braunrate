@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -256,9 +257,9 @@ func ReadDocument(path string) (metrics.Document, error) {
 	if document.Tool != "braunrate" {
 		return document, fmt.Errorf("%s nao foi gerado pelo braunrate; use o arquivo de -result", path)
 	}
-	if document.FormatVersion != metrics.ResultFormatVersion {
-		return document, fmt.Errorf("%s esta no formato de resultado %q e esta versao le o formato %q",
-			path, document.FormatVersion, metrics.ResultFormatVersion)
+	if !slices.Contains(metrics.ReadableResultFormats, document.FormatVersion) {
+		return document, fmt.Errorf("%s esta no formato de resultado %q e esta versao le os formatos %s",
+			path, document.FormatVersion, strings.Join(metrics.ReadableResultFormats, ", "))
 	}
 	return document, nil
 }
