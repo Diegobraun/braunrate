@@ -166,6 +166,9 @@ func readVars(node *yaml.Node) (map[string]string, error) {
 	}
 	for index := 0; index+1 < len(node.Content); index += 2 {
 		name := node.Content[index].Value
+		if err := refuseLiteralVariable(name, node.Content[index+1]); err != nil {
+			return nil, err
+		}
 		vars[name] = ExpandFromEnv(node.Content[index+1].Value)
 	}
 	return vars, nil
@@ -415,6 +418,13 @@ func readRate(node *yaml.Node) (float64, error) {
 	case strings.HasSuffix(text, "/h"):
 		text = strings.TrimSuffix(text, "/h")
 		divisor = 3600
+	default:
+		// A bare number was read as per second: whoever meant per minute got
+		// sixty times the load and no warning.
+		if _, err := strconv.ParseFloat(text, 64); err == nil {
+			return 0, nodeError(node, "taxa sem unidade: %q\n"+
+				"    diga em que intervalo: %s/s (por segundo), %s/m (por minuto) ou %s/h (por hora)", text, text, text, text)
+		}
 	}
 	value, err := strconv.ParseFloat(strings.TrimSpace(text), 64)
 	if err != nil {

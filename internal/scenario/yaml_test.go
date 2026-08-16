@@ -234,3 +234,25 @@ cenario:
 		t.Fatalf("esperava erro de nome repetido, recebeu %v", err)
 	}
 }
+
+// A bare number was read as per second. Whoever wrote 100 meaning per minute
+// got sixty times the load, no warning, and a report about a load nobody asked
+// for.
+func TestRateWithoutUnitIsRefusedInsteadOfAssumedPerSecond(t *testing.T) {
+	_, err := scenario.Parse([]byte("nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamar: { taxa: 100, durante: 5s }\ncenario:\n  - http: GET /\n"))
+	if err == nil {
+		t.Fatal("taxa sem unidade foi aceita: 100 virou 100/s sem ninguem ser avisado")
+	}
+	for _, expected := range []string{"sem unidade", "100/s", "100/m", "100/h"} {
+		if !strings.Contains(err.Error(), expected) {
+			t.Errorf("a mensagem nao ensina as unidades: falta %q em\n%s", expected, err)
+		}
+	}
+}
+
+func TestRateThatIsNotANumberKeepsItsOwnMessage(t *testing.T) {
+	_, err := scenario.Parse([]byte("nome: x\nalvo: http://a\ncarga:\n  perfis:\n    - patamar: { taxa: rapido, durante: 5s }\ncenario:\n  - http: GET /\n"))
+	if err == nil || !strings.Contains(err.Error(), "taxa invalida") {
+		t.Fatalf("taxa que nao e numero passou a sugerir unidades sem sentido: %v", err)
+	}
+}

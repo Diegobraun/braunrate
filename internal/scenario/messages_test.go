@@ -131,3 +131,34 @@ slo:
 		})
 	}
 }
+
+// The curl importer masks a password before writing the file. Hand-written, the
+// same password in 'variaveis' was accepted and went to the repository.
+func TestLiteralCredentialInVariablesIsRefused(t *testing.T) {
+	for _, name := range []string{"senha", "password", "token", "api_key", "client_secret"} {
+		_, err := Parse([]byte("nome: x\nalvo: http://a\nvariaveis:\n  " + name + ": valor-de-verdade\ncarga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n"))
+		if err == nil {
+			t.Errorf("%q literal foi aceita e vai para o repositorio", name)
+			continue
+		}
+		if !strings.Contains(err.Error(), "${"+strings.ToUpper(name)+"}") {
+			t.Errorf("a mensagem de %q nao ensina a forma certa: %v", name, err)
+		}
+	}
+}
+
+func TestCredentialFromTheEnvironmentIsAccepted(t *testing.T) {
+	_, err := Parse([]byte("nome: x\nalvo: http://a\nvariaveis:\n  senha: \"${SENHA}\"\ncarga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n"))
+	if err != nil {
+		t.Fatalf("senha vinda do ambiente foi recusada: %v", err)
+	}
+}
+
+// A variable whose name is not a credential keeps working with a literal: the
+// rule is about secrets, not about writing values in the file.
+func TestOrdinaryVariableKeepsAcceptingALiteral(t *testing.T) {
+	_, err := Parse([]byte("nome: x\nalvo: http://a\nvariaveis:\n  usuario: ana\ncarga:\n  perfis:\n    - patamar: { taxa: 1/s, durante: 1s }\ncenario:\n  - http: GET /\n"))
+	if err != nil {
+		t.Fatalf("variavel comum foi recusada: %v", err)
+	}
+}
