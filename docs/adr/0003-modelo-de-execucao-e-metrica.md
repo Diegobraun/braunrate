@@ -72,6 +72,19 @@ Proibido no formato de resultado: media pre-calculada como fonte de verdade, per
 
 Isso e o que mantem a execucao distribuida possivel sem reescrita (estudo §3.8): N geradores emitem agregados parciais, um coordenador soma.
 
+#### Conformidade: o formato de resultado ainda nao cumpre esta secao (registrado em 2026-08-16)
+
+Auditado ao corrigir o crescimento de memoria da serie temporal, e vale registrar antes que alguem confie na promessa:
+
+- **Em memoria a regra vale.** `Aggregate.Add` soma histogramas HDR e contadores; e o que a execucao distribuida usaria.
+- **No documento de resultado, nao.** Nenhum histograma e serializado. O bloco por passo publica `p50_ms`, `p95_ms`, `p99_ms`, `max_ms` e `media_ms`; o balde da serie temporal publica `latencia_p50_ms` e `latencia_p99_ms`. Percentil pre-calculado e media pre-calculada sao exatamente as duas coisas que esta secao proibe, e sao o que o formato publica hoje.
+
+Consequencia pratica: dois documentos de resultado **nao podem ser somados** — nem os de dois geradores, nem os de duas janelas da mesma execucao. Percentis nao somam. O `comparar` entre execucoes nao esbarra nisso porque compara, nao soma.
+
+A correcao do balde (`1c62216`) nao criou esse desvio nem o piorou: os histogramas de balde nunca foram serializados, e o histograma por passo, que e o mergeavel de verdade, continua intacto em memoria.
+
+Saida proposta, para quando a execucao distribuida deixar de ser hipotese: acrescentar ao documento o histograma HDR por passo em forma serializada (`hdrhistogram` tem codificacao compacta em base64), mantendo os percentis atuais como projecao derivada dele. Isso preserva o formato para quem ja o le e devolve a somabilidade que esta secao promete. Enquanto ninguem somar dois documentos, o custo de nao fazer e zero — o que nao pode continuar e o ADR afirmar uma propriedade que o formato nao tem.
+
 ### 6. Formato de resultado como contrato
 
 A execucao produz um documento de resultado versionado (`versao_do_formato`) contendo: bloco de ambiente, plano de carga aplicado, agregados por chave, histogramas serializados, series temporais, classificacao de erros, avisos de saturacao e veredito de SLO. Relatorio HTML, JSON, CSV, sumario markdown e comparacao entre execucoes sao **projecoes** desse documento — nenhum deles recalcula nada por conta propria.

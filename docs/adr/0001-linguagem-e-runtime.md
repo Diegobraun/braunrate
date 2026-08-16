@@ -42,8 +42,31 @@ O diagnostico a 40.000/s mostra o processo alvo consumindo **214,9% de CPU** (2,
 
 | Criterio | Numero | Por que e material |
 |---|---|---|
-| **RSS sob carga** | 30 MB no Go contra 597 MB no Java (G1) a 10.000/s; 2.004 MB com ZGC | O gerador roda em runner de CI com limite de memoria e em pod de cluster. Um gerador que pede 2 GB para gerar 10 mil requisicoes por segundo restringe onde o teste pode rodar — e isso muda o produto, nao so o benchmark. |
+| **RSS sob carga, execucao curta** | 30 MB no Go contra 597 MB no Java (G1) a 10.000/s; 2.004 MB com ZGC | O gerador roda em runner de CI com limite de memoria e em pod de cluster. Um gerador que pede 2 GB para gerar 10 mil requisicoes por segundo restringe onde o teste pode rodar — e isso muda o produto, nao so o benchmark. |
 | **Binario unico estatico** | um arquivo por plataforma, sem runtime instalado | Para o publico de QA, instalar e baixar um arquivo. Vale mais que qualquer numero de vazao: e a diferenca entre a ferramenta ser adotada e ficar num README. |
+
+### O que os 30 MB dizem, e o que nao dizem
+
+**Os 30 MB sao de execucao curta.** A bateria da Fase 0 mediu os dois prototipos em execucoes de minutos, e nenhum dos dois numeros diz nada sobre execucao longa — o do Java tambem nao.
+
+Isso ficou por escrito so em 2026-08-16, quando a ferramenta pronta foi medida numa execucao de trinta minutos a 400 requisicoes por segundo, com amostragem de RSS a cada minuto:
+
+| instante | RSS |
+|---|---|
+| 0 min | 29,7 MB |
+| 8 min | 97 MB |
+| 15 min | 170 MB |
+| 22 min | 245 MB |
+| 29 min | **313 MB** |
+
+A causa nao era o runtime: a serie temporal guardava um histograma HDR completo por segundo de execucao, retido ate o fim, a 168 KB cada — cerca de 10 MB por minuto **qualquer que fosse a taxa**. Um controle a 20/s, vinte vezes menos carga, gastou a mesma memoria por minuto.
+
+O criterio que sustenta a decisao e "cabe num runner de CI com limite de memoria", e runner de CI e exatamente onde rodam os testes longos. Um numero de primeiro minuto nao sustenta esse criterio, e enquanto o defeito existiu o criterio nao se sustentava em execucao longa. Corrigido em `1c62216`: o balde que ja nao pode receber amostra e reduzido aos dois quantis que o relatorio le e o histograma e liberado. A mesma execucao passa a ficar plana. O numero de referencia deste ADR e:
+
+- **execucao curta: 30 MB** (Fase 0, prototipo, a 10.000/s)
+- **execucao de dez minutos a 400/s por passo, 480 mil requisicoes: 31,7 MB no primeiro minuto e 46 a 51 MB nos nove seguintes** (medido em 2026-08-16, ja com a correcao)
+
+A comparacao com o Java continua valendo para o eixo em que foi feita — execucao curta — e continua sendo o que decide. O que este ADR nao pode afirmar, e nao afirma, e como o Java se comportaria numa execucao de horas: essa bateria nunca foi feita, dos dois lados.
 
 Nada alem disso sustenta a escolha. O que segue e a lista do que **nao** sustenta, apesar de ter aparecido com peso alto na primeira versao deste ADR.
 
