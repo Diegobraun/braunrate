@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # A release chama este mesmo workflow em vez de repetir os passos: o portao
+  # que decide se publica precisa ser o portao de sempre, nao uma copia dele
+  # que envelhece sozinha.
+  workflow_call:
 
 jobs:
   verificar:

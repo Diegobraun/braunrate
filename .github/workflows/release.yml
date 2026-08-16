@@ -1,0 +1,109 @@
+name: release
+
+# So por tag. Nenhuma publicacao sai de um push em main: quem decide que uma
+# arvore virou release e uma pessoa criando a tag.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  # A suite completa, o lint e os exemplos, exatamente como em qualquer commit.
+  # Se este job reprovar, nada e publicado.
+  portao:
+    uses: ./.github/workflows/ci.yml
+
+  publicar:
+    needs: portao
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # O goreleaser monta o changelog a partir do historico entre as tags.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # O binario publicado e baixado da release, conferido pelo checksum e
+  # executado. Sem este job, "funciona" seria uma suposicao sobre um artefato
+  # que ninguem abriu.
+  conferir-o-publicado:
+    needs: publicar
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            artefato: linux_amd64
+            extensao: tar.gz
+          - runner: macos-14
+            artefato: darwin_arm64
+            extensao: tar.gz
+          - runner: windows-latest
+            artefato: windows_amd64
+            extensao: zip
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: baixar da release e conferir o checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          versao="${GITHUB_REF_NAME#v}"
+          arquivo="braunrate_${versao}_${{ matrix.artefato }}.${{ matrix.extensao }}"
+          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+          curl -fsSL -o "$arquivo" "$base/$arquivo"
+          curl -fsSL -o checksums.txt "$base/checksums.txt"
+          grep " $arquivo\$" checksums.txt > checksum-deste.txt
+          # macOS nao tem sha256sum e Linux nao tem shasum garantido.
+          if command -v sha256sum > /dev/null; then
+            sha256sum -c checksum-deste.txt
+          else
+            shasum -a 256 -c checksum-deste.txt
+          fi
+
+      - name: descompactar
+        shell: bash
+        run: |
+          set -euo pipefail
+          versao="${GITHUB_REF_NAME#v}"
+          arquivo="braunrate_${versao}_${{ matrix.artefato }}.${{ matrix.extensao }}"
+          if [ "${{ matrix.extensao }}" = "zip" ]; then
+            powershell -Command "Expand-Archive -Path '$arquivo' -DestinationPath . -Force"
+          else
+            tar xzf "$arquivo"
+          fi
+
+      - name: o binario publicado se identifica com a tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.extensao }}" = "zip" ]; then binario=./braunrate.exe; else binario=./braunrate; fi
+          "$binario" version
+          "$binario" version | grep -q "braunrate ${GITHUB_REF_NAME#v}"
+
+      - name: o binario publicado mede de verdade
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.extensao }}" = "zip" ]; then binario=./braunrate.exe; else binario=./braunrate; fi
+          "$binario" target -address=127.0.0.1:8080 -latency=5ms &
+          sleep 3
+          "$binario" validate examples/http-basico.yaml
+          "$binario" execute examples/ci.yaml -quiet -result resultado.json
+          # A versao viaja dentro do documento de resultado, e e por ela que a
+          # comparacao entre execucoes recusa binarios de versoes diferentes.
+          grep -q "\"versao\": \"${GITHUB_REF_NAME#v}\"" resultado.json
