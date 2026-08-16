@@ -50,11 +50,9 @@ jobs:
           go run -ldflags "-X github.com/Diegobraun/braunrate/internal/build.Version=${versao#v}" \
             ./cmd/site -out site
 
+      # O Pages ja esta ligado na origem "Actions". Ligar daqui exige permissao
+      # que o token do workflow nao tem, e a mensagem de erro nao diz isso.
       - uses: actions/configure-pages@v5
-        with:
-          # Liga o Pages na origem "Actions" sem ninguem precisar entrar nas
-          # configuracoes do repositorio.
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
