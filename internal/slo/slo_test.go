@@ -62,7 +62,7 @@ func TestFailureSentenceIsReadableByNonEngineers(t *testing.T) {
 		rule("consultar pedido", "p95", scenario.OpLess, 150, "ms"),
 	}, sampleDocument(), nil)
 
-	expected := `Falhou: "consultar pedido" teve latencia p95 de 210 ms, acima do limite de 150 ms.`
+	expected := `Falhou: "consultar pedido" respondeu 95% em ate 210 ms, acima do limite de 150 ms.`
 	if verdict.Sentence != expected {
 		t.Errorf("frase = %q\nesperada = %q", verdict.Sentence, expected)
 	}

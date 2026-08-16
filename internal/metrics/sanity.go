@@ -115,7 +115,7 @@ func everythingFailed(document Document, _ DocumentInput) []SanityFinding {
 	if len(failed) == ran && ran > 1 {
 		return []SanityFinding{{
 			Kind:    "tudo_falhou",
-			Message: fmt.Sprintf("todos os %d passos falharam em 100%% das requisicoes; a latencia acima e o tempo que o alvo levou para recusar, nao o tempo do trabalho que o cenario queria medir", ran),
+			Message: fmt.Sprintf("todos os %d passos falharam em 100%% das requisicoes; o tempo de resposta acima e o tempo que o alvo levou para recusar, nao o tempo do trabalho que o cenario queria medir", ran),
 			Evidence: fmt.Sprintf("%s requisicoes, %s erros (%s)",
 				thousands(document.Overall.Count), thousands(document.Overall.Errors), dominantClasses(document.Steps)),
 		}}

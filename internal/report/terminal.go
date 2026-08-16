@@ -248,7 +248,7 @@ var classNames = map[string]string{
 	"autenticacao": "nao consegui autenticar",
 	"autorizacao":  "credencial aceita, sem permissao nesse recurso",
 	"mensageria":   "o broker recusou a mensagem",
-	"saturacao":    "gerador saturado",
+	"saturacao":    "o gerador nao sustentou a taxa",
 	"graphql":      "erro no corpo da resposta GraphQL (com status 200)",
 }
 

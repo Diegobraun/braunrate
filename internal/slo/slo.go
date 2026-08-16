@@ -230,6 +230,9 @@ func targetName(rule scenario.SLORule) string {
 	}
 }
 
+// The noun form, for the sentences that talk about the metric instead of
+// reporting a value: "o tempo de resposta de 95% das respostas esta 12% pior
+// que a base".
 func readableName(metric string) string {
 	switch metric {
 	case "erros":
@@ -239,15 +242,24 @@ func readableName(metric string) string {
 	case "vazao", "taxa_efetiva":
 		return "taxa efetiva"
 	case "max":
-		return "latencia maxima"
+		return "o pior tempo de resposta"
 	}
 	if prefix, percentile, found := strings.Cut(metric, "_"); found {
 		if prefix == "jornada" {
-			return "a jornada inteira (" + percentile + ")"
+			return "o tempo de resposta de " + share(percentile) + " das jornadas"
 		}
-		return "todas as requisicoes (" + percentile + ")"
+		return "o tempo de resposta de " + share(percentile) + " das respostas"
 	}
-	return "latencia " + metric
+	return "o tempo de resposta de " + share(metric) + " das respostas"
+}
+
+// "p95" is the term of the trade and means nothing to someone who never ran a
+// load test — and this is the line that decides whether the CI passes.
+func share(percentile string) string {
+	if trimmed := strings.TrimPrefix(percentile, "p"); trimmed != percentile {
+		return strings.Replace(trimmed, ".", ",", 1) + "%"
+	}
+	return percentile
 }
 
 func format(value float64, unit string) string {
@@ -279,17 +291,28 @@ func phraseEvaluation(evaluation Evaluation, rule scenario.SLORule) string {
 	if rule.Operator == scenario.OpGreater || rule.Operator == scenario.OpGreaterOrEqual {
 		comparison = "abaixo do minimo de"
 	}
+	observed := observedPhrase(evaluation)
 	if evaluation.Passed {
 		within := "dentro do limite de"
 		if rule.Operator == scenario.OpGreater || rule.Operator == scenario.OpGreaterOrEqual {
 			within = "no minimo de"
 		}
-		return fmt.Sprintf("Passou: %s teve %s de %s, %s %s.",
-			target, readableName(evaluation.Metrica), format(evaluation.Obtained, evaluation.Unit), within, format(evaluation.Limit, evaluation.Unit))
+		return fmt.Sprintf("Passou: %s %s, %s %s.",
+			target, observed, within, format(evaluation.Limit, evaluation.Unit))
 	}
-	return fmt.Sprintf("Falhou: %s teve %s de %s, %s %s.",
-		target, readableName(evaluation.Metrica), format(evaluation.Obtained, evaluation.Unit),
-		comparison, format(evaluation.Limit, evaluation.Unit))
+	return fmt.Sprintf("Falhou: %s %s, %s %s.",
+		target, observed, comparison, format(evaluation.Limit, evaluation.Unit))
+}
+
+// A percentile reads as a share of the requests, not as a quantity something
+// "had": "respondeu 95% em ate 6 ms" is the sentence the vocabulary fixes, and
+// it is the line that decides whether the CI passes.
+func observedPhrase(evaluation Evaluation) string {
+	value := format(evaluation.Obtained, evaluation.Unit)
+	if evaluation.Unit == "ms" && strings.HasPrefix(evaluation.Metrica, "p") {
+		return fmt.Sprintf("respondeu %s em ate %s", share(evaluation.Metrica), value)
+	}
+	return fmt.Sprintf("teve %s de %s", readableName(evaluation.Metrica), value)
 }
 
 // The base is named because the report travels alone: pasted into a ticket,

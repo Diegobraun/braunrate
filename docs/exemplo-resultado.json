@@ -1,7 +1,7 @@
 {
   "versao_do_formato": "2",
   "ferramenta": "braunrate",
-  "versao": "0.4.0",
+  "versao": "0.5.0",
   "ambiente": {
     "maquina": "Mac",
     "sistema_operacional": "darwin",
@@ -224,7 +224,7 @@
         "limite": 150,
         "unidade": "ms",
         "passou": false,
-        "frase": "Falhou: \"consultar pedido\" teve latencia p95 de 582 ms, acima do limite de 150 ms.",
+        "frase": "Falhou: \"consultar pedido\" respondeu 95% em ate 582 ms, acima do limite de 150 ms.",
         "sem_dados": false,
         "comparacao_nao_confiavel": false
       },
@@ -236,7 +236,7 @@
         "limite": 200,
         "unidade": "ms",
         "passou": true,
-        "frase": "Passou: \"pagar fatura\" teve latencia p95 de 43 ms, dentro do limite de 200 ms.",
+        "frase": "Passou: \"pagar fatura\" respondeu 95% em ate 43 ms, dentro do limite de 200 ms.",
         "sem_dados": false,
         "comparacao_nao_confiavel": false
       },
@@ -248,7 +248,7 @@
         "limite": 2000,
         "unidade": "ms",
         "passou": true,
-        "frase": "Passou: a jornada inteira teve latencia p95 de 666 ms, dentro do limite de 2000 ms.",
+        "frase": "Passou: a jornada inteira respondeu 95% em ate 666 ms, dentro do limite de 2000 ms.",
         "sem_dados": false,
         "comparacao_nao_confiavel": false
       },
@@ -260,7 +260,7 @@
         "limite": 5000,
         "unidade": "ms",
         "passou": true,
-        "frase": "Passou: a jornada inteira teve latencia p99 de 1027 ms, dentro do limite de 5000 ms.",
+        "frase": "Passou: a jornada inteira respondeu 99% em ate 1027 ms, dentro do limite de 5000 ms.",
         "sem_dados": false,
         "comparacao_nao_confiavel": false
       },
@@ -280,7 +280,7 @@
     "criterios_nao_declarados": [
       "regressao: sem criterio declarado — o gate aprova sem comparar com a execucao anterior"
     ],
-    "frase": "Falhou: \"consultar pedido\" teve latencia p95 de 582 ms, acima do limite de 150 ms."
+    "frase": "Falhou: \"consultar pedido\" respondeu 95% em ate 582 ms, acima do limite de 150 ms."
   },
   "variedade_observada": [
     {
@@ -343,7 +343,7 @@
     {
       "tipo": "alvo_degradado",
       "gravidade": "media",
-      "mensagem": "a latencia do alvo cresceu ao longo da execucao enquanto o despacho continuou pontual; a degradacao e do alvo, nao do gerador",
+      "mensagem": "o tempo de resposta do alvo cresceu ao longo da execucao enquanto o despacho continuou pontual; a degradacao e do alvo, nao do gerador",
       "evidencia": "p99 por segundo passou de 82.6 ms para 1033.2 ms"
     }
   ],

@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Diegobraun/braunrate/internal/texto"
 	"gopkg.in/yaml.v3"
 )
 
@@ -135,7 +136,7 @@ func (known variableScope) wherePeopleDeclare(name string) string {
 	if len(available) == 0 {
 		return declarationForms(name)
 	}
-	if _, isTypo := closest(name, available); isTypo {
+	if _, isTypo := texto.Closest(name, available); isTypo {
 		return suggest(name, available)
 	}
 	return suggest(name, available) + "\n" + declarationForms(name)

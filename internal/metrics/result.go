@@ -434,9 +434,9 @@ func detectTargetDegradation(document Document) (Warning, bool) {
 		}
 	}
 	if first > 0 && worst >= 3*first {
-		message := "a latencia do alvo cresceu ao longo da execucao enquanto o despacho continuou pontual; a degradacao e do alvo, nao do gerador"
+		message := "o tempo de resposta do alvo cresceu ao longo da execucao enquanto o despacho continuou pontual; a degradacao e do alvo, nao do gerador"
 		if document.Closed() {
-			message = "a latencia do alvo cresceu ao longo da execucao; no laco fechado isso tambem derruba a carga, entao a queda de taxa e parte do mesmo evento, nao um segundo achado"
+			message = "o tempo de resposta do alvo cresceu ao longo da execucao; no laco fechado isso tambem derruba a carga, entao a queda de taxa e parte do mesmo evento, nao um segundo achado"
 		}
 		return Warning{
 			Kind:     "alvo_degradado",
