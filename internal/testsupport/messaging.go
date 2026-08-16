@@ -3,6 +3,8 @@ package testsupport
 import (
 	"context"
 	"fmt"
+	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -41,12 +43,41 @@ func (p *Processor) Processed() int64 { return p.processed.Load() }
 // a group negotiates partitions on the first poll and loses whatever was
 // produced during that negotiation, which would show in the report as service
 // slowness.
+func createTopics(conn *kafka.Conn, topics ...string) error {
+	controller, err := conn.Controller()
+	if err != nil {
+		return fmt.Errorf("nao consegui achar o controlador do broker: %w", err)
+	}
+	leader, err := kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
+	if err != nil {
+		return fmt.Errorf("nao consegui falar com o controlador do broker: %w", err)
+	}
+	defer func() { _ = leader.Close() }()
+
+	settings := make([]kafka.TopicConfig, 0, len(topics))
+	for _, topic := range topics {
+		settings = append(settings, kafka.TopicConfig{Topic: topic, NumPartitions: 1, ReplicationFactor: 1})
+	}
+	if err := leader.CreateTopics(settings...); err != nil {
+		return fmt.Errorf("nao consegui criar os topicos %v: %w", topics, err)
+	}
+	return nil
+}
+
 func (p *Processor) Start() error {
 	conn, err := kafka.Dial("tcp", p.opts.Brokers[0])
 	if err != nil {
 		return fmt.Errorf("nao consegui falar com o broker: %w", err)
 	}
 	defer func() { _ = conn.Close() }()
+
+	// Reading partitions of a topic that does not exist fails even with
+	// auto-creation on, because auto-creation happens on the first write. The
+	// test target creates both topics up front so the run does not depend on
+	// whoever got there first.
+	if err := createTopics(conn, p.opts.Input, p.opts.Output); err != nil {
+		return err
+	}
 
 	partitions, err := conn.ReadPartitions(p.opts.Input)
 	if err != nil {

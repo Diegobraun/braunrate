@@ -582,11 +582,16 @@ func serveTarget(args []string) int {
 			Output:  *out,
 			Delay:   *processorDelay,
 		})
+		// The HTTP target stays up even if the async processor does not: killing
+		// everything here turned one broken piece into every scenario failing
+		// with an authentication error, which points at the wrong place.
 		if err := processor.Start(); err != nil {
-			fmt.Fprintf(os.Stderr, "erro ao subir o processador: %v\n", err)
-			return 1
+			fmt.Fprintf(os.Stderr, "ATENCAO: o processador assincrono nao subiu: %v\n", err)
+			fmt.Fprintln(os.Stderr, "         o alvo HTTP continua no ar; cenario com 'aguardar' vai falhar por timeout")
+			processor = nil
+		} else {
+			fmt.Fprintf(os.Stderr, "processador assincrono: %s -> %s, %s por mensagem\n", *input, *out, *processorDelay)
 		}
-		fmt.Fprintf(os.Stderr, "processador assincrono: %s -> %s, %s por mensagem\n", *input, *out, *processorDelay)
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
