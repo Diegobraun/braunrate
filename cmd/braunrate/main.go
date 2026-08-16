@@ -22,6 +22,7 @@ import (
 	_ "github.com/Diegobraun/braunrate/internal/protocol/http"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/kafka"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/wait"
+	"github.com/Diegobraun/braunrate/internal/recorder"
 	"github.com/Diegobraun/braunrate/internal/report"
 	"github.com/Diegobraun/braunrate/internal/report/comparison"
 	"github.com/Diegobraun/braunrate/internal/scenario"
@@ -51,6 +52,8 @@ func main() {
 		os.Exit(newOne(os.Args[2:]))
 	case "import":
 		os.Exit(importCommand(os.Args[2:]))
+	case "record":
+		os.Exit(record(os.Args[2:]))
 	case "target":
 		os.Exit(serveTarget(os.Args[2:]))
 	case "version":
@@ -72,6 +75,7 @@ uso:
   braunrate validate <cenario.yaml>
   braunrate import curl "<comando curl>"        gera um cenario a partir de um curl
   braunrate import jmx <plano.jmx>              traduz o subconjunto comum de um plano do JMeter
+  braunrate record -output <cenario.yaml>       grava um cenario a partir do que passar pelo proxy
   braunrate report <resultado.json> [opcoes]    gera HTML ou CSV de um resultado ja gravado
   braunrate compare <antes.json> <depois.json>
   braunrate target [opcoes]
@@ -528,6 +532,100 @@ func importCommand(args []string) int {
 		fmt.Fprintln(os.Stderr, "\nProximo passo: grave com -output cenario.yaml e rode 'braunrate debug cenario.yaml'.")
 	}
 	return 0
+}
+
+func record(args []string) int {
+	set := flag.NewFlagSet("record", flag.ExitOnError)
+	output := set.String("output", "", "arquivo de cenario a gravar")
+	address := set.String("addr", "127.0.0.1:8888", "endereco onde o proxy escuta")
+	hosts := set.String("host", "", "hosts a gravar, separados por virgula (padrao: o primeiro que aparecer)")
+	ignore := set.String("ignore", "", "trechos de caminho a descartar, separados por virgula")
+	parseArguments(set, args)
+
+	if *output == "" {
+		fmt.Fprintln(os.Stderr, "informe onde gravar o cenario:\n  braunrate record -output cenario.yaml")
+		return 2
+	}
+
+	proxy := recorder.New(recorder.Options{
+		Address: *address,
+		Hosts:   splitList(*hosts),
+		Ignore:  splitList(*ignore),
+	})
+
+	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	err := proxy.Serve(runContext, func(listening string) {
+		fmt.Fprintf(os.Stderr, `gravando em %s
+
+Aponte o cliente para este proxy e navegue pelo fluxo que voce quer medir:
+  navegador: configure o proxy HTTP para %s
+  curl:      curl -x http://%s http://seu-servico/pedidos
+  terminal:  export http_proxy=http://%s
+
+Duas coisas que este gravador nao sabe, e voce sabe:
+  a carga e o slo saem como chute de partida, nao como medicao — ajuste antes de usar como gate
+  uma sequencia gravada uma vez nao e o mix de producao: a proporcao entre as rotas e sua decisao
+
+Ctrl+C encerra e escreve o cenario.
+`, listening, listening, listening, listening)
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 2
+	}
+	fmt.Fprintln(os.Stderr)
+
+	entries := proxy.Entries()
+	for _, line := range recorder.DroppedLines(proxy.Dropped()) {
+		fmt.Fprintf(os.Stderr, "descartei %s\n", line)
+	}
+	for host, count := range proxy.Tunneled() {
+		fmt.Fprintf(os.Stderr, "nao gravei %d conexao(oes) HTTPS para %s: gravar dentro de TLS exige autoridade certificadora propria, que esta fora do escopo\n", count, host)
+	}
+	if len(entries) == 0 {
+		fmt.Fprintln(os.Stderr, "nenhuma requisicao gravada; nao vou escrever um cenario vazio")
+		fmt.Fprintln(os.Stderr, "se o trafego era HTTPS, aponte o cliente para o endereco HTTP do servico, ou use -host para liberar o dominio certo")
+		return 1
+	}
+
+	prefix := strings.TrimSuffix(filepath.Base(*output), filepath.Ext(*output))
+	script, files := recorder.Build(entries, prefix)
+	generated := importer.RenderYAML(script)
+
+	if _, err := scenario.Parse([]byte(generated.YAML)); err != nil {
+		fmt.Fprintf(os.Stderr, "gravei um cenario que eu mesmo nao aceito; isso e defeito meu, nao da sua navegacao:\n%v\n", err)
+		return 1
+	}
+	if err := os.WriteFile(*output, []byte(generated.YAML), 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "nao consegui gravar %s: %v\n", *output, err)
+		return 1
+	}
+	fmt.Fprintf(os.Stderr, "%d requisicoes viraram %d passo(s) em %s\n", len(entries), len(script.Steps), *output)
+
+	directory := filepath.Dir(*output)
+	for index, file := range files {
+		path := filepath.Join(directory, script.Data[index].File)
+		if err := os.WriteFile(path, []byte(file.CSV()), 0o644); err != nil {
+			fmt.Fprintf(os.Stderr, "nao consegui gravar %s: %v\n", path, err)
+			return 1
+		}
+		fmt.Fprintf(os.Stderr, "%d valor(es) observado(s) de %s em %s\n", len(file.Values), file.Name, path)
+	}
+
+	for _, warning := range generated.Warnings {
+		fmt.Fprintf(os.Stderr, "atencao: %s\n", warning)
+	}
+	fmt.Fprintf(os.Stderr, "\nProximo passo, antes de qualquer carga:\n  braunrate debug %s\n", *output)
+	return 0
+}
+
+func splitList(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return strings.Split(value, ",")
 }
 
 func validate(args []string) int {

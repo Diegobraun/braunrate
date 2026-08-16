@@ -204,6 +204,52 @@ atencao: 1 elemento(s) do .jmx nao foram traduzidos e ficaram de fora do cenario
 BeanShellPreProcessor (1). Confira se algum deles mudava o que era medido
 ```
 
+**Gravar navegando**, para quem nao tem nem curl nem plano:
+
+```bash
+braunrate record -output cenario.yaml
+# aponte o navegador ou o curl para o proxy, navegue pelo fluxo, Ctrl+C
+```
+
+O recorder do JMeter transcreve: grava o token daquela sessao e o pedido `9912`, e na segunda execucao o cenario quebra. Este faz quatro coisas a mais, e **declara cada uma**:
+
+```
+descartei 1 dominio de fora (example.com)
+descartei 1 recurso estatico
+3 requisicoes viraram 2 passo(s) em cenario.yaml
+2 valor(es) observado(s) de pedidos_id em cenario-pedidos-id.csv
+atencao: o campo "senha" do corpo virou ${senha}: rode com SENHA=... no ambiente, para nao versionar credencial
+atencao: a sequencia gravada e uma passagem so: o mix de producao tem outras proporcoes entre as rotas
+atencao: os numeros de carga e de slo sao um chute de partida, nao uma medicao: ajuste antes de usar como gate
+
+Proximo passo, antes de qualquer carga:
+  braunrate debug cenario.yaml
+```
+
+E o cenario que sai roda sem edicao — o token virou captura, o id virou dado:
+
+```yaml
+  - nome: post auth token
+    http:
+      metodo: POST
+      caminho: /auth/token
+      corpo: '{"usuario":"ana","senha": "${senha}"}'
+    captura:
+      access_token: $.access_token   # sugestao do gravador: confira se e mesmo este valor que a proxima chamada precisa
+    verificar:
+      status: 200
+  - nome: get pedidos
+    http:
+      metodo: GET
+      caminho: /pedidos/${pedidos_id.valor}
+      cabecalhos:
+        Authorization: "Bearer ${access_token}"
+    verificar:
+      status: 200
+```
+
+**Fora de escopo, com o motivo** ([ADR 0013](docs/adr/0013-gravador-de-trafego.md)): gravar dentro de **HTTPS** exige o braunrate emitir certificado e a sua maquina confiar nele — mexer no armazem de confianca do sistema nao e coisa que ferramenta de carga deve automatizar em silencio. A conexao e encaminhada para o cliente continuar funcionando, e o que nao foi gravado aparece na tela por host. **Trafego de aplicativo movel** fica fora da v1, por causa de pinning de certificado e de configuracao por sistema operacional.
+
 **Ver a iteracao antes da carga**, que e onde a correlacao quebrada aparece:
 
 ```
@@ -696,7 +742,8 @@ A comparacao nunca chama de regressao o que pode ser ruido, lista tudo que mudou
 | Todo exemplo publicado roda no CI; exemplo que nao roda quebra o build | pronto |
 | Verificacao de sanidade do resultado antes de qualquer veredito | pronto |
 | Tempo total da jornada, contado do instante agendado | pronto |
-| Autoria: schema no editor, `depurar`, `importar curl`, erros que ensinam | pronto |
+| Autoria: schema no editor, `debug`, `import curl`, `import jmx`, erros que ensinam | pronto |
+| Gravador de trafego com correlacao sugerida, agrupamento e filtro de ruido | pronto |
 | Relatorio HTML autocontido, com veredito em uma frase | pronto |
 | JSON versionado, CSV por passo, comparacao entre execucoes | pronto |
 | GraphQL: uma linha por operacao, erro em 200 contado como erro | pronto |
@@ -716,7 +763,7 @@ Tres razoes, nesta ordem:
 
 ## Escopo
 
-**Dentro:** HTTP/HTTPS e REST; GraphQL de primeira classe; Kafka e RabbitMQ (produzir e consumir); passo `aguardar` com timeout; correlacao, variaveis e fluxo de autenticacao; CSV com politica de consumo e geracao sintetica com semente; perfis de carga (rampa, patamar, pico, taxa constante) e modelo fechado declarado; SLO com codigo de saida; relatorio HTML autocontido, JSON, CSV e resumo de terminal; comparacao entre execucoes; importador de `.jmx` para o subconjunto comum.
+**Dentro:** HTTP/HTTPS e REST; GraphQL de primeira classe; Kafka e RabbitMQ (produzir e consumir); passo `aguardar` com timeout; correlacao, variaveis e fluxo de autenticacao; CSV com politica de consumo e geracao sintetica com semente; perfis de carga (rampa, patamar, pico, taxa constante) e modelo fechado declarado; SLO com codigo de saida; relatorio HTML autocontido, JSON, CSV e resumo de terminal; comparacao entre execucoes; importador de `.jmx` para o subconjunto comum; gravador de trafego HTTP.
 
 **Limitacao conhecida:** protocolo fora da lista acima exige recompilar o binario — a mesma friccao que o k6 tem. E consequencia da escolha de Go ([ADR 0004](docs/adr/0004-extensao-de-protocolo.md)), esta declarada aqui de proposito, e o processo de build reprodutivel para protocolo fora-de-arvore sera documentado. Avro e Schema Registry sao mais fracos em Go que na JVM e ficam para depois da v1.
 

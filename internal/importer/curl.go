@@ -229,9 +229,9 @@ func build(request Request) Import {
 }
 
 func scenarioName(request Request) string {
-	return "Importado de curl " + strings.ToUpper(request.Method) + " " + resource(request.Path)
+	return "Importado de curl " + strings.ToUpper(request.Method) + " " + Resource(request.Path)
 }
 
 func stepName(request Request) string {
-	return strings.ToLower(request.Method) + " " + resource(request.Path)
+	return strings.ToLower(request.Method) + " " + Resource(request.Path)
 }

@@ -2,6 +2,7 @@ package importer
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"unicode"
@@ -17,6 +18,16 @@ type ImportedStep struct {
 	Headers         map[string]string
 	Body            string
 	FollowRedirects bool
+	ExpectedStatus  int
+	Captures        []ImportedCapture
+}
+
+// Suggested marks what was inferred rather than read: the comment goes into the
+// file so whoever opens it knows which line the tool guessed.
+type ImportedCapture struct {
+	Variable   string
+	Expression string
+	Suggested  bool
 }
 
 type ImportedSource struct {
@@ -44,6 +55,36 @@ var secretHeaders = map[string]string{
 	"cookie":        "COOKIE",
 }
 
+// The body leaks the same way the header does: a recorded login carries the
+// password in plain text, and the generated file goes to the repository.
+var secretFields = map[string]string{
+	"senha": "SENHA", "password": "SENHA", "pwd": "SENHA", "passwd": "SENHA",
+	"secret": "SEGREDO", "client_secret": "SEGREDO", "clientsecret": "SEGREDO",
+	"token": "TOKEN", "access_token": "TOKEN", "refresh_token": "TOKEN",
+	"apikey": "API_KEY", "api_key": "API_KEY", "authorization": "TOKEN",
+}
+
+var jsonField = regexp.MustCompile(`"([A-Za-z_][A-Za-z0-9_-]*)"\s*:\s*"([^"]*)"`)
+
+func maskBody(body string, vars map[string]string) (string, []string) {
+	var notices []string
+	masked := jsonField.ReplaceAllStringFunc(body, func(occurrence string) string {
+		parts := jsonField.FindStringSubmatch(occurrence)
+		variable, secret := secretFields[strings.ToLower(parts[1])]
+		if !secret || parts[2] == "" || strings.HasPrefix(parts[2], "${") {
+			return occurrence
+		}
+		local := strings.ToLower(variable)
+		if _, announced := vars[local]; !announced {
+			vars[local] = variable
+			notices = append(notices,
+				fmt.Sprintf("o campo %q do corpo virou ${%s}: rode com %s=... no ambiente, para nao versionar credencial", parts[1], local, variable))
+		}
+		return fmt.Sprintf("%q: %q", parts[1], "${"+local+"}")
+	})
+	return masked, notices
+}
+
 func RenderYAML(script Script) Import {
 	importResult := Import{Warnings: append([]string{}, script.Warnings...)}
 	var lines []string
@@ -58,19 +99,23 @@ func RenderYAML(script Script) Import {
 		withoutSecret := map[string]string{}
 		for name, value := range steps[index].Headers {
 			variable, secret := secretHeaders[strings.ToLower(name)]
-			if !secret {
+			if !secret || alreadyInterpolated(value) {
 				withoutSecret[name] = value
 				continue
 			}
 			local := strings.ToLower(variable)
 			withoutSecret[name] = credentialPrefix(value) + "${" + local + "}"
-			if _, jaAvisado := vars[local]; !jaAvisado {
+			if _, announced := vars[local]; !announced {
 				vars[local] = variable
 				importResult.Warnings = append(importResult.Warnings,
 					fmt.Sprintf("o cabecalho %s virou ${%s}: rode com %s=... no ambiente, para nao versionar credencial", name, local, variable))
 			}
 		}
 		steps[index].Headers = withoutSecret
+
+		masked, notices := maskBody(steps[index].Body, vars)
+		steps[index].Body = masked
+		importResult.Warnings = append(importResult.Warnings, notices...)
 	}
 
 	write("# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json")
@@ -142,8 +187,18 @@ func RenderYAML(script Script) Import {
 				write("      seguir_redirect: true")
 			}
 		}
+		if len(step.Captures) > 0 {
+			write("    captura:")
+			for _, capture := range step.Captures {
+				suffix := ""
+				if capture.Suggested {
+					suffix = "   # sugestao do gravador: confira se e mesmo este valor que a proxima chamada precisa"
+				}
+				write("      %s: %s%s", capture.Variable, capture.Expression, suffix)
+			}
+		}
 		write("    verificar:")
-		write("      status: 200")
+		write("      status: %d", statusOr(step.ExpectedStatus))
 	}
 
 	write("")
@@ -157,6 +212,26 @@ func RenderYAML(script Script) Import {
 		"os numeros de carga e de slo sao um chute de partida, nao uma medicao: ajuste antes de usar como gate")
 	importResult.YAML = strings.Join(lines, "\n") + "\n"
 	return importResult
+}
+
+// A value that is already a reference carries no literal secret, and replacing
+// it would throw away a correlation the recorder found.
+func alreadyInterpolated(value string) bool {
+	rest := strings.TrimSpace(value)
+	if prefix := credentialPrefix(rest); prefix != "" {
+		rest = strings.TrimSpace(strings.TrimPrefix(rest, prefix))
+	}
+	return strings.HasPrefix(rest, "${") && strings.HasSuffix(rest, "}")
+}
+
+// A recorded 201 becomes verificar: { status: 201 }. Writing 200 for every step
+// would fail the scenario on its first run against the very service it was
+// recorded from.
+func statusOr(status int) int {
+	if status == 0 {
+		return 200
+	}
+	return status
 }
 
 func credentialPrefix(value string) string {
@@ -174,11 +249,11 @@ func inlineBody(body string) string {
 // Identifiers and version prefixes stay out of the step name: the name is the
 // report's aggregation key, and a name per id would give one row per request
 // instead of one row per operation.
-func resource(path string) string {
+func Resource(path string) string {
 	semConsulta, _, _ := strings.Cut(path, "?")
 	var parts []string
 	for _, part := range strings.Split(semConsulta, "/") {
-		if part == "" || looksLikeIdentifier(part) || looksLikeVersion(part) {
+		if part == "" || LooksLikeIdentifier(part) || looksLikeVersion(part) {
 			continue
 		}
 		parts = append(parts, part)
@@ -201,7 +276,7 @@ func looksLikeVersion(part string) bool {
 	return true
 }
 
-func looksLikeIdentifier(part string) bool {
+func LooksLikeIdentifier(part string) bool {
 	digits := 0
 	for _, char := range part {
 		if unicode.IsDigit(char) {
@@ -214,7 +289,7 @@ func looksLikeIdentifier(part string) bool {
 func hasIdentifier(path string) bool {
 	semConsulta, _, _ := strings.Cut(path, "?")
 	for _, part := range strings.Split(semConsulta, "/") {
-		if part != "" && looksLikeIdentifier(part) {
+		if part != "" && LooksLikeIdentifier(part) {
 			return true
 		}
 	}

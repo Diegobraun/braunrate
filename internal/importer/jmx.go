@@ -160,7 +160,7 @@ func stepFromSampler(sampler *element, global map[string]string) (ImportedStep, 
 
 	name := strings.TrimSpace(sampler.attribute("testname"))
 	if name == "" || name == "HTTP Request" {
-		name = strings.ToLower(method) + " " + resource(path)
+		name = strings.ToLower(method) + " " + Resource(path)
 	}
 	step.Name = name
 

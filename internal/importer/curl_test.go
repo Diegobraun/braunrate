@@ -125,3 +125,32 @@ func TestGeneratedScenarioPointsToPublishedSchema(t *testing.T) {
 		t.Errorf("o arquivo gerado precisa dar autocompletar no editor de quem recebeu:\n%s", importResult.YAML)
 	}
 }
+
+// A recorded or pasted login carries the password in plain text, and the
+// generated file goes to the repository. The header rule had this covered and
+// the body did not.
+func TestPasswordInTheBodyNeverReachesTheFile(t *testing.T) {
+	result, err := FromCurl(`curl -X POST https://api.exemplo/auth -H 'Content-Type: application/json' -d '{"usuario":"ana","senha":"p4ssw0rd-real"}'`)
+	if err != nil {
+		t.Fatalf("importar falhou: %v", err)
+	}
+
+	if strings.Contains(result.YAML, "p4ssw0rd-real") {
+		t.Fatalf("a senha foi parar no cenario:\n%s", result.YAML)
+	}
+	if !strings.Contains(result.YAML, `"senha": "${senha}"`) {
+		t.Fatalf("a senha nao virou referencia:\n%s", result.YAML)
+	}
+	if !strings.Contains(result.YAML, "senha: ${SENHA}") {
+		t.Fatalf("faltou declarar a variavel de ambiente:\n%s", result.YAML)
+	}
+	found := false
+	for _, warning := range result.Warnings {
+		if strings.Contains(warning, "SENHA=") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("o corte foi silencioso; avisos: %v", result.Warnings)
+	}
+}
