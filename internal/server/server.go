@@ -150,7 +150,7 @@ func (server *Server) StartupWarning() []string {
 		lines = append(lines, "Concurrent runs enabled: two runs at the same time fight over the CPU that has to dispatch at the scheduled instant, and neither one measures what it set out to measure.")
 	}
 	if server.options.UI != nil {
-		return append(lines, fmt.Sprintf("\nAbra no navegador:\n  http://%s", server.options.Address))
+		return append(lines, fmt.Sprintf("\nOpen it in the browser:\n  http://%s", server.options.Address))
 	}
 	return append(lines, fmt.Sprintf("\nTo see what it is serving:\n  curl http://%s/scenarios", server.options.Address))
 }
