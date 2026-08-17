@@ -95,7 +95,7 @@ func TestDegradationIsNotBlamedOnTheTargetWhenDispatchSlipped(t *testing.T) {
 	if !had {
 		t.Fatal("com despacho pontual, a degradação do alvo precisa ser apontada")
 	}
-	if !strings.Contains(warning.Message, "despacho continuou pontual") {
+	if !strings.Contains(warning.Message, "dispatch stayed on time") {
 		t.Errorf("mensagem mudou sem o teste acompanhar: %q", warning.Message)
 	}
 

@@ -15,14 +15,14 @@ import (
 func BodyShape(body []byte) string {
 	trimmed := strings.TrimSpace(string(body))
 	if trimmed == "" {
-		return "vazio"
+		return "empty"
 	}
 
 	var decoded any
 	if err := json.Unmarshal([]byte(trimmed), &decoded); err != nil {
 		// Not JSON is a shape too, and the only thing that separates one text
 		// body from another without reading it is whether it is there.
-		return "texto"
+		return "text"
 	}
 	var fields []string
 	describeShape("", decoded, &fields)
@@ -38,10 +38,10 @@ func describeShape(path string, value any, into *[]string) {
 			// and it has no field name to blame. Naming it apart from an empty
 			// field is what keeps the warning about the accident.
 			if path == "" {
-				*into = append(*into, "corpo sem campos")
+				*into = append(*into, "body with no fields")
 				return
 			}
-			*into = append(*into, path+": objeto vazio")
+			*into = append(*into, path+": empty object")
 			return
 		}
 		for name, field := range typed {
@@ -52,22 +52,22 @@ func describeShape(path string, value any, into *[]string) {
 		// are the same code path, a list of 0 is not.
 		switch len(typed) {
 		case 0:
-			*into = append(*into, path+"[]: vazia")
+			*into = append(*into, path+"[]: empty")
 		default:
 			describeShape(path+"[]", typed[0], into)
 		}
 	case string:
 		if typed == "" {
-			*into = append(*into, path+": vazio")
+			*into = append(*into, path+": empty")
 			return
 		}
-		*into = append(*into, path+": texto")
+		*into = append(*into, path+": text")
 	case float64:
 		*into = append(*into, path+": number")
 	case bool:
-		*into = append(*into, path+": booleano")
+		*into = append(*into, path+": boolean")
 	case nil:
-		*into = append(*into, path+": nulo")
+		*into = append(*into, path+": null")
 	default:
 		*into = append(*into, fmt.Sprintf("%s: %T", path, typed))
 	}
@@ -82,7 +82,7 @@ func fieldPath(path, name string) string {
 
 // BodyShapeName is the variable name a body shape is counted under. The prefix
 // is what tells the report it is looking at a shape and not at a value.
-const BodyShapeName = "corpo."
+const BodyShapeName = "body."
 
 func bodyShape(name string) bool { return strings.HasPrefix(name, BodyShapeName) }
 
@@ -116,7 +116,7 @@ func emptyField(shape string) bool {
 			continue
 		}
 		switch kind {
-		case "vazio", "nulo", "objeto vazio", "vazia":
+		case "empty", "null", "empty object":
 			return true
 		}
 	}

@@ -64,7 +64,7 @@ func TestFailedCaptureExplainsWhy(t *testing.T) {
 	if err == nil {
 		t.Fatal("esperava erro")
 	}
-	for _, fragment := range []string{"faturaId", "$.nao.existe", "não encontrado"} {
+	for _, fragment := range []string{"faturaId", "$.nao.existe", "path not found"} {
 		if !strings.Contains(err.Error(), fragment) {
 			t.Errorf("mensagem %q não menciona %q", err.Error(), fragment)
 		}
@@ -74,7 +74,7 @@ func TestFailedCaptureExplainsWhy(t *testing.T) {
 func TestCaptureOnNonJSONResponseSaysSo(t *testing.T) {
 	capture := scenario.Capture{Variable: "id", Origin: scenario.CaptureJSON, Expression: "$.id"}
 	_, err := correlation.Extract(capture, protocol.Response{Body: []byte("<html>erro</html>")})
-	if err == nil || !strings.Contains(err.Error(), "não é JSON válido") {
+	if err == nil || !strings.Contains(err.Error(), "not valid JSON") {
 		t.Fatalf("esperava aviso de corpo nao-JSON, recebeu %v", err)
 	}
 }
@@ -111,7 +111,7 @@ func TestAssertionFailureSaysExpectedAndObtained(t *testing.T) {
 	if err == nil {
 		t.Fatal("esperava falha")
 	}
-	for _, fragment := range []string{"ABERTA", "PAGA", "esperava"} {
+	for _, fragment := range []string{"ABERTA", "PAGA", "expected"} {
 		if !strings.Contains(err.Error(), fragment) {
 			t.Errorf("mensagem %q não menciona %q", err.Error(), fragment)
 		}

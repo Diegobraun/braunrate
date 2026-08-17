@@ -215,10 +215,10 @@ func (iteration Iteration) Complete() bool {
 func WriteJSON(path string, document metrics.Document) error {
 	content, err := json.MarshalIndent(document, "", "  ")
 	if err != nil {
-		return fmt.Errorf("erro ao serializar resultado: %v", err)
+		return fmt.Errorf("could not serialize the result: %v", err)
 	}
 	if err := os.WriteFile(path, content, 0o644); err != nil {
-		return fmt.Errorf("erro ao gravar resultado: %v", err)
+		return fmt.Errorf("could not write the result: %v", err)
 	}
 	return nil
 }
@@ -226,7 +226,7 @@ func WriteJSON(path string, document metrics.Document) error {
 func WriteHTML(path string, document metrics.Document) error {
 	file, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("erro ao criar %s: %v", path, err)
+		return fmt.Errorf("could not create %s: %v", path, err)
 	}
 	if err := report.HTML(file, document); err != nil {
 		_ = file.Close()
@@ -244,7 +244,7 @@ func WriteHTML(path string, document metrics.Document) error {
 func WriteComparisonHTML(path string, result comparison.Comparison, version string) error {
 	file, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("erro ao criar %s: %v", path, err)
+		return fmt.Errorf("could not create %s: %v", path, err)
 	}
 	if err := report.ComparisonHTML(file, result, version); err != nil {
 		_ = file.Close()
@@ -259,14 +259,14 @@ func WriteComparisonHTML(path string, result comparison.Comparison, version stri
 func WriteCSV(path string, document metrics.Document) error {
 	file, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("erro ao criar %s: %v", path, err)
+		return fmt.Errorf("could not create %s: %v", path, err)
 	}
 	if err := report.CSV(file, document); err != nil {
 		_ = file.Close()
-		return fmt.Errorf("erro ao gerar o CSV: %v", err)
+		return fmt.Errorf("could not generate the CSV: %v", err)
 	}
 	if err := file.Close(); err != nil {
-		return fmt.Errorf("erro ao fechar %s, o CSV pode estar incompleto: %v", path, err)
+		return fmt.Errorf("could not close %s, the CSV may be incomplete: %v", path, err)
 	}
 	return nil
 }

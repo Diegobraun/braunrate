@@ -25,16 +25,16 @@ func TestTheDemoRunsWithNoPreparationAndExplainsWhatItMeasured(t *testing.T) {
 	// Os tres conceitos que a demonstracao existe para ensinar. Sem eles ela
 	// vira um comando que roda e nao explica, que e o que ja havia.
 	for _, taught := range []string{
-		"Essa é a taxa",
-		"95% em até",
-		"critério de aceite",
+		"That is the rate",
+		"95% within",
+		"acceptance criterion",
 	} {
 		if !strings.Contains(output.String(), taught) {
 			t.Errorf("a demonstracao não ensina %q:\n%s", taught, output.String())
 		}
 	}
 
-	for _, produced := range []string{"demo.yaml", "demo-relatorio.html"} {
+	for _, produced := range []string{"demo.yaml", "demo-report.html"} {
 		if _, err := os.Stat(filepath.Join(directory, produced)); err != nil {
 			t.Errorf("a demonstracao não deixou %s: %v", produced, err)
 		}
@@ -53,7 +53,7 @@ func TestTheDemoRepeatsTheCaveatTheReportRaises(t *testing.T) {
 	if err := Run(context.Background(), Options{Directory: directory, Version: "teste", Output: &output}); err != nil {
 		t.Fatalf("a demonstracao não rodou: %v", err)
 	}
-	if !strings.Contains(output.String(), "não tem nenhum valor que varia") {
+	if !strings.Contains(output.String(), "has no value that varies") {
 		t.Errorf("o caminho fixo do cenário da demonstracao passou sem ressalva:\n%s", output.String())
 	}
 }
@@ -68,10 +68,10 @@ func TestTheFailingDemoShowsWhatTheClosedLoopHides(t *testing.T) {
 	}
 
 	for _, shown := range []string{
-		"escondidos pelo laço fechado",
-		"laço fechado (JMeter, Locust)",
-		"braunrate (modelo aberto)",
-		"FALHA",
+		"the closed loop never counted",
+		"closed loop (JMeter, Locust)",
+		"braunrate (open model)",
+		"FAIL",
 	} {
 		if !strings.Contains(output.String(), shown) {
 			t.Errorf("a demonstracao com falha não mostra %q:\n%s", shown, output.String())
@@ -110,7 +110,7 @@ func TestTheDemoSurvivesABusyPort(t *testing.T) {
 	if err := Run(context.Background(), Options{Directory: t.TempDir(), Version: "teste", Output: &output}); err != nil {
 		t.Fatalf("a demonstracao morreu com a porta ocupada: %v", err)
 	}
-	if !strings.Contains(output.String(), "está ocupado") {
+	if !strings.Contains(output.String(), "is busy") {
 		t.Errorf("o alvo mudou de endereço e a demonstracao não disse:\n%s", output.String())
 	}
 }

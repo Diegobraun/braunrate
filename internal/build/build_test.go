@@ -69,7 +69,7 @@ func TestTheInjectedValuesReachTheBinary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("o binario injetado não rodou: %v\n%s", err, printed)
 	}
-	for _, expected := range []string{"braunrate 9.9.9", "commit: abcdef1", "data: 2026-01-02T03:04:05Z"} {
+	for _, expected := range []string{"braunrate 9.9.9", "commit: abcdef1", "date: 2026-01-02T03:04:05Z"} {
 		if !strings.Contains(string(printed), expected) {
 			t.Errorf("a saída não traz %q:\n%s", expected, printed)
 		}

@@ -125,18 +125,18 @@ scenario:
 	}
 
 	withMix := run("  - name: leve\n    weight: 60\n    http: GET /leve\n  - name: pesada\n    weight: 40\n    http: GET /pesada\n")
-	if !strings.Contains(withMix, "Mix declarado e observado") {
+	if !strings.Contains(withMix, "Mix declared and observed") {
 		t.Fatalf("o relatório não diz qual proporção foi aplicada:\n%s", withMix)
 	}
-	if !strings.Contains(withMix, "60.0% declarado") {
+	if !strings.Contains(withMix, "60.0% declared") {
 		t.Errorf("o relatório não mostra a proporção declarada:\n%s", withMix)
 	}
-	if !strings.Contains(withMix, "alternativas do mix") {
+	if !strings.Contains(withMix, "alternatives of the mix") {
 		t.Errorf("o relatório não avisa que o percentil de jornada junta as alternativas:\n%s", withMix)
 	}
 
 	withoutMix := run("  - name: leve\n    http: GET /leve\n")
-	if strings.Contains(withoutMix, "Mix declarado") {
+	if strings.Contains(withoutMix, "Mix declared") {
 		t.Fatalf("o bloco de mix apareceu num cenário sem mix:\n%s", withoutMix)
 	}
 }
@@ -190,7 +190,7 @@ scenario:
 		return append([]string{}, paths...), terminal.String()
 	}
 
-	varying := `id: "numero(1,1000000)"`
+	varying := `id: "number(1,1000000)"`
 	t.Setenv("SEMENTE_DO_TESTE", "1")
 	first, output := run(varying)
 	if !strings.Contains(output, "(de $SEMENTE_DO_TESTE)") {
@@ -211,8 +211,8 @@ scenario:
 
 	// Uma fonte que gera sempre o mesmo valor continua sendo resultado invalido,
 	// venha a semente do arquivo ou do ambiente.
-	_, collapsed := run(`id: "padrao(FIXO)"`)
-	if !strings.Contains(collapsed, "valor") || !strings.Contains(collapsed, "pedidos.id") {
+	_, collapsed := run(`id: "pattern(FIXO)"`)
+	if !strings.Contains(collapsed, "value") || !strings.Contains(collapsed, "pedidos.id") {
 		t.Fatalf("a variedade observada sumiu do relatório:\n%s", collapsed)
 	}
 }

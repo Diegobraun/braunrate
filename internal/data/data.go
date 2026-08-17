@@ -175,7 +175,7 @@ func (syntheticSource *syntheticSource) Next(virtualUser int64) (map[string]stri
 	for _, field := range syntheticSource.sortedNames {
 		value, err := generate(syntheticSource.fields[field], random, sequence)
 		if err != nil {
-			return nil, fmt.Errorf("campo %q da fonte %q: %w", field, syntheticSource.name, err)
+			return nil, fmt.Errorf("field %q of source %q: %w", field, syntheticSource.name, err)
 		}
 		values[syntheticSource.name+"."+field] = value
 	}

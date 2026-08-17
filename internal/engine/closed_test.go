@@ -97,7 +97,7 @@ func TestClosedLoopWarningIsInEveryOutput(t *testing.T) {
 	if !closed {
 		t.Fatal("o documento não se reconheceu como laço fechado")
 	}
-	if !strings.Contains(warning, "3 usuários") {
+	if !strings.Contains(warning, "3 users") {
 		t.Fatalf("o aviso não diz quantos usuários: %q", warning)
 	}
 

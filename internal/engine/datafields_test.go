@@ -32,7 +32,7 @@ scenario:
 	if err == nil {
 		t.Fatal("coluna inexistente foi aceita: a requisição sai com um vazio no meio do caminho")
 	}
-	for _, expected := range []string{"identificador", "campos disponíveis", "id"} {
+	for _, expected := range []string{"identificador", "available fields", "id"} {
 		if !strings.Contains(err.Error(), expected) {
 			t.Errorf("a mensagem não diz o que existe: falta %q em\n%v", expected, err)
 		}

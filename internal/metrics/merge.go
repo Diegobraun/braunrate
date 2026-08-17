@@ -18,7 +18,7 @@ import (
 // Producing any of those by addition would be inventing a number.
 func Merge(documents ...Document) (Document, error) {
 	if len(documents) == 0 {
-		return Document{}, fmt.Errorf("nada para somar")
+		return Document{}, fmt.Errorf("nothing to add up")
 	}
 	if len(documents) == 1 {
 		return documents[0], nil

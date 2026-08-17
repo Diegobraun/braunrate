@@ -70,17 +70,17 @@ func explainYAML(problem, text string) string {
 		strings.Contains(problem, "did not find expected ',' or ']'"):
 		return "an inline map that does not close. " + inlineAdvice(text)
 	case strings.Contains(problem, "could not find expected ':'"):
-		return "faltou os dois-pontos depois da chave.\n" +
-			"    em YAML cada chave termina em ':', por exemplo:  nome: Consulta de pedidos"
+		return "the colon after the key is missing.\n" +
+			"    in YAML every key ends in ':', like this:  name: Order lookup"
 	case strings.Contains(problem, "found character that cannot start any token"):
 		return "there is a tab character on this line, and YAML does not accept tabs for indentation.\n" +
 			"    replace the tab with spaces (two per level, like the rest of the file)"
 	case strings.Contains(problem, "mapping values are not allowed in this context"):
 		return "there is a colon inside a value that is not quoted.\n" +
-			"    ponha o valor entre aspas, por exemplo:  cabecalho: \"X-API-Key: ${API_KEY}\""
+			"    quote the value, like this:  header: \"X-API-Key: ${API_KEY}\""
 	case strings.Contains(problem, "did not find expected key"),
 		strings.Contains(problem, "found a tab character"):
-		return "indentacao inconsistente nesta linha.\n" +
+		return "the indentation on this line is inconsistent.\n" +
 			"    always use spaces, and the same number of spaces for items at the same level"
 	}
 	return "the file is not valid YAML on this line: " + problem

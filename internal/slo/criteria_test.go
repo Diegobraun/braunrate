@@ -51,12 +51,12 @@ func TestJourneyCriterionCatchesWhatStepRulesApprove(t *testing.T) {
 
 	withJourney := slo.Evaluate([]scenario.SLORule{
 		parse(t, "consultar pedido", "p95", "< 150ms"),
-		parse(t, "jornada", "p95", "< 1s"),
+		parse(t, "journey", "p95", "< 1s"),
 	}, document, nil)
 	if withJourney.Passed {
 		t.Fatal("jornada de 1800 ms passou por um limite de 1 s")
 	}
-	if !strings.Contains(withJourney.Sentence, "a jornada inteira") {
+	if !strings.Contains(withJourney.Sentence, "the whole journey") {
 		t.Errorf("a frase não diz que quem falhou foi a journey: %q", withJourney.Sentence)
 	}
 }
@@ -68,10 +68,10 @@ func TestUndeclaredCriteriaAreReportedAsInformation(t *testing.T) {
 
 	together := strings.Join(verdict.Undeclared, " | ")
 	for _, expected := range []string{
-		"journey: sem critério declarado",
-		"global: sem critério declarado",
-		"passos sem critério declarado (1 de 2): pagar fatura",
-		"regression: sem critério declarado",
+		"journey: no criterion declared",
+		"global: no criterion declared",
+		"steps with no criterion declared (1 of 2): pagar fatura",
+		"regression: no criterion declared",
 	} {
 		if !strings.Contains(together, expected) {
 			t.Errorf("faltou declarar a ausência de %q: %v", expected, verdict.Undeclared)
@@ -94,16 +94,16 @@ func TestStepsWithoutCriterionAreGroupedIntoOneLine(t *testing.T) {
 
 	verdict := slo.Evaluate([]scenario.SLORule{
 		parse(t, "consultar pedido", "p95", "< 150ms"),
-		parse(t, "jornada", "p95", "< 2s"),
-		parse(t, "global", "erros", "< 0.1"),
-		parse(t, "regressao", "jornada_p95", "<= 10% pior"),
+		parse(t, "journey", "p95", "< 2s"),
+		parse(t, "global", "errors", "< 0.1"),
+		parse(t, "regression", "journeyP95", "<= 10% worse"),
 	}, document, regressionBaseline(100, 100))
 
 	if len(verdict.Undeclared) != 1 {
 		t.Fatalf("esperava uma linha só sobre passos, veio %d: %v", len(verdict.Undeclared), verdict.Undeclared)
 	}
 	line := verdict.Undeclared[0]
-	if !strings.Contains(line, "(19 de 20)") || !strings.Contains(line, "e mais 16") {
+	if !strings.Contains(line, "(19 of 20)") || !strings.Contains(line, "and 16 more") {
 		t.Errorf("a linha precisa contar e resumir em vez de listar tudo: %q", line)
 	}
 }
@@ -112,9 +112,9 @@ func TestEveryScopeDeclaredLeavesNothingToReport(t *testing.T) {
 	verdict := slo.Evaluate([]scenario.SLORule{
 		parse(t, "consultar pedido", "p95", "< 150ms"),
 		parse(t, "pagar fatura", "p95", "< 150ms"),
-		parse(t, "jornada", "p95", "< 2s"),
-		parse(t, "global", "erros", "< 0.1"),
-		parse(t, "regressao", "jornada_p95", "<= 10% pior"),
+		parse(t, "journey", "p95", "< 2s"),
+		parse(t, "global", "errors", "< 0.1"),
+		parse(t, "regression", "journeyP95", "<= 10% worse"),
 	}, journeyDocument(100, 200), regressionBaseline(100, 100))
 
 	if len(verdict.Undeclared) > 0 {
@@ -128,7 +128,7 @@ func TestNoCriterionAtAllSaysTheRunIsNotAGate(t *testing.T) {
 	if len(verdict.Undeclared) != 1 {
 		t.Fatalf("sem nenhum critério, uma frase só: %v", verdict.Undeclared)
 	}
-	if !strings.Contains(verdict.Undeclared[0], "não serve de gate") {
+	if !strings.Contains(verdict.Undeclared[0], "does not work as a gate") {
 		t.Errorf("a frase precisa dizer que o cenário roda mas não e gate: %q", verdict.Undeclared[0])
 	}
 }
@@ -136,17 +136,17 @@ func TestNoCriterionAtAllSaysTheRunIsNotAGate(t *testing.T) {
 func TestSuccessRateReadsTheSameWayAsErrorRate(t *testing.T) {
 	document := journeyDocument(100, 200)
 
-	success := slo.Evaluate([]scenario.SLORule{parse(t, "global", "sucesso", ">= 99.9")}, document, nil)
-	errors := slo.Evaluate([]scenario.SLORule{parse(t, "global", "erros", "< 0.1")}, document, nil)
+	success := slo.Evaluate([]scenario.SLORule{parse(t, "global", "success", ">= 99.9")}, document, nil)
+	errors := slo.Evaluate([]scenario.SLORule{parse(t, "global", "errors", "< 0.1")}, document, nil)
 
 	if success.Passed != errors.Passed {
 		t.Fatalf("sucesso >= 99.9 e erros < 0.1 discordaram sobre a mesma execução: %v e %v",
 			success.Passed, errors.Passed)
 	}
-	if !strings.Contains(success.Evaluations[0].Sentence, "taxa de sucesso") {
+	if !strings.Contains(success.Evaluations[0].Sentence, "success rate") {
 		t.Errorf("a regra declarada como sucesso foi exibida como outra coisa: %q", success.Evaluations[0].Sentence)
 	}
-	if !strings.Contains(errors.Evaluations[0].Sentence, "taxa de erro") {
+	if !strings.Contains(errors.Evaluations[0].Sentence, "error rate") {
 		t.Errorf("a regra declarada como erro foi exibida como outra coisa: %q", errors.Evaluations[0].Sentence)
 	}
 }
@@ -154,10 +154,10 @@ func TestSuccessRateReadsTheSameWayAsErrorRate(t *testing.T) {
 func TestThroughputCriterionUsesTheEffectiveRate(t *testing.T) {
 	document := journeyDocument(100, 200)
 
-	if verdict := slo.Evaluate([]scenario.SLORule{parse(t, "global", "taxa_efetiva", ">= 200/s")}, document, nil); !verdict.Passed {
+	if verdict := slo.Evaluate([]scenario.SLORule{parse(t, "global", "throughput", ">= 200/s")}, document, nil); !verdict.Passed {
 		t.Errorf("200/s efetivos falharam num mínimo de 200/s: %q", verdict.Sentence)
 	}
-	if verdict := slo.Evaluate([]scenario.SLORule{parse(t, "global", "taxa_efetiva", ">= 500/s")}, document, nil); verdict.Passed {
+	if verdict := slo.Evaluate([]scenario.SLORule{parse(t, "global", "throughput", ">= 500/s")}, document, nil); verdict.Passed {
 		t.Error("200/s efetivos passaram num mínimo de 500/s")
 	}
 }
@@ -179,7 +179,7 @@ func TestSaturatedRunNeverBecomesAnSLOFailure(t *testing.T) {
 
 func regressionBaseline(before, after float64, caveats ...comparison.Caveat) *slo.Baseline {
 	worse := comparison.Difference{
-		Metric: "jornada inteira (p95)", Before: before, After: after,
+		Metric: "the whole journey (p95)", Before: before, After: after,
 		Change: (after - before) / before, Direction: comparison.DirectionWorse,
 	}
 	if worse.Change < comparison.AcceptedNoise {
@@ -192,7 +192,7 @@ func regressionBaseline(before, after float64, caveats ...comparison.Caveat) *sl
 }
 
 func TestRegressionGateFailsOnlyWhenTheComparisonHolds(t *testing.T) {
-	rule := []scenario.SLORule{parse(t, "regressao", "jornada_p95", "<= 10% pior")}
+	rule := []scenario.SLORule{parse(t, "regression", "journeyP95", "<= 10% worse")}
 	document := journeyDocument(100, 200)
 
 	within := slo.Evaluate(rule, document, regressionBaseline(100, 108))
@@ -206,7 +206,7 @@ func TestRegressionGateFailsOnlyWhenTheComparisonHolds(t *testing.T) {
 	}
 
 	noise := slo.Evaluate(rule, document, regressionBaseline(100, 103))
-	if !noise.Passed || !strings.Contains(noise.Evaluations[0].Sentence, "ruído") {
+	if !noise.Passed || !strings.Contains(noise.Evaluations[0].Sentence, "noise") {
 		t.Errorf("3%% de diferença precisa ser lido como ruído: %q", noise.Evaluations[0].Sentence)
 	}
 }
@@ -215,9 +215,9 @@ func TestRegressionGateFailsOnlyWhenTheComparisonHolds(t *testing.T) {
 // the gate: blaming the service for another machine would be a wrong claim,
 // and passing in silence would hide that nothing was compared.
 func TestUntrustworthyComparisonWarnsInsteadOfFailing(t *testing.T) {
-	rule := []scenario.SLORule{parse(t, "regressao", "jornada_p95", "<= 10% pior")}
+	rule := []scenario.SLORule{parse(t, "regression", "journeyP95", "<= 10% worse")}
 	blocked := regressionBaseline(100, 900, comparison.Caveat{
-		Text: "as máquinas geradoras são diferentes", Blocking: true,
+		Text: "the generator machines are different", Blocking: true,
 	})
 
 	verdict := slo.Evaluate(rule, journeyDocument(100, 200), blocked)
@@ -228,7 +228,7 @@ func TestUntrustworthyComparisonWarnsInsteadOfFailing(t *testing.T) {
 	if !evaluation.Untrustworthy {
 		t.Error("a avaliacao não ficou marcada como não confiável")
 	}
-	if !strings.Contains(evaluation.Sentence, "não é confiável") || !strings.Contains(evaluation.Sentence, "máquinas geradoras") {
+	if !strings.Contains(evaluation.Sentence, "is not trustworthy") || !strings.Contains(evaluation.Sentence, "generator machines") {
 		t.Errorf("a frase precisa dizer por que não há veredito: %q", evaluation.Sentence)
 	}
 }
@@ -237,9 +237,9 @@ func TestUntrustworthyComparisonWarnsInsteadOfFailing(t *testing.T) {
 // it as blocking would disable the regression gate for exactly the scenarios
 // that most need it.
 func TestReadingCaveatDoesNotDisableTheGate(t *testing.T) {
-	rule := []scenario.SLORule{parse(t, "regressao", "jornada_p95", "<= 10% pior")}
+	rule := []scenario.SLORule{parse(t, "regression", "journeyP95", "<= 10% worse")}
 	withReadingCaveat := regressionBaseline(100, 900, comparison.Caveat{
-		Text: "as duas execuções usaram um token para tudo",
+		Text: "both runs used a single token for everything",
 	})
 
 	verdict := slo.Evaluate(rule, journeyDocument(100, 200), withReadingCaveat)
@@ -249,7 +249,7 @@ func TestReadingCaveatDoesNotDisableTheGate(t *testing.T) {
 }
 
 func TestRegressionWithoutBaselineSaysSoInsteadOfPassing(t *testing.T) {
-	verdict := slo.Evaluate([]scenario.SLORule{parse(t, "regressao", "jornada_p95", "<= 10% pior")},
+	verdict := slo.Evaluate([]scenario.SLORule{parse(t, "regression", "journeyP95", "<= 10% worse")},
 		journeyDocument(100, 200), nil)
 
 	if !strings.Contains(verdict.Evaluations[0].Sentence, "-baseline") {
@@ -266,11 +266,11 @@ func TestGateWarnsWhenTheJourneyIsLeftOut(t *testing.T) {
 		SLO:   []scenario.SLORule{parse(t, "consultar pedido", "p95", "< 150ms")},
 	}
 	warnings := strings.Join(scenario.GateWarnings(spec), " ")
-	if !strings.Contains(warnings, "deixa de fora a jornada inteira") {
+	if !strings.Contains(warnings, "leaves out the whole journey") {
 		t.Errorf("cenário com 2 passos e sem critério de jornada precisa avisar: %q", warnings)
 	}
 
-	spec.SLO = append(spec.SLO, parse(t, "jornada", "p95", "< 2s"))
+	spec.SLO = append(spec.SLO, parse(t, "journey", "p95", "< 2s"))
 	if warnings := scenario.GateWarnings(spec); len(warnings) > 0 {
 		t.Errorf("com critério de jornada declarado não há o que avisar: %v", warnings)
 	}

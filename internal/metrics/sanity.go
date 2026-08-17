@@ -41,7 +41,7 @@ var sanityChecks = []sanityCheck{
 	{"stepWithoutSample", declaredStepWithoutSamples},
 	{"everythingFailed", everythingFailed},
 	{"shortRun", runShorterThanPlan},
-	{"medicao_invalidada", invalidatingWarnings},
+	{"invalidMeasurement", invalidatingWarnings},
 }
 
 func CheckSanity(document Document, input DocumentInput) Sanity {
@@ -89,7 +89,7 @@ func declaredStepWithoutSamples(document Document, input DocumentInput) []Sanity
 		findings = append(findings, SanityFinding{
 			Kind:     "stepWithoutSample",
 			Message:  fmt.Sprintf("the step %q was declared and recorded no sample at all; it stayed out of the measurement", declared),
-			Evidence: fmt.Sprintf("passos com amostra: %s", listOrNone(sortedNames(withSamples))),
+			Evidence: fmt.Sprintf("steps with a sample: %s", listOrNone(sortedNames(withSamples))),
 		})
 	}
 	return findings
@@ -125,7 +125,7 @@ func everythingFailed(document Document, _ DocumentInput) []SanityFinding {
 		findings = append(findings, SanityFinding{
 			Kind:     "stepFullyFailed",
 			Message:  fmt.Sprintf("the step %q failed on 100%% of the requests; no successful response entered its measurement", step.Name),
-			Evidence: fmt.Sprintf("%s requisições, %s erros (%s)", thousands(step.Count), thousands(step.Errors), dominantClasses([]StepResult{step})),
+			Evidence: fmt.Sprintf("%s requests, %s errors (%s)", thousands(step.Count), thousands(step.Errors), dominantClasses([]StepResult{step})),
 		})
 	}
 	return findings
@@ -228,7 +228,7 @@ func sortedNames(set map[string]bool) []string {
 
 func listOrNone(names []string) string {
 	if len(names) == 0 {
-		return "nenhum"
+		return "none"
 	}
 	return strings.Join(names, ", ")
 }

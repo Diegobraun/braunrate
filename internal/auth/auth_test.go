@@ -96,7 +96,7 @@ func TestAuthFailureExplainsWhatToCheck(t *testing.T) {
 	if err == nil {
 		t.Fatal("esperava erro")
 	}
-	for _, fragment := range []string{"401", "usuário", "senha", "autenticacao.obter"} {
+	for _, fragment := range []string{"401", "user", "password", "'auth.obtain'"} {
 		if !strings.Contains(err.Error(), fragment) {
 			t.Errorf("mensagem %q não menciona %q", err.Error(), fragment)
 		}

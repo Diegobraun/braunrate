@@ -17,7 +17,7 @@ type AssertionFailure struct {
 }
 
 func (assertionFailure AssertionFailure) Error() string {
-	return fmt.Sprintf("%s: esperava %s, obteve %s", assertionFailure.Description, assertionFailure.Expected, assertionFailure.Obtained)
+	return fmt.Sprintf("%s: expected %s, got %s", assertionFailure.Description, assertionFailure.Expected, assertionFailure.Obtained)
 }
 
 func Evaluate(assertion scenario.Assertion, response protocol.Response, resolve func(string) string) error {
@@ -30,7 +30,7 @@ func Evaluate(assertion scenario.Assertion, response protocol.Response, resolve 
 		if strings.Contains(string(response.Body), expected) {
 			return nil
 		}
-		return AssertionFailure{"corpo da resposta", "conter " + strconv.Quote(expected), "corpo sem o texto"}
+		return AssertionFailure{"response body", "contain " + strconv.Quote(expected), "body without that text"}
 	case scenario.AssertHeader:
 		for name, values := range response.Headers {
 			if strings.EqualFold(name, assertion.Target) {
@@ -39,10 +39,10 @@ func Evaluate(assertion scenario.Assertion, response protocol.Response, resolve 
 						return nil
 					}
 				}
-				return AssertionFailure{"cabecalho " + assertion.Target, strconv.Quote(expected), strconv.Quote(strings.Join(values, ", "))}
+				return AssertionFailure{"header " + assertion.Target, strconv.Quote(expected), strconv.Quote(strings.Join(values, ", "))}
 			}
 		}
-		return AssertionFailure{"cabecalho " + assertion.Target, strconv.Quote(expected), "cabecalho ausente"}
+		return AssertionFailure{"header " + assertion.Target, strconv.Quote(expected), "header not present"}
 	case scenario.AssertRegex:
 		compiled, err := compile(expected)
 		if err != nil {
@@ -53,24 +53,24 @@ func Evaluate(assertion scenario.Assertion, response protocol.Response, resolve 
 		}
 		return AssertionFailure{"response body", "match /" + expected + "/", "no match"}
 	case scenario.AssertJSON:
-		return avaliarJSON(assertion, response, expected)
+		return evaluateJSON(assertion, response, expected)
 	default:
-		return AssertionFailure{"assercao", string(assertion.Kind), "tipo desconhecido"}
+		return AssertionFailure{"assertion", string(assertion.Kind), "unknown kind"}
 	}
 }
 
-func avaliarJSON(assertion scenario.Assertion, response protocol.Response, expected string) error {
-	description := "campo " + assertion.Target
+func evaluateJSON(assertion scenario.Assertion, response protocol.Response, expected string) error {
+	description := "field " + assertion.Target
 	result := gjson.GetBytes(response.Body, PathToGJSON(assertion.Target))
 
 	if assertion.Operator == scenario.OpExists {
 		if result.Exists() {
 			return nil
 		}
-		return AssertionFailure{description, "existir na resposta", "ausente"}
+		return AssertionFailure{description, "to be present in the response", "not present"}
 	}
 	if !result.Exists() {
-		return AssertionFailure{description, strconv.Quote(expected), "campo ausente na resposta"}
+		return AssertionFailure{description, strconv.Quote(expected), "field not present in the response"}
 	}
 
 	if number, err := strconv.ParseFloat(expected, 64); err == nil && result.Type == gjson.Number {

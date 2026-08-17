@@ -35,7 +35,7 @@ func serve(t *testing.T) string {
 func TestTheInterfaceTravelsInsideTheBinary(t *testing.T) {
 	address := serve(t)
 
-	for _, file := range []string{"/", "/estilo.css", "/app.js"} {
+	for _, file := range []string{"/", "/style.css", "/app.js"} {
 		status, body := get(t, address, file)
 		if status != http.StatusOK || body == "" {
 			t.Errorf("%s respondeu %d com %d bytes", file, status, len(body))
@@ -61,7 +61,7 @@ var externalReference = regexp.MustCompile(`(?i)(src|href)\s*=\s*"https?:`)
 func TestThePageFetchesNothingFromTheNetwork(t *testing.T) {
 	address := serve(t)
 
-	for _, file := range []string{"/", "/estilo.css", "/app.js"} {
+	for _, file := range []string{"/", "/style.css", "/app.js"} {
 		_, body := get(t, address, file)
 		if found := externalReference.FindString(body); found != "" {
 			t.Errorf("%s busca da rede: %s", file, found)
@@ -90,18 +90,18 @@ func TestTheEditorIsATextAreaOverTheFile(t *testing.T) {
 	}
 }
 
-// A demonstracao do terminal explica cinco conceitos no ponto em que o numero
-// aparece. Quem chega pela tela nao pode receber menos.
+// The terminal demonstration explains five concepts at the point where the
+// number appears. Whoever arrives through the screen cannot get less.
 func TestTheScreenTeachesTheSameFiveIdeasTheTerminalTeaches(t *testing.T) {
 	address := serve(t)
 	_, script := get(t, address, "/app.js")
 
 	for _, idea := range []string{
-		"Taxa é o ritmo em que o gerador dispara",
-		"quer dizer que 5% das pessoas esperaram mais que isso",
-		"são o critério de aceite",
-		"mede o cache do alvo, não o alvo",
-		"Nenhum número desta execução vale como resposta",
+		"Rate is the pace the generator fires at",
+		"means 5% of the people waited longer than that",
+		"are the acceptance criterion",
+		"measures the target's cache, not the target",
+		"No number of this run counts as an answer",
 	} {
 		if !strings.Contains(script, idea) {
 			t.Errorf("a tela não explica %q", idea)
@@ -109,7 +109,7 @@ func TestTheScreenTeachesTheSameFiveIdeasTheTerminalTeaches(t *testing.T) {
 	}
 
 	_, page := get(t, address, "/")
-	if !strings.Contains(page, `id="explicacoes"`) || !strings.Contains(script, "sem-explicacoes") {
+	if !strings.Contains(page, `id="explanations"`) || !strings.Contains(script, "without-explanations") {
 		t.Error("não há como desligar as explicações, e o -quiet do terminal tem")
 	}
 }

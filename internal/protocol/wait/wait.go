@@ -62,7 +62,7 @@ func (config *Config) Describe() []string {
 		}
 		return []string{
 			fmt.Sprintf("await on GET %s until %s", config.Path, config.To.describe()),
-			fmt.Sprintf("sondando a cada %s, desiste depois de %s", interval, config.Timeout),
+			fmt.Sprintf("polling every %s, gives up after %s", interval, config.Timeout),
 			"the measured latency has the granularity of the polling",
 		}
 	}
@@ -72,9 +72,9 @@ func (config *Config) Describe() []string {
 	}
 	lines := []string{
 		fmt.Sprintf("await on %s %s for %s = %q", config.Source, config.Topic, where, config.Expected),
-		"desiste depois de " + config.Timeout.String(),
+		"gives up after " + config.Timeout.String(),
 	}
-	// Printing "enderecos:" with nothing after it reads like a defect. When the
+	// Printing "addresses:" with nothing after it reads like a defect. When the
 	// step declares none, the address is the target of the scenario, and saying
 	// so is what the reader needs.
 	if len(config.Addresses) > 0 {

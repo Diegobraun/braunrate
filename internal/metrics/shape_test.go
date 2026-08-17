@@ -61,7 +61,7 @@ func TestBodyThatIsNotJSONStillHasAShape(t *testing.T) {
 	if shape := metrics.BodyShape([]byte("id=a1&total=10")); shape == "" {
 		t.Fatal("corpo que não e JSON ficou sem forma")
 	}
-	if shape := metrics.BodyShape([]byte("   ")); !strings.Contains(shape, "vazio") {
+	if shape := metrics.BodyShape([]byte("   ")); !strings.Contains(shape, "empty") {
 		t.Fatalf("corpo em branco precisa aparecer como vazio, e saiu %q", shape)
 	}
 }
@@ -98,7 +98,7 @@ func TestFieldThatCameBlankIsStillWarned(t *testing.T) {
 	if len(warnings) != 1 {
 		t.Fatalf("campo vazio deixou de ser avisado: %+v", warnings)
 	}
-	if !strings.Contains(warnings[0].Evidence, "cupom: vazio") {
+	if !strings.Contains(warnings[0].Evidence, "cupom: empty") {
 		t.Fatalf("o aviso não nomeou o campo que veio vazio: %s", warnings[0].Evidence)
 	}
 }

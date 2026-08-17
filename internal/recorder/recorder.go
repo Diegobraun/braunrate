@@ -269,7 +269,7 @@ func (recorder *Recorder) classify(request *http.Request) (string, bool) {
 	}
 	path := strings.ToLower(request.URL.Path)
 	if isTelemetry(host, path) {
-		return "telemetria", true
+		return "telemetry", true
 	}
 	if isStatic(path) {
 		return "a static asset", true
@@ -277,7 +277,7 @@ func (recorder *Recorder) classify(request *http.Request) (string, bool) {
 	for _, pattern := range recorder.options.Ignore {
 		pattern = strings.TrimSpace(pattern)
 		if pattern != "" && strings.Contains(request.URL.Path, pattern) {
-			return fmt.Sprintf("pedido por -ignore (%s)", pattern), true
+			return fmt.Sprintf("asked for by -ignore (%s)", pattern), true
 		}
 	}
 	return "", false

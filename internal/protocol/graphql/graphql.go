@@ -321,7 +321,7 @@ func classifyBody(content []byte) (protocol.ErrorClass, string) {
 	}
 	if len(body.Errors) == 0 {
 		if len(body.Data) == 0 || string(body.Data) == "null" {
-			return protocol.ErrGraphQL, "resposta sem data e sem errors"
+			return protocol.ErrGraphQL, "response with neither data nor errors"
 		}
 		return protocol.Success, ""
 	}
@@ -332,13 +332,13 @@ func classifyBody(content []byte) (protocol.ErrorClass, string) {
 		detail = first.Extensions.Code + ": " + detail
 	}
 	if path := formatPath(first.Path); path != "" {
-		detail += " (em " + path + ")"
+		detail += " (at " + path + ")"
 	}
 	if len(body.Errors) > 1 {
-		detail = fmt.Sprintf("%s (+%s)", detail, text.Count(int64(len(body.Errors)-1), "erro", "erros"))
+		detail = fmt.Sprintf("%s (+%s)", detail, text.Count(int64(len(body.Errors)-1), "error", "errors"))
 	}
 	if len(body.Data) > 0 && string(body.Data) != "null" {
-		detail = "resposta parcial — " + detail
+		detail = "partial response — " + detail
 	}
 	return protocol.ErrGraphQL, summarize(detail)
 }

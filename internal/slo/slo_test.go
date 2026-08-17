@@ -27,7 +27,7 @@ func scopeOf(step string) scenario.SLOScope {
 	switch step {
 	case "global":
 		return scenario.ScopeOverall
-	case "jornada":
+	case "journey":
 		return scenario.ScopeJourney
 	default:
 		return scenario.ScopeStep
@@ -37,7 +37,7 @@ func scopeOf(step string) scenario.SLOScope {
 func rule(step, metricName string, operator scenario.Operator, limit float64, unit string) scenario.SLORule {
 	return scenario.SLORule{Step: step, Scope: scopeOf(step), Metric: metricName,
 		Operator: operator, Limit: limit, Unit: unit,
-		Text: metricName + " " + string(operator) + " limite"}
+		Text: metricName + " " + string(operator) + " limit"}
 }
 
 func TestSLOThatPassesAndThatFails(t *testing.T) {
@@ -62,7 +62,7 @@ func TestFailureSentenceIsReadableByNonEngineers(t *testing.T) {
 		rule("consultar pedido", "p95", scenario.OpLess, 150, "ms"),
 	}, sampleDocument(), nil)
 
-	expected := `Falhou: "consultar pedido" respondeu 95% em até 210 ms, acima do limite de 150 ms.`
+	expected := `Failed: "consultar pedido" answered 95% within 210 ms, above the limit of 150 ms.`
 	if verdict.Sentence != expected {
 		t.Errorf("frase = %q\nesperada = %q", verdict.Sentence, expected)
 	}
@@ -70,7 +70,7 @@ func TestFailureSentenceIsReadableByNonEngineers(t *testing.T) {
 
 func TestErrorRateIsEvaluatedAsPercentage(t *testing.T) {
 	verdict := slo.Evaluate([]scenario.SLORule{
-		rule("criar pedido", "erros", scenario.OpLessOrEqual, 0, "%"),
+		rule("criar pedido", "errors", scenario.OpLessOrEqual, 0, "%"),
 	}, sampleDocument(), nil)
 
 	if verdict.Passed {
@@ -83,14 +83,14 @@ func TestErrorRateIsEvaluatedAsPercentage(t *testing.T) {
 
 func TestOverallRuleUsesWholeScenarioNumbers(t *testing.T) {
 	verdict := slo.Evaluate([]scenario.SLORule{
-		rule("global", "erros", scenario.OpLess, 1, "%"),
+		rule("global", "errors", scenario.OpLess, 1, "%"),
 		rule("global", "p99", scenario.OpLess, 300, "ms"),
 	}, sampleDocument(), nil)
 
 	if !verdict.Passed {
 		t.Fatalf("as duas regras globais deveriam passar: %+v", verdict.Evaluations)
 	}
-	if !strings.Contains(verdict.Sentence, "2 regras") {
+	if !strings.Contains(verdict.Sentence, "2 SLO rules") {
 		t.Errorf("frase = %q", verdict.Sentence)
 	}
 }
@@ -103,7 +103,7 @@ func TestUnknownStepFailsWithClearMessage(t *testing.T) {
 	if verdict.Passed {
 		t.Fatal("regra apontando para passo inexistente não pode passar em silencio")
 	}
-	if !strings.Contains(verdict.Sentence, "não produziu nenhuma requisição") {
+	if !strings.Contains(verdict.Sentence, "produced no requests") {
 		t.Errorf("frase = %q", verdict.Sentence)
 	}
 }
@@ -113,7 +113,7 @@ func TestNoRulesMeansNoVerdict(t *testing.T) {
 	if !verdict.Passed {
 		t.Error("sem regras declaradas não há o que falhar")
 	}
-	if !strings.Contains(verdict.Sentence, "Sem SLO declarado") {
+	if !strings.Contains(verdict.Sentence, "No SLO declared") {
 		t.Errorf("frase = %q", verdict.Sentence)
 	}
 }
@@ -139,7 +139,7 @@ func TestLatencyRuleIsNotApprovedOverASampleOfFailures(t *testing.T) {
 		t.Fatal("o gate aprovou latência num passo que falhou em 98% das requisições")
 	}
 	sentence := verdict.Evaluations[0].Sentence
-	for _, expected := range []string{"98% de falha", "tempo de falhar"} {
+	for _, expected := range []string{"failed 98% of the time", "time to fail"} {
 		if !strings.Contains(sentence, expected) {
 			t.Errorf("a frase não explica por que não avaliou: falta %q em %q", expected, sentence)
 		}
@@ -175,7 +175,7 @@ func TestErrorRuleIsStillEvaluatedWhenEverythingFails(t *testing.T) {
 		Overall: metrics.OverallResult{Count: 500, Errors: 490},
 	}
 	rules := []scenario.SLORule{{
-		Scope: scenario.ScopeOverall, Metric: "erros",
+		Scope: scenario.ScopeOverall, Metric: "errors",
 		Operator: scenario.OpLess, Limit: 1, Unit: "%", Text: "errors: < 1",
 	}}
 
@@ -207,7 +207,7 @@ func TestJourneyRuleIsNotApprovedWhenMostJourneysAbort(t *testing.T) {
 	}
 }
 
-// The report travels alone: pasted into a ticket, "pior que a base" does not
+// The report travels alone: pasted into a ticket, "worse than the baseline" does not
 // say which base, and nobody can check it.
 func TestRegressionSentenceNamesTheBaseline(t *testing.T) {
 	document := metrics.Document{
@@ -219,8 +219,8 @@ func TestRegressionSentenceNamesTheBaseline(t *testing.T) {
 			Latency: metrics.Distribution{P95: 2}},
 	}
 	rules := []scenario.SLORule{{
-		Scope: scenario.ScopeRegression, Metric: "jornada_p95",
-		Operator: scenario.OpLess, Limit: 20, Unit: "%", Text: "jornada_p95: < 20",
+		Scope: scenario.ScopeRegression, Metric: "journeyP95",
+		Operator: scenario.OpLess, Limit: 20, Unit: "%", Text: "journeyP95: < 20",
 	}}
 
 	base := &slo.Baseline{Comparison: comparison.Compare(before, document), Path: "antes-do-cache.json"}

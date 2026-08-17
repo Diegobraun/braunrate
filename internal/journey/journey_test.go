@@ -30,7 +30,7 @@ auth:
     http:
       method: POST
       path: /auth/token
-      body: { user: "${usuario}", password: "${SENHA:-segredo}" }
+      body: { user: "${user}", password: "${SENHA:-segredo}" }
     capture: { token: $.access_token }
   refreshAfter: 25m
 
@@ -44,25 +44,25 @@ load:
     - steady: { rate: 100/s, duration: 2s }
 
 scenario:
-  - http: GET /pedidos/${assinantes.id}
-    name: consultar pedido
+  - http: GET /orders/${assinantes.id}
+    name: look up order
     expect:
       status: 200
-      json: { $.ultimaFatura.status: ABERTA }
+      json: { $.lastInvoice.status: OPEN }
     capture:
-      faturaId: $.ultimaFatura.id
+      invoiceId: $.lastInvoice.id
 
-  - name: pagar fatura
+  - name: pay invoice
     http:
       method: POST
-      path: /faturas/${faturaId}/pagar
+      path: /invoices/${invoiceId}/pay
       body: { value: 199.90 }
     expect:
       status: 200
-      json: { $.status: PAGA }
+      json: { $.status: PAID }
 
 slo:
-  - consultar pedido: { p95: < 2s }
+  - look up order: { p95: < 2s }
   - global: { errors: < 0.1 }
 `
 
@@ -152,7 +152,7 @@ func TestBrokenCorrelationIsCorrelationErrorNotNetworkError(t *testing.T) {
 	document := m.Execute(context.Background())
 
 	first := document.Steps[0]
-	if first.ErrorsByClass["correlacao"] == 0 {
+	if first.ErrorsByClass["correlation"] == 0 {
 		t.Fatalf("esperava erro de correlação, obtive %+v", first.ErrorsByClass)
 	}
 	if len(document.Steps) != 1 {
@@ -178,8 +178,8 @@ func TestFailedAssertionSeparatesFunctionalFromSLOFailure(t *testing.T) {
 
 	c, root := prepareScenario(t, server.Address())
 	c.Steps[0].Assertions = []scenario.Assertion{{
-		Kind: scenario.AssertJSON, Target: "$.ultimaFatura.status",
-		Operator: scenario.OpEqual, Value: "PAGA",
+		Kind: scenario.AssertJSON, Target: "$.lastInvoice.status",
+		Operator: scenario.OpEqual, Value: "PAID",
 	}}
 
 	options := engine.DefaultOptions()
@@ -188,13 +188,13 @@ func TestFailedAssertionSeparatesFunctionalFromSLOFailure(t *testing.T) {
 	document := m.Execute(context.Background())
 	verdict := slo.Evaluate(c.SLO, document, nil)
 
-	if document.Steps[0].ErrorsByClass["assercao"] == 0 {
+	if document.Steps[0].ErrorsByClass["assertion"] == 0 {
 		t.Fatalf("esperava falha funcional classificada como assercao: %+v", document.Steps[0].ErrorsByClass)
 	}
 	if verdict.Passed {
 		t.Error("o SLO global de erros deveria falhar junto")
 	}
-	if !strings.Contains(verdict.Sentence, "taxa de erro") {
+	if !strings.Contains(verdict.Sentence, "error rate") {
 		t.Errorf("a frase do veredito deveria falar de taxa de erro: %q", verdict.Sentence)
 	}
 }

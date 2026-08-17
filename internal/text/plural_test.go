@@ -10,31 +10,31 @@ func TestCountAgreesWithTheNumber(t *testing.T) {
 	cases := []struct {
 		quantity int64
 		expected string
-	}{{0, "0 passos"}, {1, "1 passo"}, {2, "2 passos"}, {1000, "1000 passos"}}
+	}{{0, "0 steps"}, {1, "1 step"}, {2, "2 steps"}, {1000, "1000 steps"}}
 
 	for _, testCase := range cases {
-		if got := text.Count(testCase.quantity, "passo", "passos"); got != testCase.expected {
+		if got := text.Count(testCase.quantity, "step", "steps"); got != testCase.expected {
 			t.Errorf("Count(%d) = %q, esperava %q", testCase.quantity, got, testCase.expected)
 		}
 	}
 }
 
 func TestPickChoosesTheWholePhrase(t *testing.T) {
-	if got := text.Pick(1, "a única regra foi atendida", "as regras foram atendidas"); got != "a única regra foi atendida" {
+	if got := text.Pick(1, "the only rule was met", "the rules were met"); got != "the only rule was met" {
 		t.Errorf("Pick(1) = %q", got)
 	}
-	if got := text.Pick(3, "a única regra foi atendida", "as regras foram atendidas"); got != "as regras foram atendidas" {
+	if got := text.Pick(3, "the only rule was met", "the rules were met"); got != "the rules were met" {
 		t.Errorf("Pick(3) = %q", got)
 	}
 }
 
-// "1 uma vez" is what Count would produce here: in Portuguese the number
-// disappears into the word when there is only one.
+// "1 time" is what Count would produce here, where the number belongs inside
+// the word.
 func TestTimesSwallowsTheNumberWhenThereIsOnlyOne(t *testing.T) {
-	if got := text.Times(1); got != "uma vez" {
+	if got := text.Times(1); got != "once" {
 		t.Errorf("Times(1) = %q", got)
 	}
-	if got := text.Times(3); got != "3 vezes" {
+	if got := text.Times(3); got != "3 times" {
 		t.Errorf("Times(3) = %q", got)
 	}
 }

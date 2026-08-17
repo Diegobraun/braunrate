@@ -25,12 +25,13 @@ type Variety struct {
 	// ids that all belong to one customer exercise one slice of the target, and
 	// the count alone reads as full coverage (ADR 0007).
 	Range *Range `json:"range,omitempty"`
-	// Shapes carries the body shapes themselves, not a count of them: "2 formas"
+	// Shapes carries the body shapes themselves, not a count of them: "2 shapes"
 	// tells nobody which two, and the difference between them is the whole point.
 	Shapes   []string `json:"observedShapes,omitempty"`
 	Sentence string   `json:"sentence"`
-	// O que o protocolo dono desta dimensao diz sobre ela ter colapsado. A
-	// medicao decide se avisa e com que gravidade; o dominio vem de quem sabe.
+	// What the protocol that owns this dimension says about it having collapsed.
+	// The measurement decides whether to warn and how severely; the domain
+	// meaning comes from whoever knows it.
 	Collapse *protocol.Collapse `json:"collapse,omitempty"`
 }
 
@@ -188,13 +189,13 @@ func phraseVariety(variety Variety) string {
 		return phraseShape(variety)
 	}
 	if variety.Capped {
-		return fmt.Sprintf("mais de %d valores distintos de %s em %s usos%s",
+		return fmt.Sprintf("more than %d distinct values of %s across %s uses%s",
 			distinctValuesCap-1, variety.Name, thousands(variety.Uses), phraseRange(variety.Range))
 	}
 	if variety.Distinct == 1 {
 		return fmt.Sprintf("1 single value of %s across %s uses", variety.Name, thousands(variety.Uses))
 	}
-	return fmt.Sprintf("%d valores distintos de %s em %s usos%s",
+	return fmt.Sprintf("%d distinct values of %s across %s uses%s",
 		variety.Distinct, variety.Name, thousands(variety.Uses), phraseRange(variety.Range))
 }
 
@@ -204,8 +205,8 @@ func phraseShape(variety Variety) string {
 	if variety.Capped {
 		count = distinctValuesCap
 	}
-	sentence := fmt.Sprintf("%s de corpo em %q, em %s envios",
-		text.Count(count, "forma", "formas"), step, thousands(variety.Uses))
+	sentence := fmt.Sprintf("%s of body in %q, across %s sends",
+		text.Count(count, "shape", "shapes"), step, thousands(variety.Uses))
 	if count == 1 && len(variety.Shapes) == 1 {
 		return sentence + ": " + variety.Shapes[0]
 	}
@@ -220,9 +221,9 @@ func phraseRange(interval *Range) string {
 		return fmt.Sprintf(", all starting with %q", interval.Prefix)
 	}
 	if interval.Min == interval.Max {
-		return fmt.Sprintf(", todos iguais a %s", number(interval.Min))
+		return fmt.Sprintf(", all equal to %s", number(interval.Min))
 	}
-	return fmt.Sprintf(", entre %s e %s", number(interval.Min), number(interval.Max))
+	return fmt.Sprintf(", between %s and %s", number(interval.Min), number(interval.Max))
 }
 
 func number(value float64) string {
@@ -264,7 +265,7 @@ func VarietyWarnings(varieties []Variety) []Warning {
 				Severity: SeverityMedium,
 				Message: fmt.Sprintf("the whole load used the same value of %s; if the target caches by that value, the number comes out optimistic",
 					variety.Name),
-				Evidence: fmt.Sprintf("%s: 1 valor em %s usos", variety.Name, thousands(variety.Uses)),
+				Evidence: fmt.Sprintf("%s: 1 value across %s uses", variety.Name, thousands(variety.Uses)),
 			})
 			continue
 		}
@@ -272,12 +273,12 @@ func VarietyWarnings(varieties []Variety) []Warning {
 		message := fmt.Sprintf("the whole run went with a single value of %s, even though the source has more; the target may have answered from cache, and the result does not represent the declared load",
 			variety.Name)
 		severity := SeverityHigh
-		// Uma concentracao que o cenario pediu nao e o mesmo defeito: ninguem
-		// esqueceu de variar, e mandar variar manda procurar um defeito que a
-		// pessoa nao escreveu. Continua valendo dizer, porque o numero que sai
-		// nao tem a forma de producao.
+		// A concentration the scenario asked for is not the same defect: nobody
+		// forgot to vary, and telling them to vary sends them looking for a bug
+		// they did not write. It is still worth saying, because the number that
+		// comes out does not have the shape of production.
 		if note := variety.Collapse; note != nil {
-			message = fmt.Sprintf("toda a carga caiu em %s: %s. %s", note.Subject, note.Meaning, note.Remedy)
+			message = fmt.Sprintf("the whole load landed on %s: %s. %s", note.Subject, note.Meaning, note.Remedy)
 			if note.Declared {
 				severity = SeverityMedium
 			}

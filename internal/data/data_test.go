@@ -101,11 +101,11 @@ func TestRandomConsumeWithSameSeedRepeatsSequence(t *testing.T) {
 func TestSyntheticGenerationIsReproducibleBySeed(t *testing.T) {
 	source := scenario.DataSource{Name: "pedidos", Seed: 7, Fields: generators(map[string]string{
 		"id":     "uuid",
-		"valor":  "numero(10,500)",
-		"ordem":  "sequencia",
-		"quem":   "nome",
+		"valor":  "number(10,500)",
+		"ordem":  "sequence",
+		"quem":   "name",
 		"email":  "email",
-		"codigo": "texto(6)",
+		"codigo": "text(6)",
 	})}
 
 	generate := func() []string {
@@ -140,7 +140,7 @@ func TestUnknownGeneratorTeachesValidOnes(t *testing.T) {
 		t.Fatalf("abrir deveria funcionar: %v", err)
 	}
 	_, err = open.Next(0)
-	if err == nil || !strings.Contains(err.Error(), "disponíveis: uuid") {
+	if err == nil || !strings.Contains(err.Error(), "available: uuid") {
 		t.Fatalf("esperava lista de geradores válidos, recebeu %v", err)
 	}
 }

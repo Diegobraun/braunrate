@@ -53,7 +53,7 @@ scenario:
     http:
       method: POST
       path: /faturas/pagar
-      body: { assinante: "${assinantes.id}", region: "${assinantes.regiao}" }
+      body: { assinante: "${assinantes.id}", region: "${assinantes.region}" }
 
   - name: cabecalho
     http:
@@ -108,11 +108,11 @@ func TestEveryDeclaredValueReachesTarget(t *testing.T) {
 		case r.URL.Path == "/faturas/pagar":
 			var sent struct {
 				Subscriber string `json:"assinante"`
-				Region     string `json:"regiao"`
+				Region     string `json:"region"`
 			}
 			_ = json.Unmarshal(body, &sent)
 			received.note("corpo", sent.Subscriber)
-			received.note("corpo.regiao", sent.Region)
+			received.note("corpo.region", sent.Region)
 		case r.URL.Path == "/eco":
 			received.note("cabecalho", r.Header.Get("X-Assinante"))
 		case r.URL.Path == "/graphql":
@@ -127,7 +127,7 @@ func TestEveryDeclaredValueReachesTarget(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	document := runVarietyScenario(t, server.URL,
-		"id,regiao\n1001,sul\n1002,norte\n1003,leste\n")
+		"id,region\n1001,sul\n1002,norte\n1003,leste\n")
 
 	if document.Overall.Errors != 0 {
 		t.Fatalf("esperava zero erro, obtive %d: %+v", document.Overall.Errors, document.Steps)
@@ -139,8 +139,8 @@ func TestEveryDeclaredValueReachesTarget(t *testing.T) {
 			t.Errorf("%s recebeu %v, esperava %v: algum valor declarado nunca chegou ao alvo", where, got, expected)
 		}
 	}
-	if got := received.distinct("corpo.regiao"); len(got) != 3 {
-		t.Errorf("região recebeu %v, esperava três valores distintos", got)
+	if got := received.distinct("corpo.region"); len(got) != 3 {
+		t.Errorf("region recebeu %v, esperava três valores distintos", got)
 	}
 
 	byName := map[string]metrics.Variety{}
@@ -150,8 +150,8 @@ func TestEveryDeclaredValueReachesTarget(t *testing.T) {
 	if variety := byName["assinantes.id"]; variety.Distinct != 3 {
 		t.Errorf("o relatório declarou %d valores distintos de assinantes.id, esperava 3", variety.Distinct)
 	}
-	if variety := byName["assinantes.regiao"]; variety.Distinct != 3 {
-		t.Errorf("o relatório declarou %d valores distintos de assinantes.regiao, esperava 3", variety.Distinct)
+	if variety := byName["assinantes.region"]; variety.Distinct != 3 {
+		t.Errorf("o relatório declarou %d valores distintos de assinantes.region, esperava 3", variety.Distinct)
 	}
 	for _, warning := range document.Warnings {
 		if warning.Kind == "missingVariety" {
@@ -178,7 +178,7 @@ func TestSingleObservedValueBecomesHighSeverityWarning(t *testing.T) {
 	if !strings.Contains(warnings[0].Message, "cache") {
 		t.Errorf("a mensagem precisa dizer por que isso engana: %q", warnings[0].Message)
 	}
-	if !strings.Contains(warnings[0].Evidence, "3 valores disponíveis") {
+	if !strings.Contains(warnings[0].Evidence, "3 available values") {
 		t.Errorf("a evidencia precisa comparar o disponível com o usado: %q", warnings[0].Evidence)
 	}
 }

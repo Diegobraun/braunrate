@@ -8,46 +8,47 @@ import "strings"
 // show the shape of the blocks nearly every scenario needs.
 func Skeleton() string {
 	return `# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
-# Com a extensão YAML do editor, a linha acima liga o autocompletar das chaves.
+# With the editor's YAML extension, the line above turns on key autocomplete.
 
-nome: Meu primeiro cenário
-alvo: http://127.0.0.1:8080
+name: My first scenario
+target: http://127.0.0.1:8080
 
-# Taxa de chegada, em requisições por segundo. Não é número de usuários: o
-# gerador dispara na hora marcada mesmo que o alvo esteja lento, que é o que
-# faz a medição não esconder travada.
-carga:
-  perfis:
-    - rampa: { de: 1/s, ate: 20/s, durante: 30s }
-    - patamar: { taxa: 20/s, durante: 1m }
+# Arrival rate, in requests per second. Not a number of users: the generator
+# fires on schedule even when the target is slow, which is what keeps the
+# measurement from hiding a freeze.
+load:
+  profiles:
+    - ramp: { from: 1/s, to: 20/s, duration: 30s }
+    - steady: { rate: 20/s, duration: 1m }
 
-cenario:
-  - http: GET /pedidos/1
-    nome: consultar pedido
-    verificar: { status: 200 }
+scenario:
+  - http: GET /orders/1
+    name: look up order
+    expect: { status: 200 }
 
-# Critério de aceite. Sem este bloco a execução roda e reporta, mas nunca falha.
+# Acceptance criterion. Without this block the run reports and never fails.
 slo:
-  - consultar pedido: { p95: < 200ms }
-  - global: { erros: < 1 }
+  - look up order: { p95: < 200ms }
+  - global: { errors: < 1 }
 
-# Dados que variam por iteração. Um valor fixo faz o alvo responder de cache e
-# o número fica otimista; o relatório declara a variedade que de fato aconteceu.
-# dados:
-#   assinantes: { arquivo: assinantes.csv, consumo: circular }
+# Data that varies per iteration. A fixed value makes the target answer from
+# cache and the number comes out optimistic; the report states the variety that
+# actually happened.
+# data:
+#   subscribers: { file: subscribers.csv, consume: circular }
 #
-# cenario:
-#   - http: GET /pedidos/${assinantes.id}
+# scenario:
+#   - http: GET /orders/${subscribers.id}
 
-# Login uma vez, token reaproveitado pelas iterações seguintes.
-# autenticacao:
-#   tipo: token
-#   obter:
-#     http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: "${SENHA}" } }
-#     captura: { token: $.access_token }
+# Log in once, token reused by the iterations that follow.
+# auth:
+#   type: token
+#   obtain:
+#     http: { method: POST, path: /auth/token, body: { user: ana, password: "${PASSWORD}" } }
+#     capture: { token: $.access_token }
 
-# O passo não precisa ser HTTP. Estes são os outros protocolos, e cada relatório
-# lista quais existem no binário que você está rodando.
+# A step does not have to be HTTP. These are the other protocols, and every
+# report lists which ones exist in the binary you are running.
 ` + commented(ProtocolShapes())
 }
 
@@ -55,20 +56,20 @@ slo:
 // the text so a test can put it through the parser: a shape that does not parse
 // teaches the wrong thing to exactly the person who has no other reference.
 func ProtocolShapes() string {
-	return `cenario:
+	return `scenario:
   - graphql:
-      consulta: |
-        query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }
-      variaveis: { id: "${assinantes.id}" }
+      query: |
+        query LookUpOrder($id: ID!) { order(id: $id) { status } }
+      variables: { id: "${subscribers.id}" }
 
-  - kafka: { topico: pedidos, chave: "${assinantes.id}", valor: { pedido: "${assinantes.id}" } }
-  - amqp:  { fila: pedidos, corpo: { pedido: "${assinantes.id}" } }
+  - kafka: { topic: orders, key: "${subscribers.id}", value: { order: "${subscribers.id}" } }
+  - amqp:  { queue: orders, body: { order: "${subscribers.id}" } }
 
-  # Espera o efeito do passo anterior aparecer. A latência dele tem a
-  # granularidade da sondagem, e o relatório diz isso.
-  - aguardar:
-      kafka: { topico: pedidos-processados }
-      chave: "${assinantes.id}"
+  # Waits for the effect of the previous step to show up. Its latency has the
+  # granularity of the polling, and the report says so.
+  - await:
+      kafka: { topic: orders-processed }
+      key: "${subscribers.id}"
       timeout: 10s
 `
 }

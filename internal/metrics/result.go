@@ -76,7 +76,7 @@ type Run struct {
 	DeclaredSteps []string `json:"declaredSteps,omitempty"`
 }
 
-const ClosedModel = "fechado"
+const ClosedModel = "closed"
 
 func (d Document) Closed() bool { return d.Run.Model == ClosedModel }
 
@@ -381,14 +381,14 @@ func evaluateWarnings(collector *Collector, document Document) []Warning {
 				Kind:     "generatorSaturated",
 				Severity: SeverityHigh,
 				Message:  "the generator did not sustain the target rate: dispatches went out after their scheduled instant; the result does not hold",
-				Evidence: fmt.Sprintf("%.2f%% dos despachos atrasaram mais de %.1f ms (desvio p99 de %.1f ms)", proportion*100, scheduling.LateThresholdMs, scheduling.Skew.P99),
+				Evidence: fmt.Sprintf("%.2f%% of the dispatches went out more than %.1f ms late (p99 skew of %.1f ms)", proportion*100, scheduling.LateThresholdMs, scheduling.Skew.P99),
 			})
 		} else if scheduling.LateDispatches > 0 {
 			warnings = append(warnings, Warning{
 				Kind:     "generatorOccasionallyLate",
 				Severity: SeverityLow,
 				Message:  "there was occasional dispatch delay, below 1% of the requests",
-				Evidence: fmt.Sprintf("%d despachos atrasados de %d (desvio p99 de %.1f ms)", scheduling.LateDispatches, scheduling.Sent, scheduling.Skew.P99),
+				Evidence: fmt.Sprintf("%d late dispatches out of %d (p99 skew of %.1f ms)", scheduling.LateDispatches, scheduling.Sent, scheduling.Skew.P99),
 			})
 		}
 	}
@@ -442,7 +442,7 @@ func detectTargetDegradation(document Document) (Warning, bool) {
 			Kind:     "targetDegraded",
 			Severity: SeverityMedium,
 			Message:  message,
-			Evidence: fmt.Sprintf("p99 por segundo passou de %.1f ms para %.1f ms", first, worst),
+			Evidence: fmt.Sprintf("p99 per second went from %.1f ms to %.1f ms", first, worst),
 		}, true
 	}
 	return Warning{}, false
@@ -451,19 +451,19 @@ func detectTargetDegradation(document Document) (Warning, bool) {
 func ReadableClass(class protocol.ErrorClass) string {
 	switch class {
 	case protocol.ErrNetwork:
-		return "falha de rede"
+		return "network failure"
 	case protocol.ErrTimeout:
 		return "timeout"
 	case protocol.ErrStatus:
-		return "status HTTP inesperado"
+		return "unexpected HTTP status"
 	case protocol.ErrAssertion:
-		return "assercao funcional"
+		return "functional assertion"
 	case protocol.ErrCorrelation:
 		return "lost correlation"
 	case protocol.ErrSaturation:
-		return "saturacao do gerador"
+		return "generator saturation"
 	case protocol.ErrGraphQL:
-		return "erro no corpo da resposta GraphQL"
+		return "error in the GraphQL response body"
 	default:
 		return string(class)
 	}
@@ -471,9 +471,9 @@ func ReadableClass(class protocol.ErrorClass) string {
 
 func phraseJourney(journey Journey, closed bool) string {
 	if journey.Started == 0 {
-		return "Nenhuma jornada foi executada."
+		return "No journey ran."
 	}
-	counted := "contados do instante em que deveriam ter comecado"
+	counted := "counted from the instant they should have started"
 	if closed {
 		counted = "counted from when the virtual user started the journey, which is only after finishing the previous one"
 	}

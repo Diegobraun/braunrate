@@ -154,7 +154,7 @@ func summarizeTLS(text string) string {
 	case strings.Contains(text, "certificate has expired"):
 		return "the target certificate is expired or not valid yet"
 	case strings.Contains(text, "tls: bad certificate"), strings.Contains(text, "certificate required"):
-		return "o alvo exigiu certificado de cliente — declare tls: { certificado: /caminho/cliente.pem, chave: /caminho/cliente.key }"
+		return "the target asked for a client certificate — declare tls: { certificate: /path/client.pem, key: /path/client.key }"
 	}
 	return ""
 }

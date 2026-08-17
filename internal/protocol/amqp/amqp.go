@@ -61,15 +61,15 @@ func (config *Config) Resolve(resolve func(string) string) protocol.Config {
 }
 
 func (config *Config) Describe() []string {
-	lines := []string{fmt.Sprintf("publicar em troca %q com rota %q", config.Exchange, config.Route)}
+	lines := []string{fmt.Sprintf("publish to exchange %q with route %q", config.Exchange, config.Route)}
 	if config.Identity != "" {
-		lines = append(lines, "identidade da mensagem: "+config.Identity)
+		lines = append(lines, "message identity: "+config.Identity)
 	}
 	if config.Confirm {
-		lines = append(lines, "espera confirmacao do broker")
+		lines = append(lines, "waits for the broker to confirm")
 	}
 	if len(config.Body) > 0 {
-		lines = append(lines, "corpo: "+string(config.Body))
+		lines = append(lines, "body: "+string(config.Body))
 	}
 	return lines
 }
@@ -270,7 +270,7 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		if !accepts {
 			return protocol.Response{
 				Class:  protocol.ErrMessaging,
-				Detail: fmt.Sprintf("o broker recusou a mensagem para a rota %q", config.Route),
+				Detail: fmt.Sprintf("the broker refused the message for route %q", config.Route),
 			}
 		}
 	}

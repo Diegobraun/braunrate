@@ -51,7 +51,7 @@ func Extract(capture scenario.Capture, response protocol.Response) (string, erro
 				return values[0], nil
 			}
 		}
-		return "", CaptureError{capture.Variable, capture.Expression, "cabecalho ausente na resposta"}
+		return "", CaptureError{capture.Variable, capture.Expression, "header not present in the response"}
 	case scenario.CaptureCookie:
 		return extractCookie(capture, response)
 	case scenario.CaptureRegex:

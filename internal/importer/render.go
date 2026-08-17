@@ -191,12 +191,12 @@ func RenderYAML(script Script) Import {
 	}
 
 	write("# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json")
-	write("nome: %q", script.Name)
-	write("alvo: ${ALVO:-%s}", script.Target)
+	write("name: %q", script.Name)
+	write("target: ${TARGET:-%s}", script.Target)
 	write("")
 
 	if len(vars) > 0 {
-		write("variaveis:")
+		write("variables:")
 		var declarations []string
 		for local, environment := range vars {
 			declarations = append(declarations, fmt.Sprintf("  %s: ${%s}", local, environment))
@@ -207,72 +207,72 @@ func RenderYAML(script Script) Import {
 	}
 
 	if len(script.Data) > 0 {
-		write("dados:")
+		write("data:")
 		for _, source := range script.Data {
 			consume := source.Consume
 			if consume == "" {
 				consume = "circular"
 			}
-			write("  %s: { arquivo: %s, consumo: %s }", source.Name, source.File, consume)
+			write("  %s: { file: %s, consume: %s }", source.Name, source.File, consume)
 		}
 		write("")
 	}
 
-	write("carga:")
-	write("  perfis:")
+	write("load:")
+	write("  profiles:")
 	phases := script.Phases
 	if len(phases) == 0 {
 		phases = []string{
-			"    - rampa: { de: 1/s, ate: 20/s, durante: 30s }",
-			"    - patamar: { taxa: 20/s, durante: 1m }",
+			"    - ramp: { from: 1/s, to: 20/s, duration: 30s }",
+			"    - steady: { rate: 20/s, duration: 1m }",
 		}
 	}
 	lines = append(lines, phases...)
 	write("")
-	write("cenario:")
+	write("scenario:")
 
 	for _, step := range steps {
 		simple := step.Body == "" && len(step.Headers) == 0 && !step.FollowRedirects
 		switch {
 		case step.GraphQL != nil:
 			write("  - graphql:")
-			write("      consulta: |")
+			write("      query: |")
 			for _, line := range strings.Split(strings.TrimSpace(step.GraphQL.Query), "\n") {
 				write("        %s", line)
 			}
-			write("      variaveis: %s", step.GraphQL.Variables)
+			write("      variables: %s", step.GraphQL.Variables)
 			if step.GraphQL.Path != "" && step.GraphQL.Path != "/graphql" {
-				write("      caminho: %s", step.GraphQL.Path)
+				write("      path: %s", step.GraphQL.Path)
 			}
 			if len(step.Headers) > 0 {
-				write("      cabecalhos:")
+				write("      headers:")
 				for _, name := range sortedNames(step.Headers) {
 					write("        %s: %q", name, step.Headers[name])
 				}
 			}
 		case simple:
 			write("  - http: %s %s", step.Method, step.Path)
-			write("    nome: %s", step.Name)
+			write("    name: %s", step.Name)
 		default:
-			write("  - nome: %s", step.Name)
+			write("  - name: %s", step.Name)
 			write("    http:")
-			write("      metodo: %s", step.Method)
-			write("      caminho: %s", step.Path)
+			write("      method: %s", step.Method)
+			write("      path: %s", step.Path)
 			if len(step.Headers) > 0 {
-				write("      cabecalhos:")
+				write("      headers:")
 				for _, name := range sortedNames(step.Headers) {
 					write("        %s: %q", name, step.Headers[name])
 				}
 			}
 			if step.Body != "" {
-				write("      corpo: %s", inlineBody(step.Body))
+				write("      body: %s", inlineBody(step.Body))
 			}
 			if step.FollowRedirects {
-				write("      seguir_redirect: true")
+				write("      followRedirects: true")
 			}
 		}
 		if len(step.Captures) > 0 {
-			write("    captura:")
+			write("    capture:")
 			for _, capture := range step.Captures {
 				suffix := ""
 				if capture.Suggested {
@@ -281,7 +281,7 @@ func RenderYAML(script Script) Import {
 				write("      %s: %s%s", capture.Variable, capture.Expression, suffix)
 			}
 		}
-		write("    verificar:")
+		write("    expect:")
 		write("      status: %d", statusOr(step.ExpectedStatus))
 	}
 
@@ -290,7 +290,7 @@ func RenderYAML(script Script) Import {
 	for _, step := range steps {
 		write("  - %s: { p95: < 500ms }", reportKey(step))
 	}
-	write("  - global: { erros: < 1 }")
+	write("  - global: { errors: < 1 }")
 
 	importResult.Warnings = append(importResult.Warnings,
 		"the load and slo numbers are a starting guess, not a measurement: tune them before using this as a gate")

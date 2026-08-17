@@ -38,22 +38,22 @@ load:
 scenario:
   - graphql:
       query: |
-        query ConsultarPedido($id: ID!) { pedido(id: $id) { id status ultimaFatura { id status } } }
+        query LookUpOrder($id: ID!) { order(id: $id) { id status lastInvoice { id status } } }
       variables: { id: "${assinantes.id}" }
     expect:
-      json: { $.data.pedido.status: ABERTO }
+      json: { $.data.order.status: OPEN }
     capture:
-      faturaId: $.data.pedido.ultimaFatura.id
+      invoiceId: $.data.order.lastInvoice.id
 
   - graphql:
       query: |
-        mutation PagarFatura($fatura: ID!) { pagarFatura(id: $fatura) { id status } }
-      variables: { fatura: "${faturaId}" }
+        mutation PayInvoice($invoice: ID!) { payInvoice(id: $invoice) { id status } }
+      variables: { invoice: "${invoiceId}" }
     expect:
-      json: { $.data.pagarFatura.status: PAGA }
+      json: { $.data.payInvoice.status: PAID }
 
 slo:
-  - graphql ConsultarPedido: { p95: < 2s }
+  - graphql LookUpOrder: { p95: < 2s }
   - global: { errors: < 0.1 }
 `
 
@@ -104,7 +104,7 @@ func TestGraphQLYieldsOneRowPerOperation(t *testing.T) {
 			t.Errorf("passo %q com protocolo %q", step.Name, step.Protocol)
 		}
 	}
-	if !names["graphql ConsultarPedido"] || !names["graphql PagarFatura"] {
+	if !names["graphql LookUpOrder"] || !names["graphql PayInvoice"] {
 		t.Fatalf("o relatório precisa de uma linha por operação, obtive %v", names)
 	}
 	if len(document.Steps) != 2 {

@@ -78,11 +78,11 @@ func (config *Config) Describe() []string {
 		lines = append(lines, "declared partition: "+strconv.Itoa(*config.Partition))
 	}
 	if config.Group != "" {
-		lines = append(lines, "observando o atraso do grupo "+config.Group)
+		lines = append(lines, "watching the lag of group "+config.Group)
 	}
 	lines = append(lines, "acks: "+config.Acks)
 	if len(config.Value) > 0 {
-		lines = append(lines, "valor: "+string(config.Value))
+		lines = append(lines, "value: "+string(config.Value))
 	}
 	return lines
 }
@@ -359,14 +359,14 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 }
 
 // O que significa a execucao inteira cair numa particao so, dito por quem sabe.
-// A medicao decide se avisa e com que gravidade; ela nao tem como saber o que e
-// uma particao nem o que faz a carga se espalhar entre elas.
+// The measurement decides whether to warn and how severely; it has no way of
+// knowing what a partition is, nor what makes the load spread across them.
 func collapseOf(config *Config) protocol.Collapse {
 	if config.Partition != nil {
 		return protocol.Collapse{
 			Subject:  "the declared partition of " + config.Topic,
 			Meaning:  "the rest of the cluster stayed idle and this number does not represent production — it is one partition's, not the topic's",
-			Remedy:   "Tire 'particao' do passo para distribuir",
+			Remedy:   "Drop 'partition' from the step to spread the load",
 			Declared: true,
 		}
 	}
@@ -393,7 +393,7 @@ func balancerFor(config *Config) kafka.Balancer {
 
 func partitionKey(config *Config) string {
 	if config.Partition == nil {
-		return "chave"
+		return "key"
 	}
 	return "partition " + strconv.Itoa(*config.Partition)
 }

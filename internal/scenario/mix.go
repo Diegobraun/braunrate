@@ -118,7 +118,7 @@ func checkMix(spec *Spec) []string {
 	if len(silent) > 0 {
 		problems = append(problems, fmt.Sprintf(
 			"the scenario declares weight on %d step(s) and not on %s: weight is the proportion between alternatives, and an alternative with no proportion has no way of being picked.\n"+
-				"    declare o peso de todos os passos, ou de nenhum",
+				"    declare weight on every step, or on none of them",
 			declared, strings.Join(silent, ", ")))
 	}
 	if chained := chainedCaptures(*spec); chained != "" {

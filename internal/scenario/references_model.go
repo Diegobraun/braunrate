@@ -25,7 +25,7 @@ func CheckReferences(spec *Spec) error {
 		}
 	}
 	for _, step := range spec.Steps {
-		where := fmt.Sprintf("passo %q", step.Name)
+		where := fmt.Sprintf("step %q", step.Name)
 		for _, text := range textsOf(step.Config) {
 			if err := checkText(known, text, where, missing); err != nil {
 				return err

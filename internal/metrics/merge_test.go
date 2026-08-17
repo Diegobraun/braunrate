@@ -105,7 +105,7 @@ func TestOldFormatIsReadableAndRefusedForSummingWithAReason(t *testing.T) {
 	if err == nil {
 		t.Fatal("somou um resultado de formato antigo, cujos percentis não tem histograma por trás")
 	}
-	for _, expected := range []string{`formato "1"`, "histograma", "percentil não soma"} {
+	for _, expected := range []string{`format "1"`, "histogram", "percentile does not add"} {
 		if !strings.Contains(err.Error(), expected) {
 			t.Errorf("a mensagem não explica por que não soma: falta %q em\n%v", expected, err)
 		}

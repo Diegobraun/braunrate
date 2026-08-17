@@ -131,7 +131,7 @@ func (builder *Builder) GeneratedData(name string, fields map[string]string, opt
 		option(&source)
 	}
 	if len(source.Fields) == 0 {
-		builder.note(fmt.Errorf("a fonte de dados %q precisa de pelo menos um campo em 'gerar'", name))
+		builder.note(fmt.Errorf("the data source %q needs at least one field in 'generate'", name))
 	}
 	builder.scenario.Data = append(builder.scenario.Data, source)
 	return builder
@@ -165,7 +165,7 @@ func (builder *Builder) GeneratedFields(name string, fields map[string]Field, op
 		option(&source)
 	}
 	if len(source.Fields) == 0 {
-		builder.note(fmt.Errorf("a fonte de dados %q precisa de pelo menos um campo em 'gerar'", name))
+		builder.note(fmt.Errorf("the data source %q needs at least one field in 'generate'", name))
 	}
 	builder.scenario.Data = append(builder.scenario.Data, source)
 	return builder
@@ -228,12 +228,12 @@ func buildStep(request Request, options ...StepOption) (scenario.Step, error) {
 	return step, nil
 }
 
-// Weight declara a proporcao desta alternativa no mix. Cada iteracao executa
-// uma alternativa; ou todo passo tem peso, ou nenhum tem (ADR 0016).
+// Weight declares the proportion of this alternative in the mix. Each iteration
+// runs one alternative; either every step has a weight or none does (ADR 0016).
 func Weight(weight int) StepOption {
 	return func(step *scenario.Step) error {
 		if weight <= 0 {
-			return fmt.Errorf("peso precisa ser um inteiro maior que zero, e veio %d", weight)
+			return fmt.Errorf("weight has to be an integer greater than zero, and got %d", weight)
 		}
 		step.Weight = weight
 		return nil

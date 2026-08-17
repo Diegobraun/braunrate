@@ -54,7 +54,7 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 			name:    "nenhuma jornada chegou ao fim",
 			check:   "incompleteJourney",
 			kind:    "incompleteJourney",
-			mention: "nenhuma jornada chegou ao fim",
+			mention: "no journey reached the end",
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Journey.Completed = 0
 			},
@@ -63,7 +63,7 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 			name:    "todos os passos falharam",
 			check:   "everythingFailed",
 			kind:    "everythingFailed",
-			mention: "todos os 2 passos falharam",
+			mention: "all 2 steps failed",
 			break_: func(d *Document, _ *DocumentInput) {
 				for index := range d.Steps {
 					d.Steps[index].Successes = 0
@@ -77,7 +77,7 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 			name:    "um passo teve 100% de erro",
 			check:   "everythingFailed",
 			kind:    "stepFullyFailed",
-			mention: `o passo "consultar pedido" falhou em 100% das requisições`,
+			mention: `the step "consultar pedido" failed on 100% of the requests`,
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Steps[1].Successes = 0
 				d.Steps[1].Errors = d.Steps[1].Count
@@ -89,7 +89,7 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 			name:    "a execução durou menos que o perfil declarado",
 			check:   "shortRun",
 			kind:    "shortRun",
-			mention: "parou em 4s com 38 de 100 requisições do perfil declarado",
+			mention: "stopped at 4s with 38 of 100 requests of the declared profile",
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Run.DurationMs = 4_000
 				d.Scheduling.Sent = 38
@@ -99,7 +99,7 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 			name:    "um passo declarado não registrou amostra",
 			check:   "stepWithoutSample",
 			kind:    "stepWithoutSample",
-			mention: `o passo "consultar pedido" foi declarado e não registrou nenhuma amostra`,
+			mention: `the step "consultar pedido" was declared and recorded no sample at all`,
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Steps = d.Steps[:1]
 				d.Overall.Count, d.Overall.Successes = 100, 100
@@ -107,9 +107,9 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 		},
 		{
 			name:    "variedade colapsada em fonte com varios valores",
-			check:   "medicao_invalidada",
+			check:   "invalidMeasurement",
 			kind:    "missingVariety",
-			mention: "um único valor",
+			mention: "a single value",
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Variety = []Variety{{Name: "pedidos.id", Distinct: 1, Uses: 200, Available: 500}}
 				d.Warnings = VarietyWarnings(d.Variety)
@@ -117,9 +117,9 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 		},
 		{
 			name:    "gerador saturado",
-			check:   "medicao_invalidada",
+			check:   "invalidMeasurement",
 			kind:    "generatorSaturated",
-			mention: "limite de requisições em voo",
+			mention: "in-flight limit",
 			break_: func(d *Document, _ *DocumentInput) {
 				d.Scheduling = Scheduling{Sent: 200, DroppedByInflightLimit: 40, PeakInflight: 512}
 				d.Warnings = evaluateWarnings(NewCollector(time.Unix(0, 0), time.Second), *d)
@@ -146,10 +146,10 @@ func TestEachEmptyRunIsCaughtAndOnlyByItsOwnCheck(t *testing.T) {
 			if finding.Evidence == "" {
 				t.Error("achado sem evidencia")
 			}
-			if !strings.Contains(sanity.Sentence, "não mediu o que se propôs a medir") {
+			if !strings.Contains(sanity.Sentence, "did not measure what it set out to measure") {
 				t.Errorf("frase não diz que a execução não mediu o que se propôs: %q", sanity.Sentence)
 			}
-			if strings.Contains(sanity.Sentence, "falha do alvo") {
+			if strings.Contains(sanity.Sentence, "target failure") {
 				t.Errorf("frase atribui a falha ao target: %q", sanity.Sentence)
 			}
 

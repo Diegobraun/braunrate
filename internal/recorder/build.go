@@ -341,7 +341,7 @@ func leaf(path string) string {
 func variableName(candidateName, subject string, taken map[int][]importer.ImportedCapture) string {
 	name := sanitize(candidateName)
 	if name == "" {
-		name = "valor"
+		name = "value"
 	}
 	for _, captures := range taken {
 		for _, capture := range captures {
@@ -379,7 +379,7 @@ func templatePath(current group, substitutions []substitution, values map[string
 			continue
 		}
 		name := parameterName(segments, index)
-		segments[index] = "${" + name + ".valor}"
+		segments[index] = "${" + name + ".value}"
 		if _, known := values[name]; !known {
 			*order = append(*order, name)
 		}
@@ -454,6 +454,6 @@ func sanitize(text string) string {
 }
 
 func (file DataFile) CSV() string {
-	lines := append([]string{"valor"}, file.Values...)
+	lines := append([]string{"value"}, file.Values...)
 	return strings.Join(lines, "\n") + "\n"
 }

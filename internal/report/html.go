@@ -383,7 +383,7 @@ func drawSeries(series []metrics.Bucket) (template.HTML, bool) {
 	}
 
 	var svg strings.Builder
-	fmt.Fprintf(&svg, `<svg viewBox="0 0 %d %d" role="img" aria-label="tempo de resposta por segundo">`, chartWidth, chartHeight)
+	fmt.Fprintf(&svg, `<svg viewBox="0 0 %d %d" role="img" aria-label="response time per second">`, chartWidth, chartHeight)
 
 	for _, fraction := range []float64{0, 0.5, 1} {
 		value := maxLatency * (1 - fraction)

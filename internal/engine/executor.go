@@ -318,9 +318,9 @@ func (executor *Executor) scenarioWarnings() []metrics.Warning {
 			continue
 		}
 		warnings = append(warnings, metrics.Warning{
-			Kind:     "espera_por_sondagem",
+			Kind:     "waitByPolling",
 			Severity: metrics.SeverityLow,
-			Message: fmt.Sprintf("o passo %q espera sondando a cada %s: o tempo dele tem essa granularidade e fica maior que a real, nunca menor",
+			Message: fmt.Sprintf("the step %q waits by polling every %s: its time has that granularity, so it reads longer than the real one, never shorter",
 				step.Name, interval),
 			Evidence: step.AggregationKey(),
 		})
@@ -360,9 +360,9 @@ func (executor *Executor) runIteration(runContext context.Context, virtualUser, 
 		name, value, err := executor.authenticator.Header(runContext, values)
 		if err != nil {
 			collector.Record(metrics.Sample{
-				Step: "autenticacao", Key: "autenticacao", Protocol: "http",
+				Step: "authentication", Key: "authentication", Protocol: "http",
 				ScheduledAt: scheduled, SentAt: scheduled, FinishedAt: executor.options.Clock.Now(),
-				Class: protocol.ErrAuth, Detail: fmt.Sprintf("%v — alvo %s", err, executor.scenario.Target),
+				Class: protocol.ErrAuth, Detail: fmt.Sprintf("%v — target %s", err, executor.scenario.Target),
 			})
 			return
 		}
@@ -470,7 +470,7 @@ func (executor *Executor) runStep(runContext context.Context, step scenario.Step
 	}
 
 	if sample.Class == protocol.Success {
-		if class, detail := executor.verificar(step, response, values); class != protocol.Success {
+		if class, detail := executor.check(step, response, values); class != protocol.Success {
 			sample.Class = class
 			sample.Detail = detail
 			observation.Failures = append(observation.Failures, detail)
@@ -499,12 +499,12 @@ func (executor *Executor) runStep(runContext context.Context, step scenario.Step
 	return sample, observation
 }
 
-func (executor *Executor) verificar(step scenario.Step, response protocol.Response, values *runtime.Values) (protocol.ErrorClass, string) {
+func (executor *Executor) check(step scenario.Step, response protocol.Response, values *runtime.Values) (protocol.ErrorClass, string) {
 	for _, check := range step.Checks {
 		switch check.Kind {
 		case scenario.CheckStatus:
 			if response.Status != check.Status {
-				return protocol.ErrStatus, fmt.Sprintf("esperava status %d, recebeu %d", check.Status, response.Status)
+				return protocol.ErrStatus, fmt.Sprintf("expected status %d, got %d", check.Status, response.Status)
 			}
 		case scenario.CheckBody:
 			if !bytes.Contains(response.Body, []byte(check.Text)) {

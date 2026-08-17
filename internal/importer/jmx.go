@@ -115,7 +115,7 @@ extratores JSON e regex, e assercao de resposta. Sampler de JDBC, JMS ou script 
 		if hasIdentifier(step.Path) {
 			script.Warnings = append(script.Warnings, fmt.Sprintf(
 				"the step %q has a fixed value in the path (%s): with a single value the target answers from cache and the number comes out optimistic. "+
-					"Troque por ${dados.coluna} e aponte para o CSV", step.Name, step.Path))
+					"Swap it for ${data.column} and point it at a CSV", step.Name, step.Path))
 		}
 	}
 	script.Warnings = append(script.Warnings, loadWarnings(&root)...)
@@ -252,7 +252,7 @@ func correlationWarnings(root *element) []string {
 			continue
 		}
 		warnings = append(warnings, fmt.Sprintf(
-			"o .jmx captura %q de %q: declare no passo que produz o valor, como captura: { %s: %s }",
+			"the .jmx captures %q from %q: declare it on the step that produces the value, as capture: { %s: %s }",
 			variable, path, variable, path))
 	}
 	for _, extractor := range root.findAll("RegexExtractor") {
@@ -262,7 +262,7 @@ func correlationWarnings(root *element) []string {
 			continue
 		}
 		warnings = append(warnings, fmt.Sprintf(
-			"o .jmx captura %q por expressao regular: declare no passo que produz o valor, como captura: { %s: /%s/ }",
+			"the .jmx captures %q by regular expression: declare it on the step that produces the value, as capture: { %s: /%s/ }",
 			variable, variable, expression))
 	}
 	for _, assertion := range root.findAll("ResponseAssertion") {
@@ -300,7 +300,7 @@ func untranslatedWarnings(root *element) []string {
 	sort.Strings(names)
 	return []string{fmt.Sprintf(
 		"%d element(s) of the .jmx were not translated and stayed out of the scenario: %s. "+
-			"Confira se algum deles mudava o que era medido", total, strings.Join(names, ", "))}
+			"Check whether any of them changed what was being measured", total, strings.Join(names, ", "))}
 }
 
 func mostCommonTarget(targets map[string]int) string {

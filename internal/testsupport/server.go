@@ -143,7 +143,7 @@ func (server *Server) handle(w http.ResponseWriter, r *http.Request) {
 		server.randomMu.Unlock()
 		if draw < server.options.ErrorProportion {
 			w.WriteHeader(server.options.ErrorStatus)
-			_, _ = fmt.Fprintf(w, `{"id":%d,"status":"ERRO"}`, number)
+			_, _ = fmt.Fprintf(w, `{"id":%d,"status":"ERROR"}`, number)
 			return
 		}
 	}
