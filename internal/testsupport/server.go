@@ -18,6 +18,9 @@ type Options struct {
 	FreezeFor       time.Duration
 	ErrorStatus     int
 	ErrorProportion float64
+	// Token troca o valor que /auth/token devolve. So o teste de vazamento usa:
+	// ele precisa de um segredo que chega pela resposta, e nao pelo arquivo.
+	Token string
 }
 
 type Server struct {
@@ -177,7 +180,12 @@ func (server *Server) requireToken(handler http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (server *Server) token() string { return "test-token" }
+func (server *Server) token() string {
+	if server.options.Token != "" {
+		return server.options.Token
+	}
+	return "test-token"
+}
 
 func (server *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
