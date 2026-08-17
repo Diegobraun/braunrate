@@ -1,116 +1,133 @@
 # braunrate
 
-Ferramenta de teste de carga com medição honesta: modelo de chegada aberto, HDR
-histogram e detecção de back-pressure.
+Load testing with an honest measurement: open arrival model, HDR histogram and
+back-pressure detection.
 
-**Documentação: <https://diegobraun.github.io/braunrate/>** — o site é gerado de
-`docs/guias/` deste repositório, e todo bloco de código dele passa pela suíte de
-testes.
+**Documentation: <https://diegobraun.github.io/braunrate/>** — the site is
+generated from `docs/guias/` in this repository, and every code block in it goes
+through the test suite.
 
-## Ver funcionando
+## See it working
 
 ```bash
-braunrate demo              # sobe um alvo, roda um cenario e explica cada numero
-braunrate demo --com-falha  # o mesmo, contra um alvo que trava no meio
+braunrate demo                  # starts a target, runs a scenario and explains every number
+braunrate demo --with-failure   # the same, against a target that freezes halfway
 ```
 
-Um comando, um terminal, nenhum arquivo antes. `braunrate` sem argumento diz qual
-é o próximo comando; `braunrate ajuda` lista todos.
+One command, one terminal, no file first. `braunrate` with no argument says what
+the next command is; `braunrate help` lists them all.
 
-## A medição, em uma comparação
+## The measurement, in one comparison
 
-O alvo de teste embutido congela por 1 s no meio da execução. Mesma pausa, mesmo
-alvo, dois modelos de medição:
+The built-in test target freezes for 1 s in the middle of the run. Same pause,
+same target, two measurement models:
 
-| Modelo | 99% das respostas em até | Amostras |
+| Model | 99% of the responses within | Samples |
 |---|---|---|
-| **braunrate (chegada aberta, tempo contado do instante agendado)** | **983,0 ms** | 600 |
-| Laço fechado (um usuário virtual em sequência, como JMeter e Locust medem) | 3,7 ms | 722 |
+| **braunrate (open arrival, time counted from the scheduled instant)** | **982.0 ms** | 600 |
+| Closed loop (one virtual user in sequence, the way JMeter and Locust measure) | 3.7 ms | 728 |
 
-São 979,4 ms escondidos pelo laço fechado. Ele não erra por defeito: quando o
-alvo trava, simplesmente para de enviar, e as requisições que deveriam ter
-partido nunca entram na conta. Essa é a omissão coordenada.
+That is 978.3 ms the closed loop never counted. It is not wrong because of a
+bug: when the target freezes it simply stops sending, and the requests that
+should have gone out never enter the count. That is coordinated omission.
 
-A comparação é um teste automatizado que roda no CI a cada push. Se a medição
-deixar de ser honesta, o build quebra.
+The comparison is an automated test that runs in CI on every push. If the
+measurement stops being honest, the build breaks.
 
 ```
 $ go test ./internal/selfcheck/... -v
 === RUN   TestClosedLoopWouldHideThePauseOpenModelShows
-    mesma pausa de 1s no mesmo alvo:
-      modelo aberto (braunrate): p99 983.0 ms sobre 600 amostras
-      laço fechado:              p99 3.7 ms sobre 722 amostras
-      omissão coordenada: 979.4 ms escondidos pelo laço fechado
+    same 1s freeze against the same target:
+      open model (braunrate): p99 982.0 ms over 600 samples
+      closed loop:            p99 3.7 ms over 728 samples
+      coordinated omission: 978.3 ms the closed loop never counted
 --- PASS: TestClosedLoopWouldHideThePauseOpenModelShows (6.01s)
 ```
 
-São três provas, cada uma expondo um ponto cego diferente: a travada acima; o
-GraphQL que responde erro com status 200 (406 erros em 2.844 respostas, todas
-200); e a cadeia assíncrona que custa 1,2 ms para produzir e 3,96 s ponta a
-ponta. As três estão no [início do site](https://diegobraun.github.io/braunrate/),
-com a saída real de cada uma.
+There are three proofs, each exposing a different blind spot: the freeze above;
+the GraphQL that answers an error with status 200; and the asynchronous chain
+that costs milliseconds to produce and seconds end to end. All three are on the
+[front page of the site](https://diegobraun.github.io/braunrate/), with the real
+output of each.
 
-## Instalação
+## Installing
 
-Baixe o binário da [release](https://github.com/Diegobraun/braunrate/releases),
-confira o checksum e rode. Não há runtime para instalar.
+Download the binary from the
+[release](https://github.com/Diegobraun/braunrate/releases), check the checksum
+and run it. There is no runtime to install.
 
 ```bash
-go install github.com/Diegobraun/braunrate/cmd/braunrate@latest   # se voce ja tem Go
+go install github.com/Diegobraun/braunrate/cmd/braunrate@latest   # if you already have Go
 ```
 
-Os três caminhos, os avisos de primeira execução no macOS e no Windows, a tabela
-de plataformas e o que fica de fora estão em
-[Instalação](https://diegobraun.github.io/braunrate/instalacao.html).
+The three paths, the first-run warnings on macOS and Windows, the platform table
+and what is left out are in
+[Installation](https://diegobraun.github.io/braunrate/instalacao.html).
 
-## Estado
+## Language
 
-**Fase 8 concluída.** Motor de chegada aberta, HTTP, GraphQL, Kafka, RabbitMQ e
-passo `aguardar`, correlação, autenticação, dados, asserções, critério de aceite
-com código de saída, ferramentas de autoria (schema no editor, `debug`,
-`import curl`, `import jmx` e `record`), relatório (HTML autocontido, JSON, CSV,
-comparação entre execuções), variedade observada, cenário em Go equivalente ao
-YAML travado por teste, executável de um módulo de fora, modelo fechado
-declarado, autenticação de broker com a credencial fora do arquivo e modo
-servidor local sem lógica própria.
+The scenario format, the commands and everything the tool prints are in English,
+with no language selection: a message that can be switched is a commitment to
+keep every sentence in step forever, and a keyed catalogue moves the sentence
+away from the code that decides to print it.
 
-A decisão da Fase 0 foi **Go**, sustentada por dois critérios apenas: RSS sob
-carga (30 MB contra 597 MB do Java com G1, a 10.000/s) e binário único estático,
-que para o público de QA significa instalar baixando um arquivo. Números,
-metodologia e limites em [medicoes-fase0.md](docs/medicoes-fase0.md); a decisão
-com os pesos de cada critério em
+Translating the messages is possible, and it will be done if there is demand.
+Open an issue saying which language and which surface — terminal, report or web
+interface. The Portuguese site stays; the documentation is bilingual.
+
+## State
+
+**Phase 8 complete.** Open arrival engine, HTTP, GraphQL, Kafka, RabbitMQ and the
+`await` step, correlation, authentication, data, assertions, acceptance criteria
+with an exit code, authoring tools (schema in the editor, `debug`, `import curl`,
+`import jmx` and `record`), reporting (self-contained HTML, JSON, CSV, comparison
+between runs), observed variety, a Go scenario equivalent to the YAML one and
+locked by a test, executable from a module outside this one, the closed model
+declared, broker authentication with the credential outside the file, and a local
+server mode with no logic of its own.
+
+The Phase 0 decision was **Go**, held up by two criteria only: RSS under load
+(30 MB against 597 MB for Java with G1, at 10,000/s) and a single static binary,
+which for the QA audience means installing by downloading one file. Numbers,
+methodology and limits in [medicoes-fase0.md](docs/medicoes-fase0.md); the
+decision with the weight of each criterion in
 [ADR 0001](docs/adr/0001-linguagem-e-runtime.md).
 
-## Desenvolvimento
+## Development
 
 ```bash
 go build -o braunrate ./cmd/braunrate
 go test ./...
-go run ./cmd/site -out site      # gera a documentacao publicada
+go run ./cmd/site -out site      # generates the published documentation
 ```
 
-O conteúdo do site fica em [`docs/guias/`](docs/guias); a referência do cenário e
-o índice de decisões são gerados do schema e dos ADRs. Editar a documentação é
-editar esses arquivos, e o teste reprova o build se um bloco de código publicado
-deixar de valer.
+The site content lives in [`docs/guias/`](docs/guias); the scenario reference and
+the index of decisions are generated from the schema and from the ADRs. Editing
+the documentation is editing those files, and the test fails the build if a
+published code block stops being valid.
 
-## Documentação no repositório
+Documents in this repository are written in Portuguese: the ADRs, the commits and
+the internal reports record decisions for whoever maintains the tool. What
+reaches the user is in English.
 
-- [Princípios de produto](docs/principios-de-produto.md) — critério de aceitação de toda decisão de interface
-- [Vocabulário](docs/vocabulario.md) — uma palavra por conceito, em todo texto ao usuário
+## Documentation in the repository
+
+- [Princípios de produto](docs/principios-de-produto.md) — the acceptance criterion of every interface decision
+- [Vocabulário](docs/vocabulario.md) — one word per concept, in every text shown to the user
+- [Decisões de internacionalização](docs/decisoes-i18n.md)
 - [Decisões de experiência de uso](docs/decisoes-experiencia.md)
 - [Relatório de experiência de uso](docs/relatorio-experiencia.md)
 - [Roteiro](docs/roteiro.md)
 - [Arquitetura](docs/arquitetura.md)
-- [Estudo comparativo de ferramentas](docs/estudo-ferramentas.md) — base de todas as decisões
-- [ADRs](docs/adr) — 17 decisões, cada uma com o que foi recusado e o critério que reabre
-- [API do modo servidor](docs/api-servidor.md) — um exemplo de curl por rota
-- [Schema do cenário](docs/braunrate.schema.json) — autocompletar e validação no editor
-- [Exemplo de relatório HTML](docs/exemplo-relatorio.html) — saída real de uma execução que falhou o critério de aceite
-- [Bateria adversarial](docs/bateria-adversarial.md) — onde a ferramenta falha, mente ou frustra
-- [Auditoria de fricção](docs/auditoria-fricao.md) — o que a ferramenta exige e não fornece
+- [Estudo comparativo de ferramentas](docs/estudo-ferramentas.md) — the basis of every decision
+- [ADRs](docs/adr) — 19 decisions, each with what was refused and the criterion that reopens it
+- [API do modo servidor](docs/api-servidor.md) — one curl example per route
+- [Scenario schema](docs/braunrate.schema.json) — autocomplete and validation in the editor
+- [Example HTML report](docs/exemplo-relatorio.html) — real output of a run that failed the acceptance criterion
+- [Bateria adversarial](docs/bateria-adversarial.md) — where the tool fails, lies or frustrates
+- [Auditoria de fricção](docs/auditoria-fricao.md) — what the tool demands and does not provide
 - [Medição dos protótipos da Fase 0](docs/medicoes-fase0.md)
 
-## Licença
+## License
 
 MIT — Diego Braun.

@@ -24,8 +24,8 @@ cabe, e as das fases seguintes.
 
 ## 2. O documento JSON de resultado também vai para inglês
 
-- **Decisão**: os 132 campos do documento de resultado passam para camelCase em
-  inglês, e `versaoDoFormato` sobe de 1 para 2.
+- **Decisão**: os campos do documento de resultado passam para camelCase em
+  inglês, e `formatVersion` sobe de 2 para 3. O cenário sobe de 1 para 2.
 - **Alternativa**: manter os campos em português, como o ADR 0010 decidiu, por
   serem formato publicado e não tela.
 - **Por que esta**: é o mesmo argumento que move o YAML. O documento é commitado
@@ -58,3 +58,59 @@ cabe, e as das fases seguintes.
   sugestão por proximidade resolve erro de digitação, não mudança de formato.
 - **Reversibilidade**: alta — é uma verificação antes do laço de chaves.
 - **Toca o usuário**: sim, e é o ponto.
+
+## 5. O domínio do alvo embutido também vai para inglês
+
+- **Decisão**: o alvo de teste embutido passa a servir `/orders`,
+  `/invoices/{id}/pay`, `/auth/token` e `/health`, com `lastInvoice`, `amount`,
+  `OPEN` e `PAID` no corpo; as operações GraphQL viram `LookUpOrder` e
+  `PayInvoice`.
+- **Alternativa**: manter `/pedidos` e `/faturas`, que são só dados de teste.
+- **Por que esta**: é a primeira tela que alguém vê. `braunrate demo` imprime o
+  caminho da requisição, e o relatório da demonstração nomeia o passo. Deixar o
+  domínio em português colocaria uma palavra em português na tela exatamente de
+  quem a pergunta final é sobre.
+- **Reversibilidade**: alta, é servidor de teste.
+- **Toca o usuário**: sim, na demonstração e nos exemplos.
+
+## 6. Os exemplos publicados são traduzidos e renomeados
+
+- **Decisão**: `examples/*.yaml` vai para inglês, com os arquivos renomeados
+  (`jornada-autenticada.yaml` vira `authenticated-journey.yaml`, e assim por
+  diante), `examples/dados/` vira `examples/data/`, as colunas dos CSV viram
+  `id,name` e `id,type,route`, e `examples/cenario-em-go/` vira
+  `examples/scenario-in-go/`.
+- **Alternativa**: traduzir só as chaves e deixar nomes de passo, de fonte e de
+  arquivo em português, por serem texto do autor.
+- **Por que esta**: os exemplos apontam para o alvo embutido, que passou a servir
+  caminhos em inglês — em português eles deixariam de rodar. E são o primeiro
+  cenário que alguém lê: um `consultar pedido` ali ensina que o formato aceita
+  português, que é o contrário do que a fase decidiu.
+- **Reversibilidade**: média — o caminho do módulo Go do exemplo mudou, e links
+  de fora do repositório para os arquivos quebram.
+- **Toca o usuário**: sim, em quem tinha o caminho de um exemplo salvo.
+
+## 7. A chave de agregação de mensageria vira `kafka produce` e `amqp publish`
+
+- **Decisão**: o passo sem nome declarado é agregado sob `kafka produce <tópico>`
+  e `amqp publish <destino>`, no lugar de `kafka produzir` e `amqp publicar`.
+- **Alternativa**: manter, por ser nome derivado e não mensagem.
+- **Por que esta**: a chave aparece na tabela por passo do relatório e é o nome
+  que uma regra de slo precisa escrever. É texto que o usuário lê e digita.
+- **Reversibilidade**: baixa para quem já tem regra de slo escrita — a regra
+  passa a não casar com passo nenhum, e a validação diz isso antes da execução.
+- **Toca o usuário**: sim. `braunrate migrate` não renomeia a regra, porque o
+  nome do passo é texto do autor; o comando avisa quando o cenário convertido
+  deixa de validar.
+
+## 8. Data no relatório em `2006-01-02`
+
+- **Decisão**: o relatório HTML e a comparação passam a escrever a data como
+  `2006-01-02 15:04:05`, no lugar de `02/01/2006`.
+- **Alternativa**: manter o formato brasileiro, ou escolher pelo idioma do
+  navegador.
+- **Por que esta**: `03/04/2026` tem duas leituras dependendo do país de quem lê,
+  e o relatório é um arquivo que viaja anexado a um ticket. A ordem
+  ano-mês-dia tem uma leitura só.
+- **Reversibilidade**: alta.
+- **Toca o usuário**: sim, no cabeçalho do relatório.

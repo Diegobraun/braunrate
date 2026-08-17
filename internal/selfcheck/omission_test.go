@@ -75,7 +75,7 @@ func TestMeasurementReflectsTargetFreeze(t *testing.T) {
 	if document.Overall.Count == 0 {
 		t.Fatal("nenhuma requisição concluida")
 	}
-	t.Logf("modelo aberto: p50 %.1f ms | p99 %.1f ms | max %.1f ms | n %d",
+	t.Logf("open model: p50 %.1f ms | p99 %.1f ms | max %.1f ms | n %d",
 		document.Overall.Latency.P50, document.Overall.Latency.P99,
 		document.Overall.Latency.Max, document.Overall.Count)
 }
@@ -121,10 +121,10 @@ func TestClosedLoopWouldHideThePauseOpenModelShows(t *testing.T) {
 	openP99 := document.Overall.Latency.P99
 	closedP99 := closed.P99
 
-	t.Logf("mesma pausa de %s no mesmo target:", freezeDuration)
-	t.Logf("  modelo aberto (braunrate): p99 %.1f ms sobre %d amostras", openP99, document.Overall.Count)
-	t.Logf("  laço fechado:              p99 %.1f ms sobre %d amostras", closedP99, closed.Samples)
-	t.Logf("  omissão coordenada: %.1f ms escondidos pelo laço fechado", openP99-closedP99)
+	t.Logf("same %s freeze against the same target:", freezeDuration)
+	t.Logf("  open model (braunrate): p99 %.1f ms over %d samples", openP99, document.Overall.Count)
+	t.Logf("  closed loop:            p99 %.1f ms over %d samples", closedP99, closed.Samples)
+	t.Logf("  coordinated omission: %.1f ms the closed loop never counted", openP99-closedP99)
 
 	if closedP99*5 > openP99 {
 		t.Fatalf("o experimento não demonstrou omissão coordenada: aberto %.1f ms, fechado %.1f ms",
