@@ -122,10 +122,16 @@ func (server *RawServer) serve(connection net.Conn) {
 		if read > 0 {
 			pending += bytes.Count(buffer[:read], headerEnd)
 			for pending > 0 {
+				// O contador sobe antes de a resposta sair. Contar depois abre
+				// uma janela entre o cliente ter a resposta na mao e a chamada
+				// entrar na conta: quem le Served() logo apos a ultima resposta
+				// le um a menos. A resposta que nao chegou a sair volta atras,
+				// e so esta goroutine mexe nesse contador entre as duas linhas.
+				server.served.Add(1)
 				if _, writeErr := connection.Write(server.response); writeErr != nil {
+					server.served.Add(-1)
 					return
 				}
-				server.served.Add(1)
 				pending--
 			}
 		}
