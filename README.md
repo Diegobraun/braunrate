@@ -151,7 +151,7 @@ reaches the user is in English, and it is on the
 - [Roteiro](docs/roteiro.md)
 - [Arquitetura](docs/arquitetura.md)
 - [Estudo comparativo de ferramentas](docs/estudo-ferramentas.md) — the basis of every decision
-- [ADRs](docs/adr) — 20 decisions, each with what was refused and the criterion that reopens it
+- [ADRs](docs/adr) — 21 decisions, each with what was refused and the criterion that reopens it
 - [API do modo servidor](docs/api-servidor.md) — one curl example per route
 - [Scenario schema](docs/braunrate.schema.json) — autocomplete and validation in the editor
 - [Example HTML report](docs/exemplo-relatorio.html) — real output of a run, regenerated from the run itself on every change to the generator

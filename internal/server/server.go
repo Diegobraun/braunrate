@@ -47,8 +47,9 @@ func DefaultOptions(version string) Options {
 }
 
 type Server struct {
-	options Options
-	runs    *runStore
+	options     Options
+	runs        *runStore
+	environment *environment
 	// A load generator that runs two scenarios at once measures neither: they
 	// share the CPU that has to dispatch on the scheduled instant. Refusing is
 	// the default and letting it through is a declared choice.
@@ -57,7 +58,7 @@ type Server struct {
 }
 
 func New(options Options) *Server {
-	return &Server{options: options, runs: newRunStore()}
+	return &Server{options: options, runs: newRunStore(), environment: newEnvironment()}
 }
 
 func (server *Server) Handler() http.Handler {
@@ -68,6 +69,8 @@ func (server *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /scenarios/{name}/validate", server.validate)
 	mux.HandleFunc("POST /scenarios/{name}/debug", server.debug)
 	mux.HandleFunc("POST /scenarios/{name}/runs", server.startRun)
+	mux.HandleFunc("GET /environment", server.getEnvironment)
+	mux.HandleFunc("PUT /environment", server.setEnvironment)
 	mux.HandleFunc("GET /runs", server.listRuns)
 	mux.HandleFunc("GET /runs/{id}", server.getRun)
 	mux.HandleFunc("DELETE /runs/{id}", server.cancelRun)
@@ -220,6 +223,7 @@ func (server *Server) pathOf(name string) (string, error) {
 type validationAnswer struct {
 	Valid   bool     `json:"valid"`
 	Lines   []string `json:"lines,omitempty"`
+	Needs   []string `json:"needs,omitempty"`
 	Message string   `json:"message,omitempty"`
 	File    string   `json:"file,omitempty"`
 	Line    int      `json:"line,omitempty"`
@@ -251,7 +255,20 @@ func (server *Server) validate(writer http.ResponseWriter, request *http.Request
 		writeJSON(writer, http.StatusUnprocessableEntity, refusal(err))
 		return
 	}
-	writeJSON(writer, http.StatusOK, validationAnswer{Valid: true, Lines: runner.Describe(spec, plan)})
+	// A validacao ja conta os valores de sessao que a tela guardou, para nao pedir
+	// de novo um TOKEN que a pessoa acabou de dar, e devolve o que ainda falta.
+	spec.ResolveWith(server.environment.snapshot())
+	writeJSON(writer, http.StatusOK, validationAnswer{
+		Valid: true, Lines: runner.Describe(spec, plan), Needs: spec.SessionCredentials(),
+	})
+}
+
+// debugOptions e startOptions carregam os valores de sessao para o mesmo lugar
+// onde a variavel de ambiente entraria. Ver ADR 0021.
+func (server *Server) debugOptions() runner.Options {
+	options := runner.DefaultOptions(server.options.Version)
+	options.Environment = server.environment.snapshot()
+	return options
 }
 
 // The position of the error is what the editor needs, so it travels as fields
@@ -317,7 +334,7 @@ func (server *Server) debug(writer http.ResponseWriter, request *http.Request) {
 	}
 	defer release()
 
-	iteration, err := runner.Debug(request.Context(), path, server.options.Version)
+	iteration, err := runner.Debug(request.Context(), path, server.debugOptions())
 	if err != nil {
 		writeJSON(writer, http.StatusUnprocessableEntity, refusal(err))
 		return
@@ -385,6 +402,7 @@ func (server *Server) startRun(writer http.ResponseWriter, request *http.Request
 	run := server.runs.start(request.PathValue("name"), spec, plan)
 	options := runner.DefaultOptions(server.options.Version)
 	options.OnProgress = run.progress
+	options.Environment = server.environment.snapshot()
 
 	runContext, stop := context.WithCancel(context.Background())
 	run.arm(stop)

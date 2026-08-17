@@ -571,3 +571,111 @@ scenario:
     name: consultar pedido
 `, address)
 }
+
+func callBody(t *testing.T, method, url, body string) (int, []byte) {
+	t.Helper()
+	request, err := http.NewRequest(method, url, strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("requisição inválida: %v", err)
+	}
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatalf("o servidor não respondeu: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	got, _ := io.ReadAll(response.Body)
+	return response.StatusCode, got
+}
+
+const authScenario = `
+name: Perfil autenticado
+target: %s
+
+load:
+  profiles:
+    - steady: { rate: 20/s, duration: 1s }
+
+auth:
+  type: header
+  header: "Authorization: Bearer ${TOKEN}"
+
+scenario:
+  - http: GET /pedido
+    name: perfil
+    expect: { status: 200 }
+`
+
+// A tela precisa dar valor ao ${TOKEN} sem escrever o segredo no arquivo. O valor
+// fica na memória do servidor, some no reinício, e nunca é devolvido pela leitura.
+// Ver ADR 0021.
+func TestTheSessionValueLetsARunStartAndIsNeverEchoedBack(t *testing.T) {
+	const canary = "s3cr3t-canary-de-sessao"
+	fake := target(t)
+	directory := directoryWith(t, map[string]string{"perfil.yaml": fmt.Sprintf(authScenario, fake.Address())})
+	httpServer := serverOn(t, directory, false)
+
+	needs := func(raw []byte) []string {
+		var answer struct{ Needs, Provided []string }
+		if err := json.Unmarshal(raw, &answer); err != nil {
+			t.Fatalf("resposta não é JSON: %s", raw)
+		}
+		return answer.Needs
+	}
+	provided := func(raw []byte) []string {
+		var answer struct{ Provided []string }
+		if err := json.Unmarshal(raw, &answer); err != nil {
+			t.Fatalf("resposta não é JSON: %s", raw)
+		}
+		return answer.Provided
+	}
+
+	// Antes de fornecer: a validação diz que falta TOKEN.
+	status, body := callBody(t, http.MethodPost, httpServer.URL+"/scenarios/perfil.yaml/validate", "")
+	if status != http.StatusOK {
+		t.Fatalf("validação falhou: %d %s", status, body)
+	}
+	if got := needs(body); len(got) != 1 || got[0] != "TOKEN" {
+		t.Fatalf("a validação deveria pedir TOKEN: %v", got)
+	}
+
+	// Fornecer o valor de sessão. A resposta nunca traz o segredo.
+	status, body = callBody(t, http.MethodPut, httpServer.URL+"/environment", `{"TOKEN":"`+canary+`"}`)
+	if status != http.StatusOK {
+		t.Fatalf("PUT /environment falhou: %d %s", status, body)
+	}
+	if strings.Contains(string(body), canary) {
+		t.Fatalf("a resposta do PUT devolveu o segredo: %s", body)
+	}
+	if got := provided(body); len(got) != 1 || got[0] != "TOKEN" {
+		t.Errorf("o PUT deveria confirmar TOKEN pelo nome: %v", got)
+	}
+
+	// A leitura de volta traz só o nome, nunca o valor.
+	status, body = call(t, http.MethodGet, httpServer.URL+"/environment")
+	if status != http.StatusOK || strings.Contains(string(body), canary) {
+		t.Fatalf("GET /environment vazou o segredo ou falhou: %d %s", status, body)
+	}
+
+	// Agora a validação não pede mais TOKEN.
+	_, body = callBody(t, http.MethodPost, httpServer.URL+"/scenarios/perfil.yaml/validate", "")
+	if got := needs(body); len(got) != 0 {
+		t.Errorf("TOKEN foi fornecido, a validação não devia mais pedir: %v", got)
+	}
+
+	// E o run começa em vez de ser recusado por variável ausente.
+	status, body = call(t, http.MethodPost, httpServer.URL+"/scenarios/perfil.yaml/runs")
+	if status != http.StatusAccepted {
+		t.Fatalf("o run deveria começar com o TOKEN de sessão: %d %s", status, body)
+	}
+}
+
+func TestASessionNameThatIsNotAnEnvironmentReferenceIsRefused(t *testing.T) {
+	fake := target(t)
+	directory := directoryWith(t, map[string]string{"perfil.yaml": fmt.Sprintf(authScenario, fake.Address())})
+	httpServer := serverOn(t, directory, false)
+
+	status, _ := callBody(t, http.MethodPut, httpServer.URL+"/environment", `{"token":"x"}`)
+	if status != http.StatusBadRequest {
+		t.Errorf("nome minúsculo não é referência de ambiente e devia ser recusado, veio %d", status)
+	}
+}

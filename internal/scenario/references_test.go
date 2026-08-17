@@ -148,3 +148,105 @@ func TestStepThatVariesIsNotWarnedAbout(t *testing.T) {
 		t.Fatalf("passo que varia foi avisado como fixo: %v", warnings)
 	}
 }
+
+// A interface precisa dar valor ao ${TOKEN} sem escrever o segredo no arquivo.
+// ResolveWith injeta o valor de sessao onde a variavel de ambiente entraria: o
+// arquivo mantem ${TOKEN}, o nome deixa de contar como ausente, e a resolucao em
+// tempo de execucao o encontra. Ver ADR 0021.
+func TestResolveWithSatisfiesAMissingVariableWithoutTouchingTheFile(t *testing.T) {
+	spec, err := scenario.Parse([]byte(`
+name: x
+target: http://127.0.0.1:8080
+
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
+
+auth:
+  type: header
+  header: "Authorization: Bearer ${TOKEN}"
+
+scenario:
+  - http: GET /pedido
+    name: pedido
+`))
+	if err != nil {
+		t.Fatalf("o cenário não carregou: %v", err)
+	}
+	if len(spec.MissingEnvironment) != 1 || spec.MissingEnvironment[0] != "TOKEN" {
+		t.Fatalf("TOKEN deveria faltar antes de fornecer: %v", spec.MissingEnvironment)
+	}
+
+	spec.ResolveWith(map[string]string{"TOKEN": "s3cr3t"})
+
+	if len(spec.MissingEnvironment) != 0 {
+		t.Errorf("TOKEN ainda consta como ausente depois de fornecido: %v", spec.MissingEnvironment)
+	}
+	if spec.Vars["TOKEN"] != "s3cr3t" {
+		t.Errorf("o valor de sessão não chegou aos valores da execução: %v", spec.Vars)
+	}
+	// O texto do cabeçalho continua ${TOKEN}: o segredo nunca entra no arquivo.
+	if spec.Auth == nil || !strings.Contains(spec.Auth.Header, "${TOKEN}") {
+		t.Errorf("o cabeçalho perdeu o ${TOKEN}: %+v", spec.Auth)
+	}
+}
+
+func TestResolveWithLeavesOtherMissingVariablesAlone(t *testing.T) {
+	spec := scenario.Spec{MissingEnvironment: []string{"OUTRA", "TOKEN"}}
+	spec.ResolveWith(map[string]string{"TOKEN": "s3cr3t"})
+	if len(spec.MissingEnvironment) != 1 || spec.MissingEnvironment[0] != "OUTRA" {
+		t.Errorf("só TOKEN deveria sair da lista: %v", spec.MissingEnvironment)
+	}
+}
+
+// Credencial de broker se resolve na leitura, do ambiente, e nao pelo runtime.
+// A interface nao pode fingir que a preenche: injetar limparia o aviso sem
+// entregar o valor, e o run comecaria para falhar na conexao. Ver ADR 0021.
+func TestSessionCredentialsExcludeBrokerSecrets(t *testing.T) {
+	spec, err := scenario.Parse([]byte(`
+name: x
+target: http://127.0.0.1:8080
+
+messaging:
+  kafka:
+    brokers: ["kafka.staging:9093"]
+    auth:
+      type: scramSha512
+      user: "${KAFKA_USER}"
+      password: "${KAFKA_PASSWORD}"
+
+auth:
+  type: header
+  header: "Authorization: Bearer ${TOKEN}"
+
+load:
+  profiles:
+    - steady: { rate: 1/s, duration: 1s }
+
+scenario:
+  - kafka: { topic: pedidos, key: "k", value: { id: "1" } }
+    name: publicar
+`))
+	if err != nil {
+		t.Fatalf("cenário não carregou: %v", err)
+	}
+
+	fillable := spec.SessionCredentials()
+	if len(fillable) != 1 || fillable[0] != "TOKEN" {
+		t.Fatalf("só o TOKEN de HTTP é preenchível pela sessão: %v", fillable)
+	}
+
+	// Tentar fornecer a senha do broker pela sessão não pode limpar o aviso: o
+	// valor não chegaria ao broker.
+	spec.ResolveWith(map[string]string{"KAFKA_PASSWORD": "x", "KAFKA_USER": "y", "TOKEN": "t"})
+	stillMissing := map[string]bool{}
+	for _, name := range spec.MissingEnvironment {
+		stillMissing[name] = true
+	}
+	if !stillMissing["KAFKA_PASSWORD"] || !stillMissing["KAFKA_USER"] {
+		t.Errorf("credencial de broker fornecida pela sessão foi dada por satisfeita sem chegar ao broker: %v", spec.MissingEnvironment)
+	}
+	if stillMissing["TOKEN"] {
+		t.Errorf("o TOKEN de HTTP deveria ter sido satisfeito: %v", spec.MissingEnvironment)
+	}
+}

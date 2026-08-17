@@ -115,6 +115,7 @@ func readBrokerAuth(node *yaml.Node) (messaging.Auth, error) {
 			}
 			auth.Kind = kind
 		case "user":
+			auth.UserVar, _ = EnvironmentVariable(value.Value)
 			auth.User = ExpandFromEnv(value.Value)
 		case "password":
 			if err := refuseLiteralSecret("password", value); err != nil {

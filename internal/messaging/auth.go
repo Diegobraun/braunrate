@@ -30,9 +30,12 @@ var KnownKinds = []Kind{Plain, SCRAM256, SCRAM512, MSKIAM, External}
 type Auth struct {
 	Kind Kind
 	User string
-	// PasswordVar keeps the name of the environment variable the scenario
-	// declared, so an unset variable can be reported by name instead of turning
-	// into an empty password the broker refuses without explanation.
+	// UserVar e PasswordVar guardam o nome da variavel de ambiente que o cenario
+	// declarou, para uma variavel ausente ser reportada pelo nome em vez de virar
+	// um campo vazio que o broker recusa sem explicar. O nome tambem separa a
+	// credencial de broker — que se resolve na leitura do arquivo, do ambiente —
+	// do ${TOKEN} de HTTP, que a interface pode preencher na sessao (ADR 0021).
+	UserVar     string
 	PasswordVar string
 	Password    string
 	Region      string

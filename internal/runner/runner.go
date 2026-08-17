@@ -58,6 +58,10 @@ type Options struct {
 	LateThreshold time.Duration
 	BaselinePath  string
 	OnProgress    engine.ProgressFunc
+
+	// Environment sao valores que a interface guarda so na sessao e injeta como
+	// se fossem variaveis de ambiente. O arquivo mantem ${NOME}. Ver ADR 0021.
+	Environment map[string]string
 }
 
 func DefaultOptions(version string) Options {
@@ -118,6 +122,7 @@ func Execute(runContext context.Context, path string, options Options) (Result, 
 // significariam um veredito para quem escreve YAML e outro para quem escreve
 // Go, que e exatamente o que o ADR 0009 proibe.
 func ExecuteSpec(runContext context.Context, spec scenario.Spec, dataRoot string, options Options) (Result, error) {
+	spec.ResolveWith(options.Environment)
 	if err := spec.Validate(); err != nil {
 		return Result{}, badFile(err, "%v", err)
 	}
@@ -174,17 +179,18 @@ type Iteration struct {
 	Spec         scenario.Spec
 }
 
-func Debug(runContext context.Context, path string, version string) (Iteration, error) {
+func Debug(runContext context.Context, path string, options Options) (Iteration, error) {
 	spec, _, err := Load(path)
 	if err != nil {
 		return Iteration{}, err
 	}
+	spec.ResolveWith(options.Environment)
 	if err := RequireEnvironment(spec); err != nil {
 		return Iteration{}, err
 	}
 
 	engineOptions := engine.DefaultOptions()
-	engineOptions.Version = version
+	engineOptions.Version = options.Version
 	engineOptions.DataRoot = filepath.Dir(path)
 
 	executor, err := engine.New(spec, engineOptions)

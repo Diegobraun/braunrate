@@ -56,7 +56,7 @@ func TestRunningWithoutTheEnvironmentVariableIsRefusedBeforeAnythingIsSent(t *te
 		}
 	}
 
-	if _, err := runner.Debug(context.Background(), path, "teste"); err == nil {
+	if _, err := runner.Debug(context.Background(), path, runner.DefaultOptions("teste")); err == nil {
 		t.Fatal("a depuracao começou com a credencial vazia")
 	}
 }

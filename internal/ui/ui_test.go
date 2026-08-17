@@ -146,3 +146,26 @@ func TestTheRunViewOffersCancelling(t *testing.T) {
 		t.Error("a interface ainda manda derrubar o servidor para cancelar")
 	}
 }
+
+// Quem só usa a tela não exporta variável de ambiente; sem um campo para o valor
+// de sessão, o ${TOKEN} fica sem como ser preenchido, e o único atalho aparente —
+// colar o segredo no YAML — é recusado. Ver ADR 0021.
+func TestTheEditorAsksForTheCredentialTheFileDoesNotCarry(t *testing.T) {
+	address := serve(t)
+	status, script := get(t, address, "/app.js")
+	if status != http.StatusOK {
+		t.Fatalf("o script não veio: status %d", status)
+	}
+	if !strings.Contains(script, "response.body.needs") {
+		t.Error("a interface não olha o que a validação diz faltar")
+	}
+	if !strings.Contains(script, "method: 'PUT', body: JSON.stringify") || !strings.Contains(script, "/environment") {
+		t.Error("a interface não envia o valor de sessão para o servidor")
+	}
+	if !strings.Contains(script, `type="password"`) {
+		t.Error("o campo da credencial não esconde o que é digitado")
+	}
+	if !strings.Contains(script, "never written to the file") {
+		t.Error("a tela não diz que o valor não vai para o arquivo")
+	}
+}

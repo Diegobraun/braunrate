@@ -436,8 +436,9 @@ func (authenticator *BrokerAuth) credential(kind messaging.Kind, user, passwordV
 		authenticator.err = fmt.Errorf("the broker password has to be a reference to an environment variable, like \"${KAFKA_PASSWORD}\", and got %q", passwordVar)
 		return authenticator
 	}
+	userVar, _ := scenario.EnvironmentVariable(user)
 	authenticator.broker.Auth = messaging.Auth{
-		Kind: kind, User: scenario.ExpandFromEnv(user),
+		Kind: kind, UserVar: userVar, User: scenario.ExpandFromEnv(user),
 		PasswordVar: name, Password: scenario.ExpandFromEnv(passwordVar),
 	}
 	return authenticator

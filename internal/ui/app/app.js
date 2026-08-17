@@ -235,12 +235,14 @@ function editorScreen (name) {
       <span class="right" id="status">loading…</span>
     </div>
     <div id="verdict"></div>
+    <div id="credentials"></div>
     <textarea id="text" spellcheck="false" aria-label="scenario in YAML"></textarea>
     <div id="output"></div>`
 
   const text = document.getElementById('text')
   const status = document.getElementById('status')
   const verdict = document.getElementById('verdict')
+  const credentials = document.getElementById('credentials')
   const output = document.getElementById('output')
 
   ask(`/scenarios/${encodeURIComponent(name)}/text`).then(function (response) {
@@ -270,11 +272,47 @@ function editorScreen (name) {
     if (response.ok) {
       const lines = (response.body.lines || []).map(escape).join('\n')
       verdict.innerHTML = `<div class="notice ok"><h3>Valid scenario</h3><pre>${lines}</pre></div>`
+      drawCredentials(response.body.needs || [])
       return
     }
     const position = response.body.line ? ` (line ${response.body.line}, column ${response.body.column})` : ''
     verdict.innerHTML = `<div class="notice error"><h3>The scenario does not hold${escape(position)}</h3>
       <pre>${escape(errorMessage(response))}</pre></div>`
+  }
+
+  // A credencial nunca vai para o arquivo — o arquivo mantém ${TOKEN}. Aqui a
+  // pessoa dá o valor da sessão, que o servidor guarda em memória e some no
+  // reinício. Sem isto, quem só usa a tela não tem como preencher o ${TOKEN}, e o
+  // único atalho aparente — colar o segredo no YAML — é recusado. Ver ADR 0021.
+  function drawCredentials (needs) {
+    if (!needs.length) {
+      credentials.innerHTML = ''
+      return
+    }
+    credentials.innerHTML = `
+      <div class="notice needs">
+        <h3>This scenario needs a value the file does not carry</h3>
+        <p>The file keeps <code>\${NAME}</code>; give the value here. It is held in memory
+           until the server restarts, and never written to the file.</p>
+        ${needs.map(function (variableName) {
+          return `<label class="credential">
+            <span>${escape(variableName)}</span>
+            <input type="password" autocomplete="off" data-name="${escape(variableName)}"
+              aria-label="value for ${escape(variableName)}">
+            <button type="button" class="apply" data-name="${escape(variableName)}">Use for this session</button>
+          </label>`
+        }).join('')}
+      </div>`
+    credentials.querySelectorAll('button.apply').forEach(function (button) {
+      button.addEventListener('click', async function () {
+        const field = credentials.querySelector(`input[data-name="${button.dataset.name}"]`)
+        if (!field.value) return
+        const response = await ask('/environment',
+          { method: 'PUT', body: JSON.stringify({ [button.dataset.name]: field.value }) })
+        field.value = ''
+        if (response.ok) validate()
+      })
+    })
   }
 
   async function save () {

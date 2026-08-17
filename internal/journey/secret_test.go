@@ -385,7 +385,7 @@ func (run secretRun) fileText(t *testing.T) string {
 // coisas entram na mesma saida porque e assim que a pessoa as le.
 func (run secretRun) debugText(t *testing.T) string {
 	t.Helper()
-	iteration, err := runner.Debug(context.Background(), run.path, "teste")
+	iteration, err := runner.Debug(context.Background(), run.path, runner.DefaultOptions("teste"))
 	if err != nil {
 		t.Fatalf("debug falhou: %v", err)
 	}

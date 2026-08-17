@@ -488,7 +488,7 @@ func debug(args []string) int {
 	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	iteration, err := runner.Debug(runContext, scenarioPath, build.Version)
+	iteration, err := runner.Debug(runContext, scenarioPath, runner.DefaultOptions(build.Version))
 	if err != nil {
 		fmt.Fprintln(os.Stderr)
 		return faultExit(err)

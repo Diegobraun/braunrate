@@ -92,6 +92,12 @@ body.without-explanations .teaches { display: none; }
 .notice h3 { margin: 0 0 4px; font-size: 14px; }
 .notice p, .notice pre { margin: 0; }
 .notice pre { background: none; border: 0; padding: 0; }
+.notice.needs { border-left-color: var(--neutral); }
+.notice.needs p { color: var(--soft); margin: 4px 0 10px; }
+.credential { display: flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+.credential span { min-width: 120px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+.credential input { flex: 1; min-width: 180px; min-height: 34px; padding: 4px 8px;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--background); color: var(--text); }
 
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); }

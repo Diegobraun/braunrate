@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Diegobraun/braunrate/internal/messaging"
 	"github.com/Diegobraun/braunrate/internal/text"
 	"gopkg.in/yaml.v3"
 )
@@ -228,4 +229,84 @@ func walkScalars(node *yaml.Node, visit func(*yaml.Node) error) error {
 		}
 	}
 	return nil
+}
+
+// ResolveWith injeta valores que nao vieram do arquivo — o ambiente, ou um valor
+// que a interface guarda so na memoria da sessao. O arquivo mantem ${NOME} e
+// nunca o literal, entao a recusa de credencial no arquivo fica intacta: isto e
+// o mesmo "de onde, nao qual" que a variavel de ambiente ja e. Ver ADR 0021.
+//
+// Vars vira um mapa novo para nao alterar o do chamador, e o nome deixa de contar
+// como ausente — sem isso a execucao seria recusada por falta de uma variavel que
+// a sessao acabou de fornecer.
+//
+// Credencial de broker fica de fora: ela se resolve na leitura do arquivo, do
+// ambiente, e nao passa pelo runtime.Values. Injetar aqui limparia o aviso sem
+// entregar o valor, e o run comecaria para falhar na conexao — pior que recusar.
+func (spec *Spec) ResolveWith(environment map[string]string) {
+	if len(environment) == 0 {
+		return
+	}
+	broker := spec.brokerCredentialNames()
+	merged := make(map[string]string, len(spec.Vars)+len(environment))
+	for name, value := range spec.Vars {
+		merged[name] = value
+	}
+	for name, value := range environment {
+		if broker[name] {
+			continue
+		}
+		merged[name] = value
+	}
+	spec.Vars = merged
+
+	kept := spec.MissingEnvironment[:0]
+	for _, name := range spec.MissingEnvironment {
+		_, provided := environment[name]
+		if provided && !broker[name] {
+			continue
+		}
+		kept = append(kept, name)
+	}
+	spec.MissingEnvironment = kept
+}
+
+// SessionCredentials sao as variaveis que faltam e que o campo de sessao da
+// interface consegue de fato entregar — as de HTTP, resolvidas pelo runtime. As
+// de broker ficam de fora: so o ambiente na subida do servidor as preenche.
+func (spec *Spec) SessionCredentials() []string {
+	broker := spec.brokerCredentialNames()
+	var fillable []string
+	for _, name := range spec.MissingEnvironment {
+		if !broker[name] {
+			fillable = append(fillable, name)
+		}
+	}
+	return fillable
+}
+
+func (spec *Spec) brokerCredentialNames() map[string]bool {
+	names := map[string]bool{}
+	if spec.Messaging == nil {
+		return names
+	}
+	for _, broker := range []*messaging.Broker{spec.Messaging.Kafka, spec.Messaging.AMQP} {
+		if broker == nil {
+			continue
+		}
+		if broker.Auth.UserVar != "" {
+			names[broker.Auth.UserVar] = true
+		}
+		if broker.Auth.PasswordVar != "" {
+			names[broker.Auth.PasswordVar] = true
+		}
+	}
+	return names
+}
+
+// IsEnvironmentName responde se o nome segue a convencao de variavel de ambiente
+// — MAIUSCULA — que decide o que vem de ${…} do ambiente e nao do arquivo. Um
+// lugar so, para a interface recusar o mesmo que a expansao ignora.
+func IsEnvironmentName(name string) bool {
+	return environmentName.MatchString(name)
 }
