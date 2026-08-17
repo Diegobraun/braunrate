@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	statusRunning = "running"
-	statusDone    = "done"
-	statusFailed  = "failed"
+	statusRunning     = "running"
+	statusDone        = "done"
+	statusFailed      = "failed"
+	statusInterrupted = "interrupted"
 )
 
 // Runs live in memory and die with the process. A database would be a second
@@ -37,8 +38,44 @@ type run struct {
 	mutex    sync.Mutex
 	outcome  outcome
 	closed   bool
+	canceled bool
+	stop     context.CancelFunc
 	lines    []string
 	watchers []chan string
+}
+
+// Apontar a carga para o ambiente errado e o erro mais caro de um teste de
+// carga, e ate aqui a unica saida era matar o processo — que derruba o servidor
+// e as outras execucoes junto. O cancelamento chega ao agendador pelo contexto,
+// que os dois modelos ja consultam a cada disparo.
+func (created *run) cancel() bool {
+	created.mutex.Lock()
+	already := created.canceled || created.outcome.Status != statusRunning
+	created.canceled = true
+	stop := created.stop
+	created.mutex.Unlock()
+	if stop != nil {
+		stop()
+	}
+	return !already
+}
+
+func (created *run) arm(stop context.CancelFunc) {
+	created.mutex.Lock()
+	created.stop = stop
+	canceled := created.canceled
+	created.mutex.Unlock()
+	// Cancelar antes de o contexto existir e raro e possivel: quem chegou
+	// primeiro nao pode perder o pedido.
+	if canceled {
+		stop()
+	}
+}
+
+func (created *run) wasCanceled() bool {
+	created.mutex.Lock()
+	defer created.mutex.Unlock()
+	return created.canceled
 }
 
 type outcome struct {
@@ -142,6 +179,15 @@ func (store *runStore) finish(id string, result runner.Result, err error) {
 		found.close()
 		return
 	}
+	// Execucao cancelada nunca vira "concluida": o que ela mediu e o pedaco que
+	// rodou, e o documento ja sai invalido pela checagem de execucao curta.
+	if found.wasCanceled() {
+		found.settle(outcome{Status: statusInterrupted, Exit: result.Exit,
+			Document: result.Document, Finished: time.Now()})
+		found.append("interrupted: the run was canceled and measured only the part that ran")
+		found.close()
+		return
+	}
 	found.settle(outcome{Status: statusDone, Exit: result.Exit,
 		Document: result.Document, Finished: time.Now()})
 	found.append(verdictLine(result))
@@ -206,6 +252,8 @@ func verdictOf(state outcome) string {
 	switch state.Status {
 	case statusRunning:
 		return "in progress"
+	case statusInterrupted:
+		return "interrupted"
 	case statusFailed:
 		return "did not run"
 	case statusDone:

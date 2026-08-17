@@ -113,3 +113,19 @@ func TestTheScreenTeachesTheSameFiveIdeasTheTerminalTeaches(t *testing.T) {
 		t.Error("não há como desligar as explicações, e o -quiet do terminal tem")
 	}
 }
+
+// Cancelar era "use Ctrl+C no terminal que subiu a interface", que derruba o
+// servidor e as outras execucoes junto.
+func TestTheRunViewOffersCancelling(t *testing.T) {
+	address := serve(t)
+	status, script := get(t, address, "/app.js")
+	if status != http.StatusOK {
+		t.Fatalf("o script não veio: status %d", status)
+	}
+	if !strings.Contains(script, "method: 'DELETE'") {
+		t.Error("a interface não chama o cancelamento")
+	}
+	if strings.Contains(script, "use Ctrl+C in the terminal") {
+		t.Error("a interface ainda manda derrubar o servidor para cancelar")
+	}
+}

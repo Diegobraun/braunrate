@@ -383,9 +383,23 @@ async function runScreen (id) {
 
   if (run && run.status === 'running') {
     progress.innerHTML = `
-      <div class="bar"><span class="right">in progress — closing this page interrupts nothing;
-        to interrupt it, use Ctrl+C in the terminal that started the interface</span></div>
+      <div class="bar">
+        <span class="right">in progress — closing this page interrupts nothing</span>
+        <button type="button" id="cancel" class="button danger">Cancel the run</button>
+      </div>
       <pre id="lines">waiting for the first line…</pre>`
+    // Apontar a carga para o ambiente errado e o erro mais caro deste tipo de
+    // teste, e ate aqui a unica saida derrubava o servidor junto.
+    document.getElementById('cancel').addEventListener('click', async function () {
+      this.disabled = true
+      this.textContent = 'canceling…'
+      const answer = await ask(`/runs/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      if (!answer.ok) {
+        this.textContent = 'Cancel the run'
+        this.disabled = false
+        progress.querySelector('.right').textContent = errorMessage(answer)
+      }
+    })
     await follow(id, document.getElementById('lines'))
     await reloadSides()
     const finished = state.runs.find(one => one.id === id)

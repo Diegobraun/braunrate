@@ -506,3 +506,68 @@ func TestOnlyScenarioFilesAreWritten(t *testing.T) {
 		}
 	}
 }
+
+// Apontar a carga para o ambiente errado e o erro mais comum e mais caro de um
+// teste de carga. Ate aqui a unica saida era matar o processo, o que derruba o
+// servidor e as outras execucoes junto.
+func TestARunCanBeCanceledAndNeverComesOutAsFinished(t *testing.T) {
+	fake := target(t)
+	directory := directoryWith(t, map[string]string{"longa.yaml": longScenario(fake.Address())})
+	httpServer := serverOn(t, directory, false)
+
+	status, body := call(t, http.MethodPost, httpServer.URL+"/scenarios/longa.yaml/runs")
+	if status != http.StatusAccepted {
+		t.Fatalf("a execução não começou: status %d, %s", status, body)
+	}
+	var started struct{ ID string }
+	if err := json.Unmarshal(body, &started); err != nil {
+		t.Fatalf("resposta ilegível: %v", err)
+	}
+
+	status, body = call(t, http.MethodDelete, httpServer.URL+"/runs/"+started.ID)
+	if status != http.StatusAccepted {
+		t.Fatalf("o cancelamento foi recusado: status %d, %s", status, body)
+	}
+
+	// O cancelamento chega ao agendador, entao a execucao para sozinha; o teste
+	// espera o fim dela em vez de supor um instante.
+	deadline := time.Now().Add(30 * time.Second)
+	var state string
+	for time.Now().Before(deadline) {
+		_, listed := call(t, http.MethodGet, httpServer.URL+"/runs")
+		var answer struct {
+			Runs []struct{ ID, Status, Verdict string }
+		}
+		if err := json.Unmarshal(listed, &answer); err == nil && len(answer.Runs) > 0 {
+			state = answer.Runs[0].Status
+			if state != "running" {
+				break
+			}
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if state != "interrupted" {
+		t.Fatalf("a execução cancelada terminou como %q; nunca pode sair como concluída", state)
+	}
+
+	// Segundo pedido nao encontra o que cancelar, e diz isso em vez de fingir.
+	status, _ = call(t, http.MethodDelete, httpServer.URL+"/runs/"+started.ID)
+	if status != http.StatusConflict {
+		t.Errorf("cancelar de novo devolveu %d, esperava 409", status)
+	}
+}
+
+func longScenario(address string) string {
+	return fmt.Sprintf(`
+name: Execução longa
+target: %s
+
+load:
+  profiles:
+    - steady: { rate: 20/s, duration: 5m }
+
+scenario:
+  - http: GET /pedido
+    name: consultar pedido
+`, address)
+}

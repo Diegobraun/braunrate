@@ -70,6 +70,7 @@ func (server *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /scenarios/{name}/runs", server.startRun)
 	mux.HandleFunc("GET /runs", server.listRuns)
 	mux.HandleFunc("GET /runs/{id}", server.getRun)
+	mux.HandleFunc("DELETE /runs/{id}", server.cancelRun)
 	mux.HandleFunc("GET /runs/{id}/report", server.getReport)
 	mux.HandleFunc("GET /runs/{id}/stream", server.streamRun)
 	mux.HandleFunc("GET /runs/{before}/comparison/{after}", server.compare)
@@ -385,11 +386,15 @@ func (server *Server) startRun(writer http.ResponseWriter, request *http.Request
 	options := runner.DefaultOptions(server.options.Version)
 	options.OnProgress = run.progress
 
+	runContext, stop := context.WithCancel(context.Background())
+	run.arm(stop)
+
 	// The request that starts a run does not wait for it: a load test lasts
 	// minutes, and an HTTP client that gives up would leave the run headless.
 	go func() {
 		defer release()
-		result, err := runner.Execute(context.Background(), path, options)
+		defer stop()
+		result, err := runner.Execute(runContext, path, options)
 		server.runs.finish(run.ID, result, err)
 	}()
 
@@ -422,6 +427,29 @@ func (server *Server) getRun(writer http.ResponseWriter, request *http.Request) 
 		return
 	}
 	writeJSON(writer, http.StatusOK, state.Document)
+}
+
+// Cancelar e a acao que mais urge quando urge, e ela nao pode depender de o
+// cliente continuar ali: quem cancela recebe a confirmacao e a execucao para
+// sozinha, no proprio ritmo do agendador.
+func (server *Server) cancelRun(writer http.ResponseWriter, request *http.Request) {
+	run, found := server.runs.get(request.PathValue("id"))
+	if !found {
+		writeProblem(writer, http.StatusNotFound, unknownRun(request.PathValue("id")))
+		return
+	}
+	if !run.cancel() {
+		state := run.state()
+		writeProblem(writer, http.StatusConflict,
+			"the run is no longer in progress; the state right now is "+state.Status)
+		return
+	}
+	writeJSON(writer, http.StatusAccepted, map[string]any{
+		"id":     run.ID,
+		"status": statusInterrupted,
+		"message": "canceling: the run stops at the next dispatch and keeps only what it had measured. " +
+			"The result comes out invalid, because a run that stopped early did not measure what it set out to measure",
+	})
 }
 
 func (server *Server) getReport(writer http.ResponseWriter, request *http.Request) {
