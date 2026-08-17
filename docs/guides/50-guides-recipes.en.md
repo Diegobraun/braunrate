@@ -3,6 +3,64 @@
 Situations that show up almost every time, and what to write in the scenario for
 each one.
 
+## How to choose the rate
+
+braunrate does not know your traffic, so it cannot pick the number for you. It
+can show the arithmetic.
+
+**Start from production.** Take the requests your service handled on a busy day
+and divide by the seconds in a day:
+
+```
+4,000,000 requests a day ÷ 86,400 seconds = 46/s on average
+```
+
+That average is not the number to test with, because traffic is not flat. Peak
+is usually 3 to 5 times the daily average, so the range worth testing here is
+140/s to 230/s. If you have a traffic chart, read the peak off it instead of
+multiplying — the chart is a measurement and the multiplier is a habit.
+
+If nobody has the number, ask for requests per minute at the busiest hour from
+whoever runs the service, and divide by 60. An access-log line count for one
+hour works too.
+
+**Then find the ceiling with a ramp.** The rate above is what you have to hold;
+the ceiling is where the target stops holding. A ramp finds it in one run:
+
+```yaml fragment
+load:
+  profiles:
+    - ramp: { from: 10/s, to: 400/s, duration: 3m }
+```
+
+Run it and open the report. The latency stays flat while the target keeps up and
+climbs when it stops keeping up; the rate at the moment it started climbing is
+the ceiling. If it never climbs, the ceiling is above 400/s — raise `to` and run
+it again.
+
+Two things that make the answer wrong:
+
+- **an always-identical request.** It measures the cache, so the ceiling comes
+  out higher than it is. The report warns when the scenario has no variety.
+- **the generator running out of room before the target does.** The arrival model
+  was measured sustaining 20,000/s on every repetition and missing some above
+  that ([the phase 0 numbers](https://github.com/Diegobraun/braunrate/blob/main/docs/medicoes-fase0.md)).
+  Validation asks when a scenario goes past that line. Above it, the number in
+  the report can be braunrate and not the target.
+
+**Then declare what you found.** The ceiling belongs in the acceptance criterion,
+and the rate you have to hold belongs in the profile:
+
+```yaml fragment
+load:
+  profiles:
+    - ramp: { from: 1/s, to: 230/s, duration: 30s }
+    - steady: { rate: 230/s, duration: 5m }
+
+slo:
+  - global: { p95: < 400ms, errors: < 1 }
+```
+
 ## The endpoint requires a login
 
 Declare once how the token is obtained. braunrate logs in before it starts

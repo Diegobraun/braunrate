@@ -1,10 +1,69 @@
 ---
 translated_from: 50-guides-recipes.en.md
-source_hash: 05c0f4919ef3
+source_hash: 9ae217c8d639
 ---
 # Receitas
 
 Situações que aparecem quase sempre, e o que escrever no cenário para cada uma.
+
+## Como escolher a taxa
+
+O braunrate não sabe o seu tráfego, então não tem como escolher o número por
+você. O que ele tem é a conta.
+
+**Comece pela produção.** Pegue as requisições que o serviço atendeu num dia
+movimentado e divida pelos segundos do dia:
+
+```
+4.000.000 requisições por dia ÷ 86.400 segundos = 46/s em média
+```
+
+Essa média não é o número do teste, porque tráfego não é plano. O pico costuma
+ser de 3 a 5 vezes a média diária, então a faixa que vale testar aqui é de 140/s
+a 230/s. Se você tem um gráfico de tráfego, leia o pico nele em vez de
+multiplicar — o gráfico é medição e o multiplicador é hábito.
+
+Se ninguém tem o número, peça a quem opera o serviço as requisições por minuto na
+hora mais cheia e divida por 60. Contar as linhas do log de acesso de uma hora
+também serve.
+
+**Depois ache o teto com uma rampa.** A taxa acima é a que você precisa
+sustentar; o teto é onde o alvo deixa de sustentar. Uma rampa acha isso numa
+execução só:
+
+```yaml fragment
+load:
+  profiles:
+    - ramp: { from: 10/s, to: 400/s, duration: 3m }
+```
+
+Rode e abra o relatório. A latência fica plana enquanto o alvo acompanha e sobe
+quando ele deixa de acompanhar; a taxa do momento em que ela começou a subir é o
+teto. Se ela nunca subir, o teto está acima de 400/s — aumente o `to` e rode de
+novo.
+
+Duas coisas que deixam a resposta errada:
+
+- **requisição sempre idêntica.** Ela mede o cache, então o teto sai mais alto do
+  que é. O relatório avisa quando o cenário não tem variedade.
+- **o gerador acabar antes do alvo.** O modelo de chegada foi medido sustentando
+  20.000/s em todas as repetições e falhando em algumas acima disso ([os números
+  da fase 0](https://github.com/Diegobraun/braunrate/blob/main/docs/medicoes-fase0.md)).
+  A validação pergunta quando o cenário passa dessa linha. Acima dela, o número
+  do relatório pode ser o braunrate e não o alvo.
+
+**Por fim, declare o que você achou.** O teto entra no critério de aceite, e a
+taxa que você precisa sustentar entra no perfil:
+
+```yaml fragment
+load:
+  profiles:
+    - ramp: { from: 1/s, to: 230/s, duration: 30s }
+    - steady: { rate: 230/s, duration: 5m }
+
+slo:
+  - global: { p95: < 400ms, errors: < 1 }
+```
 
 ## O endpoint exige login
 

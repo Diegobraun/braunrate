@@ -338,8 +338,30 @@ func Describe(spec scenario.Spec, plan engine.Plan) []string {
 	if len(spec.MissingEnvironment) > 0 {
 		lines = append(lines, missingEnvironmentWarning(spec))
 	}
+	if warning := unusualRateWarning(plan); warning != "" {
+		lines = append(lines, warning)
+	}
 	lines = append(lines, scenario.FixedStepWarnings(spec)...)
 	return append(lines, scenario.GateWarnings(spec)...)
+}
+
+// The tool does not know the target's traffic, so it cannot say which rate is
+// right — teaching the arithmetic is a different thing from guessing the number.
+// What it does know is the generator: phase 0 measured this arrival model
+// sustaining 20,000/s on every repetition and missing some above that. Past that
+// line the number in the report can be the generator instead of the target, and
+// that is worth a question, not a refusal.
+const measuredCeiling = 20000
+
+func unusualRateWarning(plan engine.Plan) string {
+	peak := plan.PeakRate()
+	if peak <= measuredCeiling {
+		return ""
+	}
+	return fmt.Sprintf("Is that the rate you meant? The profile peaks at %s/s, which over %s is %s requests. "+
+		"The generator was measured sustaining %s/s on every repetition and missing some above that (docs/medicoes-fase0.md), "+
+		"so past that point the report can be measuring braunrate and not the target. Nothing here refuses: if that is the rate, run it.",
+		text.Grouped(int64(peak)), plan.Duration(), text.Grouped(plan.TotalRequests()), text.Grouped(measuredCeiling))
 }
 
 // Validation is about the file and runs where the secret is not: it warns.

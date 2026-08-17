@@ -98,3 +98,42 @@ func TestDefinedVariableAndDeclaredFallbackBothPass(t *testing.T) {
 		t.Fatalf("reserva declarada ainda foi cobrada: %v", err)
 	}
 }
+
+const absurdRate = `
+name: x
+target: http://127.0.0.1:8080
+
+load:
+  profiles:
+    - steady: { rate: 50000/s, duration: 1m30s }
+
+scenario:
+  - http: GET /pedidos/1
+`
+
+// A ferramenta nao sabe o trafego do alvo, entao nao tem como dizer qual taxa
+// esta certa: ela pergunta, com a conta escrita, e nao recusa.
+func TestAnUnusualRateAsksInsteadOfRefusing(t *testing.T) {
+	spec, plan, err := runner.Load(scenarioFile(t, absurdRate))
+	if err != nil {
+		t.Fatalf("a validação recusou uma taxa alta: %v", err)
+	}
+
+	lines := strings.Join(runner.Describe(spec, plan), "\n")
+	for _, expected := range []string{"Is that the rate you meant?", "50,000/s", "4,500,000 requests", "20,000/s"} {
+		if !strings.Contains(lines, expected) {
+			t.Errorf("o aviso não traz %q:\n%s", expected, lines)
+		}
+	}
+
+}
+
+func TestAnOrdinaryRateAsksNothing(t *testing.T) {
+	spec, plan, err := runner.Load(scenarioFile(t, strings.Replace(absurdRate, "50000/s", "200/s", 1)))
+	if err != nil {
+		t.Fatalf("a validação recusou o cenário: %v", err)
+	}
+	if lines := strings.Join(runner.Describe(spec, plan), "\n"); strings.Contains(lines, "Is that the rate") {
+		t.Errorf("uma taxa comum foi questionada:\n%s", lines)
+	}
+}

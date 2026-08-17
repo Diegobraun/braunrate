@@ -16,6 +16,14 @@ target: http://127.0.0.1:8080
 # Arrival rate, in requests per second. Not a number of users: the generator
 # fires on schedule even when the target is slow, which is what keeps the
 # measurement from hiding a freeze.
+#
+# The 20/s below is a placeholder that finishes fast on any machine — it is not
+# a measurement of your target, and this tool has no way of knowing your
+# traffic. To replace it with your own number: take the requests your service
+# handles on a busy day, divide by 86400 for the daily average, and multiply by
+# 3 to 5 for the peak. 4 million requests a day is about 46/s on average, so
+# 140/s to 230/s at peak. The ramp above is how you find the ceiling: raise 'to'
+# until the latency climbs, and the last rate before it climbed is the ceiling.
 load:
   profiles:
     - ramp: { from: 1/s, to: 20/s, duration: 30s }

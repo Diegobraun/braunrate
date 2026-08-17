@@ -109,3 +109,13 @@ func instantInPhase(phase compiledPhase, count float64) time.Duration {
 	}
 	return time.Duration(seconds * float64(time.Second))
 }
+
+// PeakRate is the highest rate the profile declares. Every phase is linear, so
+// the peak is at one of the ends.
+func (plan Plan) PeakRate() float64 {
+	peak := 0.0
+	for _, phase := range plan.phases {
+		peak = math.Max(peak, math.Max(phase.initialRate, phase.finalRate))
+	}
+	return peak
+}
