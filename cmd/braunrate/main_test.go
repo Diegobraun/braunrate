@@ -146,3 +146,42 @@ func captureStderr(t *testing.T, run func()) string {
 	}
 	return string(content)
 }
+
+// O site promete que toda opcao aceita -h. Dois comandos nao passam por um
+// FlagSet, e neles a bandeira virava nome de arquivo: 'validate -h' procurava um
+// arquivo chamado "-h" e 'new -h' escrevia scenario.yaml no diretorio de quem so
+// queria ler a ajuda. Pedir ajuda nunca pode ter efeito colateral.
+func TestAskingForHelpNeverWritesAnythingAndNeverFails(t *testing.T) {
+	for _, flagUsed := range []string{"-h", "--help", "-help"} {
+		root := t.TempDir()
+		previous, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("não consegui ler o diretório atual: %v", err)
+		}
+		if err := os.Chdir(root); err != nil {
+			t.Fatalf("não consegui entrar no diretório do teste: %v", err)
+		}
+
+		if code := newOne([]string{flagUsed}); code != 0 {
+			t.Errorf("'new %s' saiu com %d", flagUsed, code)
+		}
+		if code := validate([]string{flagUsed}); code != 0 {
+			t.Errorf("'validate %s' saiu com %d", flagUsed, code)
+		}
+
+		left, err := os.ReadDir(root)
+		if err != nil {
+			t.Fatalf("não consegui listar o diretório: %v", err)
+		}
+		if err := os.Chdir(previous); err != nil {
+			t.Fatalf("não consegui voltar: %v", err)
+		}
+		if len(left) != 0 {
+			names := make([]string, 0, len(left))
+			for _, entry := range left {
+				names = append(names, entry.Name())
+			}
+			t.Errorf("pedir ajuda com %s escreveu %v", flagUsed, names)
+		}
+	}
+}

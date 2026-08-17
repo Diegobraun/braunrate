@@ -116,6 +116,20 @@ Every command:  braunrate help
 `, build.Version)
 }
 
+// Os comandos que recebem um arquivo nao passam por um FlagSet, e sem isto '-h'
+// virava nome de arquivo: 'validate -h' procurava um arquivo chamado "-h" e
+// 'new -h' escrevia scenario.yaml no diretorio de quem so queria ler a ajuda.
+// O site promete que toda opcao aceita -h, e agora aceita.
+func askedForHelp(args []string) bool {
+	for _, argument := range args {
+		switch argument {
+		case "-h", "--help", "-help":
+			return true
+		}
+	}
+	return false
+}
+
 func usage(out io.Writer) {
 	_, _ = fmt.Fprintf(out, `braunrate %s
 
@@ -550,6 +564,12 @@ func unreachable(iteration runner.Iteration) bool {
 // paste the option before or after it; the standard flag package stops at the
 // first positional argument and would drop an option pasted at the end.
 func newOne(args []string) int {
+	if askedForHelp(args) {
+		fmt.Println("braunrate new [scenario.yaml]    creates a starting scenario, commented")
+		fmt.Println("\n  With no name it writes scenario.yaml in the current folder.")
+		fmt.Println("  The file comes with the $schema line, so the editor completes the keys.")
+		return 0
+	}
 	destination := "scenario.yaml"
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		destination = args[0]
@@ -750,6 +770,12 @@ func splitList(value string) []string {
 }
 
 func validate(args []string) int {
+	if askedForHelp(args) {
+		fmt.Println("braunrate validate <scenario.yaml>    reads the scenario and says what it will do")
+		fmt.Println("\n  Loads the file, refuses what the engine would refuse, and prints how many")
+		fmt.Println("  iterations it plans. It does not send a single request.")
+		return 0
+	}
 	if len(args) < 1 {
 		fmt.Fprintln(os.Stderr, "name the scenario file")
 		return runner.ExitBadFile
