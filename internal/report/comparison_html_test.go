@@ -78,14 +78,14 @@ func TestComparisonOfInvalidRunShowsNoNumbers(t *testing.T) {
 	after := slower(sampleDocument())
 	after.Sanity = metrics.Sanity{
 		Checked: true, Valid: false,
-		Findings: []metrics.SanityFinding{{Kind: "generatorSaturated", Message: "o gerador não sustentou a carga"}},
+		Findings: []metrics.SanityFinding{{Kind: "generatorSaturated", Message: "the generator did not sustain the load"}},
 	}
 
 	page := comparisonPage(t, before, after)
-	if !strings.Contains(page, "não vale como medição") {
+	if !strings.Contains(page, "does not hold as a measurement") {
 		t.Fatalf("a página não disse que a comparação não vale:\n%s", page)
 	}
-	if strings.Contains(page, "Por passo") {
+	if strings.Contains(page, "Per step") {
 		t.Fatalf("a página mostrou tabela de passo de uma comparação que não vale")
 	}
 }

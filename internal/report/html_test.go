@@ -27,7 +27,7 @@ func sampleDocument() metrics.Document {
 		Journey: metrics.Journey{
 			Started: 1500, Completed: 1500,
 			Latency:  metrics.Distribution{P50: 8.7, P95: 9.5, P99: 10, Max: 18},
-			Sentence: "Todas as 1500 jornadas chegaram ao fim; metade levou até 9 ms e 95% até 10 ms, contados do instante em que deveriam ter comecado.",
+			Sentence: "All 1500 journeys reached the end; half took up to 9 ms and 95% up to 10 ms, counted from the instant they should have started.",
 		},
 		Steps: []metrics.StepResult{
 			{Name: "consultar pedido", LatencyKind: string(metrics.CorrectedLatency), Count: 1500,
@@ -63,7 +63,7 @@ func TestReportTopIsSentenceNotTable(t *testing.T) {
 	document.SLO = metrics.Verdict{
 		Passed:      true,
 		Evaluations: []metrics.Evaluation{{Step: "consultar pedido", Metric: "p95", Passed: true}},
-		Sentence:    "Passou: as 3 regras de SLO foram atendidas.",
+		Sentence:    "Passed: all 3 SLO rules were met.",
 	}
 	page := generate(t, document)
 
@@ -71,7 +71,7 @@ func TestReportTopIsSentenceNotTable(t *testing.T) {
 	if title == nil {
 		t.Fatal("o relatório não tem título")
 	}
-	if title[1] != "Passou: as 3 regras de SLO foram atendidas." {
+	if title[1] != "Passed: all 3 SLO rules were met." {
 		t.Errorf("o topo precisa ser a frase do veredito, veio: %q", title[1])
 	}
 	if index := strings.Index(page, "<table"); index < strings.Index(page, "</h1>") {
@@ -83,17 +83,17 @@ func TestFailureReportShowsReasonOnTop(t *testing.T) {
 	document := sampleDocument()
 	document.SLO = metrics.Verdict{
 		Passed:   false,
-		Sentence: `Falhou: "pagar fatura" teve latência p95 de 210 ms, acima do limite de 150 ms.`,
+		Sentence: `Failed: "pagar fatura" answered 95% within 210 ms, above the limit of 150 ms.`,
 		Evaluations: []metrics.Evaluation{
-			{Step: "pagar fatura", Passed: false, Sentence: `Falhou: "pagar fatura" teve latência p95 de 210 ms, acima do limite de 150 ms.`},
+			{Step: "pagar fatura", Passed: false, Sentence: `Failed: "pagar fatura" answered 95% within 210 ms, above the limit of 150 ms.`},
 		},
 	}
 	page := generate(t, document)
 
-	if !strings.Contains(page, `<h1 class="falhou">`) {
+	if !strings.Contains(page, `<h1 class="failed">`) {
 		t.Error("falha de SLO precisa aparecer como falha no topo")
 	}
-	if !strings.Contains(page, "acima do limite de 150 ms") {
+	if !strings.Contains(page, "above the limit of 150 ms") {
 		t.Error("o motivo da falha não aparece")
 	}
 }
@@ -107,18 +107,18 @@ func TestInvalidResultIsNotPresentedAsTargetNumber(t *testing.T) {
 	}
 	document.Warnings = []metrics.Warning{{
 		Kind: "generatorSaturated", Severity: metrics.SeverityHigh,
-		Message:  "o gerador não sustentou a taxa alvo",
-		Evidence: "12% dos despachos atrasaram",
+		Message:  "the generator did not sustain the target rate",
+		Evidence: "12% of the dispatches went out late",
 	}}
 	page := generate(t, document)
 
-	if strings.Contains(page, `<h1 class="passou">`) {
+	if strings.Contains(page, `<h1 class="passed">`) {
 		t.Error("com o gerador saturado o topo não pode dizer que passou")
 	}
-	if !strings.Contains(page, "Resultado inválido") {
+	if !strings.Contains(page, "Invalid result") {
 		t.Error("o topo precisa declarar que o resultado não vale")
 	}
-	if !strings.Contains(page, "medem o gerador, não o alvo") {
+	if !strings.Contains(page, "measure the generator, not the target") {
 		t.Error("falta a leitura em portugues comum do resultado inválido")
 	}
 }
@@ -128,17 +128,17 @@ func TestReportDistinguishesCorrectedFromServiceLatency(t *testing.T) {
 	if !strings.Contains(page, "(1)") || !strings.Contains(page, "(2)") {
 		t.Error("os dois tipos de latência precisam estar marcados por passo")
 	}
-	if !strings.Contains(page, "não tem instante agendado próprio") {
+	if !strings.Contains(page, "no scheduled instant of its own") {
 		t.Error("falta a explicacao do que e latência de serviço")
 	}
-	if !strings.Contains(page, "A jornada inteira") {
+	if !strings.Contains(page, "The whole journey") {
 		t.Error("falta a métrica que continua honesta para a jornada toda")
 	}
 }
 
 func TestReportDeclaresSingleTokenLimitation(t *testing.T) {
 	page := generate(t, sampleDocument())
-	if !strings.Contains(page, "cache, rate limit ou sharding por token") {
+	if !strings.Contains(page, "caching, rate limiting or sharding by token") {
 		t.Error("execução com autenticação precisa declarar a limitacao de token único")
 	}
 }
@@ -158,7 +158,7 @@ func TestReportFetchesNothingFromNetwork(t *testing.T) {
 
 func TestReportWithoutSLOSaysItNeitherPassesNorFails(t *testing.T) {
 	page := generate(t, sampleDocument())
-	if !strings.Contains(page, "não aprova nem reprova") {
+	if !strings.Contains(page, "neither approves nor rejects") {
 		t.Error("sem slo declarado o relatório precisa dizer que não decide nada")
 	}
 }
@@ -179,13 +179,13 @@ func TestCSVSeparatesCorrectedFromServiceLatency(t *testing.T) {
 	if len(lines) != 5 {
 		t.Fatalf("esperava cabecalho, jornada, dois passos e global; vieram %d linhas", len(lines))
 	}
-	if !strings.Contains(lines[0], "tipo_de_latencia") {
+	if !strings.Contains(lines[0], "latencyKind") {
 		t.Error("o CSV precisa dizer de que tipo e cada latência")
 	}
-	if !strings.HasPrefix(lines[1], "Jornada de cobrança,http://127.0.0.1:8080") || !strings.Contains(lines[1], "jornada inteira") {
+	if !strings.HasPrefix(lines[1], "Jornada de cobrança,http://127.0.0.1:8080") || !strings.Contains(lines[1], "whole journey") {
 		t.Errorf("a primeira linha de dados precisa ser a journey: %s", lines[1])
 	}
-	if !strings.Contains(lines[3], ",servico,") {
+	if !strings.Contains(lines[3], ",service,") {
 		t.Errorf("o passo de latência de serviço precisa estar marcado: %s", lines[3])
 	}
 }

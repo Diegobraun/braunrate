@@ -109,7 +109,7 @@ func buildPage(document metrics.Document) htmlPage {
 		Document:    document,
 		Title:       document.Run.Spec,
 		Journey:     document.Journey,
-		GeneratedAt: document.Run.Start.Format("02/01/2006 15:04:05"),
+		GeneratedAt: document.Run.Start.Format("2006-01-02 15:04:05"),
 	}
 
 	overall := document.Overall.Reported()

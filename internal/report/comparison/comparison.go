@@ -85,9 +85,9 @@ func Compare(before, after metrics.Document) Comparison {
 		compared.Comparable = false
 	}
 
-	compared.Journey = compareDistribution("jornada inteira (95%)", before.Journey.Reported().P95, after.Journey.Reported().P95)
+	compared.Journey = compareDistribution("the whole journey (95%)", before.Journey.Reported().P95, after.Journey.Reported().P95)
 	compared.Overall = compareDistribution("all requests (95%)", before.Overall.Reported().P95, after.Overall.Reported().P95)
-	compared.JourneyPercentiles = comparePercentiles("jornada inteira", before.Journey.Reported(), after.Journey.Reported())
+	compared.JourneyPercentiles = comparePercentiles("the whole journey", before.Journey.Reported(), after.Journey.Reported())
 	compared.OverallPercentiles = comparePercentiles("all requests", before.Overall.Reported(), after.Overall.Reported())
 	compared.Steps = compareSteps(before, after)
 	compared.Error = compareErrors(before, after)
@@ -99,7 +99,7 @@ func identify(document metrics.Document) Identification {
 	return Identification{
 		Spec:    document.Run.Spec,
 		Target:  document.Run.Target,
-		Start:   document.Run.Start.Format("02/01/2006 15:04"),
+		Start:   document.Run.Start.Format("2006-01-02 15:04"),
 		Version: document.Version,
 	}
 }

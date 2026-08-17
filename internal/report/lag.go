@@ -30,5 +30,5 @@ func lagSentences(lag protocol.ConsumerLag) (headline, note string) {
 }
 
 func messages(quantity int64) string {
-	return thousands(quantity) + " " + text.Pick(quantity, "mensagem", "mensagens")
+	return thousands(quantity) + " " + text.Pick(quantity, "message", "messages")
 }

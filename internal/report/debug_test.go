@@ -9,7 +9,7 @@ import (
 	"github.com/Diegobraun/braunrate/internal/report"
 )
 
-// A class the report has no phrase for printed "problema:" and nothing after
+// A class the report has no phrase for printed "problem:" and nothing after
 // it, which is worse than printing the raw name of the class.
 func TestEveryErrorClassPrintsAProblemInDebug(t *testing.T) {
 	for _, class := range protocol.ErrorClasses {
@@ -23,7 +23,7 @@ func TestEveryErrorClassPrintsAProblemInDebug(t *testing.T) {
 		if line == "" {
 			t.Fatalf("a classe %q não produziu linha de problema:\n%s", class, out.String())
 		}
-		if strings.TrimSpace(strings.TrimPrefix(line, "problema:")) == "" {
+		if strings.TrimSpace(strings.TrimPrefix(line, "problem:")) == "" {
 			t.Fatalf("a classe %q produziu problema vazio:\n%s", class, out.String())
 		}
 	}
@@ -50,7 +50,7 @@ func TestDebugShowsTheDetailOfTheFailure(t *testing.T) {
 
 func problemLine(text string) string {
 	for _, line := range strings.Split(text, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), "problema:") {
+		if strings.HasPrefix(strings.TrimSpace(line), "problem:") {
 			return strings.TrimSpace(line)
 		}
 	}
@@ -76,7 +76,7 @@ func TestReportShowsTheStepThatNeverRanAndNamesTheError(t *testing.T) {
 	if !strings.Contains(text, "passo que nunca rodou") {
 		t.Fatalf("o passo que nunca rodou sumiu do relatório:\n%s", text)
 	}
-	if !strings.Contains(text, "nunca chegou a executar") {
+	if !strings.Contains(text, "never got to run") {
 		t.Fatalf("nada explica o traço na linha do passo:\n%s", text)
 	}
 	if !strings.Contains(text, "status 401") {
@@ -100,10 +100,10 @@ func TestEmptyStepTableSaysWhatHappenedInsteadOfPrintingAHeader(t *testing.T) {
 	}
 	text := out.String()
 
-	if !strings.Contains(text, "Nenhum passo registrou amostra") {
+	if !strings.Contains(text, "No step recorded a sample") {
 		t.Fatalf("a tabela vazia saiu sem explicacao:\n%s", text)
 	}
-	if strings.Contains(text, "requisições    metade") {
+	if strings.Contains(text, "requests      half") {
 		t.Fatalf("o cabecalho da tabela foi impresso sem linha nenhuma:\n%s", text)
 	}
 	if !strings.Contains(text, "braunrate debug") {

@@ -48,10 +48,10 @@ func TestNoCaveatSaysWhatItCompared(t *testing.T) {
 		t.Fatalf("não gerou a comparação: %v", err)
 	}
 	text := terminal.String()
-	if strings.Contains(text, "Nada: mesmo cenário") {
+	if strings.Contains(text, "Nothing: same scenario") {
 		t.Error("a comparação afirma que nada explica a diferença, sobre cinco campos que ela checou")
 	}
-	if !strings.Contains(text, "dados") {
+	if !strings.Contains(text, "data") {
 		t.Error("a comparação não avisa que o conteúdo dos dados fica de fora do que ela compara")
 	}
 }

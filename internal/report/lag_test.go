@@ -34,10 +34,10 @@ func TestConsumerLagAppearsInTheTerminalAndInTheHTML(t *testing.T) {
 		if !strings.Contains(output, "cobranca") || !strings.Contains(output, "faturas") {
 			t.Fatalf("o %s não nomeou o grupo e o tópico observados", name)
 		}
-		if !strings.Contains(output, "4.200 mensagens") {
+		if !strings.Contains(output, "4.200 messages") {
 			t.Fatalf("o %s não disse quantas mensagens o consumidor ficou para trás", name)
 		}
-		if !strings.Contains(output, "terminou a execução para trás") {
+		if !strings.Contains(output, "ended the run behind") {
 			t.Fatalf("o %s mostrou o número e não disse o que ele significa", name)
 		}
 	}
@@ -47,7 +47,7 @@ func TestConsumerLagAppearsInTheTerminalAndInTheHTML(t *testing.T) {
 // kept up, which is the opposite of not knowing.
 func TestLagItCouldNotMeasureIsNotReportedAsZero(t *testing.T) {
 	document := documentWithLag(protocol.ConsumerLag{
-		Group: "cobranca", Topic: "faturas", Problem: "sem permissão para ler o offset do grupo",
+		Group: "cobranca", Topic: "faturas", Problem: "no permission to read the group offset",
 	})
 
 	var terminal strings.Builder
@@ -57,13 +57,13 @@ func TestLagItCouldNotMeasureIsNotReportedAsZero(t *testing.T) {
 	html := generate(t, document)
 
 	for name, output := range map[string]string{"terminal": terminal.String(), "html": html} {
-		if !strings.Contains(output, "não consegui medir") {
+		if !strings.Contains(output, "I could not measure it") {
 			t.Fatalf("o %s escondeu que a medição falhou", name)
 		}
-		if !strings.Contains(output, "sem permissão para ler o offset do grupo") {
+		if !strings.Contains(output, "no permission to read the group offset") {
 			t.Fatalf("o %s não disse por que a medição falhou", name)
 		}
-		if strings.Contains(output, "terminou a execução para trás") {
+		if strings.Contains(output, "ended the run behind") {
 			t.Fatalf("o %s concluiu sobre o consumidor sem ter medido", name)
 		}
 	}
@@ -120,10 +120,10 @@ func TestLagSentenceDoesNotClaimACauseItDidNotCheck(t *testing.T) {
 		t.Fatalf("não gerou o terminal: %v", err)
 	}
 	for name, output := range map[string]string{"terminal": terminal.String(), "html": generate(t, document)} {
-		if strings.Contains(output, "cresceu mais rápido do que ele consumiu") {
+		if strings.Contains(output, "grew faster than it consumed") {
 			t.Errorf("o %s afirmou a causa do atraso sem ter apurado qual foi", name)
 		}
-		if !strings.Contains(output, "não a causa") {
+		if !strings.Contains(output, "not the cause") {
 			t.Errorf("o %s não avisa que o número não diz a causa", name)
 		}
 	}

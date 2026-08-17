@@ -1,128 +1,122 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jornada de cobrança — braunrate</title>
+<title>Billing journey — braunrate</title>
 
 <style>
 :root {
-  --fundo: #ffffff; --texto: #14181f; --suave: #5b6472; --borda: #e2e6ec;
-  --passou: #0f7a3d; --falhou: #b3261e; --atencao: #8a5a00; --neutro: #2a5c9a;
-  --fundo-cartao: #f7f9fb;
+  --background: #ffffff; --text: #14181f; --soft: #5b6472; --border: #e2e6ec;
+  --passed: #0f7a3d; --failed: #b3261e; --warning: #8a5a00; --neutral: #2a5c9a;
+  --card-background: #f7f9fb;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --fundo: #0f1319; --texto: #e8ecf2; --suave: #98a2b3; --borda: #232a35;
-          --passou: #4ad07f; --falhou: #ff6b5e; --atencao: #f0b429; --neutro: #6aa6ff;
-          --fundo-cartao: #161b23; }
+  :root { --background: #0f1319; --text: #e8ecf2; --soft: #98a2b3; --border: #232a35;
+          --passed: #4ad07f; --failed: #ff6b5e; --warning: #f0b429; --neutral: #6aa6ff;
+          --card-background: #161b23; }
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--fundo); color: var(--texto);
+body { margin: 0; background: var(--background); color: var(--text);
   font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 main { max-width: 960px; margin: 0 auto; padding: 40px 24px 72px; }
-header { border-bottom: 1px solid var(--borda); padding-bottom: 20px; margin-bottom: 28px; }
-.cenario { font-size: 14px; color: var(--suave); text-transform: uppercase; letter-spacing: .08em; }
+header { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 28px; }
+.scenario { font-size: 14px; color: var(--soft); text-transform: uppercase; letter-spacing: .08em; }
 h1 { font-size: 27px; line-height: 1.3; margin: 12px 0 8px; font-weight: 650; }
-h1.passou { color: var(--passou); }
-h1.falhou, h1.invalido { color: var(--falhou); }
-h1.neutro { color: var(--neutro); }
-.subtitulo { color: var(--suave); font-size: 16px; margin: 0; }
-h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .07em; color: var(--suave);
+h1.passed { color: var(--passed); }
+h1.failed, h1.invalid { color: var(--failed); }
+h1.neutral { color: var(--neutral); }
+.subtitle { color: var(--soft); font-size: 16px; margin: 0; }
+h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .07em; color: var(--soft);
   margin: 36px 0 12px; font-weight: 600; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--borda); font-size: 15px; }
+th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--border); font-size: 15px; }
 th:first-child, td:first-child { text-align: left; }
-th { font-size: 13px; color: var(--suave); font-weight: 600; }
-td.erro { color: var(--falhou); font-weight: 600; }
-.marca { display: inline-block; min-width: 18px; font-size: 12px; color: var(--suave); }
-.numeros { display: flex; flex-wrap: wrap; gap: 12px; margin: 0; padding: 0; list-style: none; }
-.numeros li { flex: 1 1 150px; background: var(--fundo-cartao); border: 1px solid var(--borda);
+th { font-size: 13px; color: var(--soft); font-weight: 600; }
+td.error { color: var(--failed); font-weight: 600; }
+.mark { display: inline-block; min-width: 18px; font-size: 12px; color: var(--soft); }
+.numbers { display: flex; flex-wrap: wrap; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.numbers li { flex: 1 1 150px; background: var(--card-background); border: 1px solid var(--border);
   border-radius: 10px; padding: 14px 16px; }
-.numeros .valor { font-size: 23px; font-weight: 620; font-variant-numeric: tabular-nums; }
-.numeros .rotulo { font-size: 13px; color: var(--suave); }
-.leitura { background: var(--fundo-cartao); border: 1px solid var(--borda); border-left: 3px solid var(--neutro);
+.numbers .value { font-size: 23px; font-weight: 620; font-variant-numeric: tabular-nums; }
+.numbers .label { font-size: 13px; color: var(--soft); }
+.reading { background: var(--card-background); border: 1px solid var(--border); border-left: 3px solid var(--neutral);
   border-radius: 8px; padding: 14px 16px; margin: 14px 0; }
-.nota { color: var(--suave); font-size: 14px; margin: 10px 0 0; }
-ul.frases { list-style: none; padding: 0; margin: 0; }
-ul.frases li { padding: 7px 0; border-bottom: 1px solid var(--borda); font-size: 15px; }
-ul.frases li:last-child { border-bottom: none; }
-.aviso { border-radius: 8px; padding: 13px 16px; margin: 10px 0; border: 1px solid var(--borda); }
-.aviso .rotulo { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
-.aviso.alta { border-color: var(--falhou); } .aviso.alta .rotulo { color: var(--falhou); }
-.aviso.media { border-color: var(--atencao); } .aviso.media .rotulo { color: var(--atencao); }
-.aviso .evidencia { color: var(--suave); font-size: 14px; }
+.note { color: var(--soft); font-size: 14px; margin: 10px 0 0; }
+ul.sentences { list-style: none; padding: 0; margin: 0; }
+ul.sentences li { padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 15px; }
+ul.sentences li:last-child { border-bottom: none; }
+.warning { border-radius: 8px; padding: 13px 16px; margin: 10px 0; border: 1px solid var(--border); }
+.warning .label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+.warning.high { border-color: var(--failed); } .warning.high .label { color: var(--failed); }
+.warning.medium { border-color: var(--warning); } .warning.medium .label { color: var(--warning); }
+.warning .evidence { color: var(--soft); font-size: 14px; }
 .slo li { display: flex; gap: 10px; align-items: baseline; }
-.slo .ok { color: var(--passou); font-weight: 700; }
-.slo .nao { color: var(--falhou); font-weight: 700; }
-.slo .sem { color: var(--suave); font-weight: 700; }
+.slo .ok { color: var(--passed); font-weight: 700; }
+.slo .no { color: var(--failed); font-weight: 700; }
+.slo .none { color: var(--soft); font-weight: 700; }
 svg { width: 100%; height: auto; }
-svg .grade { stroke: var(--borda); stroke-width: 1; }
-svg .eixo { fill: var(--suave); font-size: 12px; }
-svg .p50 { fill: none; stroke: var(--neutro); stroke-width: 2; }
-svg .p99 { fill: none; stroke: var(--atencao); stroke-width: 2; }
-svg .erro { stroke: var(--falhou); stroke-width: 1; opacity: .35; }
-.legenda { display: flex; gap: 18px; font-size: 13px; color: var(--suave); margin-top: 6px; }
-.legenda .amostra { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 6px; }
-footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda);
-  color: var(--suave); font-size: 13px; }
+svg .grid { stroke: var(--border); stroke-width: 1; }
+svg .axis { fill: var(--soft); font-size: 12px; }
+svg .p50 { fill: none; stroke: var(--neutral); stroke-width: 2; }
+svg .p99 { fill: none; stroke: var(--warning); stroke-width: 2; }
+svg .error { stroke: var(--failed); stroke-width: 1; opacity: .35; }
+.legend { display: flex; gap: 18px; font-size: 13px; color: var(--soft); margin-top: 6px; }
+.legend .sample { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 6px; }
+footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border);
+  color: var(--soft); font-size: 13px; }
 </style>
 
 </head>
 <body>
 <main>
 <header>
-  <div class="cenário">Jornada de cobrança — http://127.0.0.1:8080</div>
-  <h1 class="falhou">Falhou: &#34;consultar pedido&#34; respondeu 95% em até 582 ms, acima do limite de 150 ms.</h1>
-  <p class="subtitulo">2.375 jornadas em 10s, 4.750 requisições a 471 por segundo, 0% de erro.</p>
+  <div class="scenario">Billing journey — http://127.0.0.1:8080</div>
+  <h1 class="passed">Passed: all 3 SLO rules were met.</h1>
+  <p class="subtitle">2.375 journeys in 10s, 4.750 requests at 475 per second, 0% of them errors.</p>
 </header>
 
 
 
 
-<div class="aviso media">
-  <div class="rotulo">atenção</div>
-  <div>o tempo de resposta do alvo cresceu ao longo da execução enquanto o despacho continuou pontual; a degradação é do alvo, não do gerador</div>
-  <div class="evidencia">p99 por segundo passou de 82.6 ms para 1033.2 ms</div>
-</div>
 
-
-<h2>O que aconteceu</h2>
-<ul class="números">
-  <li><div class="valor">4.750</div><div class="rotulo">requisições</div></li>
-  <li><div class="valor">471</div><div class="rotulo">por segundo</div></li>
-  <li><div class="valor">0%</div><div class="rotulo">de erro</div></li>
-  <li><div class="valor">200 ms</div><div class="rotulo">95% das respostas até</div></li>
+<h2>What happened</h2>
+<ul class="numbers">
+  <li><div class="value">4.750</div><div class="label">requests</div></li>
+  <li><div class="value">475</div><div class="label">per second</div></li>
+  <li><div class="value">0%</div><div class="label">of them errors</div></li>
+  <li><div class="value">5.9 ms</div><div class="label">95% of the responses within</div></li>
 </ul>
 
 
-<h2>A jornada inteira</h2>
-<div class="leitura">Todas as 2375 jornadas chegaram ao fim; metade levou até 80 ms e 95% até 666 ms, contados do instante em que deveriam ter começado.</div>
+<h2>The whole journey</h2>
+<div class="reading">All 2375 journeys reached the end; half took up to 11 ms and 95% up to 12 ms, counted from the instant they should have started.</div>
 <table>
-  <tr><th>jornada</th><th>metade</th><th>95%</th><th>99%</th><th>pior</th></tr>
+  <tr><th>journey</th><th>half</th><th>95%</th><th>99%</th><th>worst</th></tr>
   <tr>
-    <td>do instante agendado ao último passo</td>
-    <td>80 ms</td><td>666 ms</td>
-    <td>1.03 s</td><td>1.08 s</td>
+    <td>from the scheduled instant to the last step</td>
+    <td>11 ms</td><td>12 ms</td>
+    <td>15 ms</td><td>24 ms</td>
   </tr>
 </table>
 
 
-<h2>Por passo</h2>
+<h2>Per step</h2>
 
 <table>
-  <tr><th>passo</th><th>requisições</th><th>metade</th><th>95%</th><th>99%</th><th>99,9%</th><th>pior</th><th>erros</th></tr>
+  <tr><th>step</th><th>requests</th><th>half</th><th>95%</th><th>99%</th><th>99.9%</th><th>worst</th><th>errors</th></tr>
   
   <tr>
-    <td><span class="marca">(1)</span> consultar pedido</td>
-    <td>2.375</td><td>40 ms</td><td>582 ms</td><td>944 ms</td>
-    <td>1.03 s</td><td>1.04 s</td>
+    <td><span class="mark">(1)</span> look up order</td>
+    <td>2.375</td><td>5.4 ms</td><td>6.0 ms</td><td>7.2 ms</td>
+    <td>15 ms</td><td>17 ms</td>
     <td>0</td>
   </tr>
   
   <tr>
-    <td><span class="marca">(2)</span> pagar fatura</td>
-    <td>2.375</td><td>40 ms</td><td>43 ms</td><td>44 ms</td>
-    <td>1.03 s</td><td>1.04 s</td>
+    <td><span class="mark">(2)</span> pay invoice</td>
+    <td>2.375</td><td>5.3 ms</td><td>5.8 ms</td><td>6.3 ms</td>
+    <td>12 ms</td><td>13 ms</td>
     <td>0</td>
   </tr>
   
@@ -130,38 +124,36 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 
 
 
-<p class="nota">(1) tempo contado do instante em que a requisição deveria ter partido — inclui qualquer atraso e por isso não esconde travada do alvo.</p>
+<p class="note">(1) time counted from the instant the request should have gone out — it includes any delay, and for that reason it does not hide a freeze in the target.</p>
 
-<p class="nota">(2) tempo de resposta puro, contado de quando o passo anterior terminou. Esse passo depende de um valor capturado antes dele, então não tem instante agendado próprio. Para a leitura honesta da jornada, use o bloco "A jornada inteira".</p>
-
-
+<p class="note">(2) plain response time, counted from when the previous step finished. That step depends on a value captured before it, so it has no scheduled instant of its own. For the honest reading of the journey, use the "The whole journey" block.</p>
 
 
-<h2>Ao longo do tempo</h2>
-<svg viewBox="0 0 900 260" role="img" aria-label="tempo de resposta por segundo"><line x1="56" y1="16.0" x2="884" y2="16.0" class="grade"/><text x="48" y="20.0" class="eixo" text-anchor="end">1033 ms</text><line x1="56" y1="121.0" x2="884" y2="121.0" class="grade"/><text x="48" y="125.0" class="eixo" text-anchor="end">517 ms</text><line x1="56" y1="226.0" x2="884" y2="226.0" class="grade"/><text x="48" y="230.0" class="eixo" text-anchor="end">0</text><polyline class="p99" points="56.0,209.2 138.8,216.9 221.6,217.4 304.4,217.5 387.2,16.0 470.0,52.2 552.8,217.8 635.6,217.8 718.4,217.8 801.2,217.8 884.0,217.8"/><polyline class="p50" points="56.0,217.6 138.8,217.8 221.6,217.8 304.4,217.8 387.2,217.8 470.0,217.1 552.8,217.8 635.6,217.8 718.4,217.8 801.2,217.8 884.0,217.8"/><text x="56.0" y="248" class="eixo" text-anchor="middle">0s</text><text x="138.8" y="248" class="eixo" text-anchor="middle">1s</text><text x="221.6" y="248" class="eixo" text-anchor="middle">2s</text><text x="304.4" y="248" class="eixo" text-anchor="middle">3s</text><text x="387.2" y="248" class="eixo" text-anchor="middle">4s</text><text x="470.0" y="248" class="eixo" text-anchor="middle">5s</text><text x="552.8" y="248" class="eixo" text-anchor="middle">6s</text><text x="635.6" y="248" class="eixo" text-anchor="middle">7s</text><text x="718.4" y="248" class="eixo" text-anchor="middle">8s</text><text x="801.2" y="248" class="eixo" text-anchor="middle">9s</text><text x="884.0" y="248" class="eixo" text-anchor="middle">10s</text></svg>
-<div class="legenda">
-  <span><span class="amostra" style="background: var(--neutro)"></span>metade das respostas</span>
-  <span><span class="amostra" style="background: var(--atencao)"></span>99% das respostas</span>
-  <span><span class="amostra" style="background: var(--falhou)"></span>segundo com erro</span>
+
+
+<h2>Over time</h2>
+<svg viewBox="0 0 900 260" role="img" aria-label="response time per second"><line x1="56" y1="16.0" x2="884" y2="16.0" class="grid"/><text x="48" y="20.0" class="eixo" text-anchor="end">12 ms</text><line x1="56" y1="121.0" x2="884" y2="121.0" class="grid"/><text x="48" y="125.0" class="eixo" text-anchor="end">5.9 ms</text><line x1="56" y1="226.0" x2="884" y2="226.0" class="grid"/><text x="48" y="230.0" class="eixo" text-anchor="end">0</text><polyline class="p99" points="56.0,106.3 138.8,113.9 221.6,100.9 304.4,48.2 387.2,119.8 470.0,116.5 552.8,125.8 635.6,16.0 718.4,120.4 801.2,103.6 884.0,110.3"/><polyline class="p50" points="56.0,121.8 138.8,126.9 221.6,126.3 304.4,132.2 387.2,130.5 470.0,131.4 552.8,131.9 635.6,131.2 718.4,131.1 801.2,131.0 884.0,129.5"/><text x="56.0" y="248" class="axis" text-anchor="middle">0s</text><text x="138.8" y="248" class="axis" text-anchor="middle">1s</text><text x="221.6" y="248" class="axis" text-anchor="middle">2s</text><text x="304.4" y="248" class="axis" text-anchor="middle">3s</text><text x="387.2" y="248" class="axis" text-anchor="middle">4s</text><text x="470.0" y="248" class="axis" text-anchor="middle">5s</text><text x="552.8" y="248" class="axis" text-anchor="middle">6s</text><text x="635.6" y="248" class="axis" text-anchor="middle">7s</text><text x="718.4" y="248" class="axis" text-anchor="middle">8s</text><text x="801.2" y="248" class="axis" text-anchor="middle">9s</text><text x="884.0" y="248" class="axis" text-anchor="middle">10s</text></svg>
+<div class="legend">
+  <span><span class="sample" style="background: var(--neutral)"></span>half the responses</span>
+  <span><span class="sample" style="background: var(--warning)"></span>99% of the responses</span>
+  <span><span class="sample" style="background: var(--failed)"></span>second with errors</span>
 </div>
 
 
 
 <h2>SLO</h2>
-<ul class="frases slo">
+<ul class="sentences slo">
   
-  <li><span class="não">falha</span><span>Falhou: &#34;consultar pedido&#34; respondeu 95% em até 582 ms, acima do limite de 150 ms.</span></li>
+  <li><span class="ok">ok</span><span>Passed: &#34;look up order&#34; answered 95% within 6 ms, within the limit of 150 ms.</span></li>
   
-  <li><span class="ok">ok</span><span>Passou: &#34;pagar fatura&#34; respondeu 95% em até 43 ms, dentro do limite de 200 ms.</span></li>
+  <li><span class="ok">ok</span><span>Passed: the whole journey answered 95% within 12 ms, within the limit of 400 ms.</span></li>
   
-  <li><span class="ok">ok</span><span>Passou: a jornada inteira respondeu 95% em até 666 ms, dentro do limite de 2000 ms.</span></li>
-  
-  <li><span class="ok">ok</span><span>Passou: a jornada inteira respondeu 99% em até 1027 ms, dentro do limite de 5000 ms.</span></li>
-  
-  <li><span class="ok">ok</span><span>Passou: o cenário inteiro teve taxa de erro de 0.00%, dentro do limite de 0.10%.</span></li>
+  <li><span class="ok">ok</span><span>Passed: the whole scenario had the error rate of 0.00%, within the limit of 0.10%.</span></li>
   
   
-  <li><span class="sem">não declarado</span><span>regressao: sem critério declarado — o gate aprova sem comparar com a execução anterior</span></li>
+  <li><span class="none">not declared</span><span>steps with no criterion declared (1 of 2): pay invoice</span></li>
+  
+  <li><span class="none">not declared</span><span>regression: no criterion declared — the gate approves without comparing against the previous run</span></li>
   
 </ul>
 
@@ -170,21 +162,21 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--borda)
 
 
 
-<h2>Confiabilidade da medição</h2>
-<ul class="frases">
-  <li>O gerador disparou todas as requisições na hora certa, então os números acima valem.</li><li>Atraso típico para disparar: 0.001 ms; pior caso: 4.6 ms. O tempo de resposta já desconta esse atraso.</li><li>Pico de 298 requisições ao mesmo tempo, com limite de 20.000.</li>
+<h2>How trustworthy the measurement is</h2>
+<ul class="sentences">
+  <li>Every request went out on schedule, so the numbers above reflect the target, not the generator.</li><li>Typical delay to fire: 0.001 ms; worst case: 7.9 ms. The response time already discounts that delay.</li><li>Peak of 8 requests at the same time, with a limit of 20.000.</li>
 </ul>
 
-<h2>Como este número foi produzido</h2>
-<ul class="frases">
-  <li>Modelo de chegada aberto: a carga não espera o alvo responder, então travada do alvo aparece na conta.</li>
-  <li>Plano: rampa de 50/s até 300/s durante 5s</li><li>Plano: patamar de 300/s durante 5s</li>
-  <li>Mac, darwin/arm64, 10 núcleos</li><li>braunrate 0.5.0 (go1.26.6), gerador e alvo medidos como declarado acima</li><li>Protocolos compilados neste binario: aguardar, amqp, graphql, http, kafka.</li><li>Variedade observada: 4 valores distintos de assinantes.id em 2.375 usos, entre 1.001 e 1.004.</li><li>Variedade observada: 4 valores distintos de faturaId em 2.375 usos, todos começando com &#34;f-100&#34;.</li><li>Variedade observada: 1 único valor de token em 2.375 usos.</li><li>Autenticação obtida uma vez e reaproveitada por todas as jornadas. Se o alvo tiver cache, rate limit ou sharding por token, este número fica otimista.</li>
+<h2>How this number was produced</h2>
+<ul class="sentences">
+  <li>Arrival model open: the load does not wait for the target to answer, so a freeze in the target lands in the count.</li>
+  <li>Plan: ramp from 50/s to 300/s over 5s</li><li>Plan: steady at 300/s over 5s</li>
+  <li>Mac, darwin/arm64, 10 cores</li><li>braunrate 0.6.0 (go1.26.6), generator and target measured as declared above</li><li>Protocols compiled into this binary: amqp, await, graphql, http, kafka.</li><li>Observed variety: 200 distinct values of invoiceId across 2.375 uses.</li><li>Observed variety: 200 distinct values of subscribers.id across 2.375 uses, between 1.001 and 1.200.</li><li>Observed variety: 1 single value of token across 2.375 uses.</li><li>Auth obtained once and reused by every journey. If the target has caching, rate limiting or sharding by token, this number comes out optimistic.</li>
 </ul>
 
 <footer>
-  braunrate 0.5.0 — execução de 16/08/2026 15:18:10, formato de resultado 2.
-  Este arquivo abre sem rede: não busca script, fonte nem imagem externa.
+  braunrate 0.6.0 — run of 2026-08-17 01:08:11, result format 3.
+  This file opens with no network: it fetches no script, font or external image.
 </footer>
 </main>
 </body>
