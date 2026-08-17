@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+#
+# Nao existe passo condicional, e nao e falta: o caminho de cada perfil e a
+# proporcao entre eles sao conhecimento de negocio, e nenhuma observacao de
+# trafego revela isso. Quem grava uma passagem grava um perfil.
+#
+# A ramificacao honesta e por dado: a coluna decide a rota, e o CSV declara a
+# proporcao. Aqui sao dois terços pessoa fisica para um terço pessoa juridica,
+# porque foi assim que as linhas foram escritas.
+nome: Ramificacao por perfil de cliente
+alvo: ${ALVO:-http://127.0.0.1:8080}
+
+dados:
+  clientes:
+    arquivo: dados/clientes.csv
+    consumo: circular
+
+carga:
+  perfis:
+    - patamar: { taxa: 50/s, durante: 5s }
+
+cenario:
+  - nome: consultar limite
+    http:
+      metodo: GET
+      caminho: /${clientes.rota}/${clientes.id}/limite
+    verificar:
+      status: 200
+      # Prova que a rota veio do dado: o alvo embutido devolve o caminho que
+      # recebeu. Sem isso, uma coluna vazia interpolaria e a execucao passaria
+      # medindo outra rota.
+      json: { $.caminho: "/${clientes.rota}/${clientes.id}/limite" }
+
+slo:
+  - consultar limite: { p95: < 200ms }
+  - global: { erros: < 1 }
+
+# O que esta linha unica esconde: se pessoa juridica for mais cara que pessoa
+# fisica, o p95 do passo e o p95 da populacao cara usando o nome do passo
+# inteiro, e quem le procura cauda onde ha duas populacoes. O bloco de variedade
+# observada do relatorio mostra que ${clientes.rota} teve dois valores; ligar as
+# duas coisas ainda nao existe, e esta na lista para a sessao com o QA.

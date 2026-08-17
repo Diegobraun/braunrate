@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+nome: Fumaca de CI
+alvo: http://127.0.0.1:8080
+
+autenticacao:
+  tipo: token
+  obter:
+    http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ci } }
+    captura: { token: $.access_token }
+
+carga:
+  perfis:
+    - rampa: { de: 50/s, ate: 200/s, durante: 3s }
+    - patamar: { taxa: 200/s, durante: 3s }
+
+cenario:
+  # Caminho fixo de proposito: fumaca so pergunta se o servico responde. A
+  # ferramenta avisa que o numero fica otimista, e aqui isso esta certo — para
+  # medir tempo de resposta de verdade, o caminho precisa variar.
+  - http: GET /pedidos/1
+    nome: consultar pedido
+    verificar: { status: 200 }
+
+slo:
+  - global: { erros: < 0.1 }

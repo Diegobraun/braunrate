@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+nome: Consulta de pedidos
+alvo: http://127.0.0.1:8080
+
+variaveis:
+  tenant: ${TENANT:-acme}
+
+# O alvo embutido exige token, como uma API de verdade. Sem este bloco a
+# execucao inteira toma 401 e sai invalida.
+autenticacao:
+  tipo: token
+  obter:
+    http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana, senha: "${SENHA:-segredo}" } }
+    captura: { token: $.access_token }
+
+carga:
+  perfis:
+    - rampa: { de: 100/s, ate: 800/s, durante: 5s }
+    - patamar: { taxa: 800/s, durante: 10s }
+    - pico: { taxa: 2000/s, durante: 3s }
+
+cenario:
+  - http: GET /pedidos/${tenant}
+    nome: consultar pedido
+    verificar: { status: 200 }
+
+  - nome: criar pedido
+    http:
+      metodo: POST
+      caminho: /pedidos
+      cabecalhos: { X-Tenant: "${tenant}" }
+      corpo: { valor: 199.90, descricao: "assinatura mensal" }
+    verificar: { status: 201 }

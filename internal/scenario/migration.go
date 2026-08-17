@@ -76,7 +76,7 @@ func Migrate(content []byte) ([]byte, []Change, error) {
 		return content, nil, nil
 	}
 
-	rewrite := &rewriter{}
+	rewrite := &rewriter{declaredSteps: declaredStepNames(document)}
 	rewrite.mapping(document, topLevel)
 	return rewrite.apply(content)
 }
@@ -90,6 +90,31 @@ type edit struct {
 
 type rewriter struct {
 	edits []edit
+	// The names the author declared on the steps. A rule pointing at one of them
+	// is the author's text even when it starts with a word this map renames:
+	// "aguardar o processador" is a step name, "aguardar pedidos" may be the key
+	// the await protocol derived.
+	declaredSteps map[string]bool
+}
+
+func declaredStepNames(document *yaml.Node) map[string]bool {
+	names := map[string]bool{}
+	for index := 0; index+1 < len(document.Content); index += 2 {
+		if document.Content[index].Value != "cenario" && document.Content[index].Value != "scenario" {
+			continue
+		}
+		for _, step := range document.Content[index+1].Content {
+			if step.Kind != yaml.MappingNode {
+				continue
+			}
+			for i := 0; i+1 < len(step.Content); i += 2 {
+				if step.Content[i].Value == "nome" || step.Content[i].Value == "name" {
+					names[strings.TrimSpace(step.Content[i+1].Value)] = true
+				}
+			}
+		}
+	}
+	return names
 }
 
 func (rewrite *rewriter) rename(node *yaml.Node, to string) {
@@ -244,6 +269,12 @@ var (
 	requirementKinds = map[string]string{"credencial": "credential"}
 	sloScopes        = map[string]string{"jornada": "journey", "regressao": "regression"}
 	comparisons      = map[string]string{"existe": "exists", "contem": "contains"}
+	// A step with no declared name reports under the key its protocol derives,
+	// and those three prefixes changed with the format. The rest of the key is
+	// the topic or the path the author wrote, and stays.
+	derivedStepKeys = map[string]string{
+		"kafka produzir ": "kafka produce ", "amqp publicar ": "amqp publish ", "aguardar ": "await ",
+	}
 )
 
 func (rewrite *rewriter) mapping(node *yaml.Node, where context) {
@@ -285,9 +316,13 @@ func (rewrite *rewriter) sloRule(node *yaml.Node) {
 	if node == nil || node.Kind != yaml.MappingNode || len(node.Content) < 2 {
 		return
 	}
-	// The target of a rule is a step name the author wrote; only the three
-	// reserved scopes are ours to rename.
+	// The target of a rule is a step name the author wrote; only the reserved
+	// scopes and the keys a protocol derived for an unnamed step are ours to
+	// rename. Leaving the derived ones alone left every messaging scenario
+	// converted and invalid, pointing at a step that no longer answers by that
+	// name.
 	rewrite.renameValue(node.Content[0], sloScopes)
+	rewrite.renameDerivedStep(node.Content[0])
 	rewrite.mapping(node.Content[1], sloLimits)
 	for index := 1; index < len(node.Content); index += 2 {
 		limits := node.Content[index]
@@ -299,6 +334,22 @@ func (rewrite *rewriter) sloRule(node *yaml.Node) {
 			if strings.Contains(limit.Value, "pior") {
 				rewrite.rename(limit, strings.ReplaceAll(limit.Value, "pior", "worse"))
 			}
+		}
+	}
+}
+
+func (rewrite *rewriter) renameDerivedStep(node *yaml.Node) {
+	if node == nil || node.Kind != yaml.ScalarNode {
+		return
+	}
+	name := strings.TrimSpace(node.Value)
+	if rewrite.declaredSteps[name] {
+		return
+	}
+	for from, to := range derivedStepKeys {
+		if rest, found := strings.CutPrefix(name, from); found {
+			rewrite.rename(node, to+rest)
+			return
 		}
 	}
 }

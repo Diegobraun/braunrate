@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+nome: Cadeia assincrona de cobranca
+alvo: ${BROKERS:-127.0.0.1:9092}
+
+# Sem broker este cenario nao roda. Declarado aqui para quem for executar e para
+# o laco de exemplos do CI, que pula com aviso em vez de quebrar em silencio.
+requer: [kafka]
+
+dados:
+  pedidos:
+    gerar:
+      id: uuid
+      valor: numero(10,500)
+
+carga:
+  perfis:
+    # O processador do alvo embutido leva 20ms por mensagem, entao aguenta 50/s.
+    # Pedir mais que isso enfileira, e a jornada cresce sem o alvo estar lento.
+    - rampa: { de: 10/s, ate: 40/s, durante: 5s }
+    - patamar: { taxa: 40/s, durante: 5s }
+
+cenario:
+  - kafka:
+      topico: pedidos-cadeia
+      chave: "${pedidos.id}"
+      valor: { pedido: "${pedidos.id}", valor: "${pedidos.valor}" }
+
+  - aguardar:
+      kafka: { topico: pedidos-processados }
+      chave: "${pedidos.id}"
+      timeout: 10s
+
+slo:
+  - kafka produzir pedidos-cadeia: { p95: < 100ms }
+  - aguardar pedidos-processados: { p95: < 2s }
+  - global: { erros: < 1 }
