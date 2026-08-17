@@ -309,7 +309,7 @@
                 "description": "A JSON path, a header, a cookie or a regular expression.",
                 "examples": [
                   "$.ultimaFatura.id",
-                  "cabecalho:Location",
+                  "header:Location",
                   "cookie:sessao"
                 ]
               },
@@ -633,7 +633,7 @@
             "$ref": "#/$defs/limit",
             "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
-          "jornada_p99.9": {
+          "journeyP99.9": {
             "$ref": "#/$defs/limit",
             "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
@@ -661,7 +661,7 @@
             "$ref": "#/$defs/limit",
             "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },
-          "global_p99.9": {
+          "globalP99.9": {
             "$ref": "#/$defs/limit",
             "description": "'regression' only. How much worse it may get against the baseline. Example: '<= 10%% worse'."
           },

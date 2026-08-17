@@ -192,9 +192,9 @@ func verdictOf(found *run) string {
 			return "invalid result"
 		}
 		if !found.Document.SLO.Passed {
-			return "falhou o SLO"
+			return "failed the SLO"
 		}
-		return "passou"
+		return "passed"
 	}
 	return found.Status
 }

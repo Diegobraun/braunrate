@@ -62,7 +62,7 @@ type CheckKind string
 
 const (
 	CheckStatus CheckKind = "status"
-	CheckBody   CheckKind = "corpo_contem"
+	CheckBody   CheckKind = "bodyContains"
 )
 
 type ArrivalModel string
