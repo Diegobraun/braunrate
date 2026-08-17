@@ -45,14 +45,19 @@ verificar_lint() {
 
 # O exemplo publicado e a primeira coisa que alguem copia, e ja esteve
 # desatualizado sem ninguem ver.
+# Compara com o arquivo da arvore, e nao com o do HEAD: contra o HEAD, regenerar
+# o exemplo e rodar o portao antes de commitar reprovava sempre.
 verificar_exemplo_publicado() {
-  ./braunrate report docs/exemplo-resultado.json -html=docs/exemplo-relatorio.html || return 1
-  if ! git diff --quiet -- docs/exemplo-relatorio.html; then
+  local recem
+  recem=$(mktemp)
+  ./braunrate report docs/exemplo-resultado.json -html="$recem" >/dev/null || return 1
+  if ! diff -q "$recem" docs/exemplo-relatorio.html >/dev/null; then
     echo "docs/exemplo-relatorio.html esta desatualizado; regenere com:"
     echo "  go run ./cmd/braunrate report docs/exemplo-resultado.json -html=docs/exemplo-relatorio.html"
-    git --no-pager diff --stat -- docs/exemplo-relatorio.html
+    rm -f "$recem"
     return 1
   fi
+  rm -f "$recem"
 }
 
 # Quem ja tem broker no ambiente manda nele: no CI os servicos vem do workflow, e
