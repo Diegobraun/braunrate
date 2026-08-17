@@ -265,7 +265,7 @@ func (recorder *Recorder) classify(request *http.Request) (string, bool) {
 		return fmt.Sprintf("an outside domain (%s)", host), true
 	}
 	if request.Method == http.MethodOptions {
-		return "preflight de CORS", true
+		return "a CORS preflight", true
 	}
 	path := strings.ToLower(request.URL.Path)
 	if isTelemetry(host, path) {

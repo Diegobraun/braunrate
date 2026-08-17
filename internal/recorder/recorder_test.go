@@ -89,7 +89,7 @@ func TestEveryKindOfNoiseIsDroppedWithAReasonOnScreen(t *testing.T) {
 		{"GET", "http://api.local/static/app.js", "a static asset"},
 		{"GET", "http://api.local/favicon.ico", "a static asset"},
 		{"GET", "http://api.local/collect?v=1", "telemetry"},
-		{"OPTIONS", "http://api.local/pedidos", "preflight de CORS"},
+		{"OPTIONS", "http://api.local/pedidos", "a CORS preflight"},
 		{"GET", "http://api.local/health", "asked for by -ignore (/health)"},
 	}
 
