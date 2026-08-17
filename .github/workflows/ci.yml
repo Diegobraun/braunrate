@@ -114,7 +114,7 @@ jobs:
           BRAUNRATE_KAFKA: 127.0.0.1:9092
         run: |
           ./braunrate target -address=127.0.0.1:8080 -latency=5ms \
-            -kafka=127.0.0.1:9092 -input=pedidos-cadeia -output=pedidos-processados &
+            -kafka=127.0.0.1:9092 -input=orders-chain -output=orders-processed &
           sleep 3
           chmod +x .github/executar-exemplos.sh
           .github/executar-exemplos.sh

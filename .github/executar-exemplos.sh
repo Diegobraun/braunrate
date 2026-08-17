@@ -8,7 +8,7 @@
 # e cadeia-assincrona com um SLO que o alvo documentado nunca conseguia atingir.
 # As tres apareceram por acidente.
 #
-# Quem depende de infraestrutura declara com 'requer:' no proprio arquivo. Sem a
+# Quem depende de infraestrutura declara com 'requires:' no proprio arquivo. Sem a
 # infraestrutura, o laco pula com aviso visivel — nunca em silencio.
 set -uo pipefail
 
@@ -19,18 +19,18 @@ disponivel() {
   case "$1" in
     kafka) [ -n "${BRAUNRATE_KAFKA:-}" ] ;;
     amqp) [ -n "${BRAUNRATE_AMQP:-}" ] ;;
-    credencial) [ -n "${BRAUNRATE_CREDENCIAL:-}" ] ;;
+    credential) [ -n "${BRAUNRATE_CREDENCIAL:-}" ] ;;
     *) return 1 ;;
   esac
 }
 
 for cenario in examples/*.yaml; do
   faltando=""
-  for requisito in $(grep -oE '^requer: *\[[^]]*\]' "$cenario" | tr -d '[]' | sed 's/^requer: *//' | tr ',' ' '); do
+  for requisito in $(grep -oE '^requires: *\[[^]]*\]' "$cenario" | tr -d '[]' | sed 's/^requires: *//' | tr ',' ' '); do
     disponivel "$requisito" || faltando="$faltando $requisito"
   done
   if [ -n "$faltando" ]; then
-    echo "PULADO: $cenario declara 'requer:$faltando' e esta maquina nao tem"
+    echo "PULADO: $cenario declara 'requires:$faltando' e esta maquina nao tem"
     pulados+=("$cenario")
     continue
   fi
@@ -44,15 +44,15 @@ for cenario in examples/*.yaml; do
       echo "ok: $cenario"
       ;;
     3)
-      motivos=$(jq -r '[.sanidade.achados[]?.tipo] | unique | join(" ")' "$resultado")
-      if [ "$motivos" = "gerador_saturado" ]; then
+      motivos=$(jq -r '[.sanity.findings[]?.kind] | unique | join(" ")' "$resultado")
+      if [ "$motivos" = "generatorSaturated" ]; then
         # O runner e maquina compartilhada e a regra de saturacao corta em 1% de
         # despachos atrasados. Ali exit 3 e a resposta certa da ferramenta.
         echo "aceito: $cenario saiu 3 porque o gerador nao sustentou a carga nesta maquina"
-        jq -r '.avisos[]? | select(.gravidade=="alta") | "  " + .evidencia' "$resultado"
+        jq -r '.warnings[]? | select(.severity=="alta") | "  " + .evidence' "$resultado"
       else
         echo "FALHOU: $cenario saiu invalido por outro motivo: $motivos"
-        jq -r '.sanidade.achados[]? | "  - " + .mensagem + "\n    " + .evidencia' "$resultado"
+        jq -r '.sanity.findings[]? | "  - " + .message + "\n    " + .evidence' "$resultado"
         falhou=1
       fi
       ;;
