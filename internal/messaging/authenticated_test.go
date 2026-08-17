@@ -166,7 +166,7 @@ func TestWrongPasswordIsReportedAsAuthenticationNeverAsNetwork(t *testing.T) {
 	}
 	explained := false
 	for detail := range document.Steps[0].Details {
-		if strings.Contains(detail, "recusou a credencial") {
+		if strings.Contains(detail, "refused the credential") {
 			explained = true
 		}
 		if strings.Contains(detail, "senha-errada-de-proposito") {
@@ -212,7 +212,7 @@ func TestBrokerIsDescribedInTheReportWithoutTheSecret(t *testing.T) {
 	if strings.Contains(printed, broker.password) {
 		t.Fatalf("a senha apareceu no documento: %s", printed)
 	}
-	if !strings.Contains(printed, "scram_sha512") || !strings.Contains(printed, "TLS com CA própria") {
+	if !strings.Contains(printed, "scramSha512") || !strings.Contains(printed, "TLS with a private CA") {
 		t.Fatalf("o relatório não descreve a conexão: %s", printed)
 	}
 }
