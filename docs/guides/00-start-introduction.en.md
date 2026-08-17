@@ -64,7 +64,8 @@ the target freezes it simply stops sending, and the requests that should have
 gone out never enter the count. That is coordinated omission.
 
 The comparison is an automated test that runs in CI on every push. If the
-measurement stops being honest, the build breaks:
+closed loop ever stops hiding the pause, or braunrate stops showing it, the
+build breaks:
 
 ```
 $ go test ./internal/selfcheck/... -v
@@ -96,7 +97,7 @@ glue in between.
 
 ## Principles
 
-1. **Honest measurement by default.** Open arrival model; response time counted
+1. **The wait is counted, not dropped.** Open arrival model; response time counted
    from the instant the request *should* have gone out; HDR histogram; an explicit
    warning when the generator did not sustain the rate. Coordinated omission is
    the failure that lets a test pass with 99% within 47 ms while production
@@ -125,5 +126,5 @@ classic JMS; competing on raw throughput with wrk; distributed execution in v1.
 **Known limitations**, with the reason in [Decisions](decisions.html): a protocol
 outside the list requires a change in this repository; a single token for the
 whole run; and the time of the steps after the first is service time, not
-corrected time — the honest reading of the journey is in the "The whole journey"
-block.
+corrected time — the reading that includes the wait is in the "The whole
+journey" block.

@@ -1,6 +1,6 @@
 ---
 translated_from: 00-start-introduction.en.md
-source_hash: 194636249616
+source_hash: 5a152d5f8b5f
 ---
 # braunrate
 
@@ -68,7 +68,8 @@ alvo trava, ele simplesmente para de enviar, e as requisições que deveriam ter
 partido nunca entram na conta. Essa é a omissão coordenada.
 
 A comparação é um teste automatizado que roda no CI a cada push. Se a medição
-deixar de ser honesta, o build quebra:
+o laço fechado deixar de esconder a pausa, ou o braunrate deixar de mostrá-la,
+o build quebra:
 
 ```
 $ go test ./internal/selfcheck/... -v
@@ -99,7 +100,7 @@ critério de aceite vira código de saída sem cola no meio.
 
 ## Princípios
 
-1. **Medição honesta por padrão.** Modelo de chegada aberto; tempo de resposta
+1. **A espera é contada, não descartada.** Modelo de chegada aberto; tempo de resposta
    contado a partir do instante em que a requisição *deveria* ter partido; HDR
    histogram; aviso explícito quando o gerador não sustentou a taxa. A omissão
    coordenada é a falha que faz um teste passar com 99% em até 47 ms enquanto a
@@ -128,4 +129,4 @@ clássico; competir em taxa bruta com wrk; execução distribuída na v1.
 **Limitações conhecidas**, com o motivo em [Decisões](decisions.html): protocolo
 fora da lista exige mudança neste repositório; um único token para a execução
 inteira; e o tempo dos passos seguintes ao primeiro é tempo de serviço, não tempo
-corrigido — a leitura honesta da jornada está no bloco "A jornada inteira".
+corrigido — a leitura que inclui a espera está no bloco "A jornada inteira".

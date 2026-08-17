@@ -49,8 +49,9 @@ go install github.com/Diegobraun/braunrate/cmd/braunrate@latest
 ```
 
 The binary comes out with no version injected: `braunrate version` answers `dev`,
-and the result document keeps `dev`. That is honest, because it is not the
-release artefact.
+and the result document keeps `dev`. That is deliberate: it is not the release
+artefact, and a result document carrying a version number would be naming a
+build it did not come from.
 
 ## 3. Build from source
 

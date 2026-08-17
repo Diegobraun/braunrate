@@ -397,7 +397,7 @@ func writeStepTable(output *lineWriter, document metrics.Document) {
 		if hasServiceStep {
 			write("  (2) plain response time, counted from when the previous step finished. Because")
 			write("      that step depends on a value captured before it, it has no scheduled")
-			write("      instant of its own. For the honest reading of the journey, use \"The whole journey\".")
+			write("      instant of its own. For the reading that includes the wait, use \"The whole journey\".")
 		}
 	}
 	write("")

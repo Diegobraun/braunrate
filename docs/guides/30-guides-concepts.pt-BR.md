@@ -1,6 +1,6 @@
 ---
 translated_from: 30-guides-concepts.en.md
-source_hash: fb5f0a39ecbc
+source_hash: 57cf3fb1f326
 ---
 # Conceitos
 
@@ -93,7 +93,7 @@ Per step
       any delay, and for that reason it does not hide a freeze in the target.
   (2) plain response time, counted from when the previous step finished. Because
       that step depends on a value captured before it, it has no scheduled
-      instant of its own. For the honest reading of the journey, use "The whole journey".
+      instant of its own. For the reading that includes the wait, use "The whole journey".
 ```
 
 Repare no `pay invoice`: **7,2 ms no 95%**, com o alvo congelado por um segundo

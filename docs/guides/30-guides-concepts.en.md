@@ -92,7 +92,7 @@ Per step
       any delay, and for that reason it does not hide a freeze in the target.
   (2) plain response time, counted from when the previous step finished. Because
       that step depends on a value captured before it, it has no scheduled
-      instant of its own. For the honest reading of the journey, use "The whole journey".
+      instant of its own. For the reading that includes the wait, use "The whole journey".
 ```
 
 Look at `pay invoice`: **7.2 ms at the 95%**, with the target frozen for a whole

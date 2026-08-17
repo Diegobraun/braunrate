@@ -1,6 +1,6 @@
 ---
 translated_from: 10-start-installation.en.md
-source_hash: 97479367547d
+source_hash: 2d4fcc91f529
 ---
 # Instalação
 
@@ -53,7 +53,7 @@ go install github.com/Diegobraun/braunrate/cmd/braunrate@latest
 ```
 
 O binário sai sem versão injetada: `braunrate version` responde `dev`, e o
-documento de resultado guarda `dev`. É honesto, porque não é o artefato da
+documento de resultado guarda `dev`. É deliberado: não é o artefato da
 release.
 
 ## 3. Compilar do fonte

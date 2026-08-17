@@ -1,7 +1,13 @@
 # braunrate
 
-Load testing with an honest measurement: open arrival model, HDR histogram and
-back-pressure detection.
+Load testing that keeps measuring when the target freezes. A 1-second stall in
+the service shows up as roughly 1 second in the report — where a closed-loop
+tool reports single-digit milliseconds and calls the run clean. And when the run
+did not measure what it set out to measure, braunrate exits without a verdict
+instead of publishing one.
+
+Open arrival model, HDR histograms, HTTP/GraphQL/Kafka/AMQP. Single binary,
+scenarios in YAML you keep in version control, exit code for CI.
 
 **Documentation: <https://diegobraun.github.io/braunrate/>** — the site is
 generated from `docs/guides/` in this repository, and every code block in it goes
@@ -24,23 +30,28 @@ same target, two measurement models:
 
 | Model | 99% of the responses within | Samples |
 |---|---|---|
-| **braunrate (open arrival, time counted from the scheduled instant)** | **982.0 ms** | 600 |
-| Closed loop (one virtual user in sequence, the way JMeter and Locust measure) | 3.7 ms | 728 |
+| **braunrate (open arrival, time counted from the scheduled instant)** | **972.3 ms** | 600 |
+| Closed loop (one virtual user in sequence, the way JMeter and Locust measure) | 3.5 ms | 730 |
 
-That is 978.3 ms the closed loop never counted. It is not wrong because of a
+That is 968.8 ms the closed loop never counted. It is not wrong because of a
 bug: when the target freezes it simply stops sending, and the requests that
 should have gone out never enter the count. That is coordinated omission.
 
-The comparison is an automated test that runs in CI on every push. If the
-measurement stops being honest, the build breaks.
+The figures above are one run on a 10-core Mac. Run it yourself and the exact
+milliseconds move a little; the gap does not, because the freeze is 1 s by
+construction.
+
+The comparison is an automated test that runs in CI on every push. If the closed
+loop ever stops hiding the pause, or braunrate stops showing it, the build
+breaks.
 
 ```
 $ go test ./internal/selfcheck/... -v
 === RUN   TestClosedLoopWouldHideThePauseOpenModelShows
     same 1s freeze against the same target:
-      open model (braunrate): p99 982.0 ms over 600 samples
-      closed loop:            p99 3.7 ms over 728 samples
-      coordinated omission: 978.3 ms the closed loop never counted
+      open model (braunrate): p99 972.3 ms over 600 samples
+      closed loop:            p99 3.5 ms over 730 samples
+      coordinated omission: 968.8 ms the closed loop never counted
 --- PASS: TestClosedLoopWouldHideThePauseOpenModelShows (6.01s)
 ```
 
