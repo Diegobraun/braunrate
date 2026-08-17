@@ -564,6 +564,90 @@ func TestWithoutWritableImportIsClosed(t *testing.T) {
 	}
 }
 
+func TestExamplesAreListedAndReadable(t *testing.T) {
+	base := writableServerOn(t, directoryWith(t, map[string]string{})).URL
+
+	status, body := call(t, http.MethodGet, base+"/examples")
+	if status != http.StatusOK {
+		t.Fatalf("listar exemplos respondeu %d: %s", status, body)
+	}
+	var listed struct {
+		Examples []struct {
+			File, Name string
+			Steps      int
+		}
+	}
+	if err := json.Unmarshal(body, &listed); err != nil {
+		t.Fatalf("resposta não e JSON: %s", body)
+	}
+	if len(listed.Examples) < 5 {
+		t.Fatalf("esperava os exemplos publicados, veio %d", len(listed.Examples))
+	}
+	first := listed.Examples[0].File
+	status, raw := call(t, http.MethodGet, base+"/examples/"+first)
+	if status != http.StatusOK || !strings.Contains(string(raw), "name:") {
+		t.Fatalf("ler o exemplo %q respondeu %d: %s", first, status, raw)
+	}
+	if s, _ := call(t, http.MethodGet, base+"/examples/../server.go"); s == http.StatusOK {
+		t.Error("o endpoint de exemplo serviu um caminho fora da pasta embutida")
+	}
+}
+
+func TestMigrateConvertsOldKeys(t *testing.T) {
+	base := writableServerOn(t, directoryWith(t, map[string]string{})).URL
+	old := "nome: Consulta\nalvo: http://127.0.0.1:8080\n"
+	status, body := send(t, http.MethodPost, base+"/migrate", old)
+	if status != http.StatusOK {
+		t.Fatalf("migrar respondeu %d: %s", status, body)
+	}
+	var answer struct {
+		YAML    string
+		Changes []string
+	}
+	if err := json.Unmarshal(body, &answer); err != nil {
+		t.Fatalf("resposta não e JSON: %s", body)
+	}
+	if !strings.Contains(answer.YAML, "name:") || !strings.Contains(answer.YAML, "target:") {
+		t.Fatalf("a migração não traduziu as chaves:\n%s", answer.YAML)
+	}
+	if len(answer.Changes) == 0 {
+		t.Error("a migração não relatou nenhuma mudança")
+	}
+}
+
+func TestRunProducesCSV(t *testing.T) {
+	fake := target(t)
+	directory := directoryWith(t, map[string]string{"cenario.yaml": scenarioText(fake.Address())})
+	base := serverOn(t, directory, false).URL
+	id := startRun(t, base, "cenario.yaml")
+	waitForRun(t, base, id)
+
+	status, body := call(t, http.MethodGet, base+"/runs/"+id+"/csv")
+	if status != http.StatusOK || !strings.Contains(string(body), ",") {
+		t.Fatalf("csv respondeu %d: %s", status, body)
+	}
+}
+
+func TestBuiltInTargetStartsAndStops(t *testing.T) {
+	base := writableServerOn(t, directoryWith(t, map[string]string{})).URL
+
+	_, body := send(t, http.MethodPost, base+"/target", "")
+	var state struct {
+		Running bool
+		Address string
+	}
+	_ = json.Unmarshal(body, &state)
+	if !state.Running || !strings.HasPrefix(state.Address, "http://") {
+		t.Fatalf("o alvo não subiu: %s", body)
+	}
+
+	_, body = send(t, http.MethodDelete, base+"/target", "")
+	_ = json.Unmarshal(body, &state)
+	if state.Running {
+		t.Fatalf("o alvo não parou: %s", body)
+	}
+}
+
 // O rascunho e conferido pela mesma leitura do terminal, entao o editor nunca
 // aprova o que 'braunrate validate' reprovaria.
 func TestTheDraftIsCheckedByTheSameReadingAsTheTerminal(t *testing.T) {

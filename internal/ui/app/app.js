@@ -94,8 +94,11 @@ function drawSides () {
     runList.innerHTML = '<li class="empty">none yet</li>'
   } else {
     runList.innerHTML = state.runs.slice(0, 8).map(function (run) {
-      return `<li><a class="item" href="#/run/${run.id}">${escape(run.id)} · ${escape(run.scenario)}
-        <span class="state">${escape(run.verdict || run.status)}</span></a></li>`
+      const verdict = run.verdict || run.status
+      const kind = verdict === 'passed' ? 'pass'
+        : (run.status === 'running' || verdict === 'in progress') ? 'run'
+          : /fail|invalid/.test(verdict) ? 'fail' : 'idle'
+      return `<li><a class="item" href="#/run/${run.id}"><span class="rdot ${kind}"></span>${escape(run.id)} · ${escape(run.scenario)}</a></li>`
     }).join('')
   }
 }
@@ -115,10 +118,14 @@ function scenariosScreen () {
             <span>a short form that writes a commented scenario</span></a>
           <a class="option" href="#/import"><b>Import</b>
             <span>a "Copy as cURL" from the network panel, or a JMeter .jmx plan</span></a>
+          <a class="option" href="#/examples"><b>Browse examples</b>
+            <span>published scenarios to read and copy from</span></a>
           <a class="option" href="#/demo"><b>See the demonstration</b>
             <span>runs a complete example, nothing to configure</span></a>
         </div>
+        <div id="target-panel"></div>
       </div>`
+    drawTarget()
     return
   }
   content.innerHTML = `
@@ -131,7 +138,36 @@ function scenariosScreen () {
         return `<tr><td><a href="#/scenario/${encodeURIComponent(scenario.name)}">${escape(scenario.name)}</a></td>
           <td><code>${escape(scenario.path)}</code></td></tr>`
       }).join('')}
-    </table>`
+    </table>
+    <div id="target-panel"></div>`
+  drawTarget()
+}
+
+async function drawTarget () {
+  const panel = document.getElementById('target-panel')
+  if (!panel) return
+  const current = await ask('/target')
+  if (!current.ok) { panel.innerHTML = ''; return }
+  render(current.body)
+  function render (target) {
+    if (target.running) {
+      panel.innerHTML = `<div class="notice"><h3>Practice target running</h3>
+        <p>Point a scenario's <code>target</code> at <code>${escape(target.address)}</code> — it answers in about 10ms.</p>
+        <button class="button" id="target-stop">Stop it</button></div>`
+      document.getElementById('target-stop').addEventListener('click', async function () {
+        this.disabled = true
+        render((await ask('/target', { method: 'DELETE' })).body)
+      })
+    } else {
+      panel.innerHTML = `<div class="notice"><h3>No service to test against?</h3>
+        <p>Start a built-in practice target — a small HTTP server to point a scenario at.</p>
+        <button class="button" id="target-start">Start a practice target</button></div>`
+      document.getElementById('target-start').addEventListener('click', async function () {
+        this.disabled = true
+        render((await ask('/target', { method: 'POST' })).body)
+      })
+    }
+  }
 }
 
 function demoScreen () {
@@ -315,7 +351,29 @@ slo:
   - global: { p95: < ${p95}, errors: < ${errors} }
 `
 
-const templates = { http: scenarioTemplateHTTP, kafka: scenarioTemplateKafka, amqp: scenarioTemplateAMQP }
+const scenarioTemplateGraphQL = ({ name, target, rate, duration, p95, errors }) =>
+`${schemaLine}
+name: ${name}
+target: ${target}
+
+load:
+  profiles:
+    - steady: { rate: ${rate}/s, duration: ${duration} }
+
+scenario:
+  - graphql:
+      query: |
+        query {
+          orders { id status }
+        }
+    name: ${name.toLowerCase()}
+    expect: { status: 200 }
+
+slo:
+  - global: { p95: < ${p95}, errors: < ${errors} }
+`
+
+const templates = { http: scenarioTemplateHTTP, kafka: scenarioTemplateKafka, amqp: scenarioTemplateAMQP, graphql: scenarioTemplateGraphQL }
 
 function newScreen () {
   showCommand('braunrate new scenario.yaml')
@@ -329,11 +387,13 @@ function newScreen () {
       <label><span>Scenario name</span><input name="name" value="Order lookup" required>
         <div class="help">Shows up at the top of the report.</div></label>
       <label><span>Protocol</span>
-        <select name="kind" id="kind"><option value="http">HTTP</option><option value="kafka">Kafka</option><option value="amqp">RabbitMQ (AMQP)</option></select></label>
+        <select name="kind" id="kind"><option value="http">HTTP</option><option value="graphql">GraphQL</option><option value="kafka">Kafka</option><option value="amqp">RabbitMQ (AMQP)</option></select></label>
 
-      <div id="g-http">
+      <div id="g-target">
         <label><span>Target</span><input name="target" value="http://127.0.0.1:8080">
-          <div class="help">The service to measure. With none at hand, <code>braunrate target</code> starts one.</div></label>
+          <div class="help">The endpoint to measure. With none at hand, the built-in target gives you one.</div></label>
+      </div>
+      <div id="g-http">
         <div class="pair">
           <label><span>Method</span>
             <select name="method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></label>
@@ -374,7 +434,8 @@ function newScreen () {
 
   const kind = document.getElementById('kind')
   function showGroups () {
-    ['http', 'kafka', 'amqp'].forEach(one => { document.getElementById('g-' + one).hidden = kind.value !== one })
+    document.getElementById('g-target').hidden = kind.value !== 'http' && kind.value !== 'graphql'
+    ;['http', 'kafka', 'amqp'].forEach(one => { document.getElementById('g-' + one).hidden = kind.value !== one })
   }
   kind.addEventListener('change', showGroups)
   showGroups()
@@ -397,10 +458,61 @@ function newScreen () {
   })
 }
 
+function cssId (text) { return text.replace(/[^a-z0-9]/gi, '-') }
+
+async function examplesScreen () {
+  showCommand('braunrate new scenario.yaml   # starting from an example')
+  content.innerHTML = `
+    <h1>Examples</h1>
+    <p class="caption">Published scenarios to learn from. "Use this" copies one into
+      <code>${escape(state.directory)}</code> as a file you can edit and run.</p>
+    <div id="ex-list" class="loading">loading…</div>`
+  const list = document.getElementById('ex-list')
+  const response = await ask('/examples')
+  if (!response.ok) {
+    list.className = ''
+    list.innerHTML = `<div class="notice error"><h3>I could not read the examples</h3><pre>${escape(errorMessage(response))}</pre></div>`
+    return
+  }
+  list.className = 'examples'
+  list.innerHTML = (response.body.examples || []).map(function (example) {
+    const id = cssId(example.file)
+    const badges = (example.requires || []).map(one => `<span class="badge req">${escape(one)}</span>`).join('')
+    return `<div class="example">
+      <div class="ex-head">
+        <div><b>${escape(example.name || example.file)}</b> ${badges}
+          <div class="ex-sub"><code>${escape(example.file)}</code> · ${example.steps} step(s)</div></div>
+        <div class="ex-acts">
+          <button class="button" data-view-file="${escape(example.file)}">view</button>
+          <button class="button primary" data-use="${escape(example.file)}">Use this</button></div>
+      </div>
+      <pre class="ex-src" id="src-${id}" hidden></pre></div>`
+  }).join('')
+
+  list.querySelectorAll('[data-view-file]').forEach(button => button.addEventListener('click', async function () {
+    const file = button.dataset.viewFile
+    const pre = document.getElementById('src-' + cssId(file))
+    if (pre.textContent) { pre.hidden = !pre.hidden; return }
+    const raw = await ask('/examples/' + encodeURIComponent(file))
+    pre.textContent = raw.ok ? raw.body : errorMessage(raw)
+    pre.hidden = false
+  }))
+  list.querySelectorAll('[data-use]').forEach(button => button.addEventListener('click', async function () {
+    const file = button.dataset.use
+    const raw = await ask('/examples/' + encodeURIComponent(file))
+    if (!raw.ok) return
+    const saved = await ask('/scenarios/' + encodeURIComponent(file) + '/text', { method: 'PUT', body: raw.body })
+    if (!saved.ok) { button.textContent = 'could not copy'; return }
+    await reloadSides()
+    location.hash = '#/scenario/' + encodeURIComponent(file)
+  }))
+}
+
 function editorScreen (name) {
   showCommand(`braunrate validate ${name}`)
   content.innerHTML = `
-    <h1>${escape(name)}</h1>
+    <p class="crumbs">Scenarios / <b>${escape(name)}</b></p>
+    <h1 class="mono">${escape(name)}</h1>
     <p class="caption">The file itself, comments and all — edits from outside show up on reload.</p>
     <div class="bar">
       <button id="debug">Debug one iteration</button>
@@ -411,6 +523,7 @@ function editorScreen (name) {
     <p class="teaches">Debug fires one request to watch the scenario reach its end — do this first.
       Run with load fires the real test at the declared rate. Both save the file before they run;
       Save on its own only writes it.</p>
+    <div id="migrate"></div>
     <div id="verdict"></div>
     <div id="credentials"></div>
     <textarea id="text" spellcheck="false" aria-label="scenario in YAML"></textarea>
@@ -430,15 +543,38 @@ function editorScreen (name) {
     }
     text.value = response.body
     status.textContent = 'saved'
+    offerMigrate()
     validate()
   })
 
   let delay = null
   text.addEventListener('input', function () {
     status.textContent = 'not saved'
+    offerMigrate()
     clearTimeout(delay)
     delay = setTimeout(validate, 700)
   })
+
+  function offerMigrate () {
+    const box = document.getElementById('migrate')
+    if (!/^(nome|alvo|cenario|carga|autenticacao|variaveis|requer):/m.test(text.value)) { box.innerHTML = ''; return }
+    if (box.dataset.on) return
+    box.dataset.on = '1'
+    box.innerHTML = `<div class="notice needs"><h3>This looks like the old Portuguese format</h3>
+      <p>The keys moved to English. Convert here, then review and Save.</p>
+      <button id="do-migrate" class="button">Convert to English</button></div>`
+    document.getElementById('do-migrate').addEventListener('click', async function () {
+      this.disabled = true
+      this.textContent = 'converting…'
+      const answer = await ask('/migrate', { method: 'POST', body: text.value })
+      if (!answer.ok) { this.disabled = false; this.textContent = 'Convert to English'; return }
+      text.value = answer.body.yaml
+      box.innerHTML = ''
+      delete box.dataset.on
+      status.textContent = 'not saved'
+      validate()
+    })
+  }
 
   // Validation checks the draft on the screen, not the file on disk, and by the
   // same reading path the terminal uses: the editor never approves what the
@@ -589,6 +725,7 @@ async function runScreen (id) {
   showCommand(`braunrate execute ${run ? run.scenario : '<scenario>.yaml'} -html report.html`)
   const running = run && run.status === 'running'
   content.innerHTML = `
+    <p class="crumbs">Runs / <b>${run ? escape(run.scenario) : escape(id)}</b></p>
     <h1>Run ${escape(id)}</h1>
     <p class="caption" id="from-which-scenario">${run ? escape(run.scenario) : 'loading…'}</p>
     <div class="bar">
@@ -597,6 +734,7 @@ async function runScreen (id) {
       <span class="right actions" id="actions"${running ? ' hidden' : ''}>
         <a class="button" id="download" download="${escape(id)}-report.html"
            href="/runs/${encodeURIComponent(id)}/report">Download</a>
+        <a class="button" download="${escape(id)}.csv" href="/runs/${encodeURIComponent(id)}/csv">CSV</a>
         <button type="button" class="button" id="save-report">Save to folder</button>
       </span>
     </div>
@@ -723,6 +861,7 @@ async function draw () {
   switch (parts[0]) {
     case 'new': return newScreen()
     case 'import': return importScreen()
+    case 'examples': return examplesScreen()
     case 'demo': return demoScreen()
     case 'runs': return runsScreen()
     case 'scenario': return editorScreen(parts[1])
