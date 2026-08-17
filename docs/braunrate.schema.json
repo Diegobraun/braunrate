@@ -520,8 +520,8 @@
         },
         "header": {
           "type": "string",
-          "description": "The header name. Authorization by default.",
-          "default": "Authorization"
+          "description": "The whole header line, name and value.",
+          "default": "Authorization: Bearer ${token}"
         },
         "user": {
           "type": "string"
@@ -697,7 +697,7 @@
           "type": "string",
           "description": "The operation name. Only needed when the query carries more than one.",
           "examples": [
-            "ConsultarPedido"
+            "LookUpOrder"
           ]
         },
         "variables": {
@@ -808,7 +808,7 @@
           "type": "string",
           "description": "The consumer group to watch during the run. The report shows how many messages it fell behind, read from the broker.",
           "examples": [
-            "cobranca"
+            "billing"
           ]
         },
         "timeout": {
@@ -975,7 +975,7 @@
           "description": "The condition that ends the wait over http: status, bodyContains or a JSON path with the expected value.",
           "examples": [
             {
-              "$.status": "PROCESSADO"
+              "$.status": "PROCESSED"
             },
             {
               "status": 200
@@ -1069,7 +1069,7 @@
           "description": "Broker addresses.",
           "examples": [
             [
-              "kafka.homolog:9093"
+              "kafka.staging:9093"
             ]
           ]
         },
