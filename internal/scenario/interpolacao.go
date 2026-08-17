@@ -55,7 +55,7 @@ func expandEnvironment(node *yaml.Node) {
 // Nas duas, quem le o campo faz a propria expansao — ReadSeed e readVars —, e
 // so ali o texto cru some.
 func keepsRawText(key string) bool {
-	return credentialNames[strings.ToLower(key)] || key == "seed"
+	return credentialName(key) || key == "seed"
 }
 
 // Referencia de ambiente que nao esta definida e nao tem padrao fica como esta,

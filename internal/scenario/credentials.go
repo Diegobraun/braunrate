@@ -4,16 +4,24 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/Diegobraun/braunrate/internal/protocol/transport"
 )
 
 // The same names the curl importer masks when it writes a file. A scenario goes
 // to the repository, so a password written in it is a password published.
+//
+// A pergunta "este nome carrega credencial?" e a mesma que a mascara de saida
+// faz, e responde-la em dois lugares foi como 'apiToken' passou a ser cortado na
+// impressao e aceito literal no arquivo. Vale a resposta de transport, mais os
+// nomes em portugues e os que so o cenario conhece.
 var credentialNames = map[string]bool{
-	"senha": true, "password": true, "pwd": true, "passwd": true,
-	"secret": true, "segredo": true, "client_secret": true, "clientsecret": true,
-	"token": true, "access_token": true, "refresh_token": true,
-	"apikey": true, "api_key": true, "authorization": true,
+	"segredo": true, "pwd": true, "clientsecret": true,
 	"secret_key": true, "access_key": true,
+}
+
+func credentialName(name string) bool {
+	return credentialNames[strings.ToLower(name)] || transport.IsSecretName(name)
 }
 
 // Cabecalho que carrega credencial. O nome do campo nao diz "senha", mas o que
@@ -82,7 +90,7 @@ func refuseLiteralField(name string, node *yaml.Node) error {
 		return nodeError(node, "literal credential in the header %q: a credential never goes into the file, because the file goes into the repository.\n"+
 			"    replace it with:  %s: \"Bearer ${TOKEN}\"\n"+
 			"    and run with:  TOKEN=... braunrate execute scenario.yaml", name, name)
-	case credentialNames[lowered]:
+	case credentialName(lowered):
 		if writtenSafely(node.Value) {
 			return nil
 		}
@@ -119,7 +127,7 @@ func writtenSafely(value string) bool {
 }
 
 func refuseLiteralVariable(name string, node *yaml.Node) error {
-	if !credentialNames[strings.ToLower(name)] {
+	if !credentialName(name) {
 		return nil
 	}
 	value := strings.TrimSpace(node.Value)
