@@ -59,7 +59,13 @@ func Debug(out io.Writer, number int, observation engine.Observation, showBody b
 	return output.err
 }
 
+// A scenario with no capture and no declared variable ends the iteration with
+// nothing to show, and the header printed over the empty space read like a
+// section that failed to fill.
 func IterationVars(out io.Writer, vars map[string]string) error {
+	if len(vars) == 0 {
+		return nil
+	}
 	output := &lineWriter{out: out}
 	output.writef("")
 	output.writef("variables at the end of the iteration")
