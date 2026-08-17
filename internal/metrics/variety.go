@@ -190,13 +190,13 @@ func phraseVariety(variety Variety) string {
 	}
 	if variety.Capped {
 		return fmt.Sprintf("more than %d distinct values of %s across %s uses%s",
-			distinctValuesCap-1, variety.Name, thousands(variety.Uses), phraseRange(variety.Range))
+			distinctValuesCap-1, variety.Name, text.Grouped(variety.Uses), phraseRange(variety.Range))
 	}
 	if variety.Distinct == 1 {
-		return fmt.Sprintf("1 single value of %s across %s uses", variety.Name, thousands(variety.Uses))
+		return fmt.Sprintf("1 single value of %s across %s uses", variety.Name, text.Grouped(variety.Uses))
 	}
 	return fmt.Sprintf("%d distinct values of %s across %s uses%s",
-		variety.Distinct, variety.Name, thousands(variety.Uses), phraseRange(variety.Range))
+		variety.Distinct, variety.Name, text.Grouped(variety.Uses), phraseRange(variety.Range))
 }
 
 func phraseShape(variety Variety) string {
@@ -206,7 +206,7 @@ func phraseShape(variety Variety) string {
 		count = distinctValuesCap
 	}
 	sentence := fmt.Sprintf("%s of body in %q, across %s sends",
-		text.Count(count, "shape", "shapes"), step, thousands(variety.Uses))
+		text.Count(count, "shape", "shapes"), step, text.Grouped(variety.Uses))
 	if count == 1 && len(variety.Shapes) == 1 {
 		return sentence + ": " + variety.Shapes[0]
 	}
@@ -228,7 +228,7 @@ func phraseRange(interval *Range) string {
 
 func number(value float64) string {
 	if value == float64(int64(value)) {
-		return thousands(int64(value))
+		return text.Grouped(int64(value))
 	}
 	return strconv.FormatFloat(value, 'f', -1, 64)
 }
@@ -265,7 +265,7 @@ func VarietyWarnings(varieties []Variety) []Warning {
 				Severity: SeverityMedium,
 				Message: fmt.Sprintf("the whole load used the same value of %s; if the target caches by that value, the number comes out optimistic",
 					variety.Name),
-				Evidence: fmt.Sprintf("%s: 1 value across %s uses", variety.Name, thousands(variety.Uses)),
+				Evidence: fmt.Sprintf("%s: 1 value across %s uses", variety.Name, text.Grouped(variety.Uses)),
 			})
 			continue
 		}
@@ -285,10 +285,10 @@ func VarietyWarnings(varieties []Variety) []Warning {
 		}
 
 		evidence := fmt.Sprintf("%s had %d available values and the run used 1, across %s uses",
-			variety.Name, variety.Available, thousands(variety.Uses))
+			variety.Name, variety.Available, text.Grouped(variety.Uses))
 		if variety.Available < 0 {
 			evidence = fmt.Sprintf("%s is generated per iteration and still repeated the same value across %s uses",
-				variety.Name, thousands(variety.Uses))
+				variety.Name, text.Grouped(variety.Uses))
 		}
 		warnings = append(warnings, Warning{
 			Kind:     "missingVariety",
@@ -298,29 +298,4 @@ func VarietyWarnings(varieties []Variety) []Warning {
 		})
 	}
 	return warnings
-}
-
-func thousands(value int64) string {
-	text := fmt.Sprintf("%d", value)
-	if len(text) <= 3 {
-		return text
-	}
-	var parts []string
-	for len(text) > 3 {
-		parts = append([]string{text[len(text)-3:]}, parts...)
-		text = text[:len(text)-3]
-	}
-	parts = append([]string{text}, parts...)
-	return join(parts, ",")
-}
-
-func join(parts []string, separator string) string {
-	out := ""
-	for index, part := range parts {
-		if index > 0 {
-			out += separator
-		}
-		out += part
-	}
-	return out
 }

@@ -1,7 +1,7 @@
 {
-  "formatVersion": "3",
+  "formatVersion": "4",
   "tool": "braunrate",
-  "version": "0.6.0",
+  "version": "dev",
   "environment": {
     "host": "Mac",
     "os": "darwin",
@@ -19,8 +19,8 @@
   "run": {
     "scenario": "Billing journey",
     "target": "http://127.0.0.1:8080",
-    "start": "2026-08-17T01:08:11.18727+01:00",
-    "end": "2026-08-17T01:08:21.195257+01:00",
+    "start": "2026-08-17T13:09:06.674622+01:00",
+    "end": "2026-08-17T13:09:16.682769+01:00",
     "durationMs": 10007,
     "arrivalModel": "open",
     "appliedPlan": [
@@ -40,8 +40,8 @@
     "maxInflight": 20000,
     "dataSeeds": {},
     "availableValuesByVariable": {
-      "subscribers.id": 200,
-      "subscribers.name": 200,
+      "subscribers.id": 4,
+      "subscribers.name": 4,
       "token": 1
     },
     "authObtains": 1,
@@ -53,23 +53,23 @@
   "scheduling": {
     "sent": 2375,
     "completed": 4750,
-    "lateDispatches": 0,
+    "lateDispatches": 3,
     "droppedByInflightLimit": 0,
     "lostSamples": 0,
-    "peakInflight": 8,
+    "peakInflight": 9,
     "lateThresholdMs": 10,
     "schedulingSkew": {
       "samples": 2375,
       "p50Ms": 0.001,
       "p75Ms": 0.001,
       "p90Ms": 0.001,
-      "p95Ms": 0.001,
-      "p99Ms": 0.166,
-      "p999Ms": 6.699,
-      "maxMs": 7.879,
+      "p95Ms": 0.016,
+      "p99Ms": 1.193,
+      "p999Ms": 10.687,
+      "maxMs": 14.095,
       "minMs": 0.001,
-      "meanMs": 0.021269894736842106,
-      "histogram": "HISTFAAAAJB42iyIIQ7CUBBE97/dT7uBJqRfEZogqlEcoMFwD46BI4FqBAJN0BiuwAEQKE6AxeJIQ0fMzHvV/phEZCv/aL+hq/q+kubTm1s9qso8t/HAQC0i5oagCCgZZHj33SIFSsKZMkGZ4wxZkJixxEkcAg1tYM07UPAKPGHDiY4vJW3kHNnBNecB38AvAAD//6zpErc="
+      "meanMs": 0.053906526315789474,
+      "histogram": "HISTFAAAANh42izLsUpjQRgF4Jlv5pLcvewOISzLkl1Eg4WEIGJhJanU0sLC2kcRfAOxFh9ALEVSprD2FQSxVEhhJci9Zoo58P3n/Lu4HIYQPsP3S6uM7TdeHIbZ+0qeN/Kv7Ec/yP2Ugx5BkKlUkkpopY1eB0GSWElBstWWkrpdNwb8VAyUrpQUI6M8VRz5kxtFY6I29FetWGNTbd0xdhXJqQO1+2jbxHW0Z9ZeB5bRb2f+d/OxeTR1G91F58x5TXbUHqN9L9GJj+iJh+yGZeONReWqk68AAAD//+grHVM="
     }
   },
   "journey": {
@@ -77,18 +77,18 @@
     "completed": 2375,
     "correctedLatency": {
       "samples": 2375,
-      "p50Ms": 10.679,
-      "p75Ms": 10.943,
-      "p90Ms": 11.375,
-      "p95Ms": 11.703,
-      "p99Ms": 14.903,
-      "p999Ms": 20.767,
-      "maxMs": 24.223,
-      "minMs": 10.36,
-      "meanMs": 10.886110315789491,
-      "histogram": "HISTFAAAASV42iyOTU4yQRCGm5eiKJqZpj+YD3GCLQnj+BPE0aghxigJZjQu0CiJZpYu3OjWxAN4A9euPIpH8CIewTT4pvJU5alaVPftvaVU6UQtUv7rJY/+V65Ofxbi4wwkIG268WC4f1EUj6+z++eHaVFcz/L8Zno5Ps7z7HB4NB5mWZqO9gYbie2lSZZuuV4SWxe7kYvbnY6Le0ns2lFkI9vUrK0JRBsLzYGJJLCWSRObpuimiDFCLKJFC0ExCzMTGw1vGWBhEtasycd/GDAxKQaRFiiCMClUUfFzlRQUCKj6Uphzvq6DKlT2qoGa17SC+fkaQoTAEibYxQFq2MQOVvGEEC90ixCfJYSoUQNl/McVtvEP52hhgmXU0cc6voE7/AYAAP//CJseSg=="
+      "p50Ms": 10.743,
+      "p75Ms": 11.143,
+      "p90Ms": 12.079,
+      "p95Ms": 12.719,
+      "p99Ms": 15.327,
+      "p999Ms": 26.799,
+      "maxMs": 28.911,
+      "minMs": 10.248,
+      "meanMs": 11.119137684210534,
+      "histogram": "HISTFAAAAWl42jSQwWpUTRCFu78+U1Pp29P//W8uQWJGx5hNcEBBXSjBRBDBXXDpI6jLxJWiBgUX7vQFxCcRH8UX8BGk72g3XaeoOvU13XsfvmyHEH+FzUp/NbZw/efjcPx7U3j/iCCCTMjcXbmMtRZZwX3Invs62G5d7e3043r/1snp/WevXj6/iBfxU3z9NX6OZ2fv4unJ0ztH66MHB/vj+spqtXNwadXXoR/rmIdhd7BqfVExk5kZbqEf3NxkLvcsmVPLUF3yXKxWZXJ2t2JeJhO51JxNJsfcnCIzTBksuBXMMVwGSRLtRQoEecu9STICCjIE3sxMCEFDqo3g/z4jKDQISq2Tpu1AbmUFpiYzWqRTU5Fcc5ISAZu16xttITqC2plrNs1O5v8UsI55oyyZNdA1DtlkiS0WzNjm/+ZO3CWw5JAFV+nYghvcpOOcJZfhR+Q2x9zje+QJL3jIOW/5FvkYecOfAAAA//8U/SCR"
     },
-    "sentence": "All 2375 journeys reached the end; half took up to 11 ms and 95% up to 12 ms, counted from the instant they should have started."
+    "sentence": "All 2375 journeys reached the end; half took up to 11 ms and 95% up to 13 ms, counted from the instant they should have started."
   },
   "steps": [
     {
@@ -107,29 +107,29 @@
       "errorDetails": {},
       "correctedLatency": {
         "samples": 2375,
-        "p50Ms": 5.387,
-        "p75Ms": 5.499,
-        "p90Ms": 5.739,
-        "p95Ms": 5.979,
-        "p99Ms": 7.187,
-        "p999Ms": 15.039,
-        "maxMs": 17.455,
-        "minMs": 5.164,
-        "meanMs": 5.511669894736839,
-        "histogram": "HISTFAAAATd42iyNTaoTQRSFq7+6fV9RtPXqtbETQ9toEn+QqIEEBBGdNCFkEIJIBg5ExIkZZeYGdCAZibgA1+JIXIvgEqQ6qeKec/gOl1t//n7dmOxgTs+ePUsy/rU0L/+dwI8FiBM0qKtiwLuiDL3Yiy6G0jfNdPRs0S7b9bvt6ze7/f7t+1f754fd5sOqbberF5v1w9n08ayup82De3UzHJW9SaziYHI7VGXZDIaVGzZlWWgchCIqWvhCfQi+u+lxJoh6JwFRvCjiUBVxqr5Q1IkRFUG8Cgg4QFMSOYeuEIyIBbCCWBUrkBhYuk0x3U99GtMpqUk49xcYjFwjT44l5xYX0IenzGGMxdCXK24y5z6P+JJxh7/whK8ZPzMuuQuX3OATHxM6wreMnJxjxhW/U/5j+R8AAP//B8UhVQ=="
+        "p50Ms": 5.451,
+        "p75Ms": 5.547,
+        "p90Ms": 6.175,
+        "p95Ms": 6.631,
+        "p99Ms": 8.863,
+        "p999Ms": 19.855,
+        "maxMs": 23.423,
+        "minMs": 5.124,
+        "meanMs": 5.655746526315784,
+        "histogram": "HISTFAAAAYl42iyPvYoUURCFq78+XX33zt3e2XYYh3V3h111ZsAfUFYQGdRARAw1NzCQCRSMxFQQFGQDMTD2WQzEBzH3EaR6rKCqq89X51Ydfvx2wYyFbaP+X6tIl38+tgd/tz8+nIFDdmUVTzl3pZQOz3lcUjeRujIpKU+6cSml7/vJbHY4PS19fzDr+9JNZ1duLs7W64cvnr3dvN98rjavX718t3nyaH3/7tPFvdvXF8er1WJ1uur74/F04gfj7Fklp1y6lErylJ1cSpJMlrM7WZmkhCPJQAlIcncJIRPmJLI8ek9uuKMtGcUCtzjLgHqYEk5LLXNTXBxcyLUACwQj1yCZg3ywilCNYdG1Q/FkNNTxhbm5bWeNWLEmDZANk6JlBBqFriZek0lbYSdcJBpMIbeDCcY+plikDb6mhX1ajmCPkYwdboUwomWX+ZAbllwdDI90iTlc44QAGi7G1exhzLlBzQ57nLCLaclzGu6w5GvFG1p+1fyu+FPxBT5VnFecw/eKH/AvAAD//3UoIi8="
       },
       "serviceLatency": {
         "samples": 2375,
-        "p50Ms": 5.355,
-        "p75Ms": 5.443,
-        "p90Ms": 5.659,
-        "p95Ms": 5.891,
-        "p99Ms": 6.619,
-        "p999Ms": 12.887,
-        "maxMs": 15.007,
-        "minMs": 5.132,
-        "meanMs": 5.44588378947369,
-        "histogram": "HISTFAAAASt42iyNsWobQRCG576djDab5XKclOOKixBRSJRALigRIl0giKAiXQIRRggXLty4M8JuVNkGVy5c+SH8FH4hg2uDWclTzD/zzc/8zdl1VyT7K7tyz5qlNrz7LT/vd+B8wgtUDQs+5kUdg5Uh1KGofFk1eZmPpu1gMlvNlv/Wi8Vmc7y+yE6WhwerP4u9/Xk7//Xtw3T0/se73qAd9JvPVVv1i6ZXFnVV9oo8FnlVFTGvg/o8lnhvwfA+BB9RiwFL0WYaMEy9afSQFBPUUFFV86J41DQhUYREBfOCU0BUVMCZwNaBOlMQxKugDgOn5tiaXfouaROE7STQpcMrhKEO+cJrXtLhLV2EDo4jvjLmE6c8wHfG/OcjtxlveMy4zLiCmyzdngIAAP//yfUgBA=="
+        "p50Ms": 5.427,
+        "p75Ms": 5.511,
+        "p90Ms": 5.947,
+        "p95Ms": 6.427,
+        "p99Ms": 7.575,
+        "p999Ms": 11.199,
+        "maxMs": 21.055,
+        "minMs": 5.104,
+        "meanMs": 5.560107789473691,
+        "histogram": "HISTFAAAAWR42iyOv2oUURTGz/7ut2fvXGdnh9lhHTarAV1IsqKFJiAWEUQsJIjW9iLBzhSprOwtBF/ER8h7+Ax2tnJmc7mcP9/9zu/czfefS7PJH9ufdJsnER7evLGXf/fCv2dC2VylLl7aotK17qXUTV/aps65DH2pc1tWddP1Xbfqm2G7Gtp+WG+aeuiH3fbJ8dOL15fvP199+/Rrcv3l4vrq8vz52xfnp+9OX22PN/d3u+2DddOsN11dViq579x97bn12kujIi9ZkqOci3JBLi9kyTOyfY3kwpC7JBPZs+MKA7hDlB4YrJjc4sElIzmehHkCw8gk4mo2tuwRsT9FAy5zV1gqpRCSRlMa/Tb6hDOqMZKDoKT44NTzIkYxLfZ8YzZisWxQRZeYEjGIzLkbKQVsHm4tOSFxwBksucOce1RMqTjihCmPOOBQH6hYcEQi9hxyxoyvfOQxv4EfFTdT/gcAAP//2Q0erQ=="
       }
     },
     {
@@ -149,28 +149,28 @@
       "correctedLatency": {
         "samples": 2375,
         "p50Ms": 5.283,
-        "p75Ms": 5.415,
-        "p90Ms": 5.675,
-        "p95Ms": 5.847,
-        "p99Ms": 6.343,
-        "p999Ms": 11.623,
-        "maxMs": 12.919,
+        "p75Ms": 5.423,
+        "p90Ms": 5.939,
+        "p95Ms": 6.307,
+        "p99Ms": 7.687,
+        "p999Ms": 16.511,
+        "maxMs": 22.111,
         "minMs": 5.108,
-        "meanMs": 5.3744538947368365,
-        "histogram": "HISTFAAAARx42iyKwcoScRTF7/zmer3++zsOGoPCMJjVMIgMZiESgpsYpIVIixYtLXqFXqA36AF6ip6gRa/TtkXw4aeHwzmHH6f8/mMikhzkpvTeyTWe/+7k8PcG/r1GUI2xrje7r1+Opw+Xc3c5nj9+OtX77t1uu367b+t11zZvVsvt8n27Waybpl6u2qpa1NNmWizKKi/qF/P5uFqVZczHxTzPp09jUeZ5yDTGoMEtBveYZR5Qj+QhiMVgEbOgHozMVM2Cm6OuYFFjcBUPJgGySHRUVV1QTF3NcQNUBQcxVEENVLSvYjwBUUWAFBvSY3h9yN1CDxhwXRP6IKT0H/GEGa94ya+EASNNGTLjZ48RPON/ymeEPwnfeAgAAP//pTgc+g=="
+        "meanMs": 5.463409684210526,
+        "histogram": "HISTFAAAAVd42iyPsWpUQRSG537z78nZ2SFObpbLlaxrlhCUEFBwlQiRgIWVpZWIdQoLyy1EEFJYWAgi4oP4BPoSvoWtXZjZzMCZmXPO9/9zFlff9kPo/oTtijdnV8PR7xfh4t828f8RRMxDTp53cz+UsR/Hk+H+2dn5kzfvrrr3X7rP3cev3ebDZnN5+fbV6+cvT9fn6+Xy9PBk8XA9H/thWB4OJS8GL/3uvMyz5zGnNC+luCyX1LvcPFtyFaXklt1yIKckT4XswoBgBJMEhjwmQAhTQFD/CEFQ39Zyshojqpi1QSqLOZIcwPGgxiu6CQJNRrhCY4kKSVVAk1YnemBWq0A0LDavHUWCogI7rWsrYx6lmytRBE0rpgkBTbnDRHvE5noP9pkQuQ0zVhxoxV7bkRl3uSByTKxdTzmCx3DArDG3+NGx4hlTfsIDjvlrfBe/4FPkOgAA//9LuR/d"
       },
       "serviceLatency": {
         "samples": 2375,
         "p50Ms": 5.263,
-        "p75Ms": 5.383,
-        "p90Ms": 5.639,
-        "p95Ms": 5.803,
-        "p99Ms": 6.307,
-        "p999Ms": 11.599,
-        "maxMs": 12.855,
-        "minMs": 5.104,
-        "meanMs": 5.352838736842104,
-        "histogram": "HISTFAAAARZ42iyOQUozQRCFa15XVyqd/of+k6ghDDHEMAwhKESRQWTMIkgQySIIrs0iuBK8gzfwKB4hZ/Ae7lwJ0hlrUVXvfUXxsrf3DlFyRnWZv5nEdrK7pZuv2vg+BzGcP8yLxd3LZvmw3VbPy9Vmva7m1WZxWlaX88n99WxVTqb58uKqKMpyWgzyvD/Osn42HIx6w/FoNk6H3V7WC93QbvdDGtS5oG1PwQdRSdU5Zo+g4pTVKTMUQmD2isAqjsBOIlZVYeP3ghRRUaoQYVIBszAA1CvYSEwPw0wA2LAYEAysgGGV8B+t6IMiZIBgEU+baPIBLCwMN3EEgxYe8ZGgg8b+gwE+Lf7xMX4MntDALsErfgMAAP//amsdAQ=="
+        "p75Ms": 5.403,
+        "p90Ms": 5.899,
+        "p95Ms": 6.275,
+        "p99Ms": 7.591,
+        "p999Ms": 16.495,
+        "maxMs": 22.079,
+        "minMs": 5.096,
+        "meanMs": 5.4406804210526305,
+        "histogram": "HISTFAAAAVh42iyOP4rUQRCFq79+U9PbtDO9szPDIoPOzvpnVFCY3UxUMDASjyBitIGBoZHBYmggKCh6Dk9gbOQJvIHgAZTu3xZNFfWq3le9evfxwCz8tCHiRQ0tHf94Yo/+DMLfE4hSVsmlllq39XC5mW9W1x7uTl+cnYc35+Fr+BI+hQ/h9fvw6u3zs5fPnj7e7e6ebm/cXm+2V9arslweXt7M1stZms8mJed5qbXOS6p5VnJOE03cSyrJJzml4l6cnD0lFaWcqpMc4bSQRIoJd/OYrasyt9QSRMwFJm8W6w+T5EKiJxBZDagekBBo5L0xDFlnENug9QLPJkbSQDSN2rG+L2tCg9N8tAnmcegYft6MHsUY+cDsl8Zy44ApU9hve7fY4xKRPRbNfMyYfcacsLiQr/Og8W8SmXKfq4y4h/W6IHLAt8ARd5jyC4747XwW3+Ef/A8AAP//I7MgUw=="
       }
     }
   ],
@@ -179,32 +179,32 @@
     "successes": 4750,
     "errors": 0,
     "errorRate": 0,
-    "effectiveRatePerSecond": 474.6275478974762,
+    "effectiveRatePerSecond": 474.62162570721586,
     "correctedLatency": {
       "samples": 4750,
-      "p50Ms": 5.351,
-      "p75Ms": 5.459,
-      "p90Ms": 5.707,
-      "p95Ms": 5.903,
-      "p99Ms": 6.839,
-      "p999Ms": 13.575,
-      "maxMs": 17.455,
+      "p50Ms": 5.407,
+      "p75Ms": 5.515,
+      "p90Ms": 6.023,
+      "p95Ms": 6.475,
+      "p99Ms": 8.199,
+      "p999Ms": 17.679,
+      "maxMs": 23.423,
       "minMs": 5.108,
-      "meanMs": 5.443061894736843,
-      "histogram": "HISTFAAAAYd42iyKwWoTURSG7/3uye3JeDNJJnGcQiwmtSEIKqQSSikxZBFCkRikigvpQkIIkoWU0kJWIlUKuqk+ge/gG7gSn0Vw606m8Sz+85/vO42LrzVj7HezHvd/2zy2f4zM4z9r8HcXg0gI7XZ3bz4bT4/mLw9nk+NXr2e9w/FkMByOp/39waTfG/XGRy+Wi/n8bHny0a7e2Ut7emk/2wu7Wr23z77Yk+Xp8ZvF28V0eTZ6stcfdg8OHgz2O4963dZWt95qtDr30sZWo32nfTdtdeppPUk6WVoJcSVJ41DJkiREUaKxj30WQhJp6r1qqkkIgbgSSaKaZRrHkYpGQURD0MhHkVRURL0XCV4I4lVUVbwiIs6j4gQxqIh4RHKsDiEvJleCE3/N8zB+7fBGCsFgwGCkiMHlz9e3AwrUZANKbMAOZWrchm0chltSZZNNitzAiKNEiSJNPlia/IaH3KcMTZp8s5TZgTI3Oec5VZ5i2OXKci5XlgIFPlmq/Mz7L8e/AAAA//8G2DS4"
+      "meanMs": 5.559578105263148,
+      "histogram": "HISTFAAAAd542ixQT2sTbxCe99nJ7GT6dpsm5dftz6ASay1SY9G6hx6ihBCKlIJWpHelXnIonnKoGiRetIKo4E0UP4oH8dt49Sbzbhd2ZvaZ58+w3fmnDhE+Uv1k5z14ufJzTHf/1MDf20DGWqBYKVpl62K37HU31qtetTsY35tMz8LLb+EsvA5fwzx8CPMwC89PJ0+PD44G44O9qtqr9jeH4/72+mZvq+rv7A7vj/YfTo5n4XQeTj6HWZieTN6G6dGj0XDwuBqNdq5v9Ldv9be2/+v1/r/cjRtlq21SrrSLlbK0smXWUo6xbWzsQ1Rps0UTExUxJRYxVlNRMRFhVmF2qkZVAbMVxhKVGWymrKwRErUAKxsMAhZ2oUUBCICLEAVJo0wQMhURUbDTzTnRR7DA49iZAiVAhCUXgsCUhEDIfMOkEBYzkDD8WBZWMLOkSBEGZ57vldEEgbgBgM7tGQ1f13CWPokpvTVctwbcJZnk4DSRQ8suX3PyEppgQtOxZfgamQfmKfQSciw6cjX9jA6aaKKBNRBfcGANWK09FpIiGXjoMnJkWEoWN5D5eVjCAjpYBHEnuRyigTu4hge4iQWs4hA5fmX4HfAEr/AOeBOA9wE/Ap7hS8ALfA/4FwAA///xhzX1"
     },
     "serviceLatency": {
       "samples": 4750,
-      "p50Ms": 5.327,
-      "p75Ms": 5.419,
-      "p90Ms": 5.651,
-      "p95Ms": 5.839,
-      "p99Ms": 6.411,
-      "p999Ms": 11.791,
-      "maxMs": 15.007,
-      "minMs": 5.104,
-      "meanMs": 5.399361263157895,
-      "histogram": "HISTFAAAAXN42iyLQWtTURCFZ86dTMbr9eY1fcYQXmvAolVooBZEQsEi5fGQEkvpQkWkdCGhPCS6KCgiLh6uxE27qcvSrb/Cn+NGcOG23LaHYQ5zznxFczRPxCd0KXflnNad3yU9+XsZ/F8DCXzoLS9vPpu93Xo1ravZ7usPB2+qcruelE8nW9X6/ouNvXJnf3c6/fKN62P+zqf8lQ/P+Ix/8E8+5WM+bLjhz+9mnxo+2Ku3d8aTzfXq0dLDjfHowXjx8XDUHw27w6W7/aJX5IP+YFDExWEWs25e+BCsa2Y+xjyX3OdZUPUhxBC7PvpgplkveosW1UdVyb2qN4kRplHVVEIQMYOKeBXJPEGuRKYAyAiiIC+qTgOEQCaUHAo4vTgSRKIGQJ0AkkglII104EAgtFJ4DbfU4To6WEEqHNpYwDwIbTi8xBzQBl0UmMMq7uMj/gFrWEULN+Q2FnAPvxg38YfRwXO0sYIjxnu0cMLp9TwAAP//Yoszdw=="
+      "p50Ms": 5.383,
+      "p75Ms": 5.483,
+      "p90Ms": 5.927,
+      "p95Ms": 6.355,
+      "p99Ms": 7.595,
+      "p999Ms": 14.287,
+      "maxMs": 22.079,
+      "minMs": 5.096,
+      "meanMs": 5.500394105263151,
+      "histogram": "HISTFAAAAb942iyRTWsTURSG733mzJmb23E6bdMa0pbWWEqsGErEEEJRF4OELkQ32TRIl+LCRXFRSi0IWfgBIrpxXcSVGxf+Av+Q4A9QzqQzzPl4z/MeDszG7MuKczx18ye5yt7Czd+P3IM/c+HvXRBCHmPZbLWX29v9Zqfbb3d3e4cPxy9OP/mZf+8v/aX/4b/5s6/+1Uf//OLl9Nmkqqrx4P7jwWjYHw66O5393uigqkaj48np9OTisz/57t/68+OZPz8bH06q8cF0+GSv190d9Pf2d9bWdjutVtkqmsVGOy7HTllu50VRliGPIY+qIaqWIeaxDJKLNonRNFEpCgoRFVVUNWiIkSAhmkmtCjUY7FWNkktBnHeGiBBUk6gSAXEiRHESJLGNONSInIBAiARALao6DaJmEof5RILULeI0EeNMBlG7uR6rHYQRhFgn6x2ZBAfgpEGCo24yWyY4G6X2W1JILJAYJGQkV1+tiSOtnbZvRTKWyHAkrLPAKteMapCyYOV6XTbMx2a9ZZGMlFs2ImVVruPYqpmGJDTI2KwpU+/ZGVvcZpEljrjDT88NjuCN8iHhnecX/PO85n8AAAD//5eqMwA="
     }
   },
   "sanity": {
@@ -220,23 +220,47 @@
         "step": "look up order",
         "metric": "p95",
         "rule": "p95: \u003c 150ms",
-        "obtained": 5.979,
+        "obtained": 6.631,
         "limit": 150,
         "unit": "ms",
         "passed": true,
-        "sentence": "Passed: \"look up order\" answered 95% within 6 ms, within the limit of 150 ms.",
+        "sentence": "Passed: \"look up order\" answered 95% within 7 ms, within the limit of 150 ms.",
+        "noData": false,
+        "comparisonNotTrustworthy": false
+      },
+      {
+        "step": "pay invoice",
+        "metric": "p95",
+        "rule": "p95: \u003c 200ms",
+        "obtained": 6.307,
+        "limit": 200,
+        "unit": "ms",
+        "passed": true,
+        "sentence": "Passed: \"pay invoice\" answered 95% within 6 ms, within the limit of 200 ms.",
         "noData": false,
         "comparisonNotTrustworthy": false
       },
       {
         "step": "journey",
         "metric": "p95",
-        "rule": "p95: \u003c 400ms",
-        "obtained": 11.703,
-        "limit": 400,
+        "rule": "p95: \u003c 2s",
+        "obtained": 12.719,
+        "limit": 2000,
         "unit": "ms",
         "passed": true,
-        "sentence": "Passed: the whole journey answered 95% within 12 ms, within the limit of 400 ms.",
+        "sentence": "Passed: the whole journey answered 95% within 13 ms, within the limit of 2000 ms.",
+        "noData": false,
+        "comparisonNotTrustworthy": false
+      },
+      {
+        "step": "journey",
+        "metric": "p99",
+        "rule": "p99: \u003c 5s",
+        "obtained": 15.327,
+        "limit": 5000,
+        "unit": "ms",
+        "passed": true,
+        "sentence": "Passed: the whole journey answered 99% within 15 ms, within the limit of 5000 ms.",
         "noData": false,
         "comparisonNotTrustworthy": false
       },
@@ -254,10 +278,9 @@
       }
     ],
     "undeclaredCriteria": [
-      "steps with no criterion declared (1 of 2): pay invoice",
       "regression: no criterion declared — the gate approves without comparing against the previous run"
     ],
-    "sentence": "Passed: all 3 SLO rules were met."
+    "sentence": "Passed: all 5 SLO rules were met."
   },
   "observedVariety": [
     {
@@ -267,9 +290,9 @@
       "availableValues": 0,
       "cappedByLimit": false,
       "observedShapes": [
-        "user: text"
+        "password: text, user: text"
       ],
-      "sentence": "1 shape of body in \"obtain auth\", across 1 sends: user: text"
+      "sentence": "1 shape of body in \"obtain auth\", across 1 sends: password: text, user: text"
     },
     {
       "name": "body.pay invoice",
@@ -280,28 +303,32 @@
       "observedShapes": [
         "amount: number"
       ],
-      "sentence": "1 shape of body in \"pay invoice\", across 2.375 sends: amount: number"
+      "sentence": "1 shape of body in \"pay invoice\", across 2,375 sends: amount: number"
     },
     {
       "name": "invoiceId",
-      "distinctValues": 200,
+      "distinctValues": 4,
       "uses": 2375,
       "availableValues": 0,
       "cappedByLimit": false,
-      "sentence": "200 distinct values of invoiceId across 2.375 uses"
+      "range": {
+        "kind": "prefix",
+        "commonPrefix": "f-100"
+      },
+      "sentence": "4 distinct values of invoiceId across 2,375 uses, all starting with \"f-100\""
     },
     {
       "name": "subscribers.id",
-      "distinctValues": 200,
+      "distinctValues": 4,
       "uses": 2375,
-      "availableValues": 200,
+      "availableValues": 4,
       "cappedByLimit": false,
       "range": {
         "kind": "numeric",
         "min": 1001,
-        "max": 1200
+        "max": 1004
       },
-      "sentence": "200 distinct values of subscribers.id across 2.375 uses, between 1.001 and 1.200"
+      "sentence": "4 distinct values of subscribers.id across 2,375 uses, between 1,001 and 1,004"
     },
     {
       "name": "token",
@@ -309,109 +336,116 @@
       "uses": 2375,
       "availableValues": 1,
       "cappedByLimit": false,
-      "sentence": "1 single value of token across 2.375 uses"
+      "sentence": "1 single value of token across 2,375 uses"
     }
   ],
-  "warnings": null,
+  "warnings": [
+    {
+      "kind": "generatorOccasionallyLate",
+      "severity": "low",
+      "message": "there was occasional dispatch delay, below 1% of the requests",
+      "evidence": "3 late dispatches out of 2375 (p99 skew of 1.2 ms)"
+    }
+  ],
   "timeSeries": [
     {
-      "startEpochMs": 1786925291000,
-      "sent": 58,
-      "completed": 115,
+      "startEpochMs": 1786968546000,
+      "sent": 19,
+      "completed": 38,
       "errors": 0,
-      "targetRate": 90.55385135,
-      "latencyP50Ms": 5.875,
-      "latencyP99Ms": 6.751
+      "targetRate": 65.5743852,
+      "latencyP50Ms": 6.463,
+      "latencyP99Ms": 14.823
     },
     {
-      "startEpochMs": 1786925292000,
-      "sent": 115,
-      "completed": 231,
+      "startEpochMs": 1786968547000,
+      "sent": 92,
+      "completed": 183,
       "errors": 0,
-      "targetRate": 140.35668845,
-      "latencyP50Ms": 5.587,
-      "latencyP99Ms": 6.319
+      "targetRate": 116.18950035,
+      "latencyP50Ms": 5.955,
+      "latencyP99Ms": 9.215
     },
     {
-      "startEpochMs": 1786925293000,
-      "sent": 166,
-      "completed": 331,
+      "startEpochMs": 1786968548000,
+      "sent": 141,
+      "completed": 282,
       "errors": 0,
-      "targetRate": 190.5255888,
-      "latencyP50Ms": 5.619,
-      "latencyP99Ms": 7.051
+      "targetRate": 166.13247725,
+      "latencyP50Ms": 5.823,
+      "latencyP99Ms": 7.375
     },
     {
-      "startEpochMs": 1786925294000,
-      "sent": 216,
-      "completed": 431,
+      "startEpochMs": 1786968549000,
+      "sent": 191,
+      "completed": 382,
       "errors": 0,
-      "targetRate": 240.62418830000001,
-      "latencyP50Ms": 5.287,
-      "latencyP99Ms": 10.023
+      "targetRate": 216.1018278,
+      "latencyP50Ms": 5.315,
+      "latencyP99Ms": 6.859
     },
     {
-      "startEpochMs": 1786925295000,
-      "sent": 265,
-      "completed": 530,
+      "startEpochMs": 1786968550000,
+      "sent": 241,
+      "completed": 482,
       "errors": 0,
-      "targetRate": 290.5167809,
+      "targetRate": 266.08269390000004,
+      "latencyP50Ms": 5.375,
+      "latencyP99Ms": 10.167
+    },
+    {
+      "startEpochMs": 1786968551000,
+      "sent": 289,
+      "completed": 577,
+      "errors": 0,
+      "targetRate": 300,
+      "latencyP50Ms": 5.455,
+      "latencyP99Ms": 13.079
+    },
+    {
+      "startEpochMs": 1786968552000,
+      "sent": 300,
+      "completed": 600,
+      "errors": 0,
+      "targetRate": 300,
       "latencyP50Ms": 5.383,
-      "latencyP99Ms": 5.987
+      "latencyP99Ms": 7.103
     },
     {
-      "startEpochMs": 1786925296000,
-      "sent": 299,
-      "completed": 599,
-      "errors": 0,
-      "targetRate": 300,
-      "latencyP50Ms": 5.331,
-      "latencyP99Ms": 6.171
-    },
-    {
-      "startEpochMs": 1786925297000,
+      "startEpochMs": 1786968553000,
       "sent": 300,
       "completed": 600,
       "errors": 0,
       "targetRate": 300,
-      "latencyP50Ms": 5.303,
-      "latencyP99Ms": 5.647
+      "latencyP50Ms": 5.395,
+      "latencyP99Ms": 7.875
     },
     {
-      "startEpochMs": 1786925298000,
+      "startEpochMs": 1786968554000,
       "sent": 300,
       "completed": 600,
       "errors": 0,
       "targetRate": 300,
-      "latencyP50Ms": 5.343,
-      "latencyP99Ms": 11.839
+      "latencyP50Ms": 5.383,
+      "latencyP99Ms": 6.819
     },
     {
-      "startEpochMs": 1786925299000,
+      "startEpochMs": 1786968555000,
       "sent": 300,
       "completed": 600,
       "errors": 0,
       "targetRate": 300,
-      "latencyP50Ms": 5.351,
-      "latencyP99Ms": 5.951
+      "latencyP50Ms": 5.379,
+      "latencyP99Ms": 7.043
     },
     {
-      "startEpochMs": 1786925300000,
-      "sent": 300,
-      "completed": 600,
+      "startEpochMs": 1786968556000,
+      "sent": 202,
+      "completed": 406,
       "errors": 0,
       "targetRate": 300,
-      "latencyP50Ms": 5.355,
-      "latencyP99Ms": 6.899
-    },
-    {
-      "startEpochMs": 1786925301000,
-      "sent": 56,
-      "completed": 113,
-      "errors": 0,
-      "targetRate": 300,
-      "latencyP50Ms": 5.443,
-      "latencyP99Ms": 6.523
+      "latencyP50Ms": 5.395,
+      "latencyP99Ms": 7.607
     }
   ]
 }

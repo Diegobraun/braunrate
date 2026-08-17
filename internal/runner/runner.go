@@ -296,6 +296,7 @@ func ReadDocument(path string) (metrics.Document, error) {
 		return document, fmt.Errorf("%s is in result format %q and this version reads the formats %s",
 			path, document.FormatVersion, strings.Join(metrics.ReadableResultFormats, ", "))
 	}
+	document.TranslateOlderValues()
 	return document, nil
 }
 

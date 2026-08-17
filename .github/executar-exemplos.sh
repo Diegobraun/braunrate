@@ -49,7 +49,7 @@ for cenario in examples/*.yaml; do
         # O runner e maquina compartilhada e a regra de saturacao corta em 1% de
         # despachos atrasados. Ali exit 3 e a resposta certa da ferramenta.
         echo "aceito: $cenario saiu 3 porque o gerador nao sustentou a carga nesta maquina"
-        jq -r '.warnings[]? | select(.severity=="alta") | "  " + .evidence' "$resultado"
+        jq -r '.warnings[]? | select(.severity=="high") | "  " + .evidence' "$resultado"
       else
         echo "FALHOU: $cenario saiu invalido por outro motivo: $motivos"
         jq -r '.sanity.findings[]? | "  - " + .message + "\n    " + .evidence' "$resultado"

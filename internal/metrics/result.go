@@ -12,12 +12,12 @@ import (
 // Version 2 added the serialized histogram every percentile is a projection of.
 // Version 1 is still read — the numbers it already carries are the numbers it
 // always carried — and only summing needs the histogram.
-const ResultFormatVersion = "3"
+const ResultFormatVersion = "4"
 
 // ReadableResultFormats is what this binary can open. A format outside the list
 // is refused by name instead of being read into fields that do not mean what
 // they used to.
-var ReadableResultFormats = []string{"3"}
+var ReadableResultFormats = []string{"3", "4"}
 
 type Document struct {
 	FormatVersion string        `json:"formatVersion"`
@@ -160,11 +160,30 @@ func (o OverallResult) Reported() Distribution {
 
 type Severity string
 
+// O valor vai para o JSON, que e lido por automacao. Ficou em portugues depois
+// que o resto da saida virou ingles, e quem escrevesse severity == "high" nao
+// receberia erro nenhum: receberia zero achados, em silencio.
 const (
-	SeverityHigh   Severity = "alta"
-	SeverityMedium Severity = "media"
-	SeverityLow    Severity = "baixa"
+	SeverityHigh   Severity = "high"
+	SeverityMedium Severity = "medium"
+	SeverityLow    Severity = "low"
 )
+
+// Resultado gravado antes desta versao traz o valor em portugues. Recusar o
+// arquivo tiraria justamente a comparacao com a execucao de ontem, que e o
+// motivo de guardar resultado; traduzir na leitura mantem os dois lados.
+var severityBefore = map[Severity]Severity{"alta": SeverityHigh, "media": SeverityMedium, "baixa": SeverityLow}
+
+// TranslateOlderValues is called at the single read point, so a value that
+// changed spelling between formats is normalized once instead of at every place
+// that switches on it.
+func (document *Document) TranslateOlderValues() {
+	for index, warning := range document.Warnings {
+		if current, older := severityBefore[warning.Severity]; older {
+			document.Warnings[index].Severity = current
+		}
+	}
+}
 
 type Warning struct {
 	Kind     string   `json:"kind"`

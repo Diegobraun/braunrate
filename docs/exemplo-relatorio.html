@@ -72,12 +72,18 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border
 <main>
 <header>
   <div class="scenario">Billing journey — http://127.0.0.1:8080</div>
-  <h1 class="passed">Passed: all 3 SLO rules were met.</h1>
+  <h1 class="passed">Passed: all 5 SLO rules were met.</h1>
   <p class="subtitle">2,375 journeys in 10s, 4,750 requests at 475 per second, 0% of them errors.</p>
 </header>
 
 
 
+
+<div class="warning low">
+  <div class="label">observation</div>
+  <div>there was occasional dispatch delay, below 1% of the requests</div>
+  <div class="evidence">3 late dispatches out of 2375 (p99 skew of 1.2 ms)</div>
+</div>
 
 
 <h2>What happened</h2>
@@ -85,18 +91,18 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border
   <li><div class="value">4,750</div><div class="label">requests</div></li>
   <li><div class="value">475</div><div class="label">per second</div></li>
   <li><div class="value">0%</div><div class="label">of them errors</div></li>
-  <li><div class="value">5.9 ms</div><div class="label">95% of the responses within</div></li>
+  <li><div class="value">6.5 ms</div><div class="label">95% of the responses within</div></li>
 </ul>
 
 
 <h2>The whole journey</h2>
-<div class="reading">All 2375 journeys reached the end; half took up to 11 ms and 95% up to 12 ms, counted from the instant they should have started.</div>
+<div class="reading">All 2375 journeys reached the end; half took up to 11 ms and 95% up to 13 ms, counted from the instant they should have started.</div>
 <table>
   <tr><th>journey</th><th>half</th><th>95%</th><th>99%</th><th>worst</th></tr>
   <tr>
     <td>from the scheduled instant to the last step</td>
-    <td>11 ms</td><td>12 ms</td>
-    <td>15 ms</td><td>24 ms</td>
+    <td>11 ms</td><td>13 ms</td>
+    <td>15 ms</td><td>29 ms</td>
   </tr>
 </table>
 
@@ -108,15 +114,15 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border
   
   <tr>
     <td><span class="mark">(1)</span> look up order</td>
-    <td>2,375</td><td>5.4 ms</td><td>6.0 ms</td><td>7.2 ms</td>
-    <td>15 ms</td><td>17 ms</td>
+    <td>2,375</td><td>5.5 ms</td><td>6.6 ms</td><td>8.9 ms</td>
+    <td>20 ms</td><td>23 ms</td>
     <td>0</td>
   </tr>
   
   <tr>
     <td><span class="mark">(2)</span> pay invoice</td>
-    <td>2,375</td><td>5.3 ms</td><td>5.8 ms</td><td>6.3 ms</td>
-    <td>12 ms</td><td>13 ms</td>
+    <td>2,375</td><td>5.3 ms</td><td>6.3 ms</td><td>7.7 ms</td>
+    <td>17 ms</td><td>22 ms</td>
     <td>0</td>
   </tr>
   
@@ -132,7 +138,7 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border
 
 
 <h2>Over time</h2>
-<svg viewBox="0 0 900 260" role="img" aria-label="response time per second"><line x1="56" y1="16.0" x2="884" y2="16.0" class="grid"/><text x="48" y="20.0" class="eixo" text-anchor="end">12 ms</text><line x1="56" y1="121.0" x2="884" y2="121.0" class="grid"/><text x="48" y="125.0" class="eixo" text-anchor="end">5.9 ms</text><line x1="56" y1="226.0" x2="884" y2="226.0" class="grid"/><text x="48" y="230.0" class="eixo" text-anchor="end">0</text><polyline class="p99" points="56.0,106.3 138.8,113.9 221.6,100.9 304.4,48.2 387.2,119.8 470.0,116.5 552.8,125.8 635.6,16.0 718.4,120.4 801.2,103.6 884.0,110.3"/><polyline class="p50" points="56.0,121.8 138.8,126.9 221.6,126.3 304.4,132.2 387.2,130.5 470.0,131.4 552.8,131.9 635.6,131.2 718.4,131.1 801.2,131.0 884.0,129.5"/><text x="56.0" y="248" class="axis" text-anchor="middle">0s</text><text x="138.8" y="248" class="axis" text-anchor="middle">1s</text><text x="221.6" y="248" class="axis" text-anchor="middle">2s</text><text x="304.4" y="248" class="axis" text-anchor="middle">3s</text><text x="387.2" y="248" class="axis" text-anchor="middle">4s</text><text x="470.0" y="248" class="axis" text-anchor="middle">5s</text><text x="552.8" y="248" class="axis" text-anchor="middle">6s</text><text x="635.6" y="248" class="axis" text-anchor="middle">7s</text><text x="718.4" y="248" class="axis" text-anchor="middle">8s</text><text x="801.2" y="248" class="axis" text-anchor="middle">9s</text><text x="884.0" y="248" class="axis" text-anchor="middle">10s</text></svg>
+<svg viewBox="0 0 900 260" role="img" aria-label="response time per second"><line x1="56" y1="16.0" x2="884" y2="16.0" class="grid"/><text x="48" y="20.0" class="eixo" text-anchor="end">15 ms</text><line x1="56" y1="121.0" x2="884" y2="121.0" class="grid"/><text x="48" y="125.0" class="eixo" text-anchor="end">7.4 ms</text><line x1="56" y1="226.0" x2="884" y2="226.0" class="grid"/><text x="48" y="230.0" class="eixo" text-anchor="end">0</text><polyline class="p99" points="56.0,16.0 138.8,95.4 221.6,121.5 304.4,128.8 387.2,82.0 470.0,40.7 552.8,125.4 635.6,114.4 718.4,129.4 801.2,126.2 884.0,118.2"/><polyline class="p50" points="56.0,134.4 138.8,141.6 221.6,143.5 304.4,150.7 387.2,149.9 470.0,148.7 552.8,149.7 635.6,149.6 718.4,149.7 801.2,149.8 884.0,149.6"/><text x="56.0" y="248" class="axis" text-anchor="middle">0s</text><text x="138.8" y="248" class="axis" text-anchor="middle">1s</text><text x="221.6" y="248" class="axis" text-anchor="middle">2s</text><text x="304.4" y="248" class="axis" text-anchor="middle">3s</text><text x="387.2" y="248" class="axis" text-anchor="middle">4s</text><text x="470.0" y="248" class="axis" text-anchor="middle">5s</text><text x="552.8" y="248" class="axis" text-anchor="middle">6s</text><text x="635.6" y="248" class="axis" text-anchor="middle">7s</text><text x="718.4" y="248" class="axis" text-anchor="middle">8s</text><text x="801.2" y="248" class="axis" text-anchor="middle">9s</text><text x="884.0" y="248" class="axis" text-anchor="middle">10s</text></svg>
 <div class="legend">
   <span><span class="sample" style="background: var(--neutral)"></span>half the responses</span>
   <span><span class="sample" style="background: var(--warning)"></span>99% of the responses</span>
@@ -144,14 +150,16 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border
 <h2>SLO</h2>
 <ul class="sentences slo">
   
-  <li><span class="ok">ok</span><span>Passed: &#34;look up order&#34; answered 95% within 6 ms, within the limit of 150 ms.</span></li>
+  <li><span class="ok">ok</span><span>Passed: &#34;look up order&#34; answered 95% within 7 ms, within the limit of 150 ms.</span></li>
   
-  <li><span class="ok">ok</span><span>Passed: the whole journey answered 95% within 12 ms, within the limit of 400 ms.</span></li>
+  <li><span class="ok">ok</span><span>Passed: &#34;pay invoice&#34; answered 95% within 6 ms, within the limit of 200 ms.</span></li>
+  
+  <li><span class="ok">ok</span><span>Passed: the whole journey answered 95% within 13 ms, within the limit of 2000 ms.</span></li>
+  
+  <li><span class="ok">ok</span><span>Passed: the whole journey answered 99% within 15 ms, within the limit of 5000 ms.</span></li>
   
   <li><span class="ok">ok</span><span>Passed: the whole scenario had the error rate of 0.00%, within the limit of 0.10%.</span></li>
   
-  
-  <li><span class="none">not declared</span><span>steps with no criterion declared (1 of 2): pay invoice</span></li>
   
   <li><span class="none">not declared</span><span>regression: no criterion declared — the gate approves without comparing against the previous run</span></li>
   
@@ -164,18 +172,18 @@ footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border
 
 <h2>How trustworthy the measurement is</h2>
 <ul class="sentences">
-  <li>Every request went out on schedule, so the numbers above reflect the target, not the generator.</li><li>Typical delay to fire: 0.001 ms; worst case: 7.9 ms. The response time already discounts that delay.</li><li>Peak of 8 requests at the same time, with a limit of 20,000.</li>
+  <li>Typical delay to fire: 0.001 ms; worst case: 14 ms. The response time already discounts that delay.</li><li>Peak of 9 requests at the same time, with a limit of 20,000.</li>
 </ul>
 
 <h2>How this number was produced</h2>
 <ul class="sentences">
   <li>Arrival model open: the load does not wait for the target to answer, so a freeze in the target lands in the count.</li>
   <li>Plan: ramp from 50/s to 300/s over 5s</li><li>Plan: steady at 300/s over 5s</li>
-  <li>Mac, darwin/arm64, 10 cores</li><li>braunrate 0.6.0 (go1.26.6), generator and target measured as declared above</li><li>Protocols compiled into this binary: amqp, await, graphql, http, kafka.</li><li>Observed variety: 200 distinct values of invoiceId across 2.375 uses.</li><li>Observed variety: 200 distinct values of subscribers.id across 2.375 uses, between 1.001 and 1.200.</li><li>Observed variety: 1 single value of token across 2.375 uses.</li><li>Auth obtained once and reused by every journey. If the target has caching, rate limiting or sharding by token, this number comes out optimistic.</li>
+  <li>Mac, darwin/arm64, 10 cores</li><li>braunrate dev (go1.26.6), generator and target measured as declared above</li><li>Protocols compiled into this binary: amqp, await, graphql, http, kafka.</li><li>Observed variety: 4 distinct values of invoiceId across 2,375 uses, all starting with &#34;f-100&#34;.</li><li>Observed variety: 4 distinct values of subscribers.id across 2,375 uses, between 1,001 and 1,004.</li><li>Observed variety: 1 single value of token across 2,375 uses.</li><li>Auth obtained once and reused by every journey. If the target has caching, rate limiting or sharding by token, this number comes out optimistic.</li>
 </ul>
 
 <footer>
-  braunrate 0.6.0 — run of 2026-08-17 01:08:11, result format 3.
+  braunrate dev — run of 2026-08-17 13:09:06, result format 4.
   This file opens with no network: it fetches no script, font or external image.
 </footer>
 </main>

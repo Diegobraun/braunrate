@@ -154,7 +154,7 @@ reaches the user is in English, and it is on the
 - [ADRs](docs/adr) — 20 decisions, each with what was refused and the criterion that reopens it
 - [API do modo servidor](docs/api-servidor.md) — one curl example per route
 - [Scenario schema](docs/braunrate.schema.json) — autocomplete and validation in the editor
-- [Example HTML report](docs/exemplo-relatorio.html) — real output of a run that failed the acceptance criterion
+- [Example HTML report](docs/exemplo-relatorio.html) — real output of a run, regenerated from the run itself on every change to the generator
 - [Bateria adversarial](docs/bateria-adversarial.md) — where the tool fails, lies or frustrates
 - [Auditoria de fricção](docs/auditoria-fricao.md) — what the tool demands and does not provide
 - [Medição dos protótipos da Fase 0](docs/medicoes-fase0.md)

@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Diegobraun/braunrate/internal/text"
 )
 
 // Sanity answers, before any SLO is read, whether the result means anything.
@@ -67,7 +69,7 @@ func noJourneyCompleted(document Document, _ DocumentInput) []SanityFinding {
 	return []SanityFinding{{
 		Kind:     "incompleteJourney",
 		Message:  "no journey reached the end, so the scenario never exercised the sequence it declared. Run 'braunrate debug' to see where the iteration stops",
-		Evidence: fmt.Sprintf("%s journeys started, 0 completed", thousands(document.Journey.Started)),
+		Evidence: fmt.Sprintf("%s journeys started, 0 completed", text.Grouped(document.Journey.Started)),
 	}}
 }
 
@@ -117,7 +119,7 @@ func everythingFailed(document Document, _ DocumentInput) []SanityFinding {
 			Kind:    "everythingFailed",
 			Message: fmt.Sprintf("all %d steps failed on 100%% of the requests; the response time above is how long the target took to refuse, not the time of the work the scenario meant to measure", ran),
 			Evidence: fmt.Sprintf("%s requests, %s errors (%s)",
-				thousands(document.Overall.Count), thousands(document.Overall.Errors), dominantClasses(document.Steps)),
+				text.Grouped(document.Overall.Count), text.Grouped(document.Overall.Errors), dominantClasses(document.Steps)),
 		}}
 	}
 	findings := make([]SanityFinding, 0, len(failed))
@@ -125,7 +127,7 @@ func everythingFailed(document Document, _ DocumentInput) []SanityFinding {
 		findings = append(findings, SanityFinding{
 			Kind:     "stepFullyFailed",
 			Message:  fmt.Sprintf("the step %q failed on 100%% of the requests; no successful response entered its measurement", step.Name),
-			Evidence: fmt.Sprintf("%s requests, %s errors (%s)", thousands(step.Count), thousands(step.Errors), dominantClasses([]StepResult{step})),
+			Evidence: fmt.Sprintf("%s requests, %s errors (%s)", text.Grouped(step.Count), text.Grouped(step.Errors), dominantClasses([]StepResult{step})),
 		})
 	}
 	return findings
@@ -151,9 +153,9 @@ func runShorterThanPlan(document Document, input DocumentInput) []SanityFinding 
 	return []SanityFinding{{
 		Kind: "shortRun",
 		Message: fmt.Sprintf("the run stopped at %s with %s of %s requests of the declared profile; the declared load never got applied in full, and what was measured is only the piece that ran",
-			readableDuration(actual), thousands(applied), thousands(input.PlannedRequests)),
+			readableDuration(actual), text.Grouped(applied), text.Grouped(input.PlannedRequests)),
 		Evidence: fmt.Sprintf("declared profile: %s requests in %s; run: %s requests in %s",
-			thousands(input.PlannedRequests), readableDuration(input.PlannedDuration), thousands(applied), readableDuration(actual)),
+			text.Grouped(input.PlannedRequests), readableDuration(input.PlannedDuration), text.Grouped(applied), readableDuration(actual)),
 	}}
 }
 
@@ -171,7 +173,7 @@ func runShorterThanWindow(document Document, input DocumentInput) []SanityFindin
 		Kind: "shortRun",
 		Message: fmt.Sprintf("the run stopped at %s of the declared %s window; the declared load never got applied in full, and what was measured is only the piece that ran",
 			readableDuration(actual), readableDuration(input.PlannedDuration)),
-		Evidence: fmt.Sprintf("%d users in a closed loop, %s journeys started", document.Run.Users, thousands(document.Journey.Started)),
+		Evidence: fmt.Sprintf("%d users in a closed loop, %s journeys started", document.Run.Users, text.Grouped(document.Journey.Started)),
 	}}
 }
 
@@ -212,7 +214,7 @@ func dominantClasses(steps []StepResult) string {
 	})
 	parts := make([]string, 0, len(names))
 	for _, name := range names {
-		parts = append(parts, fmt.Sprintf("%s: %s", name, thousands(total[name])))
+		parts = append(parts, fmt.Sprintf("%s: %s", name, text.Grouped(total[name])))
 	}
 	return strings.Join(parts, ", ")
 }

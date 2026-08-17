@@ -289,3 +289,30 @@ func TestRunThatAppliedAFifthOfTheProfileIsStillInvalid(t *testing.T) {
 		t.Fatal("execução que aplicou um quinto do perfil declarado passou como valida")
 	}
 }
+
+// O valor de severity vai para o JSON e e lido por automacao. Quem escreve
+// severity == "high" nao recebe erro se o valor mudar: recebe zero achados, em
+// silencio. Por isso o valor esta escrito aqui, e nao derivado da constante.
+func TestSeverityIsSpelledTheSameWayForWhoeverReadsTheJSON(t *testing.T) {
+	spelled := map[Severity]string{
+		SeverityHigh:   "high",
+		SeverityMedium: "medium",
+		SeverityLow:    "low",
+	}
+	for value, expected := range spelled {
+		if string(value) != expected {
+			t.Errorf("severity saiu como %q, e automação escrita contra %q para de achar", value, expected)
+		}
+	}
+
+	older := Document{Warnings: []Warning{
+		{Kind: "x", Severity: "alta"}, {Kind: "y", Severity: "media"}, {Kind: "z", Severity: "baixa"},
+	}}
+	older.TranslateOlderValues()
+	for index, expected := range []Severity{SeverityHigh, SeverityMedium, SeverityLow} {
+		if older.Warnings[index].Severity != expected {
+			t.Errorf("resultado gravado antes virou %q; comparar com a execução de ontem é o motivo de guardar resultado",
+				older.Warnings[index].Severity)
+		}
+	}
+}
