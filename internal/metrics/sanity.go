@@ -67,7 +67,7 @@ func noJourneyCompleted(document Document, _ DocumentInput) []SanityFinding {
 	return []SanityFinding{{
 		Kind:     "incompleteJourney",
 		Message:  "no journey reached the end, so the scenario never exercised the sequence it declared. Run 'braunrate debug' to see where the iteration stops",
-		Evidence: fmt.Sprintf("%s jornadas iniciadas, 0 completas", thousands(document.Journey.Started)),
+		Evidence: fmt.Sprintf("%s journeys started, 0 completed", thousands(document.Journey.Started)),
 	}}
 }
 

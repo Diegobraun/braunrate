@@ -153,7 +153,10 @@ func portugueseIn(text string) string {
 		if allowed[lowered] != "" {
 			continue
 		}
-		if slices.Contains(portugueseWords, lowered) {
+		// O plural conta como a mesma palavra: "jornadas" escapou da lista por
+		// um "s" e chegou na tela de quem le em ingles.
+		if slices.Contains(portugueseWords, lowered) ||
+			slices.Contains(portugueseWords, strings.TrimSuffix(lowered, "s")) {
 			return word
 		}
 		if portugueseMarks.MatchString(lowered) {
