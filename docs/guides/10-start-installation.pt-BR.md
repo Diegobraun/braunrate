@@ -1,3 +1,7 @@
+---
+translated_from: 10-start-installation.en.md
+source_hash: 97479367547d
+---
 # Instalação
 
 Três caminhos. O primeiro não exige Go instalado, e é o único que interessa a

@@ -3,6 +3,7 @@ package site_test
 import (
 	"encoding/json"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -50,7 +51,7 @@ func TestEveryScenarioBlockIsAScenarioTheToolAccepts(t *testing.T) {
 // para conferir — e o que envelhece — sao os nomes: chave de topo que deixou de
 // existir e protocolo que saiu do binario.
 func TestEveryFragmentUsesKeysThatStillExist(t *testing.T) {
-	blocks := allBlocks(t, "yaml trecho")
+	blocks := allBlocks(t, "yaml fragment")
 	if len(blocks) == 0 {
 		t.Fatal("nenhum trecho encontrado: o teste não estaria provando nada")
 	}
@@ -91,7 +92,7 @@ func checkSteps(t *testing.T, where string, steps yaml.Node) {
 // fecha a corrente do outro lado: chave que existe no schema e nao chegou na
 // pagina.
 func TestEverySchemaKeyReachesTheReference(t *testing.T) {
-	page, err := site.ReferencePage(root)
+	page, err := site.ReferencePage(root, site.Languages[0])
 	if err != nil {
 		t.Fatalf("a referência não foi gerada: %v", err)
 	}
@@ -143,31 +144,23 @@ func schemaKeys(node any) []string {
 // motivo: ele precisa abrir em rede fechada, e uma fonte ou um script de CDN
 // entrega ao terceiro a lista de quem leu a documentacao.
 func TestThePagesFetchNothingFromTheNetwork(t *testing.T) {
-	destination := t.TempDir()
-	if err := site.Build(root, destination, "teste"); err != nil {
-		t.Fatalf("o site não foi gerado: %v", err)
-	}
-	entries, err := os.ReadDir(destination)
-	if err != nil {
-		t.Fatalf("não consegui ler o site gerado: %v", err)
-	}
+	files := build(t)
 
 	// Uma ancora para o GitHub e o leitor clicando, nao a pagina buscando. O que
 	// nao pode existir e recurso carregado de outro servidor.
 	fetching := regexp.MustCompile(`(?i)(<script[^>]+src="https?:|<img|<iframe|@import|url\(\s*['"]?https?:|<link[^>]+href="https?:` +
 		`|XMLHttpRequest|importScripts|fetch\(\s*['"` + "`" + `]?https?:)`)
+	// O hreflang e endereco declarado para o buscador, nao recurso que a pagina
+	// carrega: ele fica de fora da conta como a ancora para o GitHub fica.
+	alternate := regexp.MustCompile(`<link rel="alternate"[^>]*>\n?`)
+
 	pages := 0
-	for _, entry := range entries {
-		name := entry.Name()
+	for name, content := range files {
 		if !strings.HasSuffix(name, ".html") && !strings.HasSuffix(name, ".css") && !strings.HasSuffix(name, ".js") {
 			continue
 		}
-		content, err := os.ReadFile(filepath.Join(destination, entry.Name()))
-		if err != nil {
-			t.Fatalf("não consegui ler %s: %v", entry.Name(), err)
-		}
-		if found := fetching.FindString(string(content)); found != "" {
-			t.Errorf("%s busca recurso externo: %q", entry.Name(), found)
+		if found := fetching.FindString(alternate.ReplaceAllString(content, "")); found != "" {
+			t.Errorf("%s busca recurso externo: %q", name, found)
 		}
 		pages++
 	}
@@ -177,19 +170,22 @@ func TestThePagesFetchNothingFromTheNetwork(t *testing.T) {
 }
 
 func TestEveryPageHasATitleAndABody(t *testing.T) {
-	pages, err := site.Pages(root)
-	if err != nil {
-		t.Fatalf("não consegui montar as páginas: %v", err)
-	}
-	if len(pages) < 8 {
-		t.Fatalf("o site tem só %d páginas; a estrutura minima tem inicio, instalacao, primeiros passos, conceitos, referência, protocolos, receitas, comandos, problemas e decisões", len(pages))
-	}
-	for _, page := range pages {
-		if strings.TrimSpace(page.Title) == "" || strings.TrimSpace(page.Slug) == "" {
-			t.Errorf("página sem título ou sem endereço: %+v", page)
+	for _, language := range site.Languages {
+		pages, _, err := site.Pages(root, language)
+		if err != nil {
+			t.Fatalf("%s: não consegui montar as páginas: %v", language.Code, err)
 		}
-		if len(page.Markdown) < 200 {
-			t.Errorf("a página %q esta praticamente vazia", page.Slug)
+		if len(pages) < 10 {
+			t.Fatalf("%s: o site tem só %d páginas; a estrutura minima tem inicio, instalacao, primeiros passos, conceitos, protocolos, receitas, comandos, problemas, referência e decisões",
+				language.Code, len(pages))
+		}
+		for _, page := range pages {
+			if strings.TrimSpace(page.Title) == "" || strings.TrimSpace(page.Slug) == "" {
+				t.Errorf("%s: página sem título ou sem endereço: %+v", language.Code, page)
+			}
+			if len(page.Markdown) < 200 {
+				t.Errorf("%s: a página %q esta praticamente vazia", language.Code, page.Slug)
+			}
 		}
 	}
 }
@@ -203,7 +199,7 @@ var fence = regexp.MustCompile("(?s)```([^\n]*)\n(.*?)```")
 
 func allBlocks(t *testing.T, language string) []block {
 	t.Helper()
-	directory := filepath.Join(root, "docs", "guias")
+	directory := filepath.Join(root, "docs", "guides")
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		t.Fatalf("não consegui ler %s: %v", directory, err)
@@ -230,38 +226,30 @@ func allBlocks(t *testing.T, language string) []block {
 // menos aparece em revisao: ninguem clica em tudo. A pagina destino tem que
 // existir, e a ancora tambem.
 func TestEveryInternalLinkResolves(t *testing.T) {
-	destination := t.TempDir()
-	if err := site.Build(root, destination, "teste"); err != nil {
-		t.Fatalf("o site não foi gerado: %v", err)
-	}
-
-	pages := map[string]string{}
-	entries, err := os.ReadDir(destination)
-	if err != nil {
-		t.Fatalf("não consegui ler o site gerado: %v", err)
-	}
-	for _, entry := range entries {
-		if !strings.HasSuffix(entry.Name(), ".html") {
-			continue
-		}
-		content, err := os.ReadFile(filepath.Join(destination, entry.Name()))
-		if err != nil {
-			t.Fatalf("não consegui ler %s: %v", entry.Name(), err)
-		}
-		pages[entry.Name()] = string(content)
-	}
+	pages := build(t)
 
 	link := regexp.MustCompile(`href="([^"]+)"`)
 	checked := 0
 	for name, content := range pages {
+		if !strings.HasSuffix(name, ".html") {
+			continue
+		}
 		for _, match := range link.FindAllStringSubmatch(content, -1) {
 			target := match[1]
-			if strings.HasPrefix(target, "http") || strings.HasPrefix(target, "mailto:") || target == "style.css" {
+			if strings.HasPrefix(target, "http") || strings.HasPrefix(target, "mailto:") {
 				continue
 			}
 			file, anchor, _ := strings.Cut(target, "#")
 			if file == "" {
 				file = name
+			} else {
+				file = path.Join(path.Dir(name), file)
+			}
+			if strings.HasSuffix(file, ".css") || strings.HasSuffix(file, ".js") {
+				if _, exists := pages[file]; !exists {
+					t.Errorf("%s aponta para %q, que o site não publica", name, target)
+				}
+				continue
 			}
 			destinationContent, exists := pages[file]
 			if !exists {
@@ -279,25 +267,41 @@ func TestEveryInternalLinkResolves(t *testing.T) {
 	}
 }
 
+// O site tem duas arvores, e o nome de cada arquivo aqui e o caminho relativo a
+// raiz: "index.html" e o ingles, "pt-BR/index.html" e o portugues.
 func build(t *testing.T) map[string]string {
 	t.Helper()
+	files, _ := buildWithWarnings(t)
+	return files
+}
+
+func buildWithWarnings(t *testing.T) (map[string]string, []string) {
+	t.Helper()
 	destination := t.TempDir()
-	if err := site.Build(root, destination, "teste"); err != nil {
+	warnings, err := site.Build(root, destination, "teste")
+	if err != nil {
 		t.Fatalf("o site não foi gerado: %v", err)
 	}
-	entries, err := os.ReadDir(destination)
+	files := map[string]string{}
+	err = filepath.WalkDir(destination, func(path string, entry os.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		name, err := filepath.Rel(destination, path)
+		if err != nil {
+			return err
+		}
+		files[filepath.ToSlash(name)] = string(content)
+		return nil
+	})
 	if err != nil {
 		t.Fatalf("não consegui ler o site gerado: %v", err)
 	}
-	files := map[string]string{}
-	for _, entry := range entries {
-		content, err := os.ReadFile(filepath.Join(destination, entry.Name()))
-		if err != nil {
-			t.Fatalf("não consegui ler %s: %v", entry.Name(), err)
-		}
-		files[entry.Name()] = string(content)
-	}
-	return files
+	return files, warnings
 }
 
 // A dobra e o que decide se a pessoa fica na pagina, e o numero dela e o mesmo
@@ -305,32 +309,43 @@ func build(t *testing.T) map[string]string {
 // para ele envelhecer sozinho.
 func TestTheFoldSaysWhatWhyAndTheFirstCommand(t *testing.T) {
 	files := build(t)
-	inicio := files["index.html"]
 
-	fold, _, found := strings.Cut(inicio, `<h2 id="comecar"`)
-	if !found {
-		t.Fatal("a página inicial não tem a primeira seção depois da dobra")
-	}
-	for _, esperado := range []string{
-		"Teste de carga que não mente sobre o próprio resultado.",
-		"braunrate demo",
-		"983,0 ms",
-		"3,7 ms",
-		"979,4 ms",
+	for _, fold := range []struct {
+		page, firstSection string
+		expected, jargon   []string
+	}{
+		{
+			page: "index.html", firstSection: `<h2 id="start"`,
+			expected: []string{"Load testing that does not lie about its own result.", "braunrate demo",
+				"972.3 ms", "3.5 ms", "968.8 ms"},
+			jargon: []string{"HDR", "back-pressure", "open arrival model"},
+		},
+		{
+			page: "pt-BR/index.html", firstSection: `<h2 id="comecar"`,
+			expected: []string{"Teste de carga que não mente sobre o próprio resultado.", "braunrate demo",
+				"972,3 ms", "3,5 ms", "968,8 ms"},
+			jargon: []string{"HDR", "back-pressure", "modelo de chegada aberto"},
+		},
 	} {
-		if !strings.Contains(fold, esperado) {
-			t.Errorf("a dobra não traz %q", esperado)
+		page := files[fold.page]
+		above, below, found := strings.Cut(page, fold.firstSection)
+		if !found {
+			t.Fatalf("%s não tem a primeira seção depois da dobra", fold.page)
 		}
-	}
-	for _, jargao := range []string{"HDR", "back-pressure", "modelo de chegada aberto"} {
-		if strings.Contains(fold, jargao) {
-			t.Errorf("a dobra usa %q sem tradução: quem chega não conhece o termo", jargao)
+		for _, expected := range fold.expected {
+			if !strings.Contains(above, expected) {
+				t.Errorf("%s: a dobra não traz %q", fold.page, expected)
+			}
 		}
-	}
-	body := inicio[strings.Index(inicio, `<h2 id="comecar"`):]
-	for _, numero := range []string{"983,0 ms", "3,7 ms", "979,4 ms"} {
-		if !strings.Contains(body, numero) {
-			t.Errorf("a dobra mostra %s e a página não mostra esse número em lugar nenhum", numero)
+		for _, jargon := range fold.jargon {
+			if strings.Contains(above, jargon) {
+				t.Errorf("%s: a dobra usa %q sem tradução: quem chega não conhece o termo", fold.page, jargon)
+			}
+		}
+		for _, number := range fold.expected[2:] {
+			if !strings.Contains(below, number) {
+				t.Errorf("%s: a dobra mostra %s e a página não mostra esse número em lugar nenhum", fold.page, number)
+			}
 		}
 	}
 }
@@ -415,26 +430,30 @@ func themeTokens(t *testing.T, css, opening string) map[string]string {
 // escrita a mao seria a lista que envelhece.
 func TestTheCommandIndexBecomesCards(t *testing.T) {
 	files := build(t)
-	comandos := files["comandos.html"]
-
-	source, err := os.ReadFile(filepath.Join(root, "docs", "guias", "60-guias-comandos.md"))
-	if err != nil {
-		t.Fatalf("não consegui ler o guia de comandos: %v", err)
-	}
-	rows := regexp.MustCompile("(?m)^\\| \\[`([a-z]+)`\\]").FindAllStringSubmatch(string(source), -1)
-	if len(rows) < 10 {
-		t.Fatalf("achei %d comandos na tabela: o teste não estaria provando nada", len(rows))
-	}
-	for _, row := range rows {
-		if !strings.Contains(comandos, `<p class="name"><code>`+row[1]+`</code></p>`) {
-			t.Errorf("o comando %q não virou cartão", row[1])
+	for page, guide := range map[string]string{
+		"commands.html":       "60-guides-commands.en.md",
+		"pt-BR/commands.html": "60-guides-commands.pt-BR.md",
+	} {
+		rendered := files[page]
+		source, err := os.ReadFile(filepath.Join(root, "docs", "guides", guide))
+		if err != nil {
+			t.Fatalf("não consegui ler o guia de comandos: %v", err)
 		}
-	}
-	if strings.Contains(comandos, "COMMAND-CARDS") {
-		t.Error("o marcador dos cartões ficou visível na página")
-	}
-	if strings.Count(comandos, `class="card"`) != len(rows) {
-		t.Errorf("%d cartões para %d comandos", strings.Count(comandos, `class="card"`), len(rows))
+		rows := regexp.MustCompile("(?m)^\\| \\[`([a-z]+)`\\]").FindAllStringSubmatch(string(source), -1)
+		if len(rows) < 10 {
+			t.Fatalf("achei %d comandos na tabela de %s: o teste não estaria provando nada", len(rows), guide)
+		}
+		for _, row := range rows {
+			if !strings.Contains(rendered, `<p class="name"><code>`+row[1]+`</code></p>`) {
+				t.Errorf("%s: o comando %q não virou cartão", page, row[1])
+			}
+		}
+		if strings.Contains(rendered, "COMMAND-CARDS") {
+			t.Errorf("%s: o marcador dos cartões ficou visível na página", page)
+		}
+		if strings.Count(rendered, `class="card"`) != len(rows) {
+			t.Errorf("%s: %d cartões para %d comandos", page, strings.Count(rendered, `class="card"`), len(rows))
+		}
 	}
 }
 
@@ -442,32 +461,40 @@ func TestTheCommandIndexBecomesCards(t *testing.T) {
 // junto, gerado das mesmas paginas.
 func TestSearchTravelsWithTheSite(t *testing.T) {
 	files := build(t)
-	index, exists := files["search-index.js"]
-	if !exists {
-		t.Fatal("o site não publica índice de busca")
-	}
-	payload, found := strings.CutPrefix(strings.TrimSpace(index), "window.SEARCH_INDEX=")
-	if !found {
-		t.Fatal("o índice não declara window.SEARCH_INDEX")
-	}
-	var raw []map[string]string
-	if err := json.Unmarshal([]byte(payload), &raw); err != nil {
-		t.Fatalf("o índice não é JSON: %v", err)
-	}
-	if len(raw) < 50 {
-		t.Fatalf("o índice tem %d entradas para doze páginas", len(raw))
-	}
-
-	pages := map[string]bool{}
-	for _, entry := range raw {
-		pages[entry["p"]] = true
-		if entry["a"] != "" && !strings.Contains(files[entry["p"]], `id="`+entry["a"]+`"`) {
-			t.Errorf("o índice aponta %s#%s, e essa âncora não existe", entry["p"], entry["a"])
+	// Um indice por lingua: um so entregaria resultado em portugues a quem esta
+	// lendo em ingles.
+	for _, directory := range []string{"", "pt-BR/"} {
+		index, exists := files[directory+"search-index.js"]
+		if !exists {
+			t.Fatalf("o site não publica índice de busca em %q", directory)
 		}
-	}
-	for name := range files {
-		if strings.HasSuffix(name, ".html") && !pages[name] {
-			t.Errorf("%s não entrou no índice de busca", name)
+		payload, found := strings.CutPrefix(strings.TrimSpace(index), "window.SEARCH_INDEX=")
+		if !found {
+			t.Fatalf("o índice de %q não declara window.SEARCH_INDEX", directory)
+		}
+		var raw []map[string]string
+		if err := json.Unmarshal([]byte(payload), &raw); err != nil {
+			t.Fatalf("o índice de %q não é JSON: %v", directory, err)
+		}
+		if len(raw) < 50 {
+			t.Fatalf("o índice de %q tem %d entradas para dez páginas", directory, len(raw))
+		}
+
+		pages := map[string]bool{}
+		for _, entry := range raw {
+			pages[entry["p"]] = true
+			if entry["a"] != "" && !strings.Contains(files[directory+entry["p"]], `id="`+entry["a"]+`"`) {
+				t.Errorf("o índice aponta %s%s#%s, e essa âncora não existe", directory, entry["p"], entry["a"])
+			}
+		}
+		for name := range files {
+			file, isThisLanguage := strings.CutPrefix(name, directory)
+			if !isThisLanguage || !strings.HasSuffix(file, ".html") || strings.Contains(file, "/") {
+				continue
+			}
+			if !pages[file] {
+				t.Errorf("%s não entrou no índice de busca", name)
+			}
 		}
 	}
 	if !strings.Contains(files["page.js"], "window.SEARCH_INDEX") {
@@ -483,10 +510,11 @@ func TestEveryPageSaysWhereItComesFrom(t *testing.T) {
 		if !strings.Contains(content, "<footer>") {
 			t.Errorf("%s não tem rodapé", name)
 		}
-		if !strings.Contains(content, "editar esta página") && !strings.Contains(content, "gerada de") {
+		if !strings.Contains(content, "edit this page") && !strings.Contains(content, "generated from") &&
+			!strings.Contains(content, "editar esta página") && !strings.Contains(content, "gerada de") {
 			t.Errorf("%s não diz de onde o conteúdo dela sai", name)
 		}
-		if !strings.Contains(content, "licença MIT") {
+		if !strings.Contains(content, "MIT license") && !strings.Contains(content, "licença MIT") {
 			t.Errorf("%s não traz a licença", name)
 		}
 	}

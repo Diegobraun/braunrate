@@ -1,3 +1,7 @@
+---
+translated_from: 30-guides-concepts.en.md
+source_hash: fb5f0a39ecbc
+---
 # Conceitos
 
 Cinco ideias. Nenhuma delas é teoria: cada uma corresponde a uma linha que
@@ -10,7 +14,7 @@ repetir o número.
 uma decisão sua, declarada no arquivo, e o gerador insiste nela mesmo quando o
 alvo demora:
 
-```yaml trecho
+```yaml fragment
 load:
   profiles:
     - ramp: { from: 100/s, to: 800/s, duration: 5s }
@@ -33,7 +37,7 @@ dois lados na sua máquina com `braunrate demo --with-failure`.
 
 ### O modelo fechado existe, declarado
 
-```yaml trecho
+```yaml fragment
 load:
   model: closed
   users: 200
@@ -50,11 +54,11 @@ congelado por 3 s no meio de 12 s — à esquerda 100/s em modelo aberto, à dir
 10 usuários em laço fechado:
 
 ```
-1.200 requisições, 100 por segundo        850 requisições, 70 por segundo
-metade 6.1 ms | 95% 2.41 s | pior 3.01 s  metade 6.4 ms | 95% 7.0 ms | pior 3.00 s
+1,200 requests, 100 per second             850 requests, 70 per second
+half 6.7 ms | 95% 2.41 s | worst 3.01 s    half 6.9 ms | 95% 7.9 ms | worst 2.96 s
 ```
 
-O 95% caiu de **2,41 s para 7,0 ms**. O laço fechado não errou conta nenhuma: ele
+O 95% caiu de **2,41 s para 7,9 ms**. O laço fechado não errou conta nenhuma: ele
 mediu com precisão um evento que ele mesmo deixou de provocar. Repare também na
 taxa, 100/s contra 70/s — num teste de capacidade, é a carga que deveria ter
 continuado.
@@ -80,34 +84,36 @@ execução real, contra o alvo embutido congelado por 1 s no meio, mostra o tama
 do problema:
 
 ```
-Por passo
-  passo                          requisições    metade       95%       99%     99,9%      pior   erros
-  consultar pedido           (1)      2.375     40 ms    598 ms    954 ms    1.03 s    1.04 s       0
-  pagar fatura               (2)      2.375     40 ms     43 ms     43 ms    1.04 s    1.04 s       0
+Per step
+  step                             requests      half       95%       99%     99.9%     worst  errors
+  look up order              (1)      2,400    5.5 ms    416 ms    900 ms    1.00 s    1.01 s       0
+  pay invoice                (2)      2,400    5.3 ms    7.2 ms     12 ms     15 ms    1.01 s       0
 
-  (1) tempo contado do instante em que a requisição deveria ter partido — inclui
-      qualquer atraso e por isso não esconde travada do alvo.
-  (2) tempo de resposta puro, contado de quando o passo anterior terminou.
+  (1) time counted from the instant the request should have gone out — it includes
+      any delay, and for that reason it does not hide a freeze in the target.
+  (2) plain response time, counted from when the previous step finished. Because
+      that step depends on a value captured before it, it has no scheduled
+      instant of its own. For the honest reading of the journey, use "The whole journey".
 ```
 
-Repare no `pagar fatura`: **43 ms no 95%**, com o alvo congelado por um segundo
+Repare no `pay invoice`: **7,2 ms no 95%**, com o alvo congelado por um segundo
 inteiro. Sozinho, esse número é o mesmo tipo de mentira que uma ferramenta de laço
 fechado produz.
 
 > **Importante** A leitura que vale para quem usa o sistema é **A jornada
 > inteira**, contada do instante agendado. Na mesma execução acima, ela mostra
-> 675 ms.
+> 428 ms.
 
 ## Critério de aceite
 
 É o limite que você declara e que vira código de saída. Quatro escopos:
 
-```yaml trecho
+```yaml fragment
 slo:
-  - consultar pedido: { p95: < 150ms }              # um passo
+  - look up order: { p95: < 150ms }                 # um passo
   - journey: { p95: < 2s, p99: < 5s }               # a espera inteira
   - global: { success: ">= 99.9", throughput: ">= 90/s" }
-  - regression: { journeyP95: "<= 10% pior" }       # contra uma execucao anterior
+  - regression: { journeyP95: "<= 10% worse" }      # contra uma execucao anterior
 ```
 
 O relatório mostra também **o que não foi declarado**, porque um gate que só mede
@@ -115,10 +121,11 @@ partes aprova cada pedaço sem dizer nada sobre a espera inteira:
 
 ```
 SLO
-  ok    Passou: "consultar pedido" respondeu 95% em até 6 ms, dentro do limite de 150 ms.
-  ok    Passou: a jornada inteira respondeu 95% em até 12 ms, dentro do limite de 2000 ms.
-  ok    Passou: o cenário inteiro teve taxa de sucesso de 100.00%, no mínimo de 99.90%.
-  --    regressao: sem critério declarado — o gate aprova sem comparar com a execução anterior
+  FAIL  Failed: "look up order" answered 95% within 416 ms, above the limit of 150 ms.
+  ok    Passed: the whole journey answered 95% within 428 ms, within the limit of 2000 ms.
+  ok    Passed: the whole scenario had the success rate of 100.00%, at the minimum of 99.90%.
+  --    steps with no criterion declared (1 of 2): pay invoice
+  --    regression: no criterion declared — the gate approves without comparing against the previous run
 ```
 
 Nada disso é obrigatório: cenário sem bloco `slo` continua executando e
@@ -130,9 +137,9 @@ Repetir a mesma requisição mil vezes mede o cache do alvo, não o alvo. O
 relatório publica **o que aconteceu**, não o que foi declarado:
 
 ```
-Ambiente
-  100 valores distintos de pedidos.id em 100 usos, todos começando com "CLI-A-"
-  61 valores distintos de pedidos.valor em 100 usos, entre 10 e 89
+Environment
+  4 distinct values of orders.id across 100 uses, between 1,001 and 1,004
+  1 single value of token across 100 uses
 ```
 
 Contagem de distintos responde "um valor ou muitos"; ela não responde **onde** os
@@ -142,9 +149,9 @@ alvo. Por isso a linha traz também a faixa e o prefixo comum.
 Se a fonte tem vários valores e a execução usou um só, o resultado é **inválido**:
 
 ```
-RESULTADO INVÁLIDO: toda a carga caiu numa partição só de pedidos-cadeia; o resto do cluster
-ficou parado e o número não representa produção. Faça a chave da mensagem variar por iteração
-            kafka.particao.pedidos-cadeia tinha 4 valores disponíveis e a execução usou 1, em 60 usos
+INVALID RESULT: the whole load landed on a single partition of orders-chain; the rest of the
+cluster stood still and the number does not represent production. Make the message key vary per iteration
+            kafka.partition.orders-chain had 4 available values and the run used 1, across 60 uses
 ```
 
 Essa regra nasceu de um defeito nosso: a autenticação congelava os dados da
@@ -159,15 +166,15 @@ o que se propôs a medir. Quando a resposta é não, o critério nem chega a ser
 avaliado e o comando sai com **código 3**:
 
 ```
-Resultado inválido: a execução não mediu o que se propôs a medir. Isto não é veredito sobre o
-alvo — é a medição que não vale, e por isso nenhuma regra de SLO foi avaliada.
+Invalid result: the run did not measure what it set out to measure. This is not a verdict on the
+target — it is the measurement that does not hold, and that is why no SLO rule was evaluated.
 
-  - nenhuma jornada chegou ao fim, então o cenário não exercitou a sequência que declarou.
-    Rode 'braunrate debug' para ver onde a iteração para
-    60 jornadas iniciadas, 0 completas
-  - o passo "consultar pedido" falhou em 100% das requisições; nenhuma resposta bem-sucedida
-    entrou na medição dele
-    60 requisições, 60 erros (status: 60)
+  - no journey reached the end, so the scenario never exercised the sequence it declared. Run
+    'braunrate debug' to see where the iteration stops
+    60 journeys started, 0 completed
+  - the step "look up order" failed on 100% of the requests; no successful response entered its
+    measurement
+    60 requests, 60 errors (status: 60)
 ```
 
 Os seis casos que invalidam:

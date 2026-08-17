@@ -10,7 +10,7 @@ import (
 
 const adrDirectory = "docs/adr"
 
-func DecisionsPage(repositoryRoot string) (Page, error) {
+func DecisionsPage(repositoryRoot string, language Language) (Page, error) {
 	directory := filepath.Join(repositoryRoot, adrDirectory)
 	entries, err := os.ReadDir(directory)
 	if err != nil {
@@ -24,16 +24,10 @@ func DecisionsPage(repositoryRoot string) (Page, error) {
 	}
 	sort.Strings(names)
 
+	text := language.Text
 	var markdown strings.Builder
-	markdown.WriteString(`# Decisões
-
-Cada uma registra o que foi decidido, o que foi recusado e o critério que
-reabre a discussão. Os arquivos completos estão em ` + "`docs/adr`" + ` no
-repositório.
-
-| # | decisão |
-|---|---|
-`)
+	fmt.Fprintf(&markdown, "# %s\n\n%s\n\n%s\n|---|---|\n",
+		text.DecisionsTitle, text.DecisionsIntro, text.DecisionsColumns)
 	for _, name := range names {
 		content, err := os.ReadFile(filepath.Join(directory, name))
 		if err != nil {
@@ -47,8 +41,8 @@ repositório.
 		number, decision := splitTitle(title)
 		fmt.Fprintf(&markdown, "| [%s](%s) | %s |\n", number, link, cell(decision))
 	}
-	return Page{Slug: "decisoes", Title: "Decisões", Section: portuguese.Sections["referencia"],
-		Summary:  "As decisões de arquitetura registradas, uma linha cada.",
+	return Page{Slug: "decisions", Title: text.DecisionsTitle, Section: text.Sections["reference"],
+		Summary:  text.DecisionsSummary,
 		Markdown: markdown.String(), Source: adrDirectory}, nil
 }
 

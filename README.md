@@ -62,7 +62,7 @@ go install github.com/Diegobraun/braunrate/cmd/braunrate@latest   # if you alrea
 
 The three paths, the first-run warnings on macOS and Windows, the platform table
 and what is left out are in
-[Installation](https://diegobraun.github.io/braunrate/instalacao.html).
+[Installation](https://diegobraun.github.io/braunrate/installation.html).
 
 ## Language
 
@@ -73,7 +73,13 @@ away from the code that decides to print it.
 
 Translating the messages is possible, and it will be done if there is demand.
 Open an issue saying which language and which surface — terminal, report or web
-interface. The Portuguese site stays; the documentation is bilingual.
+interface.
+
+The documentation is bilingual: English at
+<https://diegobraun.github.io/braunrate/> and Portuguese at
+<https://diegobraun.github.io/braunrate/pt-BR/>. The English page is the source;
+the Portuguese one declares which version of it was translated, and says on the
+page itself when it is behind.
 
 ## State
 

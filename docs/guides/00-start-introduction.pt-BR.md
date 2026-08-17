@@ -1,16 +1,20 @@
+---
+translated_from: 00-start-introduction.en.md
+source_hash: 194636249616
+---
 # braunrate
 
 ```hero
 motto: Teste de carga que não mente sobre o próprio resultado.
 summary: Quando o sistema trava, a maioria das ferramentas para de medir junto — e o relatório sai bonito. O braunrate continua medindo, e mostra o que aconteceu.
 command: braunrate demo
-action: Baixar | instalacao.html
+action: Baixar | installation.html
 action: Ver no GitHub | https://github.com/Diegobraun/braunrate
 facts: binário único | sem runtime para instalar | cenário em YAML versionado
 proof: Mesmo serviço. Mesma travada de 1 segundo.
-side: Ferramenta de laço fechado | 3,7 ms | "está tudo bem"
-side: braunrate | 983,0 ms | "o usuário esperou 983 ms"
-balance: 979,4 ms que a outra ferramenta não contou.
+side: Ferramenta de laço fechado | 3,5 ms | "está tudo bem"
+side: braunrate | 972,3 ms | "o usuário esperou 972 ms"
+balance: 968,8 ms que a outra ferramenta não contou.
 ```
 
 ## Começar
@@ -22,21 +26,21 @@ nenhum antes:
 braunrate demo
 ```
 
-Ainda não tem o binário? [Instalação](instalacao.html) é baixar um arquivo e
+Ainda não tem o binário? [Instalação](installation.html) é baixar um arquivo e
 descompactar; não há runtime para instalar.
 
 A demonstração sobe um serviço de mentira na sua máquina, roda um cenário contra
 ele e explica cada número enquanto eles aparecem. Depois,
-[Primeiros 15 minutos](primeiros-15-minutos.html) leva do zero até o primeiro
+[Primeiros 15 minutos](first-15-minutes.html) leva do zero até o primeiro
 relatório do seu próprio serviço.
 
 | Se você quer | Vá para |
 |---|---|
 | ver a ferramenta funcionando agora | `braunrate demo` |
-| medir o seu serviço | [Primeiros 15 minutos](primeiros-15-minutos.html) |
-| entender o que os números querem dizer | [Conceitos](conceitos.html) |
-| escrever o cenário | [Referência do cenário](referencia.html) |
-| resolver um erro na tela | [Solução de problemas](problemas.html) |
+| medir o seu serviço | [Primeiros 15 minutos](first-15-minutes.html) |
+| entender o que os números querem dizer | [Conceitos](concepts.html) |
+| escrever o cenário | [Referência do cenário](reference.html) |
+| resolver um erro na tela | [Solução de problemas](troubleshooting.html) |
 
 ## Três provas
 
@@ -45,9 +49,9 @@ diferente de um teste de carga produzir um número que não descreve o sistema.
 
 | Prova | Número | O que fica escondido |
 |---|---|---|
-| Alvo congelado por 1 s | 983,0 ms contra 3,7 ms | **Omissão coordenada**: laço fechado para de enviar quando o alvo trava, e a espera some da conta |
-| [GraphQL com erro em 200](protocolos.html#graphql) | 406 erros em 2.844 respostas, todas com status 200 | **Erro classificado por status**: quem lê o código HTTP reporta 0% de erro e critério de aceite verde |
-| [Cadeia assíncrona](protocolos.html#kafka-e-rabbitmq) | 1,2 ms para produzir contra 3,96 s de jornada | **Medir só a produção**: o broker aceita rápido, e o efeito que o usuário espera chega segundos depois |
+| Alvo congelado por 1 s | 972,3 ms contra 3,5 ms | **Omissão coordenada**: laço fechado para de enviar quando o alvo trava, e a espera some da conta |
+| [GraphQL com erro em 200](protocols.html#graphql) | 406 erros em 2.844 respostas, todas com status 200 | **Erro classificado por status**: quem lê o código HTTP reporta 0% de erro e critério de aceite verde |
+| [Cadeia assíncrona](protocols.html#kafka-e-rabbitmq) | 1,2 ms para produzir contra 3,96 s de jornada | **Medir só a produção**: o broker aceita rápido, e o efeito que o usuário espera chega segundos depois |
 
 ### A primeira, em detalhe
 
@@ -56,10 +60,10 @@ alvo, dois modelos de medição:
 
 | Modelo | 99% das respostas em até | Amostras |
 |---|---|---|
-| **braunrate (chegada aberta, tempo contado do instante agendado)** | **983,0 ms** | 600 |
-| Laço fechado (um usuário virtual em sequência, como JMeter e Locust medem) | 3,7 ms | 722 |
+| **braunrate (chegada aberta, tempo contado do instante agendado)** | **972,3 ms** | 600 |
+| Laço fechado (um usuário virtual em sequência, como JMeter e Locust medem) | 3,5 ms | 730 |
 
-São 979,4 ms escondidos pelo laço fechado. Ele não erra por defeito: quando o
+São 968,8 ms escondidos pelo laço fechado. Ele não erra por defeito: quando o
 alvo trava, ele simplesmente para de enviar, e as requisições que deveriam ter
 partido nunca entram na conta. Essa é a omissão coordenada.
 
@@ -69,10 +73,10 @@ deixar de ser honesta, o build quebra:
 ```
 $ go test ./internal/selfcheck/... -v
 === RUN   TestClosedLoopWouldHideThePauseOpenModelShows
-    mesma pausa de 1s no mesmo alvo:
-      modelo aberto (braunrate): p99 983.0 ms sobre 600 amostras
-      laço fechado:              p99 3.7 ms sobre 722 amostras
-      omissão coordenada: 979.4 ms escondidos pelo laço fechado
+    same 1s freeze against the same target:
+      open model (braunrate): p99 972.3 ms over 600 samples
+      closed loop:            p99 3.5 ms over 730 samples
+      coordinated omission: 968.8 ms the closed loop never counted
 --- PASS: TestClosedLoopWouldHideThePauseOpenModelShows (6.01s)
 ```
 
@@ -103,13 +107,13 @@ critério de aceite vira código de saída sem cola no meio.
 2. **Dois públicos, um motor.** YAML declarativo para o caso comum, DSL em Go
    para o complexo — mesmo motor, mesmas métricas, sem reescrita ao migrar.
 3. **Cenário de negócio, não só requisição.** GraphQL medido por operação; Kafka
-   e RabbitMQ com modelo de métrica próprio; passo `aguardar` para medir a cadeia
+   e RabbitMQ com modelo de métrica próprio; passo `await` para medir a cadeia
    assíncrona ponta a ponta.
 
 ## Escopo
 
 **Dentro.** HTTP/HTTPS e REST; GraphQL de primeira classe; Kafka e RabbitMQ
-(produzir e consumir); passo `aguardar` com timeout; correlação, variáveis e
+(produzir e consumir); passo `await` com timeout; correlação, variáveis e
 fluxo de autenticação; CSV com política de consumo e geração sintética com
 semente; perfis de carga e modelo fechado declarado; critério de aceite com
 código de saída; relatório HTML autocontido, JSON, CSV e resumo de terminal;
@@ -121,7 +125,7 @@ broker, sempre com a credencial fora do arquivo.
 de time; agendamento e persistência além dos arquivos; LDAP, FTP, SMTP, JMS
 clássico; competir em taxa bruta com wrk; execução distribuída na v1.
 
-**Limitações conhecidas**, com o motivo em [Decisões](decisoes.html): protocolo
+**Limitações conhecidas**, com o motivo em [Decisões](decisions.html): protocolo
 fora da lista exige mudança neste repositório; um único token para a execução
 inteira; e o tempo dos passos seguintes ao primeiro é tempo de serviço, não tempo
 corrigido — a leitura honesta da jornada está no bloco "A jornada inteira".

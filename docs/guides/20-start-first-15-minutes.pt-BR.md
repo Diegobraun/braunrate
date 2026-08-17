@@ -1,3 +1,7 @@
+---
+translated_from: 20-start-first-15-minutes.en.md
+source_hash: 46a4cc6bb454
+---
 # Primeiros 15 minutos
 
 Do zero até um relatório do seu serviço, lido e entendido. Se você nunca fez
@@ -15,23 +19,23 @@ serviço de mentira em `127.0.0.1:8080`, roda um cenário contra ele e explica c
 número:
 
 ```
-[2/3] Rodando: 100 requisições por segundo, durante 5s.
+[2/3] Running: 100 requests per second, for 5s.
 
-      Essa é a taxa: o braunrate dispara nesse ritmo esteja o serviço rápido ou
-      lento — como usuários de verdade fazem. Ferramentas que esperam a
-      resposta anterior antes de mandar a próxima aliviam o sistema justamente
-      quando ele está sofrendo.
+      That is the rate: braunrate fires at that pace whether the service is
+      fast or slow — the way real users do. Tools that wait for the previous
+      response before sending the next one go easy on the system exactly when
+      it is struggling.
 
-[3/3] Pronto. O que os números dizem:
+[3/3] Done. What the numbers say:
 
-  500 requisições em 5s, 100 por segundo, 0.00% de erro
-  Metade das respostas em até 6.5 ms; 95% em até 7.1 ms; a pior levou 16 ms
+  500 requests in 5s, 100 per second, 0.00% of them errors
+  Half the responses within 6.5 ms; 95% within 7.0 ms; the worst took 14 ms
 
-  ok    Passou: o cenário inteiro teve taxa de erro de 0.00%, dentro do limite de 0.10%.
+  ok    Passed: the whole scenario had the error rate of 0.00%, within the limit of 0.10%.
 ```
 
 Ao terminar, dois arquivos ficam no diretório: `demo.yaml`, o cenário comentado
-que acabou de rodar, e `demo-relatorio.html`, o relatório completo. Abra os dois.
+que acabou de rodar, e `demo-report.html`, o relatório completo. Abra os dois.
 
 Para ver a ferramenta pegando um problema de verdade:
 
@@ -42,7 +46,7 @@ braunrate demo --with-failure
 ## 2. Entender o que você acabou de ler
 
 Cinco ideias, e nenhuma outra é necessária para começar. Cada uma tem a
-explicação longa em [Conceitos](conceitos.html):
+explicação longa em [Conceitos](concepts.html):
 
 | Ideia | Em uma linha |
 |---|---|
@@ -84,15 +88,21 @@ Uma iteração, um usuário, sem carga. Mostra o que foi enviado, o que voltou, 
 que foi capturado e onde parou:
 
 ```
-passo 1 — consultar pedido   [ok em 3.4ms]
-  requisicao: GET /pedidos/1001
-              Authorization: Bearer token-… (14 caracteres)
-  resposta:   status 200, 95 bytes
-  corpo:      {"id":"1001","status":"ABERTO","ultimaFatura":{"id":"f-1001","status":"ABERTA"}}
-  capturou:
-    faturaId = f-1001
+step 1 — look up order   [ok in 6.8ms]
+  request:    GET /orders/1001
+              Authorization: Bearer test-t… (10 characters)
+  response:   status 200, 91 bytes
+  body:       {"id":"1001","status":"OPEN","lastInvoice":{"id":"f-1001","amount":199.90,"status":"OPEN"}}
+  captured:
+    invoiceId = f-1001
 
-Iteração completa: 2 passos, tudo certo. Para rodar com carga:
+step 2 — pay invoice   [ok in 6.1ms]
+  request:    POST /invoices/f-1001/pay
+              Authorization: Bearer test-t… (10 characters)
+  response:   status 200, 63 bytes
+  body:       {"id":"f-1001","status":"PAID","paidAt":"2026-08-15T00:00:00Z"}
+
+Iteration complete: 2 steps, all good. To run it with load:
   braunrate execute cenario.yaml
 ```
 
@@ -105,7 +115,7 @@ Iteração completa: 2 passos, tudo certo. Para rodar com carga:
 Sem bloco `slo` o cenário roda e reporta, mas não serve de gate. Com ele, o
 código de saída decide:
 
-```yaml trecho
+```yaml fragment
 slo:
   - consultar pedido: { p95: < 150ms }   # um passo
   - journey: { p95: < 2s }               # a espera inteira, ponta a ponta
@@ -150,4 +160,4 @@ braunrate execute cenario.yaml -quiet -result=saida.json
 | `3` | resultado inválido: a execução não mediu o que se propôs a medir |
 
 A receita completa, com comparação contra a execução anterior, está em
-[Receitas](receitas.html#fazer-o-teste-reprovar-o-build).
+[Receitas](recipes.html#fazer-o-teste-reprovar-o-build).

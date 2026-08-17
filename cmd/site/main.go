@@ -16,9 +16,13 @@ func main() {
 	destination := flag.String("out", "site", "directory the site is written to")
 	flag.Parse()
 
-	if err := site.Build(*root, *destination, build.Version); err != nil {
+	warnings, err := site.Build(*root, *destination, build.Version)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
+	}
+	for _, warning := range warnings {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", warning)
 	}
 	fmt.Fprintf(os.Stderr, "site at %s\n", *destination)
 }

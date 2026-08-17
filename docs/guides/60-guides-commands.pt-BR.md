@@ -1,3 +1,7 @@
+---
+translated_from: 60-guides-commands.en.md
+source_hash: 20bdc218afba
+---
 # Comandos
 
 `braunrate` sem argumento nenhum mostra o caminho; `braunrate help` lista tudo.
@@ -5,17 +9,18 @@ Toda opção aceita `-h`, e opção escrita errada recebe a certa de volta:
 
 ```
 $ braunrate target -addr :8080
-"-addr" não existe. Você quis dizer "-address"?
+"-addr" does not exist. Did you mean "-address"?
 
     braunrate target -address :8080
 
-Todas as opções: braunrate target -h
+Every option: braunrate target -h
 ```
 
 | Comando | Para quê |
 |---|---|
 | [`demo`](#demo) | ver a ferramenta funcionando sem preparar nada |
 | [`new`](#new) | escrever um esqueleto de cenário |
+| [`migrate`](#migrate) | converter um cenário no formato em português |
 | [`import`](#import) | partir de um `curl` ou de um plano de JMeter |
 | [`record`](#record) | gravar o fluxo navegando |
 | [`validate`](#validate) | conferir o arquivo sem executar |
@@ -39,7 +44,7 @@ Sobe o alvo embutido, escreve o cenário que vai rodar, executa e explica cada
 número. Não precisa de arquivo, de alvo nem de segundo terminal. `--with-failure`
 roda contra um alvo que trava no meio e mede a mesma travada de duas formas.
 
-Deixa `demo.yaml` e `demo-relatorio.html` no diretório atual, e diz que deixou.
+Deixa `demo.yaml` e `demo-report.html` no diretório atual, e diz que deixou.
 
 ## `new`
 
@@ -49,6 +54,19 @@ braunrate new cenario.yaml
 
 Escreve um esqueleto comentado, e nunca sobrescreve arquivo existente. É o
 caminho raro: quase sempre é melhor importar um `curl`.
+
+## `migrate`
+
+```bash
+braunrate migrate cenario.yaml
+braunrate migrate ./cenarios -dry-run
+braunrate migrate cenario.yaml -output cenario-en.yaml
+```
+
+Converte um cenário escrito no formato em português, substituído na 0.6.0,
+preservando comentários e a ordem das chaves. Lista linha por linha o que mudou,
+deixa o original como `.bak` e recusa arquivo já convertido. Nenhuma mudança de
+comportamento: é renomeação.
 
 ## `import`
 
@@ -81,9 +99,9 @@ coisa:
 > junto com o plano.
 
 ```
-atenção: o grupo "Usuarios" declara 50 threads, rampa de 30s, 300s de duração: número de
-thread não vira taxa de chegada, porque thread só envia depois da resposta anterior. O bloco
-'carga' ficou com um chute; troque pela taxa que você quer sustentar (requisições por segundo)
+warning: the group "Usuarios" declares 50 threads, ramp of 30s, 300s of duration: a thread count does not
+turn into an arrival rate, because a thread only sends after the previous response. The 'load' block
+came out as a guess; swap it for the rate you want to sustain (requests per second)
 ```
 
 ## `record`
@@ -98,15 +116,15 @@ e na segunda execução o cenário quebra. Este faz quatro coisas a mais, e decl
 cada uma:
 
 ```
-descartei 1 domínio de fora (example.com)
-descartei 1 recurso estático
-3 requisições viraram 2 passos em cenario.yaml
-2 valor(es) observado(s) de pedidos_id em cenario-pedidos-id.csv
-atenção: o campo "senha" do corpo virou ${senha}: rode com SENHA=... no ambiente, para não versionar credencial
-atenção: a sequência gravada é uma passagem só: o mix de produção tem outras proporções entre as rotas
-atenção: os números de carga e de slo são um chute de partida, não uma medição: ajuste antes de usar como gate
+dropped 1 an outside domain (example.com)
+dropped 1 a static asset
+3 requests became 2 steps in cenario.yaml
+2 observed value(s) of pedidos_id in cenario-pedidos-id.csv
+warning: the field "senha" of the body became ${senha}: run with SENHA=... in the environment, so a credential does not get versioned
+warning: the recorded sequence is a single pass: the production mix has other proportions between the routes
+warning: the load and slo numbers are a starting guess, not a measurement: tune them before using this as a gate
 
-Próximo passo, antes de qualquer carga:
+Next step, before any load:
   braunrate debug cenario.yaml
 ```
 
@@ -127,11 +145,11 @@ Lê e confere sem executar nada. Diz quantas iterações o cenário produziria, 
 o que você não declarou, e aponta o próximo passo:
 
 ```
-Cenário válido: "Jornada com criterios novos", 2 passos, 500 iterações em 5s.
-Atenção: o gate mede 2 passos isolados e deixa de fora a jornada inteira, que é o tempo que o usuário espera.
-    declare também:  - jornada: { p95: < 2s, p99: < 5s }
+Valid scenario: "Jornada com criterios novos", 2 steps, 500 iterations in 5s.
+Warning: the gate measures 2 isolated steps and leaves out the whole journey, which is the wait the user feels.
+    declare it too:  - journey: { p95: < 2s, p99: < 5s }
 
-Antes de rodar a carga, veja se o cenário faz o que você espera:
+Before running the load, check that the scenario does what you expect:
   braunrate debug cenario.yaml
 ```
 
@@ -146,30 +164,29 @@ variável e onde parou. É onde a correlação quebrada aparece, antes dos dez
 minutos de carga e não depois:
 
 ```
-$ braunrate debug examples/jornada-autenticada.yaml
-depurando "Jornada de cobrança" contra http://127.0.0.1:8080: 1 usuário, 1 iteração, sem carga
+$ braunrate debug examples/authenticated-journey.yaml
+debugging "Billing journey" against http://127.0.0.1:8080: 1 user, 1 iteration, no load
 
-passo 1 — consultar pedido   [ok em 4.1ms]
-  requisição: GET /pedidos/1001
-              Authorization: Bearer token-… (14 caracteres)
-  resposta:   status 200, 95 bytes
-  corpo:      {"id":"1001","status":"ABERTO","ultimaFatura":{"id":"f-1001","valor":199.90,"status":"ABERTA"}}
-  capturou:
-    faturaId = f-1001
+step 1 — look up order   [ok in 6.8ms]
+  request:    GET /orders/1001
+              Authorization: Bearer test-t… (10 characters)
+  response:   status 200, 91 bytes
+  body:       {"id":"1001","status":"OPEN","lastInvoice":{"id":"f-1001","amount":199.90,"status":"OPEN"}}
+  captured:
+    invoiceId = f-1001
 
-passo 2 — pagar fatura   [ok em 4ms]
-  requisição: POST /faturas/f-1001/pagar
-              Authorization: Bearer token-… (14 caracteres)
-              Content-Type: application/json
-              corpo: {"valor":199.9}
-  resposta:   status 200, 63 bytes
-  corpo:      {"id":"f-1001","status":"PAGA","pagoEm":"2026-08-15T00:00:00Z"}
+step 2 — pay invoice   [ok in 6.1ms]
+  request:    POST /invoices/f-1001/pay
+              Authorization: Bearer test-t… (10 characters)
+  response:   status 200, 63 bytes
+  body:       {"id":"f-1001","status":"PAID","paidAt":"2026-08-15T00:00:00Z"}
 
-variáveis no fim da iteração
-  assinantes.id = 1001
+variables at the end of the iteration
+  invoiceId = f-1001
+  token = test-token
 
-Iteração completa: 2 passos, tudo certo. Para rodar com carga:
-  braunrate execute examples/jornada-autenticada.yaml
+Iteration complete: 2 steps, all good. To run it with load:
+  braunrate execute examples/authenticated-journey.yaml
 ```
 
 ## `execute`
@@ -186,7 +203,7 @@ braunrate execute cenario.yaml -quiet
 | `-result <arquivo.json>` | grava o documento de resultado, que é o que `compare` e `report` leem depois |
 | `-html <arquivo.html>` | relatório autocontido, que abre em rede fechada e sobrevive anexado em ticket |
 | `-csv <arquivo.csv>` | uma linha por passo, para planilha |
-| `-baseline <arquivo.json>` | execução anterior, para as regras de `regressao` |
+| `-baseline <arquivo.json>` | execução anterior, para as regras de `regression` |
 | `-max-concurrent <n>` | máximo de requisições simultâneas antes de desistir de disparar |
 | `-late-threshold <dur>` | a partir daqui o gerador conta como não tendo sustentado a taxa |
 | `-quiet` | não imprime progresso nem a dica de próximo passo |
@@ -218,11 +235,11 @@ braunrate serve -addr 127.0.0.1:8080 -dir ./cenarios
 ```
 
 ```
-braunrate serve em http://127.0.0.1:8080, servindo cenários de ./cenarios
-Sem autenticação e sem TLS: qualquer um que alcance esta porta pode disparar carga contra os alvos dos cenários.
-Foi feito para rodar em 127.0.0.1. Expor em outra interface é outra decisão, e ela ainda não foi tomada.
+braunrate serve at http://127.0.0.1:8080, serving scenarios from ./cenarios
+No authentication and no TLS: anyone who reaches this port can fire load at the targets of the scenarios.
+It was made to run on 127.0.0.1. Exposing it on another interface is a separate decision, and it has not been made.
 
-Para ver o que ele está servindo:
+To see what it is serving:
   curl http://127.0.0.1:8080/scenarios
 ```
 
@@ -252,12 +269,12 @@ braunrate ui -addr 127.0.0.1:8080 -dir ./cenarios -open=false
 ```
 
 ```
-braunrate ui em http://127.0.0.1:8080, editando os cenários de ./cenarios
-Sem autenticação e sem TLS: qualquer um que alcance esta porta pode disparar carga contra os alvos dos cenários.
-Foi feito para rodar em 127.0.0.1. Expor em outra interface é outra decisão, e ela ainda não foi tomada.
-Gravação ligada: quem alcançar esta porta pode alterar os arquivos de cenário de ./cenarios.
+braunrate ui at http://127.0.0.1:8080, editing the scenarios in ./cenarios
+No authentication and no TLS: anyone who reaches this port can fire load at the targets of the scenarios.
+It was made to run on 127.0.0.1. Exposing it on another interface is a separate decision, and it has not been made.
+Writing enabled: whoever reaches this port can change the scenario files in ./cenarios.
 
-Abra no navegador:
+Open it in the browser:
   http://127.0.0.1:8080
 ```
 
@@ -269,7 +286,7 @@ toda tela.
 > **Importante** A interface é um editor do arquivo, não um formulário que gera
 > um. O texto que você salva é o que o terminal lê, com os comentários que você
 > escreveu, e editar o arquivo por fora continua valendo. O motivo está em
-> [ADR 0018](decisoes.html).
+> [ADR 0018](decisions.html).
 
 `-open=false` não abre o navegador sozinho, para quem roda em terminal remoto ou
 não quer que a janela suba.
@@ -289,12 +306,12 @@ do gerador; medir o teto contra o alvo completo mediria o par gerador+alvo.
 
 | Rota | Credencial |
 |---|---|
-| `/pedidos`, `/pedidos/{id}` | não pede: é o passo que o `braunrate new` escreve, e ele roda de primeira |
-| `/faturas/{id}`, `/graphql` | pedem token obtido em `POST /auth/token` |
-| `/auth/token`, `/saude` | não pedem |
+| `/orders`, `/orders/{id}` | não pede: é o passo que o `braunrate new` escreve, e ele roda de primeira |
+| `/invoices/{id}`, `/graphql` | pedem token obtido em `POST /auth/token` |
+| `/auth/token`, `/health` | não pedem |
 
-> **Dica** Para exercitar a jornada autenticada, aponte um passo para `/faturas`
-> e declare o bloco `autenticacao` — é o que os exemplos do repositório fazem.
+> **Dica** Para exercitar a jornada autenticada, aponte um passo para `/invoices`
+> e declare o bloco `auth` — é o que os exemplos do repositório fazem.
 
 ## `version`
 
@@ -303,10 +320,10 @@ braunrate version
 ```
 
 ```
-braunrate 0.5.0
+braunrate 0.6.0
 commit: e1dca9c279e1ec653ea52cec1f4325e04ec21599
-data: 2026-08-16T17:01:38Z
-protocolos compilados: [aguardar amqp graphql http kafka]
+date: 2026-08-17T02:01:38Z
+compiled protocols: [amqp await graphql http kafka]
 ```
 
 Os protocolos compilados aparecem porque dois binários com a mesma versão

@@ -114,3 +114,57 @@ cabe, e as das fases seguintes.
   ano-mês-dia tem uma leitura só.
 - **Reversibilidade**: alta.
 - **Toca o usuário**: sim, no cabeçalho do relatório.
+
+## 9. O site em duas linguas, com o ingles na raiz
+
+- **Decisão**: o inglês fica em `/` e o português em `/pt-BR/`, com o mesmo nome
+  de arquivo nas duas árvores. Registrada em
+  [ADR 0020](adr/0020-site-bilingue.md).
+- **Alternativa**: detectar a língua do navegador e redirecionar, ou publicar as
+  duas línguas na mesma página.
+- **Por que esta**: quem chega sem escolher nada cai no texto que vale, e o
+  seletor de língua troca de idioma sem trocar de página porque o endereço é o
+  mesmo dos dois lados.
+- **Reversibilidade**: baixa. Os endereços das páginas mudaram de português para
+  inglês (`instalacao.html` virou `installation.html`), e link de fora do
+  repositório quebra.
+- **Toca o usuário**: sim, em quem tinha uma página da documentação salva.
+
+## 10. A tradução declara de onde saiu, e a build avisa quando ela atrasa
+
+- **Decisão**: o guia em português carrega `translated_from` e `source_hash` no
+  cabeçalho; a build recalcula o hash do original, avisa no terminal quando
+  diverge e a página abre com uma tarja dizendo isso ao leitor.
+- **Alternativa**: reprovar a build, ou não conferir nada.
+- **Por que esta**: reprovar transformaria toda edição no original em edição
+  obrigatória nas duas línguas, e o efeito seria parar de editar o original.
+  Não conferir nada é o estado natural de todo site bilíngue, e é o motivo pelo
+  qual documentação traduzida tem fama ruim.
+- **Reversibilidade**: alta.
+- **Toca o usuário**: sim, quando a tarja aparece.
+
+## 11. A moldura do site é o único catálogo de mensagens do projeto
+
+- **Decisão**: menu, rodapé, paginação, rótulos da busca e títulos das páginas
+  geradas vivem em uma tabela por língua, em `internal/site/language.go`.
+- **Alternativa**: duplicar o gerador por língua, ou manter a moldura só em
+  inglês nas duas árvores.
+- **Por que esta**: a Fase 1 recusou catálogo de mensagens porque lá a língua é
+  configuração de quem executa. Aqui a língua é o conteúdo da página: a página
+  em português com menu em inglês seria metade traduzida.
+- **Reversibilidade**: alta.
+- **Toca o usuário**: sim, na moldura da página em português.
+
+## 12. Página gerada tem moldura traduzida e conteúdo em inglês
+
+- **Decisão**: a referência do cenário e a página de decisões existem nas duas
+  línguas, com o texto ao redor traduzido e o conteúdo em inglês — as descrições
+  saem do schema, e os títulos saem dos ADRs.
+- **Alternativa**: traduzir o schema e os ADRs, ou publicar as duas páginas só
+  em inglês.
+- **Por que esta**: o schema é o arquivo que o editor lê durante a escrita do
+  cenário, e ele é inglês desde o ADR 0019; traduzi-lo criaria uma segunda
+  descrição livre para divergir. Os ADRs são registro interno, e a tabela de
+  camadas já os deixou em português.
+- **Reversibilidade**: alta.
+- **Toca o usuário**: sim: as duas páginas dizem isso na própria introdução.

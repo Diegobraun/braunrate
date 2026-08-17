@@ -1,4 +1,4 @@
-// Package site turns the guides in docs/guias into the published site. The
+// Package site turns the guides in docs/guides into the published site. The
 // content lives in the repository and travels through pull request like the
 // code does; the site is a projection of it, never a second copy that someone
 // has to remember to update.
@@ -6,7 +6,9 @@ package site
 
 import (
 	"bytes"
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -29,7 +31,10 @@ var stylesheet string
 //go:embed page.js
 var script string
 
-const guidesDirectory = "docs/guias"
+const (
+	guidesDirectory = "docs/guides"
+	baseURL         = "https://diegobraun.github.io/braunrate/"
+)
 
 type Page struct {
 	Slug     string
@@ -42,101 +47,65 @@ type Page struct {
 	Hero   *Hero
 	// Pagina cujo indice proprio ja esta no corpo, como a grade de comandos.
 	WithoutContents bool
+	// Traducao que saiu de uma versao anterior do original.
+	Stale bool
 }
 
-// O texto da moldura vive junto, e nao espalhado pelo gerador: e ele que muda
-// quando a pagina muda de lingua, e uma frase perdida dentro de uma funcao e
-// uma frase que ninguem acha na hora de traduzir.
-type chrome struct {
-	Sections       map[string]string
-	Search         string
-	SearchLabel    string
-	SearchHint     string
-	Placeholder    string
-	Theme          string
-	OnThisPage     string
-	Pages          string
-	Previous       string
-	Next           string
-	EditThisPage   string
-	GeneratedFrom  string
-	Repository     string
-	License        string
-	Copy           string
-	Copied         string
-	CopyByHand     string
-	LightTheme     string
-	DarkTheme      string
-	UseLightTheme  string
-	UseDarkTheme   string
-	TypeToSearch   string
-	NothingFound   string
-	CalloutClasses map[string]string
-}
-
-var portuguese = chrome{
-	Sections: map[string]string{
-		"comecar":    "Começar",
-		"guias":      "Guias",
-		"referencia": "Referência",
-	},
-	Search:        "buscar",
-	SearchLabel:   "Buscar na documentação",
-	SearchHint:    "navega · <kbd>enter</kbd> abre · <kbd>esc</kbd> fecha",
-	Placeholder:   "buscar na documentação",
-	Theme:         "tema",
-	OnThisPage:    "Nesta página",
-	Pages:         "Páginas",
-	Previous:      "anterior",
-	Next:          "próxima",
-	EditThisPage:  "editar esta página",
-	GeneratedFrom: "gerada de",
-	Repository:    "repositório",
-	License:       "licença MIT",
-	Copy:          "copiar",
-	Copied:        "copiado",
-	CopyByHand:    "copie à mão",
-	LightTheme:    "claro",
-	DarkTheme:     "escuro",
-	UseLightTheme: "Usar tema claro",
-	UseDarkTheme:  "Usar tema escuro",
-	TypeToSearch:  "Digite para buscar nas {pages} páginas.",
-	NothingFound:  "Nada encontrado para “{term}”.",
-	CalloutClasses: map[string]string{
-		"Nota": "note", "Atenção": "warning", "Importante": "important", "Dica": "tip",
-	},
-}
-
-func Build(repositoryRoot, destination string, version string) error {
-	pages, err := Pages(repositoryRoot)
-	if err != nil {
-		return err
-	}
+// Build escreve as duas linguas e devolve os avisos de tradução atrasada. A
+// build nao reprova por causa deles: texto que envelheceu ainda ajuda mais do
+// que pagina que sumiu, e a propria pagina diz ao leitor o que aconteceu.
+func Build(repositoryRoot, destination string, version string) ([]string, error) {
 	if err := os.MkdirAll(destination, 0o755); err != nil {
-		return fmt.Errorf("could not create %s: %w", destination, err)
+		return nil, fmt.Errorf("could not create %s: %w", destination, err)
 	}
 	highlight, err := highlightStyles()
 	if err != nil {
-		return fmt.Errorf("could not generate the syntax highlighting: %w", err)
+		return nil, fmt.Errorf("could not generate the syntax highlighting: %w", err)
 	}
+	for name, content := range map[string]string{"style.css": stylesheet + highlight, "page.js": script} {
+		if err := os.WriteFile(filepath.Join(destination, name), []byte(content), 0o644); err != nil {
+			return nil, fmt.Errorf("could not write %s: %w", name, err)
+		}
+	}
+
+	var warnings []string
+	for _, language := range Languages {
+		pages, stale, err := Pages(repositoryRoot, language)
+		if err != nil {
+			return nil, err
+		}
+		warnings = append(warnings, stale...)
+		if err := writeLanguage(destination, language, pages, version); err != nil {
+			return nil, err
+		}
+	}
+	// GitHub Pages serves through Jekyll unless told otherwise, and Jekyll
+	// silently drops files it does not understand.
+	return warnings, os.WriteFile(filepath.Join(destination, ".nojekyll"), nil, 0o644)
+}
+
+func writeLanguage(destination string, language Language, pages []Page, version string) error {
+	directory := filepath.Join(destination, language.Directory)
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		return fmt.Errorf("could not create %s: %w", directory, err)
+	}
+	// Um indice por lingua: um so entregaria resultado em portugues a quem esta
+	// lendo em ingles, e o trecho levaria para uma pagina que ele nao consegue
+	// ler.
 	index, err := searchIndex(pages)
 	if err != nil {
 		return fmt.Errorf("could not build the search index: %w", err)
 	}
-	for name, content := range map[string]string{
-		"style.css": stylesheet + highlight, "page.js": script, "search-index.js": index,
-	} {
-		if err := os.WriteFile(filepath.Join(destination, name), []byte(content), 0o644); err != nil {
-			return fmt.Errorf("could not write %s: %w", name, err)
-		}
+	if err := os.WriteFile(filepath.Join(directory, "search-index.js"), []byte(index), 0o644); err != nil {
+		return fmt.Errorf("could not write the search index: %w", err)
 	}
-	for index, page := range pages {
+	for position, page := range pages {
 		source := page.Markdown
-		cards, stripped, hasCards := commandCards(source)
+		cards, stripped, hasCards := commandCards(source, language.Text)
 		if hasCards {
 			source = stripped
 		}
-		body, err := renderMarkdown(source)
+		body, err := renderMarkdown(source, language.Text)
 		if err != nil {
 			return fmt.Errorf("%s: %w", page.Slug, err)
 		}
@@ -147,14 +116,20 @@ func Build(repositoryRoot, destination string, version string) error {
 			// tela so.
 			page.WithoutContents = true
 		}
-		content := layout(page, pages, index, body, version)
-		if err := os.WriteFile(filepath.Join(destination, fileOf(page, index)), []byte(content), 0o644); err != nil {
+		if page.Stale {
+			body = staleNotice(language) + body
+		}
+		content := layout(language, page, pages, position, body, version)
+		if err := os.WriteFile(filepath.Join(directory, fileOf(page, position)), []byte(content), 0o644); err != nil {
 			return fmt.Errorf("could not write %s: %w", page.Slug, err)
 		}
 	}
-	// GitHub Pages serves through Jekyll unless told otherwise, and Jekyll
-	// silently drops files it does not understand.
-	return os.WriteFile(filepath.Join(destination, ".nojekyll"), nil, 0o644)
+	return nil
+}
+
+func staleNotice(language Language) string {
+	return fmt.Sprintf("<aside class=\"note note-warning\"><p class=\"label\">%s</p><p>%s</p></aside>\n",
+		html.EscapeString(language.Text.StaleLabel), html.EscapeString(language.Text.StaleNotice))
 }
 
 func fileOf(page Page, index int) string {
@@ -164,55 +139,76 @@ func fileOf(page Page, index int) string {
 	return page.Slug + ".html"
 }
 
-func Pages(repositoryRoot string) ([]Page, error) {
-	written, err := guides(repositoryRoot)
+// Pages devolve as paginas da lingua e os avisos de tradução atrasada.
+func Pages(repositoryRoot string, language Language) ([]Page, []string, error) {
+	written, warnings, err := guides(repositoryRoot, language)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	reference, err := ReferencePage(repositoryRoot)
+	reference, err := ReferencePage(repositoryRoot, language)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	decisions, err := DecisionsPage(repositoryRoot)
+	decisions, err := DecisionsPage(repositoryRoot, language)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return append(written, reference, decisions), nil
+	return append(written, reference, decisions), warnings, nil
 }
 
 // O nome do arquivo decide ordem e secao; o primeiro titulo decide o nome da
 // pagina. Declarar as duas coisas seria o caminho para menu e titulo
-// discordarem.
-func guides(repositoryRoot string) ([]Page, error) {
+// discordarem. O sufixo decide a lingua, e o resto do nome e o mesmo nas duas:
+// e assim que o seletor sabe para onde ir sem uma tabela de equivalencias.
+func guides(repositoryRoot string, language Language) ([]Page, []string, error) {
 	directory := filepath.Join(repositoryRoot, guidesDirectory)
 	entries, err := os.ReadDir(directory)
 	if err != nil {
-		return nil, fmt.Errorf("could not read %s: %w", directory, err)
+		return nil, nil, fmt.Errorf("could not read %s: %w", directory, err)
 	}
 	var names []string
 	for _, entry := range entries {
-		if strings.HasSuffix(entry.Name(), ".md") {
+		if strings.HasSuffix(entry.Name(), language.Suffix) {
 			names = append(names, entry.Name())
 		}
 	}
 	sort.Strings(names)
+	if len(names) == 0 {
+		return nil, nil, fmt.Errorf("no guide ends in %q in %s", language.Suffix, directory)
+	}
 
+	var warnings []string
 	pages := make([]Page, 0, len(names))
 	for _, name := range names {
 		content, err := os.ReadFile(filepath.Join(directory, name))
 		if err != nil {
-			return nil, fmt.Errorf("could not read %s: %w", name, err)
+			return nil, nil, fmt.Errorf("could not read %s: %w", name, err)
 		}
-		text := string(content)
+		front, text, err := frontMatter(string(content), name)
+		if err != nil {
+			return nil, nil, err
+		}
+		stale := false
+		if !language.Source {
+			stale, err = behindTheSource(repositoryRoot, name, front)
+			if err != nil {
+				return nil, nil, err
+			}
+			if stale {
+				warnings = append(warnings, fmt.Sprintf(
+					"%s was translated from an older %s: run the translation again and update source_hash",
+					name, front.From))
+			}
+		}
 		title, found := firstHeading(text)
 		if !found {
-			return nil, fmt.Errorf("%s does not start with a '# ' heading", name)
+			return nil, nil, fmt.Errorf("%s does not start with a '# ' heading", name)
 		}
-		section, slug := sectionAndSlug(name)
+		section, slug := sectionAndSlug(name, language)
 		hero, text := extractHero(text)
 		page := Page{
 			Slug: slug, Title: title, Section: section, Summary: summary(text),
-			Markdown: text, Source: guidesDirectory + "/" + name, Hero: hero,
+			Markdown: text, Source: guidesDirectory + "/" + name, Hero: hero, Stale: stale,
 		}
 		if hero != nil {
 			page.Summary = hero.Motto
@@ -220,16 +216,71 @@ func guides(repositoryRoot string) ([]Page, error) {
 		}
 		pages = append(pages, page)
 	}
-	return pages, nil
+	return pages, warnings, nil
 }
 
-func sectionAndSlug(fileName string) (string, string) {
-	name := strings.TrimSuffix(fileName, ".md")
+type translated struct {
+	From string
+	Hash string
+}
+
+var frontMatterBlock = regexp.MustCompile(`(?s)\A---\n(.*?)\n---\n`)
+
+// Traducao sem origem declarada e traducao que ninguem consegue conferir: seis
+// meses depois ninguem lembra de qual versao ela saiu, e o leitor nao tem como
+// saber se o que esta lendo ainda vale.
+func frontMatter(content, name string) (translated, string, error) {
+	match := frontMatterBlock.FindStringSubmatch(content)
+	if match == nil {
+		if strings.HasSuffix(name, english.Suffix) {
+			return translated{}, content, nil
+		}
+		return translated{}, "", fmt.Errorf(
+			"%s has no front matter: a translation declares translated_from and source_hash", name)
+	}
+	var front translated
+	for _, line := range strings.Split(match[1], "\n") {
+		key, value, found := strings.Cut(line, ":")
+		if !found {
+			continue
+		}
+		switch strings.TrimSpace(key) {
+		case "translated_from":
+			front.From = strings.TrimSpace(value)
+		case "source_hash":
+			front.Hash = strings.TrimSpace(value)
+		}
+	}
+	if front.From == "" || front.Hash == "" {
+		return translated{}, "", fmt.Errorf(
+			"%s declares %q and %q; a translation needs translated_from and source_hash",
+			name, front.From, front.Hash)
+	}
+	return front, content[len(match[0]):], nil
+}
+
+func behindTheSource(repositoryRoot, name string, front translated) (bool, error) {
+	content, err := os.ReadFile(filepath.Join(repositoryRoot, guidesDirectory, front.From))
+	if err != nil {
+		return false, fmt.Errorf("%s was translated from %s, which does not exist: %w", name, front.From, err)
+	}
+	return SourceHash(content) != front.Hash, nil
+}
+
+// Doze caracteres: o suficiente para nao colidir entre dez arquivos, e curto o
+// bastante para caber no cabecalho sem virar ruido.
+func SourceHash(content []byte) string {
+	sum := sha256.Sum256(content)
+	return hex.EncodeToString(sum[:])[:12]
+}
+
+func sectionAndSlug(fileName string, language Language) (string, string) {
+	name := strings.TrimSuffix(fileName, language.Suffix)
 	parts := strings.SplitN(name, "-", 3)
 	if len(parts) < 3 {
-		return portuguese.Sections["guias"], strings.Join(parts[1:], "-")
+		return language.Text.Sections["guides"], strings.Join(parts[1:], "-")
 	}
-	return portuguese.Sections[parts[1]], parts[2]
+	return language.Text.Sections[parts[1]], parts[2]
 }
 
 func firstHeading(markdown string) (string, bool) {
@@ -261,7 +312,7 @@ func summary(markdown string) string {
 // "propsitos" na barra de endereco.
 var headingLine = regexp.MustCompile(`(?m)^(#{2,3}) +(.+?)\s*$`)
 
-func renderMarkdown(source string) (string, error) {
+func renderMarkdown(source string, text chrome) (string, error) {
 	source = headingLine.ReplaceAllStringFunc(source, func(line string) string {
 		parts := headingLine.FindStringSubmatch(line)
 		return fmt.Sprintf("%s %s {#%s}", parts[1], parts[2], slugify(parts[2]))
@@ -269,8 +320,8 @@ func renderMarkdown(source string) (string, error) {
 	converter := goldmark.New(
 		goldmark.WithExtensions(
 			extension.Table,
-			// Em classe, com as duas paletas geradas em realce.go: cor embutida na
-			// tag so permite uma paleta, e ela ficava escura no tema claro.
+			// Em classe, com as duas paletas geradas em highlight.go: cor embutida
+			// na tag so permite uma paleta, e ela ficava escura no tema claro.
 			highlighting.NewHighlighting(highlighting.WithFormatOptions(chromahtml.WithClasses(true))),
 		),
 		goldmark.WithParserOptions(parser.WithAttribute()),
@@ -279,7 +330,7 @@ func renderMarkdown(source string) (string, error) {
 	if err := converter.Convert([]byte(source), &rendered); err != nil {
 		return "", err
 	}
-	return decorate(rendered.String()), nil
+	return decorate(rendered.String(), text), nil
 }
 
 var (
@@ -287,15 +338,12 @@ var (
 	callout    = regexp.MustCompile(`(?s)<blockquote>\s*<p><strong>([^<]+)</strong>(.*?)</blockquote>`)
 )
 
-// A classe do aviso e a mesma nas duas linguas; o que muda e a palavra que o
-// autor escreve no markdown. Sem a tabela, a folha precisaria de um seletor por
-// lingua para pintar a mesma tarja.
-func decorate(page string) string {
+func decorate(page string, text chrome) string {
 	page = headingTag.ReplaceAllString(page,
-		`<$1$2>$4 <a class="anchor" href="#$3" aria-label="link para esta seção">#</a></$1>`)
+		fmt.Sprintf(`<$1$2>$4 <a class="anchor" href="#$3" aria-label=%q>#</a></$1>`, text.AnchorLabel))
 	return callout.ReplaceAllStringFunc(page, func(found string) string {
 		parts := callout.FindStringSubmatch(found)
-		class, known := portuguese.CalloutClasses[parts[1]]
+		class, known := text.CalloutClasses[parts[1]]
 		if !known {
 			return found
 		}
@@ -304,7 +352,8 @@ func decorate(page string) string {
 	})
 }
 
-func layout(page Page, pages []Page, index int, body, version string) string {
+func layout(language Language, page Page, pages []Page, index int, body, version string) string {
+	text := language.Text
 	title := page.Title + " — braunrate"
 	if page.Title == "braunrate" {
 		title = "braunrate"
@@ -312,17 +361,18 @@ func layout(page Page, pages []Page, index int, body, version string) string {
 
 	hero := ""
 	if page.Hero != nil {
-		hero = page.Hero.render(portuguese)
+		hero = page.Hero.render(text)
 	}
+	file := fileOf(page, index)
 
 	return fmt.Sprintf(`<!doctype html>
-<html lang="pt-BR">
+<html lang="%s">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>%s</title>
 <meta name="description" content="%s">
-<link rel="stylesheet" href="style.css">
+%s<link rel="stylesheet" href="%sstyle.css">
 <script>
 // Antes da primeira pintura: escolher o tema depois dela pisca a pagina inteira.
 (function () {
@@ -342,6 +392,7 @@ window.SITE_TEXT = %s
     %s <kbd>/</kbd>
   </button>
   <button type="button" class="theme" id="theme" aria-label="%s">%s</button>
+  <a class="language" href="%s" hreflang="%s" lang="%s">%s</a>
   <a class="repository" href="https://github.com/Diegobraun/braunrate">GitHub</a>
 </header>
 <div class="page">
@@ -360,16 +411,49 @@ window.SITE_TEXT = %s
   </div>
 </div>
 <script src="search-index.js"></script>
-<script src="page.js"></script>
+<script src="%spage.js"></script>
 </body>
 </html>
-`, html.EscapeString(title), html.EscapeString(page.Summary), pageText(portuguese),
-		html.EscapeString(version), html.EscapeString(portuguese.SearchLabel), portuguese.Search,
-		html.EscapeString(portuguese.UseDarkTheme), portuguese.Theme,
-		html.EscapeString(portuguese.Sections["referencia"]),
-		menu(pages, index), hero, body, pagination(pages, index), tableOfContents(page),
-		footer(page, version), html.EscapeString(portuguese.SearchLabel),
-		html.EscapeString(portuguese.Placeholder), portuguese.SearchHint)
+`, language.Code, html.EscapeString(title), html.EscapeString(page.Summary),
+		alternates(file), language.toRoot(), pageText(text),
+		html.EscapeString(version), html.EscapeString(text.SearchLabel), text.Search,
+		html.EscapeString(text.UseDarkTheme), text.Theme,
+		otherLanguageHref(language, file), language.other().Code, language.other().Code, text.OtherLanguage,
+		html.EscapeString(text.Sections["reference"]),
+		menu(pages, index), hero, body, pagination(pages, index, text), tableOfContents(page, text),
+		footer(page, version, text), html.EscapeString(text.SearchLabel),
+		html.EscapeString(text.Placeholder), text.SearchHint, language.toRoot())
+}
+
+// O seletor troca de lingua sem trocar de pagina: quem esta lendo protocolos em
+// ingles cai em protocolos em portugues, e nao na pagina inicial.
+func otherLanguageHref(language Language, file string) string {
+	other := language.other()
+	if other.Directory == "" {
+		return "../" + file
+	}
+	return other.Directory + "/" + file
+}
+
+// Sem hreflang o buscador trata as duas arvores como paginas concorrentes, e
+// escolhe uma. O x-default aponta para o ingles porque e dele que as outras
+// saem.
+func alternates(file string) string {
+	// A pagina inicial e o proprio diretorio: anunciar "/index.html" ao lado de
+	// "/" daria ao buscador dois enderecos para a mesma pagina.
+	if file == "index.html" {
+		file = ""
+	}
+	var written strings.Builder
+	for _, language := range Languages {
+		address := baseURL + file
+		if language.Directory != "" {
+			address = baseURL + language.Directory + "/" + file
+		}
+		fmt.Fprintf(&written, "<link rel=\"alternate\" hreflang=%q href=%q>\n", language.Code, address)
+	}
+	fmt.Fprintf(&written, "<link rel=\"alternate\" hreflang=\"x-default\" href=%q>\n", baseURL+file)
+	return written.String()
 }
 
 // O script e o mesmo nas duas linguas, e o que ele escreve na tela vem daqui.
@@ -388,18 +472,18 @@ func pageText(text chrome) string {
 
 // Pagina escrita a mao convida a edicao; pagina gerada diz de onde ela sai,
 // porque editar o HTML dela nao mudaria nada no proximo build.
-func footer(page Page, version string) string {
+func footer(page Page, version string, text chrome) string {
 	origin := fmt.Sprintf(`<a href="https://github.com/Diegobraun/braunrate/edit/main/%s">%s</a>`,
-		html.EscapeString(page.Source), portuguese.EditThisPage)
+		html.EscapeString(page.Source), text.EditThisPage)
 	if !strings.HasSuffix(page.Source, ".md") {
 		origin = fmt.Sprintf(`%s <a href="https://github.com/Diegobraun/braunrate/blob/main/%s"><code>%s</code></a>`,
-			portuguese.GeneratedFrom, html.EscapeString(page.Source), html.EscapeString(page.Source))
+			text.GeneratedFrom, html.EscapeString(page.Source), html.EscapeString(page.Source))
 	}
 	return fmt.Sprintf(`<footer>
   <p><a href="https://github.com/Diegobraun/braunrate">%s</a> · %s</p>
   <p class="right">braunrate %s · <a href="https://github.com/Diegobraun/braunrate/blob/main/LICENSE">%s</a></p>
 </footer>
-`, portuguese.Repository, origin, html.EscapeString(version), portuguese.License)
+`, text.Repository, origin, html.EscapeString(version), text.License)
 }
 
 func menu(pages []Page, index int) string {
@@ -424,16 +508,16 @@ func menu(pages []Page, index int) string {
 	return written.String()
 }
 
-func pagination(pages []Page, index int) string {
+func pagination(pages []Page, index int, text chrome) string {
 	var written strings.Builder
-	fmt.Fprintf(&written, "    <nav class=\"pagination\" aria-label=%q>\n", portuguese.Pages)
+	fmt.Fprintf(&written, "    <nav class=\"pagination\" aria-label=%q>\n", text.Pages)
 	if index > 0 {
 		fmt.Fprintf(&written, "      <a class=\"previous\" href=%q><span>%s</span>%s</a>\n",
-			fileOf(pages[index-1], index-1), portuguese.Previous, html.EscapeString(pages[index-1].Title))
+			fileOf(pages[index-1], index-1), text.Previous, html.EscapeString(pages[index-1].Title))
 	}
 	if index+1 < len(pages) {
 		fmt.Fprintf(&written, "      <a class=\"next\" href=%q><span>%s</span>%s</a>\n",
-			fileOf(pages[index+1], index+1), portuguese.Next, html.EscapeString(pages[index+1].Title))
+			fileOf(pages[index+1], index+1), text.Next, html.EscapeString(pages[index+1].Title))
 	}
 	written.WriteString("    </nav>\n")
 	return written.String()
@@ -441,22 +525,22 @@ func pagination(pages []Page, index int) string {
 
 var sectionHeading = regexp.MustCompile(`(?m)^(##|###) +(.+)$`)
 
-func tableOfContents(page Page) string {
+func tableOfContents(page Page, text chrome) string {
 	matches := sectionHeading.FindAllStringSubmatch(page.Markdown, -1)
 	if page.WithoutContents || len(matches) < 3 {
 		return ""
 	}
 	var written strings.Builder
 	fmt.Fprintf(&written, "  <aside class=\"contents\" aria-label=%q>\n    <p class=\"section\">%s</p>\n    <ol>\n",
-		portuguese.OnThisPage, portuguese.OnThisPage)
+		text.OnThisPage, text.OnThisPage)
 	for _, match := range matches {
 		level := "level-2"
 		if match[1] == "###" {
 			level = "level-3"
 		}
-		text := strings.TrimSpace(match[2])
+		heading := strings.TrimSpace(match[2])
 		fmt.Fprintf(&written, "      <li class=%q><a href=\"#%s\">%s</a></li>\n",
-			level, slugify(text), html.EscapeString(plain(text)))
+			level, slugify(heading), html.EscapeString(plain(heading)))
 	}
 	written.WriteString("    </ol>\n  </aside>\n")
 	return written.String()
@@ -465,26 +549,3 @@ func tableOfContents(page Page) string {
 var markup = regexp.MustCompile("`|\\*\\*|\\*|_")
 
 func plain(text string) string { return markup.ReplaceAllString(text, "") }
-
-var accents = strings.NewReplacer(
-	"á", "a", "à", "a", "â", "a", "ã", "a", "ä", "a",
-	"é", "e", "ê", "e", "è", "e", "í", "i", "î", "i", "ì", "i",
-	"ó", "o", "ô", "o", "õ", "o", "ò", "o", "ö", "o",
-	"ú", "u", "û", "u", "ù", "u", "ü", "u", "ç", "c", "ñ", "n",
-)
-
-func slugify(text string) string {
-	var written strings.Builder
-	previousDash := false
-	for _, character := range accents.Replace(strings.ToLower(plain(text))) {
-		switch {
-		case character >= 'a' && character <= 'z', character >= '0' && character <= '9':
-			written.WriteRune(character)
-			previousDash = false
-		case !previousDash && written.Len() > 0:
-			written.WriteRune('-')
-			previousDash = true
-		}
-	}
-	return strings.TrimSuffix(written.String(), "-")
-}

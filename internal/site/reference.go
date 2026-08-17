@@ -64,29 +64,24 @@ func (kind jsonType) String() string {
 	return kind.names[0]
 }
 
-func ReferencePage(repositoryRoot string) (Page, error) {
+func ReferencePage(repositoryRoot string, language Language) (Page, error) {
 	root, err := readSchema(repositoryRoot)
 	if err != nil {
 		return Page{}, err
 	}
+	text := language.Text
 	var markdown strings.Builder
-	markdown.WriteString(`# Referência do cenário
-
-Esta página e gerada de ` + "`docs/braunrate.schema.json`" + `, o mesmo arquivo que
-o seu editor usa para completar as chaves. Chave que o braunrate aceita e não
-aparece aqui reprova o build.
-
-`)
-	writeBlock(&markdown, root, root, "Topo do arquivo", 2)
+	fmt.Fprintf(&markdown, "# %s\n\n%s\n\n", text.ReferenceTitle, text.ReferenceIntro)
+	writeBlock(&markdown, root, root, text.ReferenceTop, 2, text)
 	for _, name := range sortedNames(root.Definitions) {
 		definition := root.Definitions[name]
 		if len(shapeProperties(definition)) == 0 {
 			continue
 		}
-		writeBlock(&markdown, root, definition, "`"+name+"`", 2)
+		writeBlock(&markdown, root, definition, "`"+name+"`", 2, text)
 	}
-	return Page{Slug: "referencia", Title: "Referência do cenário", Section: portuguese.Sections["referencia"],
-		Summary:  "Todas as chaves do arquivo de cenário, geradas do schema.",
+	return Page{Slug: "reference", Title: text.ReferenceTitle, Section: text.Sections["reference"],
+		Summary:  text.ReferenceSummary,
 		Markdown: markdown.String(), Source: schemaPath}, nil
 }
 
@@ -102,7 +97,7 @@ func readSchema(repositoryRoot string) (schemaNode, error) {
 	return root, nil
 }
 
-func writeBlock(out *strings.Builder, root, node schemaNode, path string, level int) {
+func writeBlock(out *strings.Builder, root, node schemaNode, path string, level int, text chrome) {
 	properties := shapeProperties(node)
 	fmt.Fprintf(out, "%s %s\n\n", strings.Repeat("#", level), path)
 	if node.Description != "" {
@@ -112,11 +107,11 @@ func writeBlock(out *strings.Builder, root, node schemaNode, path string, level 
 		return
 	}
 
-	out.WriteString("| chave | tipo | obrigatória | o que faz | exemplo |\n|---|---|---|---|---|\n")
+	fmt.Fprintf(out, "%s\n|---|---|---|---|---|\n", text.ReferenceColumns)
 	for _, name := range sortedNames(properties) {
 		property := resolve(root, properties[name])
 		fmt.Fprintf(out, "| `%s` | %s | %s | %s | %s |\n",
-			name, kindOf(root, property), required(node, name),
+			name, kindOf(root, property, text), required(node, name, text),
 			cell(property.Description), example(property))
 	}
 	out.WriteString("\n")
@@ -125,7 +120,7 @@ func writeBlock(out *strings.Builder, root, node schemaNode, path string, level 
 	// sem descer nela, "durante" e "ca" ficariam de fora da referencia.
 	for _, name := range sortedNames(properties) {
 		for _, nested := range inlineShapes(properties[name]) {
-			writeBlock(out, root, nested, path+"."+name, min(level+1, 5))
+			writeBlock(out, root, nested, path+"."+name, min(level+1, 5), text)
 		}
 	}
 }
@@ -178,52 +173,41 @@ func resolve(root, node schemaNode) schemaNode {
 	return target
 }
 
-func kindOf(root, node schemaNode) string {
+func kindOf(root, node schemaNode, text chrome) string {
 	switch {
 	case len(node.Enum) > 0:
-		return "`" + strings.Join(literals(node.Enum), "` ou `") + "`"
+		return "`" + strings.Join(literals(node.Enum), "`"+text.ReferenceEitherOr+"`") + "`"
 	case node.Type.String() == "array" && node.Items != nil:
-		return "lista de " + shapeName(*node.Items)
+		return text.ReferenceListOf + " " + shapeName(*node.Items, text)
 	case node.Type.String() != "":
-		return translated(node.Type.String())
+		return typeName(node.Type.String(), text)
 	case len(node.OneOf) > 0 || len(node.AnyOf) > 0:
-		return "forma curta ou objeto"
+		return text.ReferenceShort
 	}
-	return "objeto"
+	return text.ReferenceObject
 }
 
-func shapeName(node schemaNode) string {
+func shapeName(node schemaNode, text chrome) string {
 	if node.Reference != "" {
 		return "`" + strings.TrimPrefix(node.Reference, "#/$defs/") + "`"
 	}
-	return translated(node.Type.String())
+	return typeName(node.Type.String(), text)
 }
 
-func translated(jsonType string) string {
-	switch jsonType {
-	case "string":
-		return "texto"
-	case "integer":
-		return "inteiro"
-	case "number":
-		return "numero"
-	case "boolean":
-		return "sim ou não"
-	case "object":
-		return "objeto"
-	case "array":
-		return "lista"
+func typeName(jsonType string, text chrome) string {
+	if name, known := text.ReferenceTypes[jsonType]; known {
+		return name
 	}
 	return jsonType
 }
 
-func required(parent schemaNode, name string) string {
+func required(parent schemaNode, name string, text chrome) string {
 	for _, declared := range parent.Required {
 		if declared == name {
-			return "sim"
+			return text.ReferenceRequired[0]
 		}
 	}
-	return "nao"
+	return text.ReferenceRequired[1]
 }
 
 func example(node schemaNode) string {

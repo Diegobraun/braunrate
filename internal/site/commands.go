@@ -12,12 +12,14 @@ import (
 // existe segunda lista de comandos para alguem esquecer de atualizar.
 var (
 	indexRow      = regexp.MustCompile(`(?m)^\| \[` + "`" + `([^` + "`" + `]+)` + "`" + `\]\(#([^)]+)\) \| ([^|]+) \|\s*$`)
-	indexTable    = regexp.MustCompile(`(?m)^\| Comando \| Para quê \|\n\|[-| ]+\|\n(\|.*\|\n)+`)
 	commandSample = regexp.MustCompile("(?s)\n## `%s`\n+```[a-z]*\n([^\n]+)\n")
 )
 
-func commandCards(markdown string) (string, string, bool) {
-	table := indexTable.FindString(markdown)
+// O cabecalho da tabela e a unica parte dela que muda de lingua, e por isso ele
+// entra pela tabela de moldura em vez de estar escrito no padrao.
+func commandCards(markdown string, text chrome) (string, string, bool) {
+	header := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(text.CommandColumns) + `\n\|[-| ]+\|\n(\|.*\|\n)+`)
+	table := header.FindString(markdown)
 	if table == "" {
 		return "", markdown, false
 	}

@@ -1,3 +1,7 @@
+---
+translated_from: 70-guides-troubleshooting.en.md
+source_hash: f4e6fd7c45d7
+---
 # Solução de problemas
 
 Esta página lista os erros mais comuns pelo texto que aparece na tela, a causa de
@@ -7,12 +11,12 @@ cada um e o que fazer. Todas as mensagens citadas são saída real da ferramenta
 |---|---|
 | [`connection refused`](#o-alvo-nao-respondeu) | o alvo não está no ar, ou o endereço está errado |
 | [`status 401` ou `403` em tudo](#todas-as-requisicoes-voltam-401-ou-403) | o cenário não declara autenticação |
-| [`Resultado inválido`, código 3](#resultado-invalido-e-codigo-de-saida-3) | a execução não mediu o que se propôs a medir |
-| [`não sei de onde vem ${...}`](#referencia-a-variavel-sem-origem) | referência sem origem declarada |
-| [`a variável de ambiente X não está definida`](#variavel-de-ambiente-nao-definida) | falta a variável, ou falta um valor de reserva |
-| [`senha literal no cenário`](#segredo-escrito-no-arquivo) | credencial escrita no arquivo |
-| [`chave desconhecida no topo do cenário`](#chave-desconhecida) | erro de digitação, ou chave que não existe |
-| [`certificado assinado por CA que esta máquina não conhece`](#certificado-de-ca-interna) | falta declarar a CA interna |
+| [`Invalid result`, código 3](#resultado-invalido-e-codigo-de-saida-3) | a execução não mediu o que se propôs a medir |
+| [`I do not know where ${...} comes from`](#referencia-a-variavel-sem-origem) | referência sem origem declarada |
+| [`the environment variable X is not set`](#variavel-de-ambiente-nao-definida) | falta a variável, ou falta um valor de reserva |
+| [`literal password in the scenario`](#segredo-escrito-no-arquivo) | credencial escrita no arquivo |
+| [`unknown key at the top of the scenario`](#chave-desconhecida) | erro de digitação, ou chave que não existe |
+| [`certificate signed by a CA this machine does not know`](#certificado-de-ca-interna) | falta declarar a CA interna |
 | [tempos do passo 2 baixos demais](#os-tempos-do-segundo-passo-parecem-baixos-demais) | do segundo passo em diante o tempo é de serviço |
 | [aviso de que nada varia](#o-relatorio-avisa-que-nenhum-valor-varia) | o cenário manda sempre a mesma requisição |
 | [o sistema bloqueia o binário](#o-macos-ou-o-windows-bloqueiam-o-binario) | não há assinatura de código |
@@ -22,12 +26,14 @@ cada um e o que fazer. Todas as mensagens citadas são saída real da ferramenta
 ## O alvo não respondeu
 
 ```
-passo 1 — get pedidos 1   [FALHOU em 2.9ms]
-  requisição: GET /pedidos/1
-  problema:   falha de rede
+step 1 — get orders 1   [FAILED in 3.5ms]
+  request:    GET /orders/1
+  problem:    network failure
               connection refused
 
-Ninguém atendeu em http://127.0.0.1:8080. Confira se o serviço está no ar e se o endereço está certo.
+Nobody answered at http://127.0.0.1:9. Check that the service is up and that the address is right.
+If you do not have a service to test yet, start the built-in one in another terminal:
+  braunrate target
 ```
 
 **Causa.** Nada está escutando no endereço declarado em `alvo`.
@@ -45,24 +51,25 @@ braunrate target -latency=5ms
 ## Todas as requisições voltam 401 ou 403
 
 ```
-  resposta:   status 401, 37 bytes
-  corpo:      {"erro":"token ausente ou inválido"}
-  problema:   status HTTP inesperado
+  response:   status 401, 36 bytes
+  body:       {"error":"missing or invalid token"}
+  problem:    unexpected HTTP status
               status 401
 
-O alvo recusou por credencial, e o cenário não declara autenticação nenhuma.
+The target refused for lack of a credential, and the scenario declares no auth
+at all.
 ```
 
-**Causa.** O alvo exige credencial e o cenário não tem bloco `autenticacao`.
+**Causa.** O alvo exige credencial e o cenário não tem bloco `auth`.
 
 **Solução.** Declare como o token é obtido. O braunrate faz o login uma vez, na
 preparação, e injeta o token em todos os passos:
 
-```yaml trecho
+```yaml fragment
 auth:
   type: token
   obtain:
-    http: { method: POST, path: /auth/token, body: { usuario: ana } }
+    http: { method: POST, path: /auth/token, body: { user: ana } }
     capture: { token: $.access_token }
 ```
 
@@ -75,7 +82,7 @@ requisição de obtenção do token e o valor que foi capturado.
 propôs a medir. Nenhuma regra de critério de aceite chega a ser avaliada.
 
 **Solução.** A própria mensagem diz qual dos
-[seis casos](conceitos.html#resultado-invalido) aconteceu. Os dois mais comuns:
+[seis casos](concepts.html#resultado-invalido) aconteceu. Os dois mais comuns:
 
 - **nenhuma jornada chegou ao fim.** Algum passo falha sempre. Rode
   `braunrate debug` para ver onde a iteração para.
@@ -89,15 +96,16 @@ propôs a medir. Nenhuma regra de critério de aceite chega a ser avaliada.
 ## Referência a variável sem origem
 
 ```
-erro no cenário: cenario.yaml:11:24: não sei de onde vem ${faturald}.
-    disponíveis: faturas.faturaId, tenant
-    declare de onde ela vem:
-      variaveis: { faturald: valor }                 # fixa no cenario
-      variaveis: { faturald: "${FATURALD:-reserva}" }   # do ambiente, com reserva
-      captura: { faturald: $.campo }                 # de uma resposta anterior
+error in the scenario: cenario.yaml:7:26: I do not know where ${faturald} comes from.
+    declare where it comes from:
+      variables: { faturald: value }                # fixed in the scenario
+      variables: { faturald: "${FATURALD:-fallback}" }  # from the environment, with a fallback
+      capture: { faturald: $.field }                # from an earlier response
+      data: { orders: { file: orders.csv } }  # and then ${orders.faturald}
+    an UPPERCASE name comes from the environment with nothing to declare: ${FATURALD}
 ```
 
-**Causa.** A referência não vem de `variaveis`, de `dados`, de uma `captura`
+**Causa.** A referência não vem de `variables`, de `data`, de uma `capture`
 anterior nem do ambiente em CAIXA ALTA.
 
 **Solução.** Corrija o nome, ou declare a origem. A recusa existe porque antes
@@ -107,9 +115,9 @@ branco, o alvo respondia 401 ou 404, e nada na saída ligava uma coisa à outra.
 ## Variável de ambiente não definida
 
 ```
-erro no cenário: cenario.yaml:5:24: taxa inválida: "${TAXA}/s" (use por exemplo 50/s)
-    a variável de ambiente TAXA não está definida, então este campo ficou com a referência crua.
-    rode com TAXA=... , ou declare um padrão no arquivo: ${TAXA:-valor}
+error in the scenario: cenario.yaml:5:23: invalid rate: "${TAXA}/s" (use for example 50/s)
+    the environment variable TAXA is not set, so this field kept the raw reference.
+    run with TAXA=... , or declare a default in the file: ${TAXA:-value}
 ```
 
 **Causa.** O campo referencia uma variável que não existe no ambiente e não tem
@@ -124,10 +132,10 @@ TAXA=100 braunrate execute cenario.yaml
 ## Segredo escrito no arquivo
 
 ```
-erro no cenário: homolog.yaml:6:62: senha literal no cenário: credencial nunca vai para o arquivo, porque o arquivo vai para o repositório.
-    troque por:  senha: ${BROKER_SENHA}
-    e rode com:  BROKER_SENHA=... braunrate execute cenario.yaml
-    valor de reserva (${VAR:-algo}) também não serve: a reserva seria o segredo escrito no arquivo
+error in the scenario: homolog.yaml:6:65: literal password in the scenario: a credential never goes into the file, because the file goes into the repository.
+    replace it with:  password: ${BROKER_PASSWORD}
+    and run with:  BROKER_PASSWORD=... braunrate execute cenario.yaml
+    a fallback value (${VAR:-something}) does not work either: the fallback would be the secret written in the file
 ```
 
 **Causa.** Um campo de credencial tem valor literal.
@@ -142,32 +150,37 @@ escrito no arquivo.
 ## Chave desconhecida
 
 ```
-erro no cenário: cenario.yaml:3:1: chave desconhecida no topo do cenário: "carg"
-    você quis dizer "carga"?
-    disponíveis: nome, alvo, requer, variaveis, autenticacao, tls, mensageria, dados, carga, cenario, slo
+error in the scenario: cenario.yaml:3:1: unknown key at the top of the scenario: "carg"
+    available: name, target, requires, variables, auth, tls, messaging, data, load, scenario, slo
+    a minimal scenario has four of them:
+      name: Order lookup
+      target: http://127.0.0.1:8080
+      load: { profiles: [ { steady: { rate: 100/s, duration: 1m } } ] }
+      scenario:
+        - http: GET /orders/1
 ```
 
 **Causa.** A chave não existe, ou tem erro de digitação.
 
-**Solução.** A lista completa está em [Referência do cenário](referencia.html).
+**Solução.** A lista completa está em [Referência do cenário](reference.html).
 Para o editor completar as chaves e apontar o erro antes de rodar, coloque esta
 linha no topo do arquivo:
 
-```yaml trecho
+```yaml fragment
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
 ```
 
 ## Certificado de CA interna
 
 ```
-consultar    falha de rede    30    certificado assinado por CA que esta maquin…
-  certificado assinado por CA que esta máquina não conhece — declare tls: { ca: /caminho/ca.pem }
+look up      network failure   30    certificate signed by a CA this machine does…
+  certificate signed by a CA this machine does not know — declare tls: { ca: /path/ca.pem }
 ```
 
 **Causa.** O alvo serve HTTPS com uma autoridade que a máquina não conhece.
 
 **Solução.** Declare a CA no topo do cenário — veja
-[Protocolos](protocolos.html#alvo-https-com-certificado-proprio).
+[Protocolos](protocols.html#alvo-https-com-certificado-proprio).
 
 > **Nota** Não existe opção para desligar a verificação do certificado. Um
 > certificado autoassinado funciona como a própria CA, e a opção seria a saída
@@ -181,20 +194,21 @@ terminou, porque o passo depende de um valor capturado antes dele.
 
 **Solução.** Leia o bloco **"A jornada inteira"**, que conta do instante em que a
 jornada deveria ter começado. A explicação completa está em
-[Conceitos](conceitos.html#o-tempo-do-passo-2-em-diante-nao-e-corrigido).
+[Conceitos](concepts.html#o-tempo-do-passo-2-em-diante-nao-e-corrigido).
 
 ## O relatório avisa que nenhum valor varia
 
 ```
-Atenção: o passo "consultar pedido" não tem nenhum valor que varia — toda requisição vai ser idêntica.
-    se o alvo guardar resposta por essa chave, o número sai otimista.
+Warning: the step "look up order" has no value that varies — every request will be identical.
+    if the target caches by that key, the number comes out optimistic.
+    to make it vary:  data: { orders: { file: orders.csv } }  and then  GET /orders/${orders.id}
 ```
 
 **Causa.** O passo não tem nenhuma referência `${}`, então todas as requisições
 são iguais.
 
 **Solução.** Troque o valor fixo por uma referência e declare de onde ela vem, em
-[Receitas](receitas.html#cada-jornada-precisa-de-dados-proprios).
+[Receitas](recipes.html#cada-jornada-precisa-de-dados-proprios).
 
 > **Nota** Se o caminho fixo é proposital, como num teste de fumaça, o aviso
 > continua correto e não invalida nada.
@@ -205,7 +219,7 @@ são iguais.
 avisam que o desenvolvedor não pode ser verificado.
 
 **Solução.** A instrução para liberar está em
-[Instalação](instalacao.html#1-baixar-o-binario-da-release), junto com o motivo
+[Instalação](installation.html#1-baixar-o-binario-da-release), junto com o motivo
 de a assinatura não existir.
 
 ## A versão aparece como `dev`

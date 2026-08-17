@@ -81,7 +81,7 @@ type commandLine struct {
 
 func commandLines(t *testing.T) []commandLine {
 	t.Helper()
-	directory := filepath.Join("..", "..", "docs", "guias")
+	directory := filepath.Join("..", "..", "docs", "guides")
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		t.Fatalf("não consegui ler %s: %v", directory, err)

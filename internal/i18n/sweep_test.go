@@ -53,13 +53,17 @@ var allowed = map[string]string{
 	// The parser recognizes the 0.5.0 format to teach the way out (ADR 0019).
 	// The words are Portuguese because the old format was.
 	"internal/scenario/migration.go": "the rename map of the old format, read from both sides",
+	// The site is published in two languages, and the Portuguese frame of it
+	// lives in one table on purpose (ADR 0020): the words are the content of
+	// that page, not a message that escaped translation.
+	"internal/site/language.go": "the frame of the site in both languages, one entry per language",
+	// The accented letters are the input of the transliteration that writes the
+	// heading anchors, not text anybody reads.
+	"internal/site/slug.go": "the accent table that turns a heading into an address",
 }
 
-// The site is Portuguese until the bilingual build of phase 2, and its
-// generator lives apart from anything the binary prints.
+// internal/tools holds throwaway build helpers that nobody reads but us.
 var skippedDirectories = []string{
-	filepath.Join("internal", "site"),
-	filepath.Join("cmd", "site"),
 	filepath.Join("internal", "tools"),
 }
 

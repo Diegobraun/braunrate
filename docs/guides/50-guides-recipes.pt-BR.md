@@ -1,3 +1,7 @@
+---
+translated_from: 50-guides-recipes.en.md
+source_hash: 05c0f4919ef3
+---
 # Receitas
 
 Situações que aparecem quase sempre, e o que escrever no cenário para cada uma.
@@ -8,7 +12,7 @@ Declare uma vez como o token é obtido. O braunrate faz o login antes de começa
 a medir e injeta o token em todos os passos; nenhum passo precisa declarar o
 cabeçalho.
 
-```yaml trecho
+```yaml fragment
 auth:
   type: token
   obtain:
@@ -29,15 +33,15 @@ Duas coisas para saber antes de acreditar no número:
   identidade, limite por token ou sharding por usuário, o resultado fica
   otimista. O relatório repete isso toda vez.
 
-Arquivo completo: [`examples/jornada-autenticada.yaml`](https://github.com/Diegobraun/braunrate/blob/main/examples/jornada-autenticada.yaml).
+Arquivo completo: [`examples/authenticated-journey.yaml`](https://github.com/Diegobraun/braunrate/blob/main/examples/authenticated-journey.yaml).
 
 ### Cabeçalho, query string e caminho
 
-`obter` é uma requisição inteira: método, caminho com query string, cabeçalhos e
+`obtain` é uma requisição inteira: método, caminho com query string, cabeçalhos e
 corpo. E tudo o que a captura produz vira variável nos passos seguintes, então o
 token entra onde você escrever `${token}` — cabeçalho, query ou caminho.
 
-```yaml trecho
+```yaml fragment
 auth:
   type: token
   header: "Authorization: Bearer ${token}"
@@ -60,31 +64,31 @@ scenario:
 O `braunrate debug` mostra o que saiu, com o segredo cortado:
 
 ```
-passo 1 — pagar fatura   [ok em 5.9ms]
-  requisição: POST /faturas/f-3958/pagar?tk=token-de-teste&tenant=acme
-              Authorization: Bearer token-… (14 caracteres)
+step 1 — pagar fatura   [ok in 5.9ms]
+  request:    POST /faturas/f-3958/pagar?tk=token-de-teste&tenant=acme
+              Authorization: Bearer test-t… (10 characters)
               X-Correlacao: 3958
-  resposta:   status 200, 63 bytes
+  response:   status 200, 63 bytes
 ```
 
-> **Nota** A injeção automática é sempre um cabeçalho, e `cabecalho:` aceita
+> **Nota** A injeção automática é sempre um cabeçalho, e `header:` aceita
 > qualquer `Nome: valor` — o padrão é `Authorization: Bearer ${token}`. Token na
 > query ou no caminho é você quem escreve, com `${token}` no passo.
 
 Duas coisas que economizam uma volta:
 
-- **Dentro de `obter` só cabem ambiente e valor fixo.** O login acontece uma vez,
+- **Dentro de `obtain` só cabem ambiente e valor fixo.** O login acontece uma vez,
   antes das jornadas, então `${pedidos.id}` ali não existe — e a validação recusa
   em vez de mandar a requisição com o campo vazio.
 - **`${TENANT}` em caixa alta vem do ambiente sem declarar nada.** Nome em
-  minúscula precisa de `variaveis`, `dados` ou `captura`.
+  minúscula precisa de `variables`, `data` ou `capture`.
 
 ### Uma chave de API, sem login
 
 Quando não há requisição de login — a credencial já está no ambiente — o bloco
 tem uma linha:
 
-```yaml trecho
+```yaml fragment
 auth: { type: header, header: "X-API-Key: ${API_KEY}" }
 ```
 
@@ -92,8 +96,8 @@ O cabeçalho vai em todos os passos, e a saída mostra que ele foi enviado sem
 mostrar o valor:
 
 ```
-passo 1 — consultar pedido   [ok em 7.4ms]
-  requisição: GET /pedidos/1?origem=braunrate
+step 1 — consultar pedido   [ok in 7.4ms]
+  request:    GET /pedidos/1?origem=braunrate
               X-API-Key: ***
 ```
 
@@ -101,15 +105,15 @@ passo 1 — consultar pedido   [ok em 7.4ms]
 
 Duas fontes: um CSV que você já tem, ou valores gerados.
 
-```yaml trecho
+```yaml fragment
 data:
   assinantes: { file: dados/assinantes.csv, consume: circular }
   pedidos: { generate: { id: uuid, valor: "numero(10,500)" } }
 ```
 
 O CSV vira `${assinantes.coluna}`; o gerador vira `${pedidos.id}`. Geradores
-disponíveis: `uuid`, `sequencia`, `numero(min,max)`, `inteiro(min,max)`, `nome`,
-`email`, `texto(n)`, `padrao`, `cpf`, `cnpj`. CPF e CNPJ saem com dígito
+disponíveis: `uuid`, `sequence`, `number(min,max)`, `integer(min,max)`, `name`,
+`email`, `text(n)`, `pattern`, `cpf`, `cnpj`. CPF e CNPJ saem com dígito
 verificador válido, senão o alvo recusaria tudo e o teste mediria o caminho da
 recusa.
 
@@ -117,7 +121,7 @@ recusa.
 precisa: o mesmo `transactionId` nas duas chamadas da mesma jornada, um novo na
 jornada seguinte. Esse é o padrão, sem declarar nada:
 
-```yaml trecho
+```yaml fragment
 data:
   pagamento:
     generate: { transactionId: uuid }
@@ -129,17 +133,17 @@ scenario:
 
 Quando o valor precisa ser novo a cada uso, declare:
 
-```yaml trecho
+```yaml fragment
 data:
   chaves:
     generate:
       nonce: { type: uuid, newEvery: use }
 ```
 
-E, se o alvo exige um formato específico, `padrao` monta: `#` vira dígito, `@`
+E, se o alvo exige um formato específico, `pattern` monta: `#` vira dígito, `@`
 vira letra, o resto sai literal.
 
-```yaml trecho
+```yaml fragment
 data:
   cadastro:
     generate:
@@ -155,7 +159,7 @@ Excel dentro do motor de carga custa mais do que resolve.
 Semente fixa no arquivo faz o CI rodar sempre o mesmo caso, e um caso que passa
 mil vezes não prova mais nada depois da primeira. A semente aceita o ambiente:
 
-```yaml trecho
+```yaml fragment
 data:
   pedidos:
     generate: { id: uuid, valor: "numero(10,500)" }
@@ -166,16 +170,16 @@ Sem a variável, roda com 42 e nada muda de um dia para o outro. Com ela, o
 relatório publica a semente que rodou e a linha que traz o caso de volta:
 
 ```
-  Sementes dos dados: pedidos=8817 (de $SEMENTE) (a mesma semente gera os mesmos valores de novo)
-  Para repetir exatamente estes dados, rode de novo com SEMENTE=8817
+  Data seeds: pedidos=8817 (from $SEMENTE) (the same seed generates the same values again)
+  To repeat exactly this data, run again with SEMENTE=8817
 ```
 
 ## O teste precisa exercitar várias rotas
 
-Produção não é a mesma chamada mil vezes. `peso` reparte a taxa entre
+Produção não é a mesma chamada mil vezes. `weight` reparte a taxa entre
 alternativas, e cada iteração executa uma delas:
 
-```yaml trecho
+```yaml fragment
 scenario:
   - name: consultar pedido
     weight: 60
@@ -190,16 +194,16 @@ arquivo aplicam exatamente o mesmo mix. O relatório mostra a proporção que sa
 ao lado da declarada:
 
 ```
-Mix declarado e observado
-  consultar pedido             60.0% declarado     60.0% observado (300 de 500)
-  consultar fatura             30.0% declarado     30.0% observado (150 de 500)
-  criar pedido                 10.0% declarado     10.0% observado (50 de 500)
+Mix declared and observed
+  consultar pedido             60.0% declared     60.0% observed (300 of 500)
+  consultar fatura             30.0% declared     30.0% observed (150 of 500)
+  criar pedido                 10.0% declared     10.0% observed (50 of 500)
 ```
 
-`peso` escolhe qual alternativa roda, não qual passo dentro de uma jornada. Um
-cenário com captura encadeada é uma jornada só, e a validação recusa `peso` nele.
+`weight` escolhe qual alternativa roda, não qual passo dentro de uma jornada. Um
+cenário com captura encadeada é uma jornada só, e a validação recusa `weight` nele.
 
-Arquivo completo: [`examples/mix-de-operacoes.yaml`](https://github.com/Diegobraun/braunrate/blob/main/examples/mix-de-operacoes.yaml).
+Arquivo completo: [`examples/operation-mix.yaml`](https://github.com/Diegobraun/braunrate/blob/main/examples/operation-mix.yaml).
 
 ### Quando cada perfil de cliente segue uma rota diferente
 
@@ -208,7 +212,7 @@ proporção, é conhecimento de negócio — nenhuma observação de tráfego re
 isso, e quem gravou uma passagem gravou um perfil. Então a ramificação é por
 dado: o CSV declara a proporção pelas linhas que tem.
 
-```yaml trecho
+```yaml fragment
 data:
   clientes: { file: dados/clientes.csv, consume: circular }
 
@@ -220,13 +224,13 @@ scenario:
 O que essa forma ainda não resolve: os dois perfis caem numa linha só do
 relatório, então um perfil caro aparece como cauda do passo inteiro.
 
-Arquivo completo: [`examples/ramificacao-por-perfil.yaml`](https://github.com/Diegobraun/braunrate/blob/main/examples/ramificacao-por-perfil.yaml).
+Arquivo completo: [`examples/branching-by-profile.yaml`](https://github.com/Diegobraun/braunrate/blob/main/examples/branching-by-profile.yaml).
 
 ## De onde o braunrate tira cada `${variável}`
 
 De quatro lugares, e de nenhum outro:
 
-```yaml trecho
+```yaml fragment
 variables:
   tenant: acme                      # fixa no cenário
   regiao: "${REGIAO:-us-east-1}"    # do ambiente, com reserva
@@ -246,7 +250,7 @@ sozinhos.
 Vale em qualquer campo do cenário, não numa lista de campos escolhidos: alvo,
 taxa, duração, tópico, fila, nome de passo, cabeçalho, caminho de certificado.
 
-```yaml trecho
+```yaml fragment
 target: "${ALVO:-http://127.0.0.1:8080}"
 load:
   profiles:
@@ -274,7 +278,7 @@ que se propôs a medir.
 Se o cenário depende de infraestrutura que nem sempre existe, declare — o laço
 de exemplos pula com aviso visível em vez de quebrar:
 
-```yaml trecho
+```yaml fragment
 requires: [kafka]
 ```
 
@@ -288,12 +292,12 @@ Guarde o resultado de uma execução e passe como base na seguinte:
 braunrate execute cenario.yaml -baseline=execucao-anterior.json
 ```
 
-Com uma regra de `regressao` declarada, o critério por passo continua aprovando
+Com uma regra de `regression` declarada, o critério por passo continua aprovando
 e a comparação pega o que ele não vê:
 
 ```
-  ok    Passou: "consultar pedido" respondeu 95% em até 61 ms, dentro do limite de 150 ms.
-  FALHA Falhou: o tempo de resposta de 95% das jornadas ficou 931.0% pior que execucao-anterior.json, acima do limite de 10% pior (de 12 ms para 122 ms).
+  ok    Passed: "consultar pedido" answered 95% within 61 ms, within the limit of 150 ms.
+  FAIL  Failed: the response time of 95% of the journeys came out 931.0% worse than execucao-anterior.json, above the limit of 10% worse (from 12 ms to 122 ms).
 ```
 
 Quando alguma coisa fora do serviço mudou entre as duas — outra máquina, outra
@@ -308,15 +312,16 @@ braunrate compare antes.json depois.json -html comparacao.html
 ```
 
 ```
-Ficou mais lento: jornada inteira (95%): 71 vezes mais lento — de 10 ms para 675 ms. Com 1 ressalva que pode explicar a diferença sozinha.
+It got slower: the whole journey (95%): 215 times slower — from 11 ms to 2435 ms. With 1 caveat about what changed outside the service.
 
-Por passo
-  passo                        95% antes  95% depois         variação
-  consultar pedido                8.4 ms      598 ms         71x pior
-  pagar fatura                  0.601 ms       43 ms         71x pior
+Per step
+  step                        95% before   95% after           change
+  consultar pedido                5.8 ms      2.41 s       420x worse
+  pagar fatura                    5.6 ms       11 ms       2.1x worse
 
-O que pode explicar a diferença sem ser o serviço
-  - as execuções usaram versões diferentes do braunrate: 0.2.0 e 0.3.0 (isso sozinho explica a diferença)
+What could explain the difference other than the service
+  - both runs used one token for everything; caching or sharding by identity affects them the same way, but it does not disappear from the comparison
+  Two runs give no confidence interval: a change below 5% is treated as noise.
 ```
 
 Variação abaixo de 5% é tratada como ruído: duas execuções não dão intervalo de
@@ -360,12 +365,12 @@ func Scenario(target string) (braunrate.Scenario, error) {
 ```
 
 Esse trecho não é ilustração: ele é o arquivo
-[`examples/cenario-em-go/cenario.go`](https://github.com/Diegobraun/braunrate/blob/main/examples/cenario-em-go/cenario.go),
+[`examples/scenario-in-go/scenario.go`](https://github.com/Diegobraun/braunrate/blob/main/examples/scenario-in-go/scenario.go),
 que o CI compila e roda contra o alvo embutido. Um teste reprova o build se esta
 página se afastar do arquivo.
 
 Migrar não é reescrever. A DSL não interpreta nada por conta própria:
-`"$.ultimaFatura.id"` e `"< 150ms"` passam pelas mesmas funções que leem o YAML,
+`"$.lastInvoice.id"` e `"< 150ms"` passam pelas mesmas funções que leem o YAML,
 e um teste compara a estrutura dos dois caminhos caso a caso.
 
 O que continua exigindo mudança neste repositório é protocolo novo. E, até a v1,
