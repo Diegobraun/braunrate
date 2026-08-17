@@ -196,9 +196,17 @@ func (store *runStore) finish(id string, result runner.Result, err error) {
 
 // The stream ends with the same sentence the terminal ends with, because the
 // verdict is the part someone following a run is waiting for.
+//
+// Sem SLO declarado nao ha "passou": passar e passar num criterio, e nao houve
+// criterio. Dizer "passed" aqui foi como uma execucao de 99,8% de erro saiu
+// aprovada com codigo 0 — o green desonesto que a ferramenta recusa no resto. O
+// corpo do relatorio ja diz "descreve, nao aprova nem reprova"; o veredito segue.
 func verdictLine(result runner.Result) string {
 	if !result.Document.Valid() {
 		return fmt.Sprintf("invalid result (code %d): the run did not measure what it set out to measure", result.Exit)
+	}
+	if len(result.Document.SLO.Evaluations) == 0 {
+		return fmt.Sprintf("described (code %d): no criterion declared, so it neither approves nor rejects", result.Exit)
 	}
 	if !result.Document.SLO.Passed {
 		return fmt.Sprintf("failed the SLO (code %d)", result.Exit)
@@ -259,6 +267,9 @@ func verdictOf(state outcome) string {
 	case statusDone:
 		if !state.Document.Valid() {
 			return "invalid result"
+		}
+		if len(state.Document.SLO.Evaluations) == 0 {
+			return "described"
 		}
 		if !state.Document.SLO.Passed {
 			return "failed the SLO"

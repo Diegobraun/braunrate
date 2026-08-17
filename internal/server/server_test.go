@@ -679,3 +679,34 @@ func TestASessionNameThatIsNotAnEnvironmentReferenceIsRefused(t *testing.T) {
 		t.Errorf("nome minúsculo não é referência de ambiente e devia ser recusado, veio %d", status)
 	}
 }
+
+// Sem SLO declarado não há "passou": passar é passar num critério. Dizer "passed"
+// aqui era o green desonesto — uma execução sem critério saindo aprovada. O corpo
+// do relatório já diz "descreve, não aprova nem reprova"; o veredito segue.
+func TestARunWithoutSLOIsDescribedNotPassed(t *testing.T) {
+	fake := target(t)
+	// scenarioText não declara slo.
+	directory := directoryWith(t, map[string]string{"desc.yaml": scenarioText(fake.Address())})
+	httpServer := serverOn(t, directory, false)
+
+	status, body := call(t, http.MethodPost, httpServer.URL+"/scenarios/desc.yaml/runs")
+	if status != http.StatusAccepted {
+		t.Fatalf("a execução não começou: %d %s", status, body)
+	}
+	var started struct{ ID string }
+	_ = json.Unmarshal(body, &started)
+
+	final := waitForRun(t, httpServer.URL, started.ID)
+	_ = final
+
+	_, listed := call(t, http.MethodGet, httpServer.URL+"/runs")
+	var answer struct {
+		Runs []struct{ ID, Verdict string }
+	}
+	if err := json.Unmarshal(listed, &answer); err != nil || len(answer.Runs) == 0 {
+		t.Fatalf("lista de execuções ilegível: %v %s", err, listed)
+	}
+	if got := answer.Runs[0].Verdict; got != "described" {
+		t.Errorf("execução sem SLO devia ser 'described', veio %q — 'passed' sem critério é o green desonesto", got)
+	}
+}
