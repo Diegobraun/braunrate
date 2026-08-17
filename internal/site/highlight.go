@@ -12,16 +12,16 @@ import (
 // embutida o bloco so pode ter uma paleta, e ela ficava escura no tema claro.
 // As duas paletas sao geradas aqui, na build, para nao virar folha de terceiro.
 func highlightStyles() (string, error) {
-	claro, escuro := codeBackgrounds()
-	light, err := paletteCSS("github", "", claro)
+	lightBackground, darkBackground := codeBackgrounds()
+	light, err := paletteCSS("github", "", lightBackground)
 	if err != nil {
 		return "", err
 	}
-	dark, err := paletteCSS("github-dark", ":root:not([data-tema=\"claro\"]) ", escuro)
+	dark, err := paletteCSS("github-dark", ":root:not([data-theme=\"light\"]) ", darkBackground)
 	if err != nil {
 		return "", err
 	}
-	forced, err := paletteCSS("github-dark", ":root[data-tema=\"escuro\"] ", escuro)
+	forced, err := paletteCSS("github-dark", ":root[data-theme=\"dark\"] ", darkBackground)
 	if err != nil {
 		return "", err
 	}

@@ -96,7 +96,7 @@ func readable(text, background string) string {
 var (
 	colorDeclaration = regexp.MustCompile(`(?:^|[^-])color: (#[0-9a-fA-F]{3,6})`)
 	ownBackground    = regexp.MustCompile(`background-color: #`)
-	codeBackground   = regexp.MustCompile(`--fundo-codigo: (#[0-9a-fA-F]{3,6})`)
+	codeBackground   = regexp.MustCompile(`--background-code: (#[0-9a-fA-F]{3,6})`)
 )
 
 // A paleta do chroma nao foi feita para este fundo, e uma regra que nasce fora

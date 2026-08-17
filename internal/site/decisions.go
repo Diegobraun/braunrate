@@ -14,7 +14,7 @@ func DecisionsPage(repositoryRoot string) (Page, error) {
 	directory := filepath.Join(repositoryRoot, adrDirectory)
 	entries, err := os.ReadDir(directory)
 	if err != nil {
-		return Page{}, fmt.Errorf("não consegui ler %s: %w", directory, err)
+		return Page{}, fmt.Errorf("could not read %s: %w", directory, err)
 	}
 	var names []string
 	for _, entry := range entries {
@@ -37,17 +37,17 @@ repositório.
 	for _, name := range names {
 		content, err := os.ReadFile(filepath.Join(directory, name))
 		if err != nil {
-			return Page{}, fmt.Errorf("não consegui ler %s: %w", name, err)
+			return Page{}, fmt.Errorf("could not read %s: %w", name, err)
 		}
 		title, found := firstHeading(string(content))
 		if !found {
-			return Page{}, fmt.Errorf("%s não começa com um título '# '", name)
+			return Page{}, fmt.Errorf("%s does not start with a '# ' heading", name)
 		}
 		link := "https://github.com/Diegobraun/braunrate/blob/main/docs/adr/" + name
 		number, decision := splitTitle(title)
 		fmt.Fprintf(&markdown, "| [%s](%s) | %s |\n", number, link, cell(decision))
 	}
-	return Page{Slug: "decisoes", Title: "Decisões", Section: "Referência",
+	return Page{Slug: "decisoes", Title: "Decisões", Section: portuguese.Sections["referencia"],
 		Summary:  "As decisões de arquitetura registradas, uma linha cada.",
 		Markdown: markdown.String(), Source: adrDirectory}, nil
 }

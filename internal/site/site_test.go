@@ -256,7 +256,7 @@ func TestEveryInternalLinkResolves(t *testing.T) {
 	for name, content := range pages {
 		for _, match := range link.FindAllStringSubmatch(content, -1) {
 			target := match[1]
-			if strings.HasPrefix(target, "http") || strings.HasPrefix(target, "mailto:") || target == "estilo.css" {
+			if strings.HasPrefix(target, "http") || strings.HasPrefix(target, "mailto:") || target == "style.css" {
 				continue
 			}
 			file, anchor, _ := strings.Cut(target, "#")
@@ -338,20 +338,20 @@ func TestTheFoldSaysWhatWhyAndTheFirstCommand(t *testing.T) {
 // Contraste conferido, e nao estimado: a paleta do destaque de sintaxe nao foi
 // desenhada para este fundo, e o comentario cinza nasce fora do AA.
 func TestEveryColorMeetsAA(t *testing.T) {
-	css := build(t)["estilo.css"]
-	claro := themeTokens(t, css, ":root {")
-	escuro := themeTokens(t, css, `:root[data-tema="escuro"] {`)
+	css := build(t)["style.css"]
+	light := themeTokens(t, css, ":root {")
+	dark := themeTokens(t, css, `:root[data-theme="dark"] {`)
 
 	pairs := []struct{ text, background, what string }{
-		{"texto", "fundo", "texto do corpo"},
-		{"suave", "fundo", "texto secundário"},
-		{"suave", "fundo-suave", "texto secundário em cartão"},
-		{"suave", "fundo-fundo", "texto do rodapé"},
-		{"marca", "fundo", "link"},
-		{"marca", "fundo-suave", "número da prova"},
-		{"marca", "marca-suave", "item ativo da navegação"},
+		{"text", "background", "texto do corpo"},
+		{"soft", "background", "texto secundário"},
+		{"soft", "background-soft", "texto secundário em cartão"},
+		{"soft", "background-deep", "texto do rodapé"},
+		{"brand", "background", "link"},
+		{"brand", "background-soft", "número da prova"},
+		{"brand", "brand-soft", "item ativo da navegação"},
 	}
-	for theme, tokens := range map[string]map[string]string{"claro": claro, "escuro": escuro} {
+	for theme, tokens := range map[string]map[string]string{"claro": light, "escuro": dark} {
 		for _, pair := range pairs {
 			ratio := site.Contrast(tokens[pair.text], tokens[pair.background])
 			if ratio < 4.5 {
@@ -362,9 +362,9 @@ func TestEveryColorMeetsAA(t *testing.T) {
 	}
 
 	for _, palette := range []struct{ prefix, background string }{
-		{".chroma", claro["fundo-codigo"]},
-		{`:root:not([data-tema="claro"]) .chroma`, escuro["fundo-codigo"]},
-		{`:root[data-tema="escuro"] .chroma`, escuro["fundo-codigo"]},
+		{".chroma", light["background-code"]},
+		{`:root:not([data-theme="light"]) .chroma`, dark["background-code"]},
+		{`:root[data-theme="dark"] .chroma`, dark["background-code"]},
 	} {
 		checked := 0
 		for _, rule := range strings.Split(css, "\n") {
@@ -426,15 +426,15 @@ func TestTheCommandIndexBecomesCards(t *testing.T) {
 		t.Fatalf("achei %d comandos na tabela: o teste não estaria provando nada", len(rows))
 	}
 	for _, row := range rows {
-		if !strings.Contains(comandos, `<p class="nome"><code>`+row[1]+`</code></p>`) {
+		if !strings.Contains(comandos, `<p class="name"><code>`+row[1]+`</code></p>`) {
 			t.Errorf("o comando %q não virou cartão", row[1])
 		}
 	}
-	if strings.Contains(comandos, "CARTOES-DE-COMANDO") {
+	if strings.Contains(comandos, "COMMAND-CARDS") {
 		t.Error("o marcador dos cartões ficou visível na página")
 	}
-	if strings.Count(comandos, `class="cartao"`) != len(rows) {
-		t.Errorf("%d cartões para %d comandos", strings.Count(comandos, `class="cartao"`), len(rows))
+	if strings.Count(comandos, `class="card"`) != len(rows) {
+		t.Errorf("%d cartões para %d comandos", strings.Count(comandos, `class="card"`), len(rows))
 	}
 }
 
@@ -442,13 +442,13 @@ func TestTheCommandIndexBecomesCards(t *testing.T) {
 // junto, gerado das mesmas paginas.
 func TestSearchTravelsWithTheSite(t *testing.T) {
 	files := build(t)
-	index, exists := files["indice.js"]
+	index, exists := files["search-index.js"]
 	if !exists {
 		t.Fatal("o site não publica índice de busca")
 	}
-	payload, found := strings.CutPrefix(strings.TrimSpace(index), "window.INDICE=")
+	payload, found := strings.CutPrefix(strings.TrimSpace(index), "window.SEARCH_INDEX=")
 	if !found {
-		t.Fatal("o índice não declara window.INDICE")
+		t.Fatal("o índice não declara window.SEARCH_INDEX")
 	}
 	var raw []map[string]string
 	if err := json.Unmarshal([]byte(payload), &raw); err != nil {
@@ -470,7 +470,7 @@ func TestSearchTravelsWithTheSite(t *testing.T) {
 			t.Errorf("%s não entrou no índice de busca", name)
 		}
 	}
-	if !strings.Contains(files["pagina.js"], "window.INDICE") {
+	if !strings.Contains(files["page.js"], "window.SEARCH_INDEX") {
 		t.Error("a página não usa o índice publicado")
 	}
 }

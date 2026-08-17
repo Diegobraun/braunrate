@@ -85,7 +85,7 @@ aparece aqui reprova o build.
 		}
 		writeBlock(&markdown, root, definition, "`"+name+"`", 2)
 	}
-	return Page{Slug: "referencia", Title: "Referência do cenário", Section: "Referência",
+	return Page{Slug: "referencia", Title: "Referência do cenário", Section: portuguese.Sections["referencia"],
 		Summary:  "Todas as chaves do arquivo de cenário, geradas do schema.",
 		Markdown: markdown.String(), Source: schemaPath}, nil
 }
@@ -93,11 +93,11 @@ aparece aqui reprova o build.
 func readSchema(repositoryRoot string) (schemaNode, error) {
 	content, err := os.ReadFile(filepath.Join(repositoryRoot, schemaPath))
 	if err != nil {
-		return schemaNode{}, fmt.Errorf("não consegui ler o schema: %w", err)
+		return schemaNode{}, fmt.Errorf("could not read the schema: %w", err)
 	}
 	var root schemaNode
 	if err := json.Unmarshal(content, &root); err != nil {
-		return schemaNode{}, fmt.Errorf("o schema não carrega: %w", err)
+		return schemaNode{}, fmt.Errorf("the schema does not load: %w", err)
 	}
 	return root, nil
 }

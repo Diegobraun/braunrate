@@ -12,13 +12,13 @@ import (
 )
 
 func main() {
-	root := flag.String("root", ".", "raiz do repositório")
-	destination := flag.String("out", "site", "diretório onde o site é gravado")
+	root := flag.String("root", ".", "root of the repository")
+	destination := flag.String("out", "site", "directory the site is written to")
 	flag.Parse()
 
 	if err := site.Build(*root, *destination, build.Version); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	fmt.Fprintf(os.Stderr, "site em %s\n", *destination)
+	fmt.Fprintf(os.Stderr, "site at %s\n", *destination)
 }

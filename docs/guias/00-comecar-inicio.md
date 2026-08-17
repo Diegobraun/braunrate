@@ -1,16 +1,16 @@
 # braunrate
 
-```dobra
-lema: Teste de carga que não mente sobre o próprio resultado.
-resumo: Quando o sistema trava, a maioria das ferramentas para de medir junto — e o relatório sai bonito. O braunrate continua medindo, e mostra o que aconteceu.
-comando: braunrate demo
-acao: Baixar | instalacao.html
-acao: Ver no GitHub | https://github.com/Diegobraun/braunrate
-ficha: binário único | sem runtime para instalar | cenário em YAML versionado
-prova: Mesmo serviço. Mesma travada de 1 segundo.
-lado: Ferramenta de laço fechado | 3,7 ms | "está tudo bem"
-lado: braunrate | 983,0 ms | "o usuário esperou 983 ms"
-saldo: 979,4 ms que a outra ferramenta não contou.
+```hero
+motto: Teste de carga que não mente sobre o próprio resultado.
+summary: Quando o sistema trava, a maioria das ferramentas para de medir junto — e o relatório sai bonito. O braunrate continua medindo, e mostra o que aconteceu.
+command: braunrate demo
+action: Baixar | instalacao.html
+action: Ver no GitHub | https://github.com/Diegobraun/braunrate
+facts: binário único | sem runtime para instalar | cenário em YAML versionado
+proof: Mesmo serviço. Mesma travada de 1 segundo.
+side: Ferramenta de laço fechado | 3,7 ms | "está tudo bem"
+side: braunrate | 983,0 ms | "o usuário esperou 983 ms"
+balance: 979,4 ms que a outra ferramenta não contou.
 ```
 
 ## Começar

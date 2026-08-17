@@ -27,12 +27,12 @@ func commandCards(markdown string) (string, string, bool) {
 	}
 
 	var written strings.Builder
-	written.WriteString("<div class=\"cartoes\">\n")
+	written.WriteString("<div class=\"cards\">\n")
 	for _, row := range rows {
 		name, anchor, description := row[1], row[2], strings.TrimSpace(row[3])
 		sample := firstSample(markdown, name)
-		fmt.Fprintf(&written, `<a class="cartao" href="#%s"><p class="nome"><code>%s</code></p>`+
-			`<p class="para-que">%s</p><p class="exemplo"><code>%s</code></p></a>`+"\n",
+		fmt.Fprintf(&written, `<a class="card" href="#%s"><p class="name"><code>%s</code></p>`+
+			`<p class="what-for">%s</p><p class="example"><code>%s</code></p></a>`+"\n",
 			html.EscapeString(anchor), html.EscapeString(name),
 			html.EscapeString(description), html.EscapeString(sample))
 	}
@@ -43,7 +43,7 @@ func commandCards(markdown string) (string, string, bool) {
 // Paragrafo comum em vez de HTML cru: o goldmark so deixa HTML passar com a
 // opcao insegura ligada, e ligar isso para um marcador seria abrir o caminho
 // para HTML dentro de guia.
-const cardsMarker = "CARTOES-DE-COMANDO"
+const cardsMarker = "COMMAND-CARDS"
 
 // A grade sobe para logo abaixo do titulo: ela e o indice da pagina, e indice
 // depois de um exemplo de erro obriga a rolar para achar o comando procurado.

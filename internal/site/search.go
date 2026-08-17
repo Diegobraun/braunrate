@@ -32,7 +32,7 @@ func searchIndex(pages []Page) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return "window.INDICE=" + string(encoded) + "\n", nil
+	return "window.SEARCH_INDEX=" + string(encoded) + "\n", nil
 }
 
 type piece struct {
