@@ -114,6 +114,23 @@ func TestTheScreenTeachesTheSameFiveIdeasTheTerminalTeaches(t *testing.T) {
 	}
 }
 
+// A folha da interface nao tinha uma regra de foco sequer, num produto cuja tela
+// principal e um editor com botoes: quem navega por teclado nao via onde estava.
+// O site ao lado ja fazia certo, e agora as duas superficies usam a mesma regra.
+func TestKeyboardFocusIsVisible(t *testing.T) {
+	address := serve(t)
+	status, sheet := get(t, address, "/style.css")
+	if status != http.StatusOK {
+		t.Fatalf("a folha não veio: status %d", status)
+	}
+	if !strings.Contains(sheet, ":focus-visible") {
+		t.Error("a interface não declara nenhum estilo de foco")
+	}
+	if !regexp.MustCompile(`:focus-visible\s*\{[^}]*outline:`).MatchString(sheet) {
+		t.Error("o foco não desenha contorno: sem ele o estado é invisível")
+	}
+}
+
 // Cancelar era "use Ctrl+C no terminal que subiu a interface", que derruba o
 // servidor e as outras execucoes junto.
 func TestTheRunViewOffersCancelling(t *testing.T) {
