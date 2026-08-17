@@ -7,21 +7,24 @@ braunrate serve -addr 127.0.0.1:8080 -dir ./cenarios
 ```
 
 ```
-braunrate serve em http://127.0.0.1:8080, servindo cenarios de ./cenarios
-Sem autenticacao e sem TLS: qualquer um que alcance esta porta pode disparar carga contra os alvos dos cenarios.
-Foi feito para rodar em 127.0.0.1. Expor em outra interface e outra decisao, e ela ainda nao foi tomada.
+braunrate serve at http://127.0.0.1:8080, serving scenarios from ./cenarios
+No authentication and no TLS: anyone who reaches this port can fire load at the targets of the scenarios.
+It was made to run on 127.0.0.1. Exposing it on another interface is a separate decision, and it has not been made.
+
+To see what it is serving:
+  curl http://127.0.0.1:8080/scenarios
 ```
 
 Opcoes: `-addr` (padrao `127.0.0.1:8080`), `-dir` (padrao `.`), `-concurrent` (padrao desligado).
 
-**Nome de rota e campo de JSON em ingles; mensagem em portugues** — a mesma divisao do resto do codigo ([ADR 0010](adr/0010-idioma-do-codigo.md)).
+**Rota, campo de JSON e mensagem em ingles** — desde o [ADR 0019](adr/0019-formato-em-ingles.md), tudo o que o usuario le esta em ingles; este documento continua em portugues porque o leitor dele e quem mantem a ferramenta.
 
 ## O que o servidor nao e
 
 - **Nao guarda nada em banco.** O arquivo YAML no `-dir` e a verdade; as execucoes vivem na memoria do processo e somem quando ele reinicia. Quem quiser guardar o resultado busca o JSON e grava onde quiser.
 - **Nao tem conta, sessao nem autenticacao.** Foi feito para `127.0.0.1`.
 - **Nao tem interface grafica, agendamento nem multiusuario.** Estao fora de escopo, nao "para depois".
-- **Nao muda o veredito.** Aviso de saturacao e invalidacao de resultado valem igual: um resultado que a CLI marcaria como invalido chega aqui invalido, com o mesmo codigo de saida no campo `exit_code`.
+- **Nao muda o veredito.** Aviso de saturacao e invalidacao de resultado valem igual: um resultado que a CLI marcaria como invalido chega aqui invalido, com o mesmo codigo de saida no campo `exitCode`.
 
 ---
 
@@ -32,7 +35,7 @@ curl -s http://127.0.0.1:8080/health
 ```
 
 ```json
-{ "tool": "braunrate", "version": "0.4.0" }
+{ "tool": "braunrate", "version": "0.6.0", "directory": "./cenarios", "writable": false }
 ```
 
 ## `GET /scenarios`
@@ -47,7 +50,7 @@ curl -s http://127.0.0.1:8080/scenarios
 {
   "scenarios": [
     { "name": "ci.yaml", "path": "cenarios/ci.yaml" },
-    { "name": "http-basico.yaml", "path": "cenarios/http-basico.yaml" }
+    { "name": "http-basic.yaml", "path": "cenarios/http-basic.yaml" }
   ]
 }
 ```
@@ -64,7 +67,8 @@ curl -s -X POST http://127.0.0.1:8080/scenarios/ci.yaml/validate
 {
   "valid": true,
   "lines": [
-    "Cenario valido: \"Fumaça de CI\", 1 passo(s), 975 iteracoes em 6s."
+    "Valid scenario: \"CI smoke\", 1 step, 975 iterations in 6s.",
+    "Warning: the step \"look up order\" has no value that varies — every request will be identical.\n    if the target caches by that key, the number comes out optimistic.\n    to make it vary:  data: { orders: { file: orders.csv } }  and then  GET /orders/${orders.id}"
   ]
 }
 ```
@@ -76,10 +80,10 @@ Cenario recusado responde `422`, com a mensagem identica a do terminal e a posic
 ```json
 {
   "valid": false,
-  "message": "erro no cenario: quebrado.yaml:7:16: nao sei de onde vem ${nao_declarada}.\n    declare de onde ela vem:\n      ...",
-  "file": "quebrado.yaml",
+  "message": "error in the scenario: broken.yaml:7:23: I do not know where ${undeclared} comes from.\n    declare where it comes from:\n      ...",
+  "file": "broken.yaml",
   "line": 7,
-  "column": 16
+  "column": 23
 }
 ```
 
@@ -94,10 +98,10 @@ curl -s -X POST http://127.0.0.1:8080/scenarios/ci.yaml/debug
 ```json
 {
   "complete": true,
-  "text": "\npasso 1 — consultar pedido   [ok em 6.5ms]\n  requisicao: GET /pedidos/1\n              Authorization: Bearer token-… (14 caracteres)\n  resposta:   status 200, 89 bytes\n  corpo:      {\"id\":\"1\",\"status\":\"ABERTO\",...}\n",
-  "vars": { "token": "token-de-teste" },
+  "text": "\nstep 1 — look up order   [ok in 6.4ms]\n  request:    GET /orders/1\n              Authorization: Bearer test-t… (10 characters)\n  response:   status 200, 85 bytes\n  body:       {\"id\":\"1\",\"status\":\"OPEN\",...}\n",
+  "vars": { "token": "test-token" },
   "observations": [
-    { "step": "consultar pedido", "class": "sucesso", "status": 200, "duration": "6.5ms" }
+    { "step": "look up order", "class": "success", "status": 200, "duration": "6.4ms" }
   ]
 }
 ```
@@ -120,7 +124,7 @@ Uma segunda execucao enquanto a primeira roda responde `409`:
 
 ```json
 {
-  "message": "ja existe uma execucao em andamento. Duas execucoes na mesma maquina disputam a CPU que precisa despachar no instante agendado, e nenhuma das duas mede o que se propos a medir. Espere a atual terminar, ou suba o servidor com -concurrent se a contaminacao for aceitavel neste caso."
+  "message": "there is already a run in progress. Two runs on the same machine fight over the CPU that has to dispatch at the scheduled instant, and neither one measures what it set out to measure. Wait for the current one to finish, or start the server with -concurrent if the contamination is acceptable in this case."
 }
 ```
 
@@ -135,16 +139,17 @@ curl -sN http://127.0.0.1:8080/runs/r001/stream
 ```
 
 ```
-executando "Fumaça de CI" contra http://127.0.0.1:8080: 975 iteracoes em 6s
-carga 150/s | enviadas 201 | concluidas 200 | erros 0 | metade em 6.7 ms | 99% em 7.7 ms | faltam 4s
-carga 200/s | enviadas 376 | concluidas 375 | erros 0 | metade em 6.4 ms | 99% em 8.4 ms | faltam 3s
-carga 200/s | enviadas 576 | concluidas 575 | erros 0 | metade em 5.8 ms | 99% em 7.6 ms | faltam 2s
-carga 200/s | enviadas 776 | concluidas 775 | erros 0 | metade em 5.6 ms | 99% em 7.5 ms | faltam 1s
-carga 0/s | enviadas 975 | concluidas 974 | erros 0 | metade em 5.5 ms | 99% em 7.4 ms | faltam 0s
-passou (codigo 0)
+running "CI smoke" against http://127.0.0.1:8080: 975 iterations in 6s
+load 100/s | sent 76 | completed 75 | errors 0 | half within 7.0 ms | 99% within 10.0 ms | 5s left
+load 150/s | sent 201 | completed 200 | errors 0 | half within 6.7 ms | 99% within 8.5 ms | 4s left
+load 200/s | sent 376 | completed 375 | errors 0 | half within 6.4 ms | 99% within 8.1 ms | 3s left
+load 200/s | sent 576 | completed 575 | errors 0 | half within 5.9 ms | 99% within 7.7 ms | 2s left
+load 200/s | sent 776 | completed 775 | errors 0 | half within 5.7 ms | 99% within 7.8 ms | 1s left
+load 0/s | sent 975 | completed 974 | errors 0 | half within 5.7 ms | 99% within 7.7 ms | 0s left
+passed (code 0)
 ```
 
-A ultima linha e sempre o veredito com o codigo de saida — `passou`, `falhou o SLO` ou `resultado invalido`.
+A ultima linha e sempre o veredito com o codigo de saida — `passed`, `failed the SLO` ou `invalid result`.
 
 ## `GET /runs`
 
@@ -158,25 +163,25 @@ curl -s http://127.0.0.1:8080/runs
     {
       "id": "r001",
       "scenario": "ci.yaml",
-      "name": "Fumaça de CI",
+      "name": "CI smoke",
       "status": "done",
-      "exit_code": 0,
-      "verdict": "passou",
-      "started_at": "2026-08-16T06:20:55.258965+01:00",
+      "exitCode": 0,
+      "verdict": "passed",
+      "startedAt": "2026-08-17T01:33:52.159627+01:00",
       "summary": { "errors": 0, "requests": 975, "valid": true }
     }
   ]
 }
 ```
 
-`verdict` e `exit_code` dizem a mesma coisa em dois formatos: um para ler, outro para ramificar. Os codigos sao os da CLI — `0` passou, `1` falhou o SLO, `2` erro de cenario, `3` resultado invalido.
+`verdict` e `exitCode` dizem a mesma coisa em dois formatos: um para ler, outro para ramificar. Os codigos sao os da CLI — `0` passou, `1` falhou o SLO, `2` erro de cenario, `3` resultado invalido.
 
 ## `GET /runs/{id}`
 
 O documento de resultado, byte a byte o mesmo que `-result` grava.
 
 ```bash
-curl -s http://127.0.0.1:8080/runs/r001 | jq '.execucao.cenario, .veredito_slo.passou'
+curl -s http://127.0.0.1:8080/runs/r001 | jq '.run.scenario, .slo.passed'
 ```
 
 Enquanto a execucao roda, responde `200` dizendo que ainda esta em andamento e apontando o stream. Execucao que nao existe responde `404` dizendo onde as execucoes vivem.
@@ -199,25 +204,25 @@ curl -s http://127.0.0.1:8080/runs/r001/comparison/r002
 
 ```json
 {
-  "antes": { "cenario": "Fumaça de CI", "alvo": "http://127.0.0.1:8080", "inicio": "16/08/2026 06:20" },
-  "depois": { "cenario": "Fumaça de CI", "alvo": "http://127.0.0.1:8080", "inicio": "16/08/2026 06:21" },
-  "frase": "Sem mudanca que valha leitura: jornada inteira (95%): 7 ms contra 7 ms — diferenca dentro do ruido de duas execucoes. Com 1 ressalva sobre o que mudou fora do servico.",
-  "comparavel": true,
-  "ressalvas": [
+  "before": { "scenario": "CI smoke", "target": "http://127.0.0.1:8080", "start": "2026-08-17 01:33", "version": "0.6.0" },
+  "after": { "scenario": "CI smoke", "target": "http://127.0.0.1:8080", "start": "2026-08-17 01:35", "version": "0.6.0" },
+  "sentence": "No change worth reading: the whole journey (95%): 7 ms against 7 ms — a difference within the noise of two runs. With 1 caveat about what changed outside the service.",
+  "comparable": true,
+  "caveats": [
     {
-      "texto": "as duas execucoes usaram um token para tudo; cache ou sharding por identidade afeta as duas do mesmo jeito, mas nao some da comparacao",
-      "impede_comparacao": false
+      "text": "both runs used one token for everything; caching or sharding by identity affects them the same way, but it does not disappear from the comparison",
+      "blocksComparison": false
     }
   ]
 }
 ```
 
-As ressalvas sao as mesmas do terminal. Comparar modelo aberto com modelo fechado sai com `impede_comparacao: true`:
+As ressalvas sao as mesmas do terminal. Comparar modelo aberto com modelo fechado sai com `blocksComparison: true`:
 
 ```json
 {
-  "texto": "os modelos de chegada sao diferentes: aberto e fechado. Latencia de laco fechado nao se compara com latencia contada do instante agendado — a segunda inclui um atraso que a primeira nao chega a registrar",
-  "impede_comparacao": true
+  "text": "the arrival models are different: open and closed. Closed-loop latency does not compare with latency counted from the scheduled instant — the second includes a delay the first never records",
+  "blocksComparison": true
 }
 ```
 
@@ -230,13 +235,13 @@ curl -s http://127.0.0.1:8080/runs/r003/comparison/r004/report -o comparacao.htm
 ```
 
 ```
-200 text/html; charset=utf-8 7116 bytes
-<h1 class="passou">Ficou mais rapido: jornada inteira (95%): 8% mais rapido — de 9 ms para 8 ms.
+200 text/html; charset=utf-8 7252 bytes
+<h1 class="neutral">No change worth reading: the whole journey (95%): 7 ms against 7 ms — a difference within the noise of two runs. With 1 caveat about what changed outside the service.
 ```
 
 Mesmo veredito e mesmas ressalvas do JSON acima e do terminal — a pagina e uma projecao da mesma comparacao, nao um segundo calculo. Vale a mesma regra do `409`: as duas execucoes precisam ter terminado.
 
-O campo `comparavel` responde outra pergunta: ele fica `false` quando **uma das execucoes tem resultado invalido**, e ai nao ha numero nenhum para comparar. Ressalva que impede e o veredito sobre a leitura; `comparavel` e o veredito sobre os dados.
+O campo `comparable` responde outra pergunta: ele fica `false` quando **uma das execucoes tem resultado invalido**, e ai nao ha numero nenhum para comparar. Ressalva que impede e o veredito sobre a leitura; `comparable` e o veredito sobre os dados.
 
 ---
 

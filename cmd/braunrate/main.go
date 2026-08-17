@@ -122,7 +122,7 @@ func usage(out io.Writer) {
 usage:
   braunrate demo [--with-failure]               starts a target, runs a scenario and explains the numbers
   braunrate new [scenario.yaml]                 creates a starting scenario, commented
-  braunrate migrate <scenario.yaml|dir> [-dry-run] [-output <file>]
+  braunrate migrate <scenario.yaml|dir>         converts a scenario in the Portuguese format to English
   braunrate debug <scenario.yaml>               one user, one iteration, everything visible
   braunrate execute <scenario.yaml> [options]
   braunrate validate <scenario.yaml>

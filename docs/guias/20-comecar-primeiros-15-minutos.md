@@ -36,7 +36,7 @@ que acabou de rodar, e `demo-relatorio.html`, o relatório completo. Abra os doi
 Para ver a ferramenta pegando um problema de verdade:
 
 ```bash
-braunrate demo --com-falha
+braunrate demo --with-failure
 ```
 
 ## 2. Entender o que você acabou de ler

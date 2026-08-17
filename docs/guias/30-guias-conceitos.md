@@ -29,7 +29,7 @@ usuário de verdade não faz isso: ele chega quando ia chegar, e espera.
 O braunrate conta o tempo de resposta **do instante em que a requisição deveria
 ter partido**, não de quando ela partiu. Por isso uma travada do alvo aparece no
 número em vez de sumir dele. O nome disso é omissão coordenada, e dá para ver os
-dois lados na sua máquina com `braunrate demo --com-falha`.
+dois lados na sua máquina com `braunrate demo --with-failure`.
 
 ### O modelo fechado existe, declarado
 

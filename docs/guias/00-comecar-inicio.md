@@ -79,7 +79,7 @@ $ go test ./internal/selfcheck/... -v
 Para ver a mesma coisa acontecer na sua máquina, sem clonar o repositório:
 
 ```bash
-braunrate demo --com-falha
+braunrate demo --with-failure
 ```
 
 ## Para quem é

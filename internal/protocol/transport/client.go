@@ -121,7 +121,7 @@ func MaskSecret(name, value string) string {
 	if len(rest) <= 6 {
 		return strings.TrimSpace(prefix + " ***")
 	}
-	return strings.TrimSpace(prefix + " " + rest[:6] + "… (" + fmt.Sprint(len(rest)) + " caracteres)")
+	return strings.TrimSpace(prefix + " " + rest[:6] + "… (" + fmt.Sprint(len(rest)) + " characters)")
 }
 
 func maskCookiePairs(value string) string {
@@ -136,7 +136,7 @@ func maskCookiePairs(value string) string {
 			pairs[index] = name + "=***"
 			continue
 		}
-		pairs[index] = name + "=" + content[:6] + "… (" + fmt.Sprint(len(content)) + " caracteres)"
+		pairs[index] = name + "=" + content[:6] + "… (" + fmt.Sprint(len(content)) + " characters)"
 	}
 	return strings.Join(pairs, "; ")
 }

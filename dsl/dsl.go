@@ -61,7 +61,7 @@ func (builder *Builder) Target(target string) *Builder {
 func (builder *Builder) Requires(requirements ...string) *Builder {
 	for _, requirement := range requirements {
 		if !slices.Contains(scenario.KnownRequirements, requirement) {
-			builder.note(fmt.Errorf("dependencia desconhecida: %q (use %s)", requirement, strings.Join(scenario.KnownRequirements, ", ")))
+			builder.note(fmt.Errorf("unknown dependency: %q (use %s)", requirement, strings.Join(scenario.KnownRequirements, ", ")))
 			continue
 		}
 		builder.scenario.Requires = append(builder.scenario.Requires, requirement)

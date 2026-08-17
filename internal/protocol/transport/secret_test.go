@@ -16,7 +16,7 @@ func TestSessionCookieIsCutLikeTheBearerAlreadyWas(t *testing.T) {
 	if strings.Contains(masked, "eb5b94f531fa41c9ad8e8a4953b59b4b") {
 		t.Fatalf("o cookie de sessão saiu inteiro: %q", masked)
 	}
-	if !strings.HasPrefix(masked, "sessao=eb5b94… (32 caracteres)") {
+	if !strings.HasPrefix(masked, "sessao=eb5b94… (32 characters)") {
 		t.Fatalf("o corte não seguiu a forma que já existia para o Bearer: %q", masked)
 	}
 	if !strings.Contains(masked, "idioma=***") {

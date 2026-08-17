@@ -22,7 +22,8 @@ import (
 // and a list that catches them catches every English sentence with them.
 var portugueseWords = []string{
 	"alvo", "aguardar", "arquivo", "assercao", "assinantes", "autenticacao", "autorizacao",
-	"cabecalho", "caminho", "captura", "carga", "cenario", "chave", "consultar", "corpo",
+	"cabecalho", "caminho", "caracteres", "captura", "carga", "cenario", "chave", "consultar",
+	"corpo", "criar", "desconhecida", "desconhecido", "encontrado", "enderecos",
 	"dados", "duracao", "erro", "erros", "escolha", "esperava", "execucao", "falha", "falhou",
 	"fatura", "fila", "gerador", "jornada", "latencia", "medicao", "mensageria", "metodo",
 	"nenhum", "nenhuma", "nome", "obter", "passo", "passos", "patamar", "pedido", "pedidos",

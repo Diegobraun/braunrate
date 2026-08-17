@@ -19,7 +19,7 @@ func TestAHandBuiltBinarySaysItIsDev(t *testing.T) {
 		t.Fatalf("a versão padrão saiu %q e devia ser dev", build.Version)
 	}
 	for name, value := range map[string]string{"commit": build.Commit, "data": build.Date} {
-		if value != "desconhecido" {
+		if value != "unknown" {
 			t.Errorf("%s padrão saiu %q", name, value)
 		}
 	}

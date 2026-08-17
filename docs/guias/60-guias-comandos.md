@@ -1,6 +1,6 @@
 # Comandos
 
-`braunrate` sem argumento nenhum mostra o caminho; `braunrate ajuda` lista tudo.
+`braunrate` sem argumento nenhum mostra o caminho; `braunrate help` lista tudo.
 Toda opção aceita `-h`, e opção escrita errada recebe a certa de volta:
 
 ```
@@ -32,11 +32,11 @@ Todas as opções: braunrate target -h
 
 ```bash
 braunrate demo
-braunrate demo --com-falha
+braunrate demo --with-failure
 ```
 
 Sobe o alvo embutido, escreve o cenário que vai rodar, executa e explica cada
-número. Não precisa de arquivo, de alvo nem de segundo terminal. `--com-falha`
+número. Não precisa de arquivo, de alvo nem de segundo terminal. `--with-failure`
 roda contra um alvo que trava no meio e mede a mesma travada de duas formas.
 
 Deixa `demo.yaml` e `demo-relatorio.html` no diretório atual, e diz que deixou.
