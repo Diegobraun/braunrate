@@ -50,7 +50,7 @@ func TestRunningWithoutTheEnvironmentVariableIsRefusedBeforeAnythingIsSent(t *te
 	if !is || fault.Exit != runner.ExitBadFile {
 		t.Fatalf("código de saída errado para cenário que não pode rodar: %#v", err)
 	}
-	for _, fragment := range []string{"SENHA_DA_API_QUE_NINGUEM_DEFINIU=...", "reserva"} {
+	for _, fragment := range []string{"SENHA_DA_API_QUE_NINGUEM_DEFINIU=...", "fallback"} {
 		if !strings.Contains(err.Error(), fragment) {
 			t.Fatalf("a mensagem não ensina %q: %v", fragment, err)
 		}
@@ -73,7 +73,7 @@ func TestValidationOnlyWarnsSoItStillWorksWithoutTheSecret(t *testing.T) {
 	if !strings.Contains(lines, "SENHA_DA_API_QUE_NINGUEM_DEFINIU") {
 		t.Fatalf("a validação não avisou da variável que falta:\n%s", lines)
 	}
-	if !strings.Contains(lines, "recusa") {
+	if !strings.Contains(lines, "refuses") {
 		t.Fatalf("o aviso não diz o que vai acontecer na execução:\n%s", lines)
 	}
 }

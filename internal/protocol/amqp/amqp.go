@@ -41,7 +41,7 @@ func (config *Config) AggregationKey() string {
 	if config.Exchange != "" {
 		destination = config.Exchange + "/" + config.Route
 	}
-	return "amqp publicar " + destination
+	return "amqp publish " + destination
 }
 
 func (config *Config) Resolve(resolve func(string) string) protocol.Config {
@@ -305,7 +305,7 @@ func (implementation *Protocol) conexaoDe(address string, config *Config, broker
 		if _, err := channel.QueueDeclare(config.Queue, true, false, false, false, nil); err != nil {
 			_ = channel.Close()
 			_ = link.Close()
-			return nil, fmt.Errorf("I could not declare the queue %q: %v", config.Queue, err)
+			return nil, fmt.Errorf("could not declare the queue %q: %v", config.Queue, err)
 		}
 		_ = channel.Close()
 	}
@@ -358,7 +358,7 @@ func normalize(address string) string {
 }
 
 func classOf(kind string) protocol.ErrorClass {
-	if kind == "autenticacao" {
+	if kind == "authentication" {
 		return protocol.ErrAuth
 	}
 	return protocol.ErrAuthorization

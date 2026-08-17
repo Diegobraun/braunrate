@@ -81,7 +81,7 @@ timeout: 120ms
 	if response.Class != protocol.ErrTimeout {
 		t.Fatalf("classe = %q", response.Class)
 	}
-	for _, expected := range []string{"PENDENTE", "sondagens", "$.status"} {
+	for _, expected := range []string{"PENDENTE", "polls", "$.status"} {
 		if !strings.Contains(response.Detail, expected) {
 			t.Errorf("o detalhe precisa conter %q para a pessoa saber o que aconteceu: %q", expected, response.Detail)
 		}
@@ -94,7 +94,7 @@ func TestHTTPWaitWithoutConditionIsRefusedWithExplanation(t *testing.T) {
 	if err == nil {
 		t.Fatal("aguardar por http sem 'ate' precisa ser recusado")
 	}
-	if !strings.Contains(err.Error(), "ate") || !strings.Contains(err.Error(), "efeito") {
+	if !strings.Contains(err.Error(), "until") || !strings.Contains(err.Error(), "effect") {
 		t.Errorf("a mensagem precisa ensinar a forma certa: %v", err)
 	}
 }

@@ -74,17 +74,17 @@ scenario:
     name: consultar pedido
     capture:
       faturaId: $.ultimaFatura.id
-      requisicao: header:X-Request-Id
+      requestId: header:X-Request-Id
       sessao: /sessao=([a-z0-9]+)/
       cookieDeSessao: cookie:sessao
       codigo: status
-      inteiro: corpo
+      whole: body
       opcional: { from: $.talvez, default: vazio }
     expect:
       status: 200
       bodyContains: ABERTO
       bodyMatches: "pedido-[0-9]+"
-      json: { $.status: ABERTO, $.total: "> 10", $.cupom: existe, $.tags: contem promo }
+      json: { $.status: ABERTO, $.total: "> 10", $.cupom: exists, $.tags: contains promo }
       header: { Content-Type: application/json }
 
   - http:
@@ -99,18 +99,18 @@ slo:
   - consultar pedido: { p95: < 150ms, max: < 1s }
   - journey: { p95: < 2s, p99: < 5s }
   - global: { errors: < 0.1, success: ">= 99.9", throughput: "> 50/s" }
-  - regression: { journeyP95: "<= 10% pior" }
+  - regression: { journeyP95: "<= 10% worse" }
 `,
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Jornada autenticada").
 				Target("${BASE:-http://127.0.0.1:8080}").
 				Variable("inquilino", "acme").
 				Auth(dsl.WithToken(
-					dsl.POST("/auth/token").Body(map[string]any{"usuario": "ana", "senha": "segredo"}),
+					dsl.POST("/auth/token").Body(map[string]any{"user": "ana", "password": "segredo"}),
 					dsl.Capture("token", "$.access_token"),
 				).RefreshAfter(25*time.Minute)).
 				DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(scenario.ConsumeCircular)).
-				GeneratedData("pedidos", map[string]string{"id": "uuid", "valor": "numero(10,500)"}, dsl.Seed(7)).
+				GeneratedData("pedidos", map[string]string{"id": "uuid", "value": "numero(10,500)"}, dsl.Seed(7)).
 				GeneratedFields("pagamento", map[string]dsl.Field{
 					"referencia": dsl.Pattern("PED-######"),
 					"documento":  dsl.Generator("cpf"),
@@ -123,19 +123,19 @@ slo:
 				Step(dsl.GET("/pedidos/${assinantes.id}"),
 					dsl.Name("consultar pedido"),
 					dsl.Capture("faturaId", "$.ultimaFatura.id"),
-					dsl.Capture("requisicao", "cabecalho:X-Request-Id"),
+					dsl.Capture("requestId", "header:X-Request-Id"),
 					dsl.Capture("sessao", "/sessao=([a-z0-9]+)/"),
 					dsl.Capture("cookieDeSessao", "cookie:sessao"),
 					dsl.Capture("codigo", "status"),
-					dsl.Capture("inteiro", "corpo"),
+					dsl.Capture("whole", "body"),
 					dsl.CaptureWithDefault("opcional", "$.talvez", "vazio"),
 					dsl.CheckStatus(200),
 					dsl.CheckBodyContains("ABERTO"),
 					dsl.CheckBodyMatches("pedido-[0-9]+"),
 					dsl.CheckJSON("$.status", "ABERTO"),
 					dsl.CheckJSON("$.total", "> 10"),
-					dsl.CheckJSON("$.cupom", "existe"),
-					dsl.CheckJSON("$.tags", "contem promo"),
+					dsl.CheckJSON("$.cupom", "exists"),
+					dsl.CheckJSON("$.tags", "contains promo"),
 					dsl.CheckHeader("Content-Type", "application/json"),
 				).
 				Step(dsl.POST("/pedidos").
@@ -147,10 +147,10 @@ slo:
 				SLO("consultar pedido", "max", "< 1s").
 				JourneySLO("p95", "< 2s").
 				JourneySLO("p99", "< 5s").
-				OverallSLO("erros", "< 0.1").
-				OverallSLO("sucesso", ">= 99.9").
-				OverallSLO("taxa_efetiva", "> 50/s").
-				RegressionSLO("jornada_p95", "<= 10% pior").
+				OverallSLO("errors", "< 0.1").
+				OverallSLO("success", ">= 99.9").
+				OverallSLO("throughput", "> 50/s").
+				RegressionSLO("journeyP95", "<= 10% worse").
 				Build()
 		},
 	},
@@ -241,7 +241,7 @@ scenario:
       timeout: 30s
 
 slo:
-  - kafka produzir pedidos-cadeia: { p95: < 100ms }
+  - kafka produce pedidos-cadeia: { p95: < 100ms }
 `,
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Cadeia assíncrona").
@@ -254,7 +254,7 @@ slo:
 					Value(map[string]any{"pedido": "${pedidos.id}"}).
 					Header("origem", "braunrate").
 					Brokers("127.0.0.1:9092").
-					Acks("lider").
+					Acks("leader").
 					Timeout(5*time.Second).
 					Partition(2).
 					Group("cobranca")).
@@ -267,7 +267,7 @@ slo:
 					UntilJSON("$.status", "PROCESSADO").
 					Interval(200*time.Millisecond).
 					Timeout(30*time.Second)).
-				SLO("kafka produzir pedidos-cadeia", "p95", "< 100ms").
+				SLO("kafka produce pedidos-cadeia", "p95", "< 100ms").
 				Build()
 		},
 	},
@@ -358,7 +358,7 @@ scenario:
 		},
 	},
 	{
-		name: "autenticação por cabecalho fixo",
+		name: "autenticação por cabeçalho fixo",
 		yaml: `
 name: Chave de api
 target: http://127.0.0.1:8080
@@ -367,7 +367,7 @@ variables:
   api_key: "${API_KEY:-chave-de-teste}"
 
 auth:
-  type: cabecalho
+  type: header
   header: "X-API-Key: ${api_key}"
 
 load:
@@ -481,7 +481,7 @@ scenario:
 name: Cobranca autenticada
 target: kafka.homolog:9093
 
-requires: [kafka, credencial]
+requires: [kafka, credential]
 
 messaging:
   kafka:
@@ -500,7 +500,7 @@ scenario:
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Cobranca autenticada").
 				Target("kafka.homolog:9093").
-				Requires("kafka", "credencial").
+				Requires("kafka", "credential").
 				KafkaBroker(dsl.BrokerAt("kafka.homolog:9093").
 					SCRAM512("${KAFKA_USUARIO}", "${KAFKA_SENHA}").
 					CA("/etc/ssl/ca.pem")).
@@ -645,7 +645,7 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 			for _, field := range source.Fields {
 				generators[field.Recipe] = true
 				if field.PerUse {
-					generators["newEvery: uso"] = true
+					generators["newEvery: use"] = true
 				}
 			}
 		}
@@ -675,8 +675,8 @@ func TestEveryScenarioShapeHasEquivalenceCase(t *testing.T) {
 	missing(t, "politica de consumo", []scenario.ConsumePolicy{
 		scenario.ConsumeCircular, scenario.ConsumeSequential, scenario.ConsumeRandom, scenario.ConsumeUniquePerUser,
 	}, consumePolicies)
-	missing(t, "métrica de slo", []string{"p95", "p99", "max", "erros", "sucesso", "taxa_efetiva", "jornada_p95"}, metrics)
-	missing(t, "gerador de dados", []string{"uuid", "padrao", "cpf", "newEvery: uso"}, generators)
+	missing(t, "métrica de slo", []string{"p95", "p99", "max", "errors", "success", "throughput", "journeyP95"}, metrics)
+	missing(t, "gerador de dados", []string{"uuid", "pattern", "cpf", "newEvery: use"}, generators)
 	missing(t, "escopo de slo", []scenario.SLOScope{
 		scenario.ScopeStep, scenario.ScopeOverall, scenario.ScopeJourney, scenario.ScopeRegression,
 	}, scopes)
@@ -881,10 +881,10 @@ func TestUndeclaredVariableIsRefusedInTheDSLToo(t *testing.T) {
 			t.Errorf("%s: a DSL aceitou ${nao_declarada}; o mesmo cenário em YAML e recusado", name)
 			continue
 		}
-		if !strings.Contains(err.Error(), "não sei de onde vem ${nao_declarada}") {
+		if !strings.Contains(err.Error(), "I do not know where ${nao_declarada} comes from") {
 			t.Errorf("%s: a mensagem não e a mesma do YAML: %v", name, err)
 		}
-		if strings.Contains(err.Error(), "linha 0") {
+		if strings.Contains(err.Error(), "line 0") {
 			t.Errorf("%s: cenário em Go não tem linha para apontar: %v", name, err)
 		}
 	}

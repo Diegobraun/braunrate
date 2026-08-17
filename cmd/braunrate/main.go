@@ -1004,7 +1004,7 @@ func migrate(args []string) int {
 func migrateOne(path, output string, dryRun bool) (bool, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return false, fmt.Errorf("I could not read %s: %v", path, err)
+		return false, fmt.Errorf("could not read %s: %v", path, err)
 	}
 	rewritten, changes, err := scenario.Migrate(content)
 	if err != nil {
@@ -1028,7 +1028,7 @@ func migrateOne(path, output string, dryRun bool) (bool, error) {
 	// migration, because the original is gone by then.
 	converted, err := scenario.Parse(rewritten)
 	if err != nil {
-		return false, fmt.Errorf("I converted %s into a scenario I do not accept myself; that is my defect, not your file's:\n%v", path, err)
+		return false, fmt.Errorf("converted %s into a scenario I do not accept myself; that is my defect, not your file's:\n%v", path, err)
 	}
 	// A step with no declared name takes the name of what it does, and that name
 	// changed with the format: an slo rule pointing at "aguardar pedidos" no
@@ -1042,12 +1042,12 @@ func migrateOne(path, output string, dryRun bool) (bool, error) {
 	if destination == "" {
 		destination = path
 		if err := os.WriteFile(path+".bak", content, 0o644); err != nil {
-			return false, fmt.Errorf("I could not write the backup %s.bak: %v", path, err)
+			return false, fmt.Errorf("could not write the backup %s.bak: %v", path, err)
 		}
 		fmt.Fprintf(os.Stderr, "  original kept at %s.bak\n", path)
 	}
 	if err := os.WriteFile(destination, rewritten, 0o644); err != nil {
-		return false, fmt.Errorf("I could not write %s: %v", destination, err)
+		return false, fmt.Errorf("could not write %s: %v", destination, err)
 	}
 	return true, nil
 }
@@ -1055,14 +1055,14 @@ func migrateOne(path, output string, dryRun bool) (bool, error) {
 func scenariosUnder(path string) ([]string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return nil, fmt.Errorf("I could not find %s", path)
+		return nil, fmt.Errorf("could not find %s", path)
 	}
 	if !info.IsDir() {
 		return []string{path}, nil
 	}
 	entries, err := os.ReadDir(path)
 	if err != nil {
-		return nil, fmt.Errorf("I could not read the folder %s: %v", path, err)
+		return nil, fmt.Errorf("could not read the folder %s: %v", path, err)
 	}
 	var files []string
 	for _, entry := range entries {

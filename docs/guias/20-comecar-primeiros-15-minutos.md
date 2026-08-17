@@ -108,8 +108,8 @@ código de saída decide:
 ```yaml trecho
 slo:
   - consultar pedido: { p95: < 150ms }   # um passo
-  - jornada: { p95: < 2s }               # a espera inteira, ponta a ponta
-  - global: { erros: < 0.1 }             # a execucao toda
+  - journey: { p95: < 2s }               # a espera inteira, ponta a ponta
+  - global: { errors: < 0.1 }             # a execucao toda
 ```
 
 Um gate feito só de regra por passo aprova cada pedaço e não diz nada sobre a

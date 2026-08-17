@@ -123,7 +123,7 @@ func TestWarnsThreadsAreNotArrivalRate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("não importou: %v", err)
 	}
-	if !containsFragment(importResult.Warnings, "50 threads") || !containsFragment(importResult.Warnings, "não vira taxa de chegada") {
+	if !containsFragment(importResult.Warnings, "50 threads") || !containsFragment(importResult.Warnings, "does not turn into an arrival rate") {
 		t.Errorf("faltou o aviso sobre thread não virar rate: %v", importResult.Warnings)
 	}
 }

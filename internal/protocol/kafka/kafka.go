@@ -43,7 +43,7 @@ func (config *Config) Protocol() string { return "kafka" }
 // AggregationKey is the topic, never the broker: whoever reads the report
 // needs to know which business flow got slow, not which machine took the byte.
 func (config *Config) AggregationKey() string {
-	return "kafka produzir " + config.Topic
+	return "kafka produce " + config.Topic
 }
 
 func (config *Config) Resolve(resolve func(string) string) protocol.Config {
@@ -520,7 +520,7 @@ func (implementation *Protocol) Prepare(runContext context.Context, request prot
 		if kind, credential := messaging.ClassifyError(err); credential {
 			return fmt.Errorf("%s", messaging.Explain(kind, broker))
 		}
-		return fmt.Errorf("I could not open a connection to %s (%s): %w", brokers[0], broker.Describe(), err)
+		return fmt.Errorf("could not open a connection to %s (%s): %w", brokers[0], broker.Describe(), err)
 	}
 	return conn.Close()
 }
@@ -563,7 +563,7 @@ func classify(err error) protocol.ErrorClass {
 		return protocol.ErrTimeout
 	}
 	if kind, credential := messaging.ClassifyError(err); credential {
-		if kind == "autenticacao" {
+		if kind == "authentication" {
 			return protocol.ErrAuth
 		}
 		return protocol.ErrAuthorization

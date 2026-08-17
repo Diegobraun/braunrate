@@ -63,7 +63,7 @@ var translatedElements = map[string]bool{
 func FromJMX(content []byte) (Import, error) {
 	var root element
 	if err := xml.Unmarshal(content, &root); err != nil {
-		return Import{}, fmt.Errorf("I could not read the file as a .jmx: %v", err)
+		return Import{}, fmt.Errorf("could not read the file as a .jmx: %v", err)
 	}
 
 	samplers := root.findAll("HTTPSamplerProxy")
@@ -230,7 +230,7 @@ func loadWarnings(root *element) []string {
 		duration := group.property("ThreadGroup.duration")
 		description := threads + " threads"
 		if ramp := group.property("ThreadGroup.ramp_time"); ramp != "" && ramp != "0" {
-			description += ", rampa de " + ramp + "s"
+			description += ", ramp of " + ramp + "s"
 		}
 		if duration != "" && duration != "0" {
 			description += ", " + duration + "s of duration"

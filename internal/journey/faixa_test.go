@@ -92,7 +92,7 @@ func TestEmptyFieldInTheBodyIsSaidOutLoud(t *testing.T) {
 	if !found {
 		t.Fatalf("a forma do corpo não foi medida: %+v", document.Variety)
 	}
-	if !strings.Contains(shape, "cupom: vazio") {
+	if !strings.Contains(shape, "cupom: empty") {
 		t.Fatalf("a forma não disse qual campo saiu vazio: %q", shape)
 	}
 

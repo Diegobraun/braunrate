@@ -45,7 +45,7 @@ type Identification struct {
 }
 
 type Difference struct {
-	Metric   string  `json:"metric"`
+	Metric    string  `json:"metric"`
 	Before    float64 `json:"beforeMs"`
 	After     float64 `json:"afterMs"`
 	Change    float64 `json:"change"`

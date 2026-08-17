@@ -12,19 +12,19 @@ A forma curta cabe em uma linha; a longa aceita método, cabeçalhos, corpo e
 timeout:
 
 ```yaml trecho
-cenario:
+scenario:
   - http: GET /pedidos/${assinantes.id}
-    nome: consultar pedido
-    verificar: { status: 200, json: { $.ultimaFatura.status: ABERTA } }
-    captura: { faturaId: $.ultimaFatura.id }
+    name: consultar pedido
+    expect: { status: 200, json: { $.ultimaFatura.status: ABERTA } }
+    capture: { faturaId: $.ultimaFatura.id }
 
-  - nome: pagar fatura
+  - name: pagar fatura
     http:
-      metodo: POST
-      caminho: "/faturas/${faturaId}/pagar"
-      cabecalhos: { X-Tenant: "${tenant}" }
-      corpo: { valor: 199.90 }
-    verificar: { status: 200 }
+      method: POST
+      path: "/faturas/${faturaId}/pagar"
+      headers: { X-Tenant: "${tenant}" }
+      body: { valor: 199.90 }
+    expect: { status: 200 }
 ```
 
 A unidade de medida é o passo. Erro é status fora do declarado em `verificar`,
@@ -38,7 +38,7 @@ certificado de cliente. Se a CA já está no armazenamento de confiança da máq
 não há nada a declarar. Quando não está:
 
 ```yaml trecho
-alvo: https://api.homolog.interno
+target: https://api.homolog.interno
 
 tls:
   ca: /etc/ssl/homolog/ca.pem
@@ -49,8 +49,8 @@ Para mTLS, o certificado de cliente entra junto:
 ```yaml trecho
 tls:
   ca: /etc/ssl/homolog/ca.pem
-  certificado: /etc/ssl/homolog/cliente.pem
-  chave: /etc/ssl/homolog/cliente.key
+  certificate: /etc/ssl/homolog/cliente.pem
+  key: /etc/ssl/homolog/cliente.key
 ```
 
 Vale para `http`, `graphql` e para a sondagem do `aguardar`. Sem o bloco, o erro
@@ -70,16 +70,16 @@ diz o que declarar em vez de repassar o texto do x509:
 Cole a consulta; o nome da operação vira a linha do relatório:
 
 ```yaml trecho
-cenario:
+scenario:
   - graphql:
-      consulta: |
+      query: |
         query ConsultarPedido($id: ID!) {
           pedido(id: $id) { id status ultimaFatura { id status } }
         }
-      variaveis: { id: "${assinantes.id}" }
-    verificar:
+      variables: { id: "${assinantes.id}" }
+    expect:
       json: { $.data.pedido.status: ABERTO }
-    captura:
+    capture:
       faturaId: $.data.pedido.ultimaFatura.id
 
 slo:
@@ -122,26 +122,26 @@ Produzir mede o broker aceitando a mensagem. O que o usuário sente é a cadeia
 inteira, e para isso existe o passo `aguardar`:
 
 ```yaml trecho
-cenario:
+scenario:
   - kafka:
-      topico: pedidos
-      chave: "${pedidos.id}"          # chave fixa concentra tudo numa particao
-      valor: { pedido: "${pedidos.id}", valor: "${pedidos.valor}" }
+      topic: pedidos
+      key: "${pedidos.id}"          # chave fixa concentra tudo numa particao
+      value: { pedido: "${pedidos.id}", valor: "${pedidos.valor}" }
 
-  - aguardar:
-      kafka: { topico: pedidos-processados }
-      chave: "${pedidos.id}"          # espera a mensagem desta iteracao, nao qualquer uma
+  - await:
+      kafka: { topic: pedidos-processados }
+      key: "${pedidos.id}"          # espera a mensagem desta iteracao, nao qualquer uma
       timeout: 10s
 ```
 
 RabbitMQ segue a mesma forma:
 
 ```yaml trecho
-cenario:
+scenario:
   - amqp:
-      fila: pedidos
-      identidade: "${pedidos.id}"
-      corpo: { pedido: "${pedidos.id}" }
+      queue: pedidos
+      messageId: "${pedidos.id}"
+      body: { pedido: "${pedidos.id}" }
 ```
 
 Publicação com confirmação é o padrão (`acks: todos` no Kafka, publisher confirms
@@ -172,12 +172,12 @@ Quando o consumidor é um serviço de verdade, a cadeia ponta a ponta nem sempre
 está disponível. O que dá para ler direto do broker é o **atraso do grupo**:
 
 ```yaml trecho
-cenario:
+scenario:
   - kafka:
-      topico: pedidos
-      grupo: cobranca              # so observa; nao consome nada
-      chave: "${pedidos.id}"
-      valor: { pedido: "${pedidos.id}" }
+      topic: pedidos
+      group: cobranca              # so observa; nao consome nada
+      key: "${pedidos.id}"
+      value: { pedido: "${pedidos.id}" }
 ```
 
 ```
@@ -221,10 +221,10 @@ cadeia padrão da nuvem. O cenário vai para o repositório, e o repositório gu
 para sempre.
 
 ```yaml trecho
-mensageria:
+messaging:
   kafka:
     brokers: [kafka.homolog:9093]
-    autenticacao: { tipo: scram_sha512, usuario: "${KAFKA_USUARIO}", senha: "${KAFKA_SENHA}" }
+    auth: { type: scramSha512, user: "${KAFKA_USUARIO}", password: "${KAFKA_SENHA}" }
     tls: { ca: /etc/ssl/homolog/ca.pem }
 ```
 
@@ -244,10 +244,10 @@ Tipos aceitos: `sasl_plain`, `scram_sha256`, `scram_sha512`, `msk_iam` e
 **AWS MSK com IAM.** Não há campo de chave, e não vai haver:
 
 ```yaml trecho
-mensageria:
+messaging:
   kafka:
     brokers: [b-1.msk.exemplo:9098, b-2.msk.exemplo:9098]
-    autenticacao: { tipo: msk_iam, regiao: us-east-1 }
+    auth: { type: mskIam, region: us-east-1 }
 ```
 
 A assinatura vem da cadeia padrão da AWS: `AWS_ACCESS_KEY_ID`, `AWS_PROFILE`, ou a
@@ -279,16 +279,16 @@ por mensagem, mostrada acima, e por sondagem de API, para quando o sistema
 assíncrono não publica o resultado num tópico:
 
 ```yaml trecho
-cenario:
+scenario:
   - kafka:
-      topico: pedidos
-      chave: "${pedidos.id}"
-      valor: { pedido: "${pedidos.id}" }
+      topic: pedidos
+      key: "${pedidos.id}"
+      value: { pedido: "${pedidos.id}" }
 
-  - aguardar:
-      http: { caminho: "/pedidos/${pedidos.id}" }
-      ate: { $.status: PROCESSADO }     # ou { status: 200 }, ou { corpo_contem: PAGO }
-      intervalo: 200ms
+  - await:
+      http: { path: "/pedidos/${pedidos.id}" }
+      until: { $.status: PROCESSADO }     # ou { status: 200 }, ou { corpo_contem: PAGO }
+      interval: 200ms
       timeout: 30s
 ```
 

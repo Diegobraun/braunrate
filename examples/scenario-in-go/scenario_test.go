@@ -1,4 +1,4 @@
-package cenarioemgo_test
+package scenarioingo_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Diegobraun/braunrate"
-	cenarioemgo "github.com/Diegobraun/braunrate/examples/cenario-em-go"
+	scenarioingo "github.com/Diegobraun/braunrate/examples/scenario-in-go"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/http"
 	"github.com/Diegobraun/braunrate/internal/testsupport"
 )
@@ -23,7 +23,7 @@ func TestPublishedGoScenarioRunsAndPasses(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = target.Close() })
 
-	specification, err := cenarioemgo.Scenario(target.Address())
+	specification, err := scenarioingo.Scenario(target.Address())
 	if err != nil {
 		t.Fatalf("o cenário publicado no README não constroi: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestPublishedSnippetIsThisFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("não consegui ler a receita publicada: %v", err)
 	}
-	source, err := os.ReadFile("cenario.go")
+	source, err := os.ReadFile("scenario.go")
 	if err != nil {
 		t.Fatalf("não consegui ler o cenário: %v", err)
 	}
@@ -68,11 +68,11 @@ func TestPublishedSnippetIsThisFile(t *testing.T) {
 	}
 	expected, found := betweenMarkers(string(source))
 	if !found {
-		t.Fatal("os marcadores README:inicio e README:fim sumiram de cenário.go")
+		t.Fatal("os marcadores README:inicio e README:fim sumiram de scenario.go")
 	}
 
 	if published != expected {
-		t.Fatalf("docs/guias/50-guias-receitas.md derivou de examples/cenario-em-go/cenario.go.\nna página:\n%s\n\nno file:\n%s", published, expected)
+		t.Fatalf("docs/guias/50-guias-receitas.md derivou de examples/scenario-in-go/scenario.go.\nna página:\n%s\n\nno file:\n%s", published, expected)
 	}
 }
 

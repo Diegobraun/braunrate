@@ -91,7 +91,7 @@ func (recorder *Recorder) Tunneled() map[string]int {
 func (recorder *Recorder) Serve(runContext context.Context, ready func(address string)) error {
 	listener, err := net.Listen("tcp", recorder.options.Address)
 	if err != nil {
-		return fmt.Errorf("I could not listen on %s: %w", recorder.options.Address, err)
+		return fmt.Errorf("could not listen on %s: %w", recorder.options.Address, err)
 	}
 	if ready != nil {
 		ready(listener.Addr().String())

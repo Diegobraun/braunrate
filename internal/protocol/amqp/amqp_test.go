@@ -23,7 +23,7 @@ func TestQueueAloneIsEnoughAndBecomesRoute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}
-	if config.AggregationKey() != "amqp publicar pedidos" {
+	if config.AggregationKey() != "amqp publish pedidos" {
 		t.Errorf("chave = %q", config.AggregationKey())
 	}
 }
@@ -33,7 +33,7 @@ func TestExchangeWithRouteAppearsInKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}
-	if config.AggregationKey() != "amqp publicar cobranca/pedido.criado" {
+	if config.AggregationKey() != "amqp publish cobranca/pedido.criado" {
 		t.Errorf("chave = %q", config.AggregationKey())
 	}
 }
@@ -46,7 +46,7 @@ func TestConfirmationIsDefault(t *testing.T) {
 		t.Fatalf("não decodificou: %v", err)
 	}
 	description := strings.Join(config.(protocol.Describable).Describe(), " ")
-	if !strings.Contains(description, "espera confirmacao do broker") {
+	if !strings.Contains(description, "waits for the broker to confirm") {
 		t.Errorf("descricao = %s", description)
 	}
 }

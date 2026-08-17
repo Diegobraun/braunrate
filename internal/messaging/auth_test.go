@@ -14,12 +14,12 @@ func TestCredentialErrorsAreToldApartFromEachOtherAndFromTheNetwork(t *testing.T
 		kind    string
 		is      bool
 	}{
-		{"SASL Authentication failed", "autenticacao", true},
-		{"[58] SASL Authentication Failed: invalid credentials", "autenticacao", true},
-		{"Unsupported SASL mechanism", "autenticacao", true},
-		{"[29] Topic Authorization Failed", "autorizacao", true},
-		{"[30] Group Authorization Failed", "autorizacao", true},
-		{"ACCESS_REFUSED - Login was refused", "autenticacao", true},
+		{"SASL Authentication failed", "authentication", true},
+		{"[58] SASL Authentication Failed: invalid credentials", "authentication", true},
+		{"Unsupported SASL mechanism", "authentication", true},
+		{"[29] Topic Authorization Failed", "authorization", true},
+		{"[30] Group Authorization Failed", "authorization", true},
+		{"ACCESS_REFUSED - Login was refused", "authentication", true},
 		{"dial tcp 10.0.0.1:9093: connect: connection refused", "", false},
 		{"context deadline exceeded", "", false},
 	}
@@ -41,16 +41,16 @@ func errorOf(text string) error { return textError(text) }
 func TestExplanationSaysWhereToFixItWithoutShowingTheSecret(t *testing.T) {
 	broker := &Broker{Auth: Auth{Kind: SCRAM512, User: "ana", Password: "p4ssw0rd-secreta", PasswordVar: "KAFKA_SENHA"}}
 
-	for _, kind := range []string{"autenticacao", "autorizacao"} {
+	for _, kind := range []string{"authentication", "authorization"} {
 		explanation := Explain(kind, broker)
 		if strings.Contains(explanation, "p4ssw0rd-secreta") {
 			t.Fatalf("a senha vazou na explicacao de %s: %s", kind, explanation)
 		}
-		if !strings.Contains(explanation, "usuário ana") {
+		if !strings.Contains(explanation, "user ana") {
 			t.Fatalf("a explicacao de %s não diz o usuário: %s", kind, explanation)
 		}
 	}
-	if !strings.Contains(Explain("autorizacao", broker), "ACL") {
+	if !strings.Contains(Explain("authorization", broker), "ACL") {
 		t.Fatal("a autorização não aponta a ACL, que e onde se resolve")
 	}
 }

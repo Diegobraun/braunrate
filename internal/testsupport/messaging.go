@@ -46,11 +46,11 @@ func (processor *Processor) Processed() int64 { return processor.processed.Load(
 func createTopics(conn *kafka.Conn, topics ...string) error {
 	controller, err := conn.Controller()
 	if err != nil {
-		return fmt.Errorf("I could not find the broker controller: %w", err)
+		return fmt.Errorf("could not find the broker controller: %w", err)
 	}
 	leader, err := kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
 	if err != nil {
-		return fmt.Errorf("I could not talk to the broker controller: %w", err)
+		return fmt.Errorf("could not talk to the broker controller: %w", err)
 	}
 	defer func() { _ = leader.Close() }()
 
@@ -59,7 +59,7 @@ func createTopics(conn *kafka.Conn, topics ...string) error {
 		settings = append(settings, kafka.TopicConfig{Topic: topic, NumPartitions: 1, ReplicationFactor: 1})
 	}
 	if err := leader.CreateTopics(settings...); err != nil {
-		return fmt.Errorf("I could not create the topics %v: %w", topics, err)
+		return fmt.Errorf("could not create the topics %v: %w", topics, err)
 	}
 	for _, topic := range topics {
 		if err := waitForLeader(conn, topic); err != nil {
@@ -114,7 +114,7 @@ func waitForLeader(conn *kafka.Conn, topic string) error {
 func (processor *Processor) Start() error {
 	conn, err := kafka.Dial("tcp", processor.options.Brokers[0])
 	if err != nil {
-		return fmt.Errorf("I could not talk to the broker: %w", err)
+		return fmt.Errorf("could not talk to the broker: %w", err)
 	}
 	defer func() { _ = conn.Close() }()
 
@@ -128,7 +128,7 @@ func (processor *Processor) Start() error {
 
 	partitions, err := conn.ReadPartitions(processor.options.Input)
 	if err != nil {
-		return fmt.Errorf("I could not read the partitions of %q: %w", processor.options.Input, err)
+		return fmt.Errorf("could not read the partitions of %q: %w", processor.options.Input, err)
 	}
 
 	processor.writer = &kafka.Writer{
@@ -163,7 +163,7 @@ func (processor *Processor) Start() error {
 		if err := reader.SetOffset(offset); err != nil {
 			cancel()
 			_ = reader.Close()
-			return fmt.Errorf("I could not position the read on partition %d: %w", partition.ID, err)
+			return fmt.Errorf("could not position the read on partition %d: %w", partition.ID, err)
 		}
 		processor.readers = append(processor.readers, reader)
 
@@ -204,13 +204,13 @@ func lastOffset(broker, topic string, partition int) (int64, error) {
 	err := untilReady(fmt.Sprintf("partition %d of %q", partition, topic), func() error {
 		leader, err := kafka.DialLeader(context.Background(), "tcp", broker, topic, partition)
 		if err != nil {
-			return fmt.Errorf("I could not talk to the leader: %w", err)
+			return fmt.Errorf("could not talk to the leader: %w", err)
 		}
 		defer func() { _ = leader.Close() }()
 
 		offset, err = leader.ReadLastOffset()
 		if err != nil {
-			return fmt.Errorf("I could not read the offset: %w", err)
+			return fmt.Errorf("could not read the offset: %w", err)
 		}
 		return nil
 	})

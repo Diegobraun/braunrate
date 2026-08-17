@@ -50,7 +50,7 @@ func openCSV(source scenario.DataSource, root string) (Source, error) {
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("I could not open the data file %q: %w", source.File, err)
+		return nil, fmt.Errorf("could not open the data file %q: %w", source.File, err)
 	}
 	defer func() { _ = file.Close() }()
 

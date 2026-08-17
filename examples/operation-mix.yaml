@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+#
+# Repeating the same call measures a cache, not a system. Here each iteration
+# runs one of three alternatives, in the declared proportion: the rate is still
+# the one in the 'load' block, and the weight decides how it splits.
+#
+# The choice is by position in the cycle, not a draw: two runs of the same file
+# apply the same mix, so the difference between them belongs to the target
+# (ADR 0016).
+name: Operation mix
+target: ${TARGET:-http://127.0.0.1:8080}
+
+auth:
+  type: token
+  obtain:
+    http: { method: POST, path: /auth/token, body: { user: ana, password: "${PASSWORD:-secret}" } }
+    capture: { token: $.access_token }
+
+data:
+  orders:
+    file: data/subscribers.csv
+    consume: circular
+
+load:
+  profiles:
+    - steady: { rate: 100/s, duration: 5s }
+
+scenario:
+  - name: look up order
+    weight: 60
+    http: { method: GET, path: "/orders/${orders.id}" }
+    expect: { status: 200 }
+
+  - name: look up invoice
+    weight: 30
+    http: { method: GET, path: "/orders/${orders.id}/invoice" }
+    expect: { status: 200 }
+
+  - name: create order
+    weight: 10
+    http: { method: POST, path: /orders, body: { subscriber: "${orders.id}" } }
+    expect: { status: 201 }
+
+slo:
+  - look up order: { p95: < 200ms }
+  - look up invoice: { p95: < 200ms }
+  - create order: { p95: < 300ms }
+  - global: { errors: < 1 }
+
+# There is no step with a capture here, and that is not by accident: weight picks
+# which alternative to run, not which step inside a journey. A scenario with a
+# chain of captures is a single journey, and validation refuses weight on it.

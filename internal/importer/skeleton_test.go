@@ -14,36 +14,36 @@ import (
 	_ "github.com/Diegobraun/braunrate/internal/protocol/wait"
 )
 
-// O esqueleto e o unico caminho de entrada para quem comeca de uma pasta vazia,
-// e ensinava um protocolo de cinco. Quem precisava de mensageria descartava a
-// saida inteira e escrevia o arquivo a mao, com a forma que so o codigo-fonte
-// ou os exemplos do repositorio mostram.
+// The skeleton is the only way in for someone starting from an empty folder,
+// and it used to teach one protocol out of five. Whoever needed messaging threw
+// the whole output away and wrote the file by hand, with a shape only the source
+// or the repository examples show.
 func TestSkeletonShowsEveryProtocolThatIsCompiledIn(t *testing.T) {
 	skeleton := importer.Skeleton()
 
-	for _, protocol := range []string{"http", "graphql", "kafka", "amqp", "aguardar"} {
+	for _, protocol := range []string{"http", "graphql", "kafka", "amqp", "await"} {
 		if !strings.Contains(skeleton, protocol) {
 			t.Errorf("o esqueleto não mostra a forma do passo %q", protocol)
 		}
 	}
 }
 
-// O que o esqueleto mostra descomentado precisa continuar sendo um cenario que
-// roda: ele e a primeira coisa que a pessoa executa.
+// What the skeleton shows uncommented has to stay a scenario that runs: it is
+// the first thing the person executes.
 func TestSkeletonIsAValidScenario(t *testing.T) {
 	if _, err := scenario.Parse([]byte(importer.Skeleton())); err != nil {
 		t.Fatalf("o esqueleto que a ferramenta escreve não passa no próprio parser: %v", err)
 	}
 }
 
-// Forma comentada que nao passa no parser ensina errado justamente a quem nao
-// tem outra referencia. A primeira versao deste bloco escrevia "valor" no passo
-// amqp, que usa "corpo".
+// A commented shape that does not parse teaches the wrong thing to exactly the
+// person with no other reference. The first version of this block wrote "value"
+// on the amqp step, which uses "body".
 func TestCommentedProtocolShapesParse(t *testing.T) {
 	document := `name: formas
 target: 127.0.0.1:9092
 data:
-  assinantes: { generate: { id: uuid } }
+  subscribers: { generate: { id: uuid } }
 load:
   profiles:
     - steady: { rate: 20/s, duration: 1m }

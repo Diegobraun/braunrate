@@ -1,11 +1,11 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
-name: Fumaça de CI
+name: CI smoke
 target: http://127.0.0.1:8080
 
 auth:
   type: token
   obtain:
-    http: { method: POST, path: /auth/token, body: { usuario: ci } }
+    http: { method: POST, path: /auth/token, body: { user: ci } }
     capture: { token: $.access_token }
 
 load:
@@ -14,11 +14,11 @@ load:
     - steady: { rate: 200/s, duration: 3s }
 
 scenario:
-  # Caminho fixo de propósito: a fumaça só pergunta se o serviço responde. A
-  # ferramenta avisa que o número fica otimista, e aqui isso está certo: para
-  # medir tempo de resposta de verdade, o caminho precisa variar.
-  - http: GET /pedidos/1
-    name: consultar pedido
+  # Fixed path on purpose: the smoke test only asks whether the service answers.
+  # The tool warns that the number comes out optimistic, and here that is right:
+  # to measure real response time, the path has to vary.
+  - http: GET /orders/1
+    name: look up order
     expect: { status: 200 }
 
 slo:

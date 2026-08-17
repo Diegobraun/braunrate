@@ -128,7 +128,7 @@ func (settings TLS) Config() (*tls.Config, error) {
 	if settings.CA != "" {
 		pem, err := os.ReadFile(settings.CA)
 		if err != nil {
-			return nil, fmt.Errorf("I could not read the CA at %s: %w", settings.CA, err)
+			return nil, fmt.Errorf("could not read the CA at %s: %w", settings.CA, err)
 		}
 		pool := x509.NewCertPool()
 		if !pool.AppendCertsFromPEM(pem) {
@@ -143,7 +143,7 @@ func (settings TLS) Config() (*tls.Config, error) {
 		}
 		pair, err := tls.LoadX509KeyPair(settings.Certificate, settings.Key)
 		if err != nil {
-			return nil, fmt.Errorf("I could not load the certificate/key pair: %w", err)
+			return nil, fmt.Errorf("could not load the certificate/key pair: %w", err)
 		}
 		config.Certificates = []tls.Certificate{pair}
 	}

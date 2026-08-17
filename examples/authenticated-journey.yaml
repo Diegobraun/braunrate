@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
-name: Jornada de cobrança
+name: Billing journey
 target: http://127.0.0.1:8080
 
 variables:
-  usuario: ${USUARIO:-ana}
+  user: ${USER_NAME:-ana}
 
 auth:
   type: token
@@ -11,13 +11,13 @@ auth:
     http:
       method: POST
       path: /auth/token
-      body: { usuario: "${usuario}", senha: "${SENHA:-segredo}" }
+      body: { user: "${user}", password: "${PASSWORD:-secret}" }
     capture: { token: $.access_token }
   refreshAfter: 25m
 
 data:
-  assinantes:
-    file: dados/assinantes.csv
+  subscribers:
+    file: data/subscribers.csv
     consume: circular
 
 load:
@@ -26,25 +26,25 @@ load:
     - steady: { rate: 300/s, duration: 5s }
 
 scenario:
-  - http: GET /pedidos/${assinantes.id}
-    name: consultar pedido
+  - http: GET /orders/${subscribers.id}
+    name: look up order
     expect:
       status: 200
-      json: { $.ultimaFatura.status: ABERTA }
+      json: { $.lastInvoice.status: OPEN }
     capture:
-      faturaId: $.ultimaFatura.id
+      invoiceId: $.lastInvoice.id
 
-  - name: pagar fatura
+  - name: pay invoice
     http:
       method: POST
-      path: /faturas/${faturaId}/pagar
-      body: { valor: 199.90 }
+      path: /invoices/${invoiceId}/pay
+      body: { amount: 199.90 }
     expect:
       status: 200
-      json: { $.status: PAGA }
+      json: { $.status: PAID }
 
 slo:
-  - consultar pedido: { p95: < 150ms }
-  - pagar fatura: { p95: < 200ms }
+  - look up order: { p95: < 150ms }
+  - pay invoice: { p95: < 200ms }
   - journey: { p95: < 2s, p99: < 5s }
   - global: { errors: < 0.1 }

@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+name: Asynchronous billing chain
+target: ${BROKERS:-127.0.0.1:9092}
+
+# Without a broker this scenario does not run. Declared here for whoever runs it
+# and for the CI loop over the examples, which skips with a warning instead of
+# breaking in silence.
+requires: [kafka]
+
+data:
+  orders:
+    generate:
+      id: uuid
+      amount: number(10,500)
+
+load:
+  profiles:
+    # The processor of the built-in target takes 20ms per message, so it holds
+    # 50/s. Asking for more than that queues, and the journey grows without the
+    # target being slow.
+    - ramp: { from: 10/s, to: 40/s, duration: 5s }
+    - steady: { rate: 40/s, duration: 5s }
+
+scenario:
+  - kafka:
+      topic: orders-chain
+      key: "${orders.id}"
+      value: { order: "${orders.id}", amount: "${orders.amount}" }
+
+  - await:
+      kafka: { topic: orders-processed }
+      key: "${orders.id}"
+      timeout: 10s
+
+slo:
+  - kafka produce orders-chain: { p95: < 100ms }
+  - await orders-processed: { p95: < 2s }
+  - global: { errors: < 1 }

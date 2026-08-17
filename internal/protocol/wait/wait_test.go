@@ -23,7 +23,7 @@ func TestAggregationKeyIsAwaitedDestination(t *testing.T) {
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}
-	if config.AggregationKey() != "aguardar pedidos-processados" {
+	if config.AggregationKey() != "await pedidos-processados" {
 		t.Errorf("chave = %q", config.AggregationKey())
 	}
 }
@@ -35,7 +35,7 @@ func TestWaitWithoutCorrelationIsRefused(t *testing.T) {
 	if err == nil {
 		t.Fatal("esperava erro")
 	}
-	if !strings.Contains(err.Error(), "mediria o consumidor mais rápido") {
+	if !strings.Contains(err.Error(), "time the fastest consumer") {
 		t.Errorf("a mensagem precisa dizer por que isso inválida a medição: %q", err.Error())
 	}
 }
@@ -79,10 +79,10 @@ func TestWaitDescribesWhereTheAddressComesFromWhenTheStepDeclaresNone(t *testing
 	}
 	description := strings.Join(config.(protocol.Describable).Describe(), "\n")
 
-	if strings.Contains(description, "endereços: \n") || strings.HasSuffix(description, "endereços:") {
+	if strings.Contains(description, "addresses: \n") || strings.HasSuffix(description, "addresses:") {
 		t.Fatalf("o campo de endereços saiu vazio:\n%s", description)
 	}
-	if !strings.Contains(description, "alvo do cenário") {
+	if !strings.Contains(description, "scenario target") {
 		t.Fatalf("a descricao não diz de onde vem o endereço:\n%s", description)
 	}
 }

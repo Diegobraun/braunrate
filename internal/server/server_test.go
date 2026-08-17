@@ -270,7 +270,7 @@ func TestConcurrentIsOptInAndSaysSoOnStartup(t *testing.T) {
 	options := server.DefaultOptions(version)
 	options.Concurrent = true
 	warning := strings.Join(server.New(options).StartupWarning(), "\n")
-	for _, fragment := range []string{"Sem autenticação", "127.0.0.1", "Execução concorrente ligada"} {
+	for _, fragment := range []string{"No authentication", "127.0.0.1", "Concurrent runs enabled"} {
 		if !strings.Contains(warning, fragment) {
 			t.Fatalf("o aviso de partida não diz %q:\n%s", fragment, warning)
 		}
@@ -334,7 +334,7 @@ func TestReportAndComparisonComeFromTheSameProjectionsTheCLIUses(t *testing.T) {
 	if status != http.StatusOK || !strings.Contains(string(body), "<html") {
 		t.Fatalf("a comparação em HTML respondeu %d: %.200s", status, body)
 	}
-	if !strings.Contains(string(body), "antes e depois") {
+	if !strings.Contains(string(body), "before and after") {
 		t.Fatalf("a página de comparação não se identifica como comparação: %.300s", body)
 	}
 	for _, forbidden := range []string{"<script", "src=", "@import", "<link"} {
@@ -359,10 +359,10 @@ func TestStreamReplaysWhatAlreadyHappenedAndEndsWithTheVerdict(t *testing.T) {
 		t.Fatalf("o stream respondeu %d: %s", status, body)
 	}
 	text := string(body)
-	if !strings.Contains(text, "executando") {
+	if !strings.Contains(text, "running") {
 		t.Fatalf("o stream não replicou o inicio:\n%s", text)
 	}
-	if !strings.Contains(text, "código") {
+	if !strings.Contains(text, "code") {
 		t.Fatalf("o stream não termina com o veredito:\n%s", text)
 	}
 }
@@ -386,7 +386,7 @@ func TestUnknownRunSaysWhereTheRunsLive(t *testing.T) {
 	if status != http.StatusNotFound {
 		t.Fatalf("execução inexistente respondeu %d: %s", status, body)
 	}
-	if !strings.Contains(string(body), "memória") {
+	if !strings.Contains(string(body), "memory") {
 		t.Fatalf("a mensagem não diz que as execuções vivem na memória: %s", body)
 	}
 }

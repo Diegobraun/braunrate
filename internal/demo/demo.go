@@ -263,7 +263,7 @@ func startTarget(options Options, targetOptions testsupport.Options) (string, fu
 	server := testsupport.New(targetOptions)
 	if err := server.Start(preferredPort); err != nil {
 		if err := server.Start(anyFreePort); err != nil {
-			return "", nil, fmt.Errorf("I could not start the example target: %w", err)
+			return "", nil, fmt.Errorf("could not start the example target: %w", err)
 		}
 		say(options, "      (%s is busy, so the target came up at %s)\n\n",
 			preferredPort, address(server.Address()))
@@ -277,7 +277,7 @@ func startTarget(options Options, targetOptions testsupport.Options) (string, fu
 func startTwinTarget(targetOptions testsupport.Options) (string, func(), error) {
 	server := testsupport.New(targetOptions)
 	if err := server.Start(anyFreePort); err != nil {
-		return "", nil, fmt.Errorf("I could not start the second example target: %w", err)
+		return "", nil, fmt.Errorf("could not start the second example target: %w", err)
 	}
 	return server.Address(), func() { _ = server.Close() }, nil
 }
@@ -286,7 +286,7 @@ func address(target string) string { return strings.TrimPrefix(target, "http://"
 
 func write(path, content string) error {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return fmt.Errorf("I could not write %s: %w", path, err)
+		return fmt.Errorf("could not write %s: %w", path, err)
 	}
 	return nil
 }

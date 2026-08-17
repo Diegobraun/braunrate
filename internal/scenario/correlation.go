@@ -125,7 +125,7 @@ const (
 type SLORule struct {
 	Scope    SLOScope
 	Step     string
-	Metric  string
+	Metric   string
 	Operator Operator
 	Limit    float64
 	Unit     string

@@ -25,7 +25,7 @@ func TestAggregationKeyIsTopic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("não decodificou: %v", err)
 	}
-	if config.AggregationKey() != "kafka produzir pedidos" {
+	if config.AggregationKey() != "kafka produce pedidos" {
 		t.Errorf("chave = %q", config.AggregationKey())
 	}
 }
@@ -62,7 +62,7 @@ func TestStepWithoutTopicOrValueTeachesRightForm(t *testing.T) {
 
 func TestUnknownAcksListsOptions(t *testing.T) {
 	_, err := decode(t, "topic: pedidos\nvalue: { id: 1 }\nacks: talvez\n")
-	if err == nil || !strings.Contains(err.Error(), "todos, lider ou nenhum") {
+	if err == nil || !strings.Contains(err.Error(), "all, leader or none") {
 		t.Errorf("erro = %v", err)
 	}
 }

@@ -604,7 +604,7 @@ func (executor *Executor) prepareProtocols(runContext context.Context) error {
 			Messaging: executor.scenario.Messaging,
 		})
 		if err != nil {
-			return fmt.Errorf("I could not prepare the step %q: %w", step.Name, err)
+			return fmt.Errorf("could not prepare the step %q: %w", step.Name, err)
 		}
 	}
 	return nil

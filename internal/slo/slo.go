@@ -46,11 +46,11 @@ func Evaluate(rules []scenario.SLORule, document metrics.Document, baseline *Bas
 
 func evaluateRule(rule scenario.SLORule, document metrics.Document, byStep map[string]metrics.StepResult, baseline *Baseline) Evaluation {
 	evaluation := Evaluation{
-		Step:    targetName(rule),
+		Step:   targetName(rule),
 		Metric: rule.Metric,
-		Rule:    rule.Text,
-		Limit:   rule.Limit,
-		Unit:    rule.Unit,
+		Rule:   rule.Text,
+		Limit:  rule.Limit,
+		Unit:   rule.Unit,
 	}
 
 	if rule.Scope == scenario.ScopeRegression {

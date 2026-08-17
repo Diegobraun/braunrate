@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+#
+# There is no conditional step, and that is not a gap: the path each profile
+# takes and the proportion between them are business knowledge, and no traffic
+# observation reveals it. Whoever records a session records one profile.
+#
+# The honest branching is by data: the column decides the route, and the CSV
+# declares the proportion. Here it is two thirds individuals to one third
+# companies, because that is how the lines were written.
+name: Branching by customer profile
+target: ${TARGET:-http://127.0.0.1:8080}
+
+data:
+  customers:
+    file: data/customers.csv
+    consume: circular
+
+load:
+  profiles:
+    - steady: { rate: 50/s, duration: 5s }
+
+scenario:
+  - name: look up credit limit
+    http:
+      method: GET
+      path: /${customers.route}/${customers.id}/limit
+    expect:
+      status: 200
+      # Proof that the route came from the data: the built-in target echoes the
+      # path it received. Without this, an empty column would interpolate and
+      # the run would pass while measuring another route.
+      json: { $.path: "/${customers.route}/${customers.id}/limit" }
+
+slo:
+  - look up credit limit: { p95: < 200ms }
+  - global: { errors: < 1 }
+
+# What this single line hides: if a company is more expensive than an individual,
+# the p95 of the step is the p95 of the expensive population wearing the name of
+# the whole step, and whoever reads it looks for a tail where there are two
+# populations. The observed-variety block of the report shows that
+# ${customers.route} had two values; tying the two together does not exist yet,
+# and it is on the list for the session with the QA.

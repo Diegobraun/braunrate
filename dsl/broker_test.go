@@ -28,7 +28,7 @@ func TestLiteralPasswordIsRefusedInTheDSLToo(t *testing.T) {
 		if err == nil {
 			t.Fatalf("a senha %q foi aceita no código", password)
 		}
-		if !strings.Contains(err.Error(), "variável de ambiente") {
+		if !strings.Contains(err.Error(), "environment variable") {
 			t.Fatalf("o erro não ensina a forma certa para %q: %v", password, err)
 		}
 	}

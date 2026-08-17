@@ -1,16 +1,16 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
-name: Consulta de pedidos
+name: Order lookup
 target: http://127.0.0.1:8080
 
 variables:
   tenant: ${TENANT:-acme}
 
-# O alvo embutido exige token, como uma API de verdade. Sem este bloco a
-# execução inteira toma 401 e sai inválida.
+# The built-in target asks for a token, the way a real API would. Without this
+# block the whole run takes 401 and comes out invalid.
 auth:
   type: token
   obtain:
-    http: { method: POST, path: /auth/token, body: { usuario: ana, senha: "${SENHA:-segredo}" } }
+    http: { method: POST, path: /auth/token, body: { user: ana, password: "${PASSWORD:-secret}" } }
     capture: { token: $.access_token }
 
 load:
@@ -20,14 +20,14 @@ load:
     - spike: { rate: 2000/s, duration: 3s }
 
 scenario:
-  - http: GET /pedidos/${tenant}
-    name: consultar pedido
+  - http: GET /orders/${tenant}
+    name: look up order
     expect: { status: 200 }
 
-  - name: criar pedido
+  - name: create order
     http:
       method: POST
-      path: /pedidos
+      path: /orders
       headers: { X-Tenant: "${tenant}" }
-      body: { valor: 199.90, descricao: "assinatura mensal" }
+      body: { amount: 199.90, description: "monthly subscription" }
     expect: { status: 201 }

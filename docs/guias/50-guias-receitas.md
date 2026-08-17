@@ -9,12 +9,12 @@ a medir e injeta o token em todos os passos; nenhum passo precisa declarar o
 cabeçalho.
 
 ```yaml trecho
-autenticacao:
-  tipo: token
-  obter:
-    http: { metodo: POST, caminho: /auth/token, corpo: { usuario: "${usuario}", senha: "${SENHA}" } }
-    captura: { token: $.access_token }
-  renovar_apos: 25m
+auth:
+  type: token
+  obtain:
+    http: { method: POST, path: /auth/token, body: { usuario: "${usuario}", senha: "${SENHA}" } }
+    capture: { token: $.access_token }
+  refreshAfter: 25m
 ```
 
 A senha vem de uma variável de ambiente. Se você escrever o valor no arquivo, a
@@ -38,23 +38,23 @@ corpo. E tudo o que a captura produz vira variável nos passos seguintes, então
 token entra onde você escrever `${token}` — cabeçalho, query ou caminho.
 
 ```yaml trecho
-autenticacao:
-  tipo: token
-  cabecalho: "Authorization: Bearer ${token}"
-  obter:
+auth:
+  type: token
+  header: "Authorization: Bearer ${token}"
+  obtain:
     http:
-      metodo: POST
-      caminho: /auth/token?origem=braunrate&tenant=${TENANT}
-      cabecalhos: { X-Cliente: teste-de-carga }
-      corpo: { usuario: ana, senha: "${SENHA}" }
-    captura: { token: $.access_token }
+      method: POST
+      path: /auth/token?origem=braunrate&tenant=${TENANT}
+      headers: { X-Cliente: teste-de-carga }
+      body: { usuario: ana, senha: "${SENHA}" }
+    capture: { token: $.access_token }
 
-cenario:
+scenario:
   - http:
-      metodo: POST
-      caminho: /faturas/f-${pedidos.id}/pagar?tk=${token}&tenant=${TENANT}
-      cabecalhos: { X-Correlacao: "${pedidos.id}" }
-    nome: pagar fatura
+      method: POST
+      path: /faturas/f-${pedidos.id}/pagar?tk=${token}&tenant=${TENANT}
+      headers: { X-Correlacao: "${pedidos.id}" }
+    name: pagar fatura
 ```
 
 O `braunrate debug` mostra o que saiu, com o segredo cortado:
@@ -85,7 +85,7 @@ Quando não há requisição de login — a credencial já está no ambiente —
 tem uma linha:
 
 ```yaml trecho
-autenticacao: { tipo: cabecalho, cabecalho: "X-API-Key: ${API_KEY}" }
+auth: { type: header, header: "X-API-Key: ${API_KEY}" }
 ```
 
 O cabeçalho vai em todos os passos, e a saída mostra que ele foi enviado sem
@@ -102,9 +102,9 @@ passo 1 — consultar pedido   [ok em 7.4ms]
 Duas fontes: um CSV que você já tem, ou valores gerados.
 
 ```yaml trecho
-dados:
-  assinantes: { arquivo: dados/assinantes.csv, consumo: circular }
-  pedidos: { gerar: { id: uuid, valor: "numero(10,500)" } }
+data:
+  assinantes: { file: dados/assinantes.csv, consume: circular }
+  pedidos: { generate: { id: uuid, valor: "numero(10,500)" } }
 ```
 
 O CSV vira `${assinantes.coluna}`; o gerador vira `${pedidos.id}`. Geradores
@@ -118,33 +118,33 @@ precisa: o mesmo `transactionId` nas duas chamadas da mesma jornada, um novo na
 jornada seguinte. Esse é o padrão, sem declarar nada:
 
 ```yaml trecho
-dados:
+data:
   pagamento:
-    gerar: { transactionId: uuid }
+    generate: { transactionId: uuid }
 
-cenario:
-  - http: { metodo: POST, caminho: /pedidos, cabecalhos: { X-Idempotency-Key: "${pagamento.transactionId}" } }
-  - http: { metodo: GET, caminho: "/pedidos/${pedidoId}", cabecalhos: { X-Idempotency-Key: "${pagamento.transactionId}" } }
+scenario:
+  - http: { method: POST, path: /pedidos, headers: { X-Idempotency-Key: "${pagamento.transactionId}" } }
+  - http: { method: GET, path: "/pedidos/${pedidoId}", headers: { X-Idempotency-Key: "${pagamento.transactionId}" } }
 ```
 
 Quando o valor precisa ser novo a cada uso, declare:
 
 ```yaml trecho
-dados:
+data:
   chaves:
-    gerar:
-      nonce: { tipo: uuid, novo_a_cada: uso }
+    generate:
+      nonce: { type: uuid, newEvery: use }
 ```
 
 E, se o alvo exige um formato específico, `padrao` monta: `#` vira dígito, `@`
 vira letra, o resto sai literal.
 
 ```yaml trecho
-dados:
+data:
   cadastro:
-    gerar:
-      referencia: { tipo: padrao, formato: "PED-######" }   # PED-481902
-      filial:     { tipo: padrao, formato: "@@-####" }      # KQ-3718
+    generate:
+      referencia: { type: pattern, format: "PED-######" }   # PED-481902
+      filial:     { type: pattern, format: "@@-####" }      # KQ-3718
 ```
 
 Não existe leitura de `.xlsx`. CSV cobre o caso, e carregar uma dependência de
@@ -156,10 +156,10 @@ Semente fixa no arquivo faz o CI rodar sempre o mesmo caso, e um caso que passa
 mil vezes não prova mais nada depois da primeira. A semente aceita o ambiente:
 
 ```yaml trecho
-dados:
+data:
   pedidos:
-    gerar: { id: uuid, valor: "numero(10,500)" }
-    semente: ${SEMENTE:-42}
+    generate: { id: uuid, valor: "numero(10,500)" }
+    seed: ${SEMENTE:-42}
 ```
 
 Sem a variável, roda com 42 e nada muda de um dia para o outro. Com ela, o
@@ -176,13 +176,13 @@ Produção não é a mesma chamada mil vezes. `peso` reparte a taxa entre
 alternativas, e cada iteração executa uma delas:
 
 ```yaml trecho
-cenario:
-  - nome: consultar pedido
-    peso: 60
-    http: { metodo: GET, caminho: "/pedidos/${pedidos.id}" }
-  - nome: criar pedido
-    peso: 10
-    http: { metodo: POST, caminho: /pedidos }
+scenario:
+  - name: consultar pedido
+    weight: 60
+    http: { method: GET, path: "/pedidos/${pedidos.id}" }
+  - name: criar pedido
+    weight: 10
+    http: { method: POST, path: /pedidos }
 ```
 
 A escolha é por posição no ciclo, não sorteio, então duas execuções do mesmo
@@ -209,12 +209,12 @@ isso, e quem gravou uma passagem gravou um perfil. Então a ramificação é por
 dado: o CSV declara a proporção pelas linhas que tem.
 
 ```yaml trecho
-dados:
-  clientes: { arquivo: dados/clientes.csv, consumo: circular }
+data:
+  clientes: { file: dados/clientes.csv, consume: circular }
 
-cenario:
-  - nome: consultar limite
-    http: { metodo: GET, caminho: "/${clientes.rota}/${clientes.id}/limite" }
+scenario:
+  - name: consultar limite
+    http: { method: GET, path: "/${clientes.rota}/${clientes.id}/limite" }
 ```
 
 O que essa forma ainda não resolve: os dois perfis caem numa linha só do
@@ -227,16 +227,16 @@ Arquivo completo: [`examples/ramificacao-por-perfil.yaml`](https://github.com/Di
 De quatro lugares, e de nenhum outro:
 
 ```yaml trecho
-variaveis:
+variables:
   tenant: acme                      # fixa no cenário
   regiao: "${REGIAO:-us-east-1}"    # do ambiente, com reserva
 
-dados:
-  pedidos: { gerar: { id: uuid } }  # e então ${pedidos.id}
+data:
+  pedidos: { generate: { id: uuid } }  # e então ${pedidos.id}
 
-cenario:
+scenario:
   - http: GET /faturas
-    captura: { faturaId: "$.itens[0].id" }   # e então ${faturaId} nos passos seguintes
+    capture: { faturaId: "$.itens[0].id" }   # e então ${faturaId} nos passos seguintes
 ```
 
 Nome em CAIXA ALTA vem do ambiente sem precisar declarar nada: `${API_KEY}`,
@@ -247,10 +247,10 @@ Vale em qualquer campo do cenário, não numa lista de campos escolhidos: alvo,
 taxa, duração, tópico, fila, nome de passo, cabeçalho, caminho de certificado.
 
 ```yaml trecho
-alvo: "${ALVO:-http://127.0.0.1:8080}"
-carga:
-  perfis:
-    - patamar: { taxa: "${TAXA:-100}/s", durante: "${DURACAO:-1m}" }
+target: "${ALVO:-http://127.0.0.1:8080}"
+load:
+  profiles:
+    - steady: { rate: "${TAXA:-100}/s", duration: "${DURACAO:-1m}" }
 ```
 
 Duas armadilhas comuns:
@@ -275,7 +275,7 @@ Se o cenário depende de infraestrutura que nem sempre existe, declare — o la�
 de exemplos pula com aviso visível em vez de quebrar:
 
 ```yaml trecho
-requer: [kafka]
+requires: [kafka]
 ```
 
 Arquivo completo: [`examples/ci.yaml`](https://github.com/Diegobraun/braunrate/blob/main/examples/ci.yaml).
@@ -328,33 +328,33 @@ Laço sobre uma lista, decisão no meio da jornada, dado vindo de um sistema seu
 O mesmo cenário se escreve em Go, e roda no mesmo motor:
 
 ```go
-// Scenario is the same journey of examples/jornada-autenticada.yaml, written in
-// Go: same engine, same metrics, same result document.
-func Scenario(alvo string) (braunrate.Scenario, error) {
-	return dsl.New("Jornada de cobrança").
-		Target(alvo).
+// Scenario is the same journey of examples/authenticated-journey.yaml, written
+// in Go: same engine, same metrics, same result document.
+func Scenario(target string) (braunrate.Scenario, error) {
+	return dsl.New("Billing journey").
+		Target(target).
 		Auth(dsl.WithToken(
-			dsl.POST("/auth/token").Body(map[string]any{"usuario": "ana", "senha": "${SENHA:-segredo}"}),
+			dsl.POST("/auth/token").Body(map[string]any{"user": "ana", "password": "${PASSWORD:-secret}"}),
 			dsl.Capture("token", "$.access_token"),
 		).RefreshAfter(25*time.Minute)).
-		DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(dsl.Circular)).
+		DataFromFile("subscribers", "data/subscribers.csv", dsl.Consume(dsl.Circular)).
 		Ramp(dsl.PerSecond(50), dsl.PerSecond(300), 5*time.Second).
-		Plateau(dsl.PerSecond(300), 5*time.Second).
-		Step(dsl.GET("/pedidos/${assinantes.id}"),
-			dsl.Name("consultar pedido"),
+		Steady(dsl.PerSecond(300), 5*time.Second).
+		Step(dsl.GET("/orders/${subscribers.id}"),
+			dsl.Name("look up order"),
 			dsl.CheckStatus(200),
-			dsl.CheckJSON("$.ultimaFatura.status", "ABERTA"),
-			dsl.Capture("faturaId", "$.ultimaFatura.id")).
-		Step(dsl.POST("/faturas/${faturaId}/pagar").
-			Body(map[string]any{"valor": 199.90}),
-			dsl.Name("pagar fatura"),
+			dsl.CheckJSON("$.lastInvoice.status", "OPEN"),
+			dsl.Capture("invoiceId", "$.lastInvoice.id")).
+		Step(dsl.POST("/invoices/${invoiceId}/pay").
+			Body(map[string]any{"amount": 199.90}),
+			dsl.Name("pay invoice"),
 			dsl.CheckStatus(200),
-			dsl.CheckJSON("$.status", "PAGA")).
-		SLO("consultar pedido", "p95", "< 150ms").
-		SLO("pagar fatura", "p95", "< 200ms").
+			dsl.CheckJSON("$.status", "PAID")).
+		SLO("look up order", "p95", "< 150ms").
+		SLO("pay invoice", "p95", "< 200ms").
 		JourneySLO("p95", "< 2s").
 		JourneySLO("p99", "< 5s").
-		OverallSLO("erros", "< 0.1").
+		OverallSLO("errors", "< 0.1").
 		Build()
 }
 ```

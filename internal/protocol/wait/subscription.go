@@ -146,13 +146,13 @@ func openKafka(config *Config, brokers []string, broker *messaging.Broker) (*sub
 		if kind, credential := messaging.ClassifyError(err); credential {
 			return nil, fmt.Errorf("%s", messaging.Explain(kind, broker))
 		}
-		return nil, fmt.Errorf("I could not talk to the broker %s (%s): %v", brokers[0], broker.Describe(), err)
+		return nil, fmt.Errorf("could not talk to the broker %s (%s): %v", brokers[0], broker.Describe(), err)
 	}
 	defer func() { _ = conn.Close() }()
 
 	partitions, err := conn.ReadPartitions(config.Topic)
 	if err != nil {
-		return nil, fmt.Errorf("I could not read the partitions of %q: %v", config.Topic, err)
+		return nil, fmt.Errorf("could not read the partitions of %q: %v", config.Topic, err)
 	}
 	if len(partitions) == 0 {
 		return nil, fmt.Errorf("the topic %q does not exist on the broker", config.Topic)
@@ -188,7 +188,7 @@ func openKafka(config *Config, brokers []string, broker *messaging.Broker) (*sub
 			for _, open := range readers {
 				_ = open.Close()
 			}
-			return nil, fmt.Errorf("I could not position the read on partition %d: %v", partition.ID, err)
+			return nil, fmt.Errorf("could not position the read on partition %d: %v", partition.ID, err)
 		}
 		readers = append(readers, reader)
 
@@ -267,13 +267,13 @@ func Settling(err error) bool {
 func readLastOffset(address, topic string, partition int, dialer *kafka.Dialer) (int64, error) {
 	leader, err := dialLeaderWith(dialer, address, topic, partition)
 	if err != nil {
-		return 0, fmt.Errorf("I could not talk to the leader of partition %d of %q: %v", partition, topic, err)
+		return 0, fmt.Errorf("could not talk to the leader of partition %d of %q: %v", partition, topic, err)
 	}
 	defer func() { _ = leader.Close() }()
 
 	offset, err := leader.ReadLastOffset()
 	if err != nil {
-		return 0, fmt.Errorf("I could not read the offset of partition %d: %v", partition, err)
+		return 0, fmt.Errorf("could not read the offset of partition %d: %v", partition, err)
 	}
 	return offset, nil
 }
@@ -291,23 +291,23 @@ func openAMQP(config *Config, addresses []string, broker *messaging.Broker) (*su
 		if kind, credential := messaging.ClassifyError(err); credential {
 			return nil, fmt.Errorf("%s", messaging.Explain(kind, broker))
 		}
-		return nil, fmt.Errorf("I could not connect to %s: %v", messaging.SafeAddress(addresses[0]), err)
+		return nil, fmt.Errorf("could not connect to %s: %v", messaging.SafeAddress(addresses[0]), err)
 	}
 	canal, err := conn.Channel()
 	if err != nil {
 		_ = conn.Close()
-		return nil, fmt.Errorf("I could not open the AMQP channel: %v", err)
+		return nil, fmt.Errorf("could not open the AMQP channel: %v", err)
 	}
 	if _, err := canal.QueueDeclare(config.Topic, true, false, false, false, nil); err != nil {
 		_ = canal.Close()
 		_ = conn.Close()
-		return nil, fmt.Errorf("I could not declare the queue %q: %v", config.Topic, err)
+		return nil, fmt.Errorf("could not declare the queue %q: %v", config.Topic, err)
 	}
 	deliveries, err := canal.Consume(config.Topic, "", true, false, false, false, nil)
 	if err != nil {
 		_ = canal.Close()
 		_ = conn.Close()
-		return nil, fmt.Errorf("I could not consume the queue %q: %v", config.Topic, err)
+		return nil, fmt.Errorf("could not consume the queue %q: %v", config.Topic, err)
 	}
 
 	subscription := newSubscription(config.Field)

@@ -101,7 +101,7 @@ func TestCurlWithoutURLSaysWhatToDo(t *testing.T) {
 	if err == nil {
 		t.Fatal("curl sem URL precisa falhar")
 	}
-	if !strings.Contains(err.Error(), "curl https://exemplo/pedidos") {
+	if !strings.Contains(err.Error(), "curl https://example/orders") {
 		t.Errorf("a mensagem precisa mostrar a forma certa, veio: %v", err)
 	}
 }
@@ -111,7 +111,7 @@ func TestUnclosedQuoteErrorSaysWhatToDo(t *testing.T) {
 	if err == nil {
 		t.Fatal("aspas abertas precisam falhar")
 	}
-	if !strings.Contains(err.Error(), "aspas") {
+	if !strings.Contains(err.Error(), "quotes that never close") {
 		t.Errorf("a mensagem precisa falar de aspas, veio: %v", err)
 	}
 }
@@ -138,15 +138,15 @@ func TestPasswordInTheBodyNeverReachesTheFile(t *testing.T) {
 	if strings.Contains(result.YAML, "p4ssw0rd-real") {
 		t.Fatalf("a senha foi parar no cenário:\n%s", result.YAML)
 	}
-	if !strings.Contains(result.YAML, `"senha": "${senha}"`) {
+	if !strings.Contains(result.YAML, `"senha": "${password}"`) {
 		t.Fatalf("a senha não virou referência:\n%s", result.YAML)
 	}
-	if !strings.Contains(result.YAML, "password: ${SENHA}") {
+	if !strings.Contains(result.YAML, "password: ${PASSWORD}") {
 		t.Fatalf("faltou declarar a variável de ambiente:\n%s", result.YAML)
 	}
 	found := false
 	for _, warning := range result.Warnings {
-		if strings.Contains(warning, "SENHA=") {
+		if strings.Contains(warning, "PASSWORD=") {
 			found = true
 		}
 	}

@@ -277,7 +277,7 @@ func ReadDocument(path string) (metrics.Document, error) {
 	var document metrics.Document
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return document, fmt.Errorf("I could not read %s: %v", path, err)
+		return document, fmt.Errorf("could not read %s: %v", path, err)
 	}
 	if err := json.Unmarshal(content, &document); err != nil {
 		return document, fmt.Errorf("%s is not a braunrate result: %v", path, err)

@@ -12,7 +12,7 @@ type Verdict struct {
 
 type Evaluation struct {
 	Step     string  `json:"step"`
-	Metric  string  `json:"metric"`
+	Metric   string  `json:"metric"`
 	Rule     string  `json:"rule"`
 	Obtained float64 `json:"obtained"`
 	Limit    float64 `json:"limit"`

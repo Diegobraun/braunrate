@@ -98,7 +98,7 @@ func (mechanism mskMechanism) Name() string { return "AWS_MSK_IAM" }
 func (mechanism mskMechanism) Start(runContext context.Context) (sasl.StateMachine, []byte, error) {
 	payload, _, err := signer.GenerateAuthToken(runContext, mechanism.region)
 	if err != nil {
-		return nil, nil, fmt.Errorf("I could not sign with IAM in region %s: %w", mechanism.region, err)
+		return nil, nil, fmt.Errorf("could not sign with IAM in region %s: %w", mechanism.region, err)
 	}
 	return mskSession{}, []byte(payload), nil
 }
@@ -126,14 +126,14 @@ func ClassifyError(err error) (string, bool) {
 		strings.Contains(text, "unsupported sasl mechanism"),
 		strings.Contains(text, "login was refused"),
 		strings.Contains(text, "login refused"):
-		return "autenticacao", true
+		return "authentication", true
 	case strings.Contains(text, "topic authorization failed"),
 		strings.Contains(text, "group authorization failed"),
 		strings.Contains(text, "cluster authorization failed"),
 		strings.Contains(text, "not authorized"),
 		strings.Contains(text, "access refused"),
 		strings.Contains(text, "access_refused"):
-		return "autorizacao", true
+		return "authorization", true
 	}
 	return "", false
 }
@@ -142,9 +142,9 @@ func ClassifyError(err error) (string, bool) {
 // person reads "EOF" and goes looking at the network.
 func Explain(kind string, broker *Broker) string {
 	switch kind {
-	case "autenticacao":
+	case "authentication":
 		return fmt.Sprintf("the broker refused the credential (%s): check the user and the environment variable holding the password", broker.Describe())
-	case "autorizacao":
+	case "authorization":
 		return fmt.Sprintf("the credential was accepted and has no permission on that topic or group (%s): this is an ACL matter on the broker, not a wrong password", broker.Describe())
 	}
 	return ""

@@ -11,11 +11,11 @@ uma decisão sua, declarada no arquivo, e o gerador insiste nela mesmo quando o
 alvo demora:
 
 ```yaml trecho
-carga:
-  perfis:
-    - rampa: { de: 100/s, ate: 800/s, durante: 5s }
-    - patamar: { taxa: 800/s, durante: 10s }
-    - pico: { taxa: 2000/s, durante: 3s }
+load:
+  profiles:
+    - ramp: { from: 100/s, to: 800/s, duration: 5s }
+    - steady: { rate: 800/s, duration: 10s }
+    - spike: { rate: 2000/s, duration: 3s }
 ```
 
 Isso é o **modelo aberto**, e é o padrão. O outro jeito de descrever carga é o
@@ -34,11 +34,11 @@ dois lados na sua máquina com `braunrate demo --com-falha`.
 ### O modelo fechado existe, declarado
 
 ```yaml trecho
-carga:
-  modelo: fechado
-  usuarios: 200
-  duracao: 5m
-  intervalo_entre_iteracoes: 1s
+load:
+  model: closed
+  users: 200
+  duration: 5m
+  thinkTime: 1s
 ```
 
 **Serve** quando o limite real é de sessão, não de chegada: pool de conexão,
@@ -105,9 +105,9 @@ fechado produz.
 ```yaml trecho
 slo:
   - consultar pedido: { p95: < 150ms }              # um passo
-  - jornada: { p95: < 2s, p99: < 5s }               # a espera inteira
-  - global: { sucesso: ">= 99.9", taxa_efetiva: ">= 90/s" }
-  - regressao: { jornada_p95: "<= 10% pior" }       # contra uma execucao anterior
+  - journey: { p95: < 2s, p99: < 5s }               # a espera inteira
+  - global: { success: ">= 99.9", throughput: ">= 90/s" }
+  - regression: { journeyP95: "<= 10% pior" }       # contra uma execucao anterior
 ```
 
 O relatório mostra também **o que não foi declarado**, porque um gate que só mede

@@ -64,13 +64,13 @@ func TestSameRouteWithDifferentIdentifiersBecomesOneStepAndOneDataSource(t *test
 	if len(script.Steps) != 1 {
 		t.Fatalf("esperava 1 passo, vieram %d", len(script.Steps))
 	}
-	if script.Steps[0].Path != "/pedidos/${pedidos_id.valor}" {
+	if script.Steps[0].Path != "/pedidos/${pedidos_id.value}" {
 		t.Fatalf("o caminho não virou parâmetro: %q", script.Steps[0].Path)
 	}
 	if len(files) != 1 || len(files[0].Values) != 3 {
 		t.Fatalf("os valores observados não viraram fonte de data: %+v", files)
 	}
-	if files[0].CSV() != "valor\n9912\n8123\n7001\n" {
+	if files[0].CSV() != "value\n9912\n8123\n7001\n" {
 		t.Fatalf("o CSV saiu diferente:\n%s", files[0].CSV())
 	}
 }
@@ -85,12 +85,12 @@ func TestEveryKindOfNoiseIsDroppedWithAReasonOnScreen(t *testing.T) {
 		address string
 		reason  string
 	}{
-		{"GET", "http://cdn.outro.com/app.js", "domínio de fora (cdn.outro.com)"},
-		{"GET", "http://api.local/static/app.js", "recurso estático"},
-		{"GET", "http://api.local/favicon.ico", "recurso estático"},
-		{"GET", "http://api.local/collect?v=1", "telemetria"},
+		{"GET", "http://cdn.outro.com/app.js", "an outside domain (cdn.outro.com)"},
+		{"GET", "http://api.local/static/app.js", "a static asset"},
+		{"GET", "http://api.local/favicon.ico", "a static asset"},
+		{"GET", "http://api.local/collect?v=1", "telemetry"},
 		{"OPTIONS", "http://api.local/pedidos", "preflight de CORS"},
-		{"GET", "http://api.local/health", "pedido por -ignore (/health)"},
+		{"GET", "http://api.local/health", "asked for by -ignore (/health)"},
 	}
 
 	for _, c := range cases {
@@ -236,7 +236,7 @@ func TestIdenticalRepeatedCallSaysTheRepetitionIsNotInTheScenario(t *testing.T) 
 	if said == "" {
 		t.Fatalf("a repetição sumiu sem ser nomeada; os avisos foram %q", script.Warnings)
 	}
-	if !strings.Contains(said, "idempotência") {
+	if !strings.Contains(said, "idempotency") {
 		t.Fatalf("o aviso não diz o que se perde: %q", said)
 	}
 }

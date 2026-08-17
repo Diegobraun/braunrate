@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+name: Billing over GraphQL
+target: ${TARGET:-http://127.0.0.1:8080}
+
+auth:
+  type: token
+  obtain:
+    http: { method: POST, path: /auth/token, body: { user: ana, password: "${PASSWORD:-secret}" } }
+    capture: { token: $.access_token }
+
+data:
+  subscribers:
+    file: data/subscribers.csv
+    consume: circular
+
+load:
+  profiles:
+    - ramp: { from: 50/s, to: 200/s, duration: 5s }
+    - steady: { rate: 200/s, duration: 5s }
+
+scenario:
+  - graphql:
+      query: |
+        query LookUpOrder($id: ID!) {
+          order(id: $id) {
+            id
+            status
+            lastInvoice { id amount status }
+          }
+        }
+      variables: { id: "${subscribers.id}" }
+    expect:
+      json: { $.data.order.status: OPEN }
+    capture:
+      invoiceId: $.data.order.lastInvoice.id
+
+  - graphql:
+      query: |
+        mutation PayInvoice($invoice: ID!) {
+          payInvoice(id: $invoice) { id status paidAt }
+        }
+      variables: { invoice: "${invoiceId}" }
+    expect:
+      json: { $.data.payInvoice.status: PAID }
+
+slo:
+  - graphql LookUpOrder: { p95: < 150ms }
+  - graphql PayInvoice: { p95: < 200ms }
+  - global: { errors: < 0.1 }

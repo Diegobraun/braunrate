@@ -82,7 +82,7 @@ func (manager *Manager) ensureToken(runContext context.Context, values *runtime.
 	obtainValues := runtime.New(0, 0, input)
 	response, err := manager.execute(runContext, *manager.config.Obtain, obtainValues)
 	if err != nil {
-		return fmt.Errorf("I could not obtain the credential (%s): %w", manager.config.Obtain.AggregationKey(), err)
+		return fmt.Errorf("could not obtain the credential (%s): %w", manager.config.Obtain.AggregationKey(), err)
 	}
 	if response.Status >= 400 {
 		return fmt.Errorf("the auth request answered %d; check the user, the password and the path in 'auth.obtain'", response.Status)

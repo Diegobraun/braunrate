@@ -115,7 +115,7 @@ func TestBodyErrorWithStatus200CountsAsError(t *testing.T) {
 	if response.Class != protocol.ErrGraphQL {
 		t.Fatalf("classe = %q, esperava erro de graphql", response.Class)
 	}
-	if !strings.Contains(response.Detail, "NOT_FOUND") || !strings.Contains(response.Detail, "em pedido") {
+	if !strings.Contains(response.Detail, "NOT_FOUND") || !strings.Contains(response.Detail, "at pedido") {
 		t.Errorf("o detalhe precisa dizer o código e onde falhou: %q", response.Detail)
 	}
 }
@@ -125,7 +125,7 @@ func TestPartialResponseIsErrorAndDeclaredPartial(t *testing.T) {
 	if response.Class != protocol.ErrGraphQL {
 		t.Fatalf("classe = %q", response.Class)
 	}
-	if !strings.HasPrefix(response.Detail, "resposta parcial") {
+	if !strings.HasPrefix(response.Detail, "partial response") {
 		t.Errorf("resposta com data e errors precisa ser declarada parcial: %q", response.Detail)
 	}
 }

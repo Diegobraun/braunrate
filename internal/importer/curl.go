@@ -98,7 +98,7 @@ func split(command string) ([]string, error) {
 		fields = append(fields, current.String())
 	}
 	if len(fields) == 0 {
-		return nil, fmt.Errorf("I received no command; use:\n  braunrate import curl \"curl -X POST https://example/orders -d '{}'\"\nor pass the command through standard input")
+		return nil, fmt.Errorf("no command received; use:\n  braunrate import curl \"curl -X POST https://example/orders -d '{}'\"\nor pass the command through standard input")
 	}
 	return fields, nil
 }
@@ -182,14 +182,14 @@ func interpretar(fields []string) (Request, error) {
 	}
 
 	if address == "" {
-		return request, fmt.Errorf("I did not find the URL in the command; the curl needs the address, as in:\n  curl https://example/orders")
+		return request, fmt.Errorf("no URL in the command; the curl needs the address, as in:\n  curl https://example/orders")
 	}
 	if !strings.Contains(address, "://") {
 		address = "https://" + address
 	}
 	parts, err := url.Parse(address)
 	if err != nil {
-		return request, fmt.Errorf("I could not understand the URL %q: %v", address, err)
+		return request, fmt.Errorf("could not understand the URL %q: %v", address, err)
 	}
 
 	request.Target = parts.Scheme + "://" + parts.Host
@@ -229,7 +229,7 @@ func build(request Request) Import {
 }
 
 func scenarioName(request Request) string {
-	return "Importado de curl " + strings.ToUpper(request.Method) + " " + Resource(request.Path)
+	return "Imported from curl " + strings.ToUpper(request.Method) + " " + Resource(request.Path)
 }
 
 func stepName(request Request) string {

@@ -65,7 +65,7 @@ func TestEveryFragmentUsesKeysThatStillExist(t *testing.T) {
 				t.Errorf("%s: %q não e chave de topo do cenário; aceitas: %s",
 					block.where, key, strings.Join(scenario.TopKeys, ", "))
 			}
-			if key == "cenario" {
+			if key == "scenario" {
 				checkSteps(t, block.where, value)
 			}
 		}

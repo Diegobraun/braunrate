@@ -59,11 +59,11 @@ O alvo recusou por credencial, e o cenário não declara autenticação nenhuma.
 preparação, e injeta o token em todos os passos:
 
 ```yaml trecho
-autenticacao:
-  tipo: token
-  obter:
-    http: { metodo: POST, caminho: /auth/token, corpo: { usuario: ana } }
-    captura: { token: $.access_token }
+auth:
+  type: token
+  obtain:
+    http: { method: POST, path: /auth/token, body: { usuario: ana } }
+    capture: { token: $.access_token }
 ```
 
 Se o bloco já existe e mesmo assim vem 401, rode `braunrate debug`: ele mostra a

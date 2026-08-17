@@ -124,8 +124,8 @@ func sanitizeName(text string) string {
 // The body leaks the same way the header does: a recorded login carries the
 // password in plain text, and the generated file goes to the repository.
 var secretFields = map[string]string{
-	"senha": "SENHA", "password": "SENHA", "pwd": "SENHA", "passwd": "SENHA",
-	"secret": "SEGREDO", "client_secret": "SEGREDO", "clientsecret": "SEGREDO",
+	"senha": "PASSWORD", "password": "PASSWORD", "pwd": "PASSWORD", "passwd": "PASSWORD",
+	"secret": "SECRET", "client_secret": "SECRET", "clientsecret": "SECRET",
 	"token": "TOKEN", "access_token": "TOKEN", "refresh_token": "TOKEN",
 	"apikey": "API_KEY", "api_key": "API_KEY", "authorization": "TOKEN",
 }

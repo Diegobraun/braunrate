@@ -183,7 +183,6 @@ func (builder *Builder) Spike(rate Rate, during time.Duration) *Builder {
 	return builder.phase(scenario.Phase{Kind: scenario.PhaseSpike, To: float64(rate), For: during})
 }
 
-
 // ClosedLoop is the declared exception, never the default: the rate stops being
 // something you ask for and becomes whatever the target allows.
 func (builder *Builder) ClosedLoop(users int, during, betweenIterations time.Duration) *Builder {

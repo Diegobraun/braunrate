@@ -149,7 +149,7 @@ func (server *Server) handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = fmt.Fprintf(w, `{"id":%d,"status":"OK","caminho":%q}`, number, r.URL.Path)
+	_, _ = fmt.Fprintf(w, `{"id":%d,"status":"OK","path":%q}`, number, r.URL.Path)
 }
 
 // The authenticated journey exists so the README example works without anyone

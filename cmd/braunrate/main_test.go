@@ -76,10 +76,10 @@ func TestUnknownFlagSuggestsTheRightOneAndRebuildsTheCommand(t *testing.T) {
 	message := unknownFlagMessage(set, args, errors.New(notDefined+"addr"))
 
 	for _, expected := range []string{
-		`"-addr" não existe`,
-		`Você quis dizer "-address"?`,
+		`"-addr" does not exist`,
+		`Did you mean "-address"?`,
 		"braunrate target -address :8080",
-		"Todas as opções: braunrate target -h",
+		"Every option: braunrate target -h",
 	} {
 		if !strings.Contains(message, expected) {
 			t.Errorf("a mensagem não traz %q:\n%s", expected, message)
@@ -87,22 +87,23 @@ func TestUnknownFlagSuggestsTheRightOneAndRebuildsTheCommand(t *testing.T) {
 	}
 }
 
-// Uma palavra sem parentesco nao ganha palpite: "voce quis dizer" errado custa
-// mais do que nao dizer nada.
+// A word with no relative gets no guess: a wrong "did you mean" costs more
+// than saying nothing.
 func TestAFlagWithNoRelativeGetsNoGuess(t *testing.T) {
 	set := newFlagSet("execute")
 	set.String("html", "", "arquivo HTML")
 
 	message := unknownFlagMessage(set, []string{"-xyzw"}, errors.New(notDefined+"xyzw"))
 
-	if strings.Contains(message, "quis dizer") {
+	if strings.Contains(message, "Did you mean") {
 		t.Errorf("palpite sem parentesco:\n%s", message)
 	}
 }
 
-// A porta ocupada e o primeiro erro de quem sobe a interface duas vezes, e ate
-// aqui a saida era o texto do sistema operacional depois do convite para abrir
-// o navegador. O convite so sai depois do bind; esta e a mensagem que sobra.
+// A busy port is the first error of whoever starts the interface twice, and up
+// to here the output was the operating system text after the invitation to open
+// the browser. The invitation only goes out after the bind; this is the message
+// that is left.
 func TestABusyPortSaysHowToChooseAnother(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -120,7 +121,7 @@ func TestABusyPortSaysHowToChooseAnother(t *testing.T) {
 	}
 
 	message := captureStderr(t, func() { portInUse("ui", "-addr", address, err) })
-	for _, expected := range []string{address + " já está ocupado", "braunrate ui -addr"} {
+	for _, expected := range []string{address + " is already taken", "braunrate ui -addr"} {
 		if !strings.Contains(message, expected) {
 			t.Errorf("a mensagem não traz %q:\n%s", expected, message)
 		}

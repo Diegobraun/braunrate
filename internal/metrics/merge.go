@@ -106,10 +106,10 @@ func comparable(documents []Document) error {
 	first := documents[0].Run
 	for _, document := range documents[1:] {
 		if document.Run.Spec != first.Spec {
-			return fmt.Errorf("I do not add up runs of different scenarios: %q and %q", first.Spec, document.Run.Spec)
+			return fmt.Errorf("cannot add up runs of different scenarios: %q and %q", first.Spec, document.Run.Spec)
 		}
 		if document.Run.Model != first.Model {
-			return fmt.Errorf("I do not add up runs of different arrival models: %q and %q", first.Model, document.Run.Model)
+			return fmt.Errorf("cannot add up runs of different arrival models: %q and %q", first.Model, document.Run.Model)
 		}
 	}
 	return nil

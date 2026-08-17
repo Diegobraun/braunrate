@@ -66,7 +66,7 @@ func ParseCapture(name, text string) (Capture, error) {
 		capture.Origin = CaptureRegex
 		capture.Expression = expression[1 : len(expression)-1]
 	default:
-		return capture, fmt.Errorf("I did not understand where to capture %q from.\n"+
+		return capture, fmt.Errorf("could not tell where to capture %q from.\n"+
 			"    use one of these forms:\n"+
 			"      %s: $.path.in.the.json     from a field of the JSON body\n"+
 			"      %s: header:X-Request-Id    from a response header\n"+
@@ -418,7 +418,7 @@ func ParseSLORule(target, metric, rawLimit string) (SLORule, error) {
 	rule := SLORule{
 		Scope:    scopeOf(target),
 		Step:     target,
-		Metric:  metric,
+		Metric:   metric,
 		Operator: OpLessOrEqual,
 	}
 	if rule.Scope != ScopeStep {
