@@ -119,6 +119,11 @@ reaches the user is in English.
 
 ## Documentation in the repository
 
+These record decisions for whoever maintains the tool, and they are written in
+Portuguese — the titles below are kept in the language of the files. What
+reaches the user is in English, and it is on the
+[site](https://diegobraun.github.io/braunrate/).
+
 - [Princípios de produto](docs/principios-de-produto.md) — the acceptance criterion of every interface decision
 - [Vocabulário](docs/vocabulario.md) — one word per concept, in every text shown to the user
 - [Decisões de internacionalização](docs/decisoes-i18n.md)
@@ -127,7 +132,7 @@ reaches the user is in English.
 - [Roteiro](docs/roteiro.md)
 - [Arquitetura](docs/arquitetura.md)
 - [Estudo comparativo de ferramentas](docs/estudo-ferramentas.md) — the basis of every decision
-- [ADRs](docs/adr) — 19 decisions, each with what was refused and the criterion that reopens it
+- [ADRs](docs/adr) — 20 decisions, each with what was refused and the criterion that reopens it
 - [API do modo servidor](docs/api-servidor.md) — one curl example per route
 - [Scenario schema](docs/braunrate.schema.json) — autocomplete and validation in the editor
 - [Example HTML report](docs/exemplo-relatorio.html) — real output of a run that failed the acceptance criterion
