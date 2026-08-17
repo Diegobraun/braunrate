@@ -34,8 +34,11 @@ type Config struct {
 
 func (config *Config) Protocol() string { return "http" }
 
+// A chave vira linha do relatorio e campo do documento de resultado, entao um
+// token na consulta sai no JSON, no HTML e na comparacao. Cortar aqui corta nos
+// tres, e nao em cada um deles.
 func (config *Config) AggregationKey() string {
-	return fmt.Sprintf("%s %s", config.Method, config.Path)
+	return fmt.Sprintf("%s %s", config.Method, transport.MaskQuery(config.Path))
 }
 
 func (config *Config) Resolve(resolve func(string) string) protocol.Config {
@@ -62,7 +65,7 @@ func (config *Config) WithHeader(name, value string) protocol.Config {
 }
 
 func (config *Config) Describe() []string {
-	lines := []string{fmt.Sprintf("%s %s", config.Method, config.Path)}
+	lines := []string{fmt.Sprintf("%s %s", config.Method, transport.MaskQuery(config.Path))}
 
 	names := make([]string, 0, len(config.Headers))
 	for name := range config.Headers {
@@ -78,7 +81,7 @@ func (config *Config) Describe() []string {
 		lines = append(lines, "Content-Type: "+config.ContentType)
 	}
 	if len(config.Body) > 0 {
-		lines = append(lines, "body: "+string(config.Body))
+		lines = append(lines, "body: "+transport.MaskBody(string(config.Body)))
 	}
 	if config.Timeout > 0 {
 		lines = append(lines, "timeout: "+config.Timeout.String())

@@ -99,6 +99,23 @@ func SummarizeError(err error) string {
 	return text
 }
 
+// IsSecretName answers whether a field with this name carries a credential.
+// Cabecalho, parametro de consulta, campo de corpo e variavel capturada
+// perguntam a mesma coisa, e perguntar em lugares diferentes foi como a
+// protecao cobriu um e deixou o vizinho de fora tres vezes seguidas.
+func IsSecretName(name string) bool {
+	lowered := strings.ToLower(name)
+	if lowered == "authorization" || lowered == "cookie" || lowered == "set-cookie" {
+		return true
+	}
+	for _, mark := range []string{"token", "senha", "password", "passwd", "secret", "api-key", "apikey", "api_key"} {
+		if strings.Contains(lowered, mark) {
+			return true
+		}
+	}
+	return false
+}
+
 // MaskSecret trims tokens and passwords: debug output tends to end up in
 // tickets and screenshots.
 func MaskSecret(name, value string) string {
@@ -109,19 +126,14 @@ func MaskSecret(name, value string) string {
 	if lowerName == "cookie" || lowerName == "set-cookie" {
 		return maskCookiePairs(value)
 	}
-	if lowerName != "authorization" && !strings.Contains(lowerName, "token") &&
-		!strings.Contains(lowerName, "senha") && !strings.Contains(lowerName, "secret") &&
-		!strings.Contains(lowerName, "api-key") && !strings.Contains(lowerName, "apikey") {
+	if !IsSecretName(name) {
 		return value
 	}
 	prefix, rest, found := strings.Cut(value, " ")
 	if !found {
 		prefix, rest = "", value
 	}
-	if len(rest) <= 6 {
-		return strings.TrimSpace(prefix + " ***")
-	}
-	return strings.TrimSpace(prefix + " " + rest[:6] + "… (" + fmt.Sprint(len(rest)) + " characters)")
+	return strings.TrimSpace(prefix + " " + cut(rest))
 }
 
 func maskCookiePairs(value string) string {
@@ -132,11 +144,7 @@ func maskCookiePairs(value string) string {
 			pairs[index] = strings.TrimSpace(pair)
 			continue
 		}
-		if len(content) <= 6 {
-			pairs[index] = name + "=***"
-			continue
-		}
-		pairs[index] = name + "=" + content[:6] + "… (" + fmt.Sprint(len(content)) + " characters)"
+		pairs[index] = name + "=" + cut(content)
 	}
 	return strings.Join(pairs, "; ")
 }

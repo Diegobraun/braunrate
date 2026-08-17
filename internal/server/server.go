@@ -326,7 +326,7 @@ func (server *Server) debug(writer http.ResponseWriter, request *http.Request) {
 	for _, line := range scenario.DescribeMessaging(spec.Messaging) {
 		fmt.Fprintf(&text, "messaging: %s\n", line)
 	}
-	answer := debugAnswer{Complete: iteration.Complete(), Vars: iteration.Vars}
+	answer := debugAnswer{Complete: iteration.Complete(), Vars: report.MaskedVars(iteration.Vars)}
 	for index, observation := range iteration.Observations {
 		if err := report.Debug(&text, index+1, observation, true); err != nil {
 			writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("I could not write the debug output: %v", err))

@@ -34,13 +34,14 @@ func Debug(out io.Writer, number int, observation engine.Observation, showBody b
 		write("  response:   status %d, %d bytes", observation.Response.Status, observation.Response.Bytes)
 	}
 	if showBody && len(observation.Response.Body) > 0 {
-		write("  body:       %s", shorten(string(observation.Response.Body)))
+		write("  body:       %s", shorten(transport.MaskBody(string(observation.Response.Body))))
 	}
 
 	if len(observation.Captured) > 0 {
 		write("  captured:")
-		for _, name := range sortNames(observation.Captured) {
-			write("    %s = %s", name, shorten(observation.Captured[name]))
+		captured := MaskedVars(observation.Captured)
+		for _, name := range sortNames(captured) {
+			write("    %s = %s", name, shorten(captured[name]))
 		}
 	}
 
@@ -70,12 +71,22 @@ func IterationVars(out io.Writer, vars map[string]string) error {
 	output := &lineWriter{out: out}
 	output.writef("")
 	output.writef("variables at the end of the iteration")
-	for _, name := range sortNames(vars) {
-		// O cabecalho ja sai cortado, e a captura que o alimenta saia inteira
-		// duas linhas abaixo. O corte e o mesmo: depuracao vira anexo de ticket.
-		output.writef("  %s = %s", name, shorten(transport.MaskSecret(name, vars[name])))
+	masked := MaskedVars(vars)
+	for _, name := range sortNames(masked) {
+		output.writef("  %s = %s", name, shorten(masked[name]))
 	}
 	return output.err
+}
+
+// MaskedVars is the single place the variables of an iteration lose their
+// secrets. O terminal e o modo servidor entregam o mesmo mapa por caminhos
+// diferentes, e o servidor montava a resposta dele sem passar por corte nenhum.
+func MaskedVars(vars map[string]string) map[string]string {
+	masked := make(map[string]string, len(vars))
+	for name, value := range vars {
+		masked[name] = transport.MaskSecret(name, value)
+	}
+	return masked
 }
 
 func describeConfig(config protocol.Config) []string {
