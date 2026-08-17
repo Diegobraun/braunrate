@@ -10,7 +10,8 @@ func TestCountAgreesWithTheNumber(t *testing.T) {
 	cases := []struct {
 		quantity int64
 		expected string
-	}{{0, "0 steps"}, {1, "1 step"}, {2, "2 steps"}, {1000, "1000 steps"}}
+	}{{0, "0 steps"}, {1, "1 step"}, {2, "2 steps"}, {1000, "1,000 steps"},
+		{4500000, "4,500,000 steps"}, {-1, "-1 step"}}
 
 	for _, testCase := range cases {
 		if got := text.Count(testCase.quantity, "step", "steps"); got != testCase.expected {
