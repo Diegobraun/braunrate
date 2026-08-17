@@ -146,8 +146,8 @@ func TestAsyncChainMeasuresProducerToConsumer(t *testing.T) {
 	for _, step := range document.Steps {
 		byName[step.Name] = step
 	}
-	production, hasProduction := byName["kafka produzir "+input]
-	wait, temEspera := byName["aguardar "+out]
+	production, hasProduction := byName["kafka produce "+input]
+	wait, temEspera := byName["await "+out]
 	if !hasProduction || !temEspera {
 		t.Fatalf("o relatório precisa de uma linha por destino: %+v", byName)
 	}
@@ -187,14 +187,14 @@ func TestFixedPartitionKeyInvalidatesResult(t *testing.T) {
 
 	var found bool
 	for _, warning := range document.Warnings {
-		if warning.Kind != "missingVariety" || !strings.Contains(warning.Message, "partição") {
+		if warning.Kind != "missingVariety" || !strings.Contains(warning.Message, "partition") {
 			continue
 		}
 		found = true
 		if warning.Severity != metrics.SeverityHigh {
 			t.Errorf("gravidade = %q, esperava alta", warning.Severity)
 		}
-		if !strings.Contains(warning.Message, "chave da mensagem variar") {
+		if !strings.Contains(warning.Message, "Make the message key vary") {
 			t.Errorf("a mensagem precisa dizer o que fazer: %q", warning.Message)
 		}
 	}
@@ -239,7 +239,7 @@ func TestMessageThatNeverArrivesBecomesExplainedTimeout(t *testing.T) {
 
 	var wait metrics.StepResult
 	for _, step := range document.Steps {
-		if strings.HasPrefix(step.Name, "aguardar ") {
+		if strings.HasPrefix(step.Name, "await ") {
 			wait = step
 		}
 	}
@@ -248,7 +248,7 @@ func TestMessageThatNeverArrivesBecomesExplainedTimeout(t *testing.T) {
 	}
 	var explicou bool
 	for detail := range wait.Details {
-		if strings.Contains(detail, "não chegou em") && strings.Contains(detail, out) {
+		if strings.Contains(detail, "did not arrive within") && strings.Contains(detail, out) {
 			explicou = true
 		}
 	}
@@ -300,7 +300,7 @@ func TestAMQPPublishesAndWaitsOnSameQueue(t *testing.T) {
 	}
 	var publishing bool
 	for _, step := range document.Steps {
-		if step.Name == "amqp publicar "+queue {
+		if step.Name == "amqp publish "+queue {
 			publishing = true
 			if step.Latency.P50 <= 0 {
 				t.Error("publicação com confirmacao precisa ter latência medida")

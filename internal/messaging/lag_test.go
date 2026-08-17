@@ -138,7 +138,7 @@ scenario:
 			continue
 		}
 		found = true
-		if !strings.HasPrefix(variety.Name, "kafka.particao.declarada.") {
+		if !strings.HasPrefix(variety.Name, "kafka.declaredPartition.") {
 			t.Fatalf("a partição declarada foi contada como se tivesse sido escolhida pela key: %s", variety.Name)
 		}
 		if variety.Distinct != 1 {
@@ -156,20 +156,20 @@ scenario:
 	// number is that of one partition, without accusing the key of not varying.
 	warned := false
 	for _, warning := range document.Warnings {
-		if !strings.Contains(warning.Message, "partição declarada") {
+		if !strings.Contains(warning.Message, "declared partition") {
 			continue
 		}
 		warned = true
 		if warning.Severity != metrics.SeverityMedium {
 			t.Fatalf("partição declarada e deliberada, e o aviso saiu como %q", warning.Severity)
 		}
-		if strings.Contains(warning.Message, "chave") {
+		if strings.Contains(warning.Message, "message key") {
 			t.Fatalf("o aviso mandou variar a chave, que não e o que resolve: %s", warning.Message)
 		}
 		// Whoever declared a fixed partition out of convenience has to read that
 		// the number stopped being about the topic. Softening it for the case
 		// that was deliberate hides it from the case that was not.
-		if !strings.Contains(warning.Message, "não representa produção") {
+		if !strings.Contains(warning.Message, "does not represent production") {
 			t.Fatalf("o aviso não disse com todas as letras que o número não representa produção: %s", warning.Message)
 		}
 	}
