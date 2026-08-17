@@ -168,3 +168,54 @@ cabe, e as das fases seguintes.
   camadas já os deixou em português.
 - **Reversibilidade**: alta.
 - **Toca o usuário**: sim: as duas páginas dizem isso na própria introdução.
+
+## 13. Todo exemplo publicado passa pelo parser antes de virar documentação
+
+- **Decisão**: um teste extrai os `examples` de cada chave do schema, monta um
+  cenário mínimo em volta do valor e roda `Parse` mais `Validate`. Chave com
+  exemplo e sem cenário de apoio reprova o teste; não é pulada.
+- **Alternativa**: revisar os exemplos à mão, ou confiar no schema por ele ser o
+  arquivo que o editor lê.
+- **Por que esta**: a referência é gerada do schema, então exemplo errado não é
+  um detalhe do arquivo — é a página que ensina errado, com o autocomplete do
+  editor concordando. O teste achou três divergências entre o que o schema
+  prometia e o que o parser aceita já na primeira execução.
+- **Reversibilidade**: alta.
+- **Toca o usuário**: sim, indiretamente: o que ele copia da referência roda.
+
+## 14. Onde o campo recebe credencial, o exemplo mostra `${VARIAVEL}`
+
+- **Decisão**: nenhum exemplo do schema carrega valor literal de senha, chave ou
+  token, e um segundo teste varre os exemplos atrás de aparência de segredo.
+- **Alternativa**: escrever `senha123` e confiar em quem lê para trocar.
+- **Por que esta**: a ferramenta recusa literal na validação. Documentação que
+  ensina o contrário transforma a recusa em obstáculo em vez de regra, e o
+  primeiro reflexo de quem esbarra num obstáculo é procurar como desligá-lo.
+- **Reversibilidade**: alta.
+- **Toca o usuário**: sim, no formato que ele copia.
+
+## 15. O schema promete o que o parser aceita, nem mais
+
+- **Decisão**: `$expect.status` passou a documentar um inteiro só, e `$await`
+  documenta `until`. O schema prometia lista, `"2xx"` e `"< 400"` para o
+  primeiro e um campo `to` inexistente para o segundo.
+- **Alternativa**: ampliar o parser para cumprir o que o schema prometia.
+- **Por que esta**: ampliar é mudança de comportamento, e a fase não tem
+  nenhuma. O schema descreve o que existe hoje; a promessa maior volta junto com
+  a implementação, se voltar.
+- **Reversibilidade**: alta. Só reduz o autocomplete.
+- **Toca o usuário**: sim: quem tinha copiado `status: 2xx` do autocomplete
+  recebia erro de validação e nenhuma explicação de onde a ideia veio.
+
+## 16. A referência abre com um cenário inteiro
+
+- **Decisão**: a primeira coisa da página de referência é um cenário completo em
+  bloco YAML, antes de qualquer tabela, e cada chave passou a mostrar o `default`
+  ao lado do tipo, com obrigatória e opcional distinguidas na tabela.
+- **Alternativa**: manter a página só como tabela de chaves, com o cenário
+  inteiro em outro guia.
+- **Por que esta**: a tabela responde "o que essa chave aceita" e não responde
+  "onde ela vai". Quem chega na referência pela busca do editor cai no meio da
+  árvore, e sem uma forma inteira por perto o encaixe é adivinhado.
+- **Reversibilidade**: alta.
+- **Toca o usuário**: sim, no topo da página.
