@@ -82,6 +82,12 @@ func Parse(content []byte) (Spec, error) {
 			"  target: http://127.0.0.1:8080")
 	}
 
+	// Antes da expansao: depois dela o segredo escrito no arquivo e a referencia
+	// resolvida sao o mesmo texto, e a recusa nao teria mais o que comparar.
+	if err := refuseLiteralCredentials(document); err != nil {
+		return Spec{}, err
+	}
+
 	// Antes de ler qualquer campo: ${VARIAVEL} do ambiente vale em todo campo
 	// escalar, e nao em uma lista de campos escolhidos a dedo.
 	expandEnvironment(document)

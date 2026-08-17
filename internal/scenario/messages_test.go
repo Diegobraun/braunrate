@@ -154,6 +154,68 @@ func TestCredentialFromTheEnvironmentIsAccepted(t *testing.T) {
 	}
 }
 
+// A recusa cobria 'variables' e os brokers. O login, o basic e a linha do
+// cabecalho — onde a credencial de fato aparece — passavam, e a referencia
+// publicada ensina ${PASSWORD} justamente ali.
+func TestLiteralCredentialOutsideVariablesIsRefused(t *testing.T) {
+	for _, refusal := range []struct {
+		what     string
+		document string
+		teaches  string
+	}{
+		{
+			"o corpo do login",
+			"auth:\n  type: token\n  obtain:\n    http: { method: POST, path: /auth/token, body: { user: ana, password: hunter2 } }\n    capture: { token: $.access_token }\n" + someLoadAndStep,
+			"${PASSWORD}",
+		},
+		{
+			"a autenticação básica",
+			"auth: { type: basic, user: ana, password: hunter2 }\n" + someLoadAndStep,
+			"${PASSWORD}",
+		},
+		{
+			"a linha inteira do cabeçalho",
+			"auth: { type: header, header: \"X-API-Key: abcd1234\" }\n" + someLoadAndStep,
+			"${TOKEN}",
+		},
+		{
+			"o cabeçalho de um passo",
+			someLoad + "scenario:\n  - http: { method: GET, path: /, headers: { Authorization: \"Bearer abcd1234\" } }\n",
+			"${TOKEN}",
+		},
+	} {
+		_, err := Parse([]byte(someHead + refusal.document))
+		if err == nil {
+			t.Errorf("credencial literal em %s foi aceita e vai para o repositório", refusal.what)
+			continue
+		}
+		if !strings.Contains(err.Error(), refusal.teaches) {
+			t.Errorf("a mensagem de %s não ensina a forma certa: %v", refusal.what, err)
+		}
+	}
+}
+
+func TestCredentialFromTheEnvironmentOutsideVariablesIsAccepted(t *testing.T) {
+	t.Setenv("PASSWORD", "hunter2")
+	t.Setenv("TOKEN", "abcd1234")
+	for _, document := range []string{
+		"auth:\n  type: token\n  obtain:\n    http: { method: POST, path: /auth/token, body: { user: ana, password: \"${PASSWORD}\" } }\n    capture: { token: $.access_token }\n" + someLoadAndStep,
+		"auth: { type: basic, user: ana, password: \"${PASSWORD}\" }\n" + someLoadAndStep,
+		"auth: { type: header, header: \"X-API-Key: ${TOKEN}\" }\n" + someLoadAndStep,
+		someLoad + "scenario:\n  - http: { method: GET, path: /, headers: { Authorization: \"Bearer ${TOKEN}\" } }\n",
+	} {
+		if _, err := Parse([]byte(someHead + document)); err != nil {
+			t.Errorf("credencial vinda do ambiente foi recusada: %v\n%s", err, document)
+		}
+	}
+}
+
+const (
+	someHead        = "name: x\ntarget: http://a\n"
+	someLoad        = "load:\n  profiles:\n    - steady: { rate: 1/s, duration: 1s }\n"
+	someLoadAndStep = someLoad + "scenario:\n  - http: GET /\n"
+)
+
 // A variable whose name is not a credential keeps working with a literal: the
 // rule is about secrets, not about writing values in the file.
 func TestOrdinaryVariableKeepsAcceptingALiteral(t *testing.T) {

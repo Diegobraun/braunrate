@@ -45,7 +45,7 @@ auth:
     http:
       method: POST
       path: /auth/token
-      body: { password: segredo, user: ana }
+      body: { password: "${PASSWORD}", user: ana }
     capture:
       token: $.access_token
 
@@ -106,7 +106,7 @@ slo:
 				Target("${BASE:-http://127.0.0.1:8080}").
 				Variable("inquilino", "acme").
 				Auth(dsl.WithToken(
-					dsl.POST("/auth/token").Body(map[string]any{"user": "ana", "password": "segredo"}),
+					dsl.POST("/auth/token").Body(map[string]any{"user": "ana", "password": "${PASSWORD}"}),
 					dsl.Capture("token", "$.access_token"),
 				).RefreshAfter(25*time.Minute)).
 				DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(scenario.ConsumeCircular)).
@@ -333,7 +333,7 @@ target: http://127.0.0.1:8080
 auth:
   type: basic
   user: ana
-  password: segredo
+  password: "${PASSWORD}"
 
 data:
   assinantes:
@@ -350,7 +350,7 @@ scenario:
 		dsl: func() (scenario.Spec, error) {
 			return dsl.New("Basica").
 				Target("http://127.0.0.1:8080").
-				Auth(dsl.Basic("ana", "segredo")).
+				Auth(dsl.Basic("ana", "${PASSWORD}")).
 				DataFromFile("assinantes", "dados/assinantes.csv", dsl.Consume(scenario.ConsumeUniquePerUser)).
 				Steady(dsl.PerSecond(10), 5*time.Second).
 				Step(dsl.GET("/pedidos")).
