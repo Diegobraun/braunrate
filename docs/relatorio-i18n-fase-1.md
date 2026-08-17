@@ -458,8 +458,8 @@ linhas do bloco porque a coluna tinha sido acertada para `requisicao:`.
 | Mensagens reescritas, não convertidas | ✅ seção 3 |
 | Varredura sem português, com exceções explícitas | ✅ `internal/i18n` |
 | conferida contra o schema | ✅ chave, valor e descrição |
-| Nenhuma mudança de comportamento | ✅ dois bugs corrigidos em commits próprios, ambos de saída vazia ou desalinhada |
-| CI verde, lint zero, exemplos rodando, a cada commit | ✅ `go test ./...` e `golangci-lint run ./...` em cada um dos 17 commits da fase |
+| Nenhuma mudança de comportamento | ✅ três bugs corrigidos em commits próprios: a chave de slo derivada, o bloco de variáveis vazio e o próximo passo do `-output` |
+| CI verde, lint zero, exemplos rodando, a cada commit | ✅ `go test ./...` e `golangci-lint run ./...` em cada um dos 19 commits da fase |
 | Exemplo publicado travado por CI | ✅ `docs/exemplo-resultado.json` e `docs/exemplo-relatorio.html` regenerados de uma execução real, no formato 3 |
 | Commits pequenos, em português, Conventional Commits | ✅ |
 | Decisões registradas | ✅ oito em [decisoes-i18n.md](decisoes-i18n.md) |
