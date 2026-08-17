@@ -202,7 +202,9 @@ func TestResolveWithLeavesOtherMissingVariablesAlone(t *testing.T) {
 // Credencial de broker se resolve na leitura, do ambiente, e nao pelo runtime.
 // A interface nao pode fingir que a preenche: injetar limparia o aviso sem
 // entregar o valor, e o run comecaria para falhar na conexao. Ver ADR 0021.
-func TestSessionCredentialsExcludeBrokerSecrets(t *testing.T) {
+// A sessao preenche credencial de broker onde a variavel de ambiente entraria, e
+// o valor chega ao campo de conexao que o cliente le — nao aos Vars de HTTP.
+func TestBrokerCredentialsAreFilledFromTheSession(t *testing.T) {
 	spec, err := scenario.Parse([]byte(`
 name: x
 target: http://127.0.0.1:8080
@@ -231,22 +233,21 @@ scenario:
 		t.Fatalf("cenário não carregou: %v", err)
 	}
 
-	fillable := spec.SessionCredentials()
-	if len(fillable) != 1 || fillable[0] != "TOKEN" {
-		t.Fatalf("só o TOKEN de HTTP é preenchível pela sessão: %v", fillable)
+	got := map[string]bool{}
+	for _, name := range spec.SessionCredentials() {
+		got[name] = true
+	}
+	if !got["TOKEN"] || !got["KAFKA_USER"] || !got["KAFKA_PASSWORD"] {
+		t.Fatalf("a sessão deveria poder preencher HTTP e broker: %v", spec.SessionCredentials())
 	}
 
-	// Tentar fornecer a senha do broker pela sessão não pode limpar o aviso: o
-	// valor não chegaria ao broker.
 	spec.ResolveWith(map[string]string{"KAFKA_PASSWORD": "x", "KAFKA_USER": "y", "TOKEN": "t"})
-	stillMissing := map[string]bool{}
-	for _, name := range spec.MissingEnvironment {
-		stillMissing[name] = true
+
+	if spec.Messaging.Kafka.Auth.User != "y" || spec.Messaging.Kafka.Auth.Password != "x" {
+		t.Errorf("a credencial de broker da sessão não chegou à conexão: user=%q password=%q",
+			spec.Messaging.Kafka.Auth.User, spec.Messaging.Kafka.Auth.Password)
 	}
-	if !stillMissing["KAFKA_PASSWORD"] || !stillMissing["KAFKA_USER"] {
-		t.Errorf("credencial de broker fornecida pela sessão foi dada por satisfeita sem chegar ao broker: %v", spec.MissingEnvironment)
-	}
-	if stillMissing["TOKEN"] {
-		t.Errorf("o TOKEN de HTTP deveria ter sido satisfeito: %v", spec.MissingEnvironment)
+	if len(spec.MissingEnvironment) != 0 {
+		t.Errorf("nada deveria faltar após a sessão preencher tudo: %v", spec.MissingEnvironment)
 	}
 }

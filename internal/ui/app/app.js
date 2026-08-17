@@ -26,6 +26,23 @@ document.getElementById('explanations').addEventListener('change', function () {
   document.body.classList.toggle('without-explanations', !this.checked)
 })
 
+// No stored choice means "follow the OS"; the button offers the other of the two.
+function nowDark () {
+  const chosen = document.documentElement.dataset.theme
+  return chosen ? chosen === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+}
+function labelTheme () {
+  document.getElementById('theme').textContent = nowDark() ? 'light' : 'dark'
+}
+labelTheme()
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', labelTheme)
+document.getElementById('theme').addEventListener('click', function () {
+  const next = nowDark() ? 'light' : 'dark'
+  document.documentElement.dataset.theme = next
+  try { localStorage.setItem('theme', next) } catch (failure) {}
+  labelTheme()
+})
+
 document.getElementById('copy').addEventListener('click', async function () {
   try {
     await navigator.clipboard.writeText(command.textContent)
@@ -96,8 +113,8 @@ function scenariosScreen () {
         <div class="options">
           <a class="option" href="#/new"><b>Start from scratch</b>
             <span>a short form that writes a commented scenario</span></a>
-          <a class="option" href="#/import"><b>Import a cURL</b>
-            <span>paste the command copied from the browser's network panel</span></a>
+          <a class="option" href="#/import"><b>Import</b>
+            <span>a "Copy as cURL" from the network panel, or a JMeter .jmx plan</span></a>
           <a class="option" href="#/demo"><b>See the demonstration</b>
             <span>runs a complete example, nothing to configure</span></a>
         </div>
@@ -131,19 +148,101 @@ function demoScreen () {
 }
 
 function importScreen () {
-  showCommand('braunrate import curl "<command>" -output scenario.yaml')
+  showCommand('braunrate import jmx plan.jmx -output scenario.yaml')
   content.innerHTML = `
-    <h1>Import a cURL</h1>
-    <p class="caption">The import happens in the terminal, and the file it writes shows up in the list
-      here as soon as it exists. Copy the request in the browser's network panel with
-      "Copy as cURL" and run:</p>
-    <pre>braunrate import curl "&lt;paste here&gt;" -output scenario.yaml</pre>
-    <p>The token becomes <code>\${TOKEN}</code>, read from the environment, and never reaches the repository.</p>
-    <p><a class="button" href="#/">back</a></p>`
+    <h1>Import a scenario</h1>
+    <p class="caption">Either format becomes a <code>.yaml</code> in <code>${escape(state.directory)}</code>.
+      The import is a draft: read the warnings, then it is the file that is the truth, edited right here.</p>
+    <div class="tabs">
+      <button type="button" class="tab active" data-src="curl">Paste a cURL</button>
+      <button type="button" class="tab" data-src="jmx">Upload a .jmx</button>
+    </div>
+    <div class="panel" id="src-curl">
+      <textarea id="curl" spellcheck="false" placeholder='curl https://your-api/orders -H "Authorization: Bearer ..."'></textarea>
+      <p class="teaches">Copy the request in the browser's network panel with "Copy as cURL". The token
+        becomes <code>\${TOKEN}</code>, read from the environment, and never written to the file.</p>
+    </div>
+    <div class="panel" id="src-jmx" hidden>
+      <label><span>JMeter plan</span><input type="file" id="jmx" accept=".jmx,application/xml,text/xml"></label>
+      <p class="teaches">The common subset of a JMeter plan translates; whatever is left out comes back as a
+        warning instead of a silent gap. The busiest domain becomes the target.</p>
+    </div>
+    <div class="bar"><button type="button" class="primary" id="convert">Convert</button>
+      <a class="button" href="#/">cancel</a>
+      <span class="right" id="import-status"></span></div>
+    <div id="warnings"></div>
+    <div id="generated" hidden>
+      <h2>Generated scenario</h2>
+      <textarea id="yaml" spellcheck="false" aria-label="generated scenario in YAML"></textarea>
+      <div class="bar">
+        <input id="filename" value="imported.yaml" style="width:auto;min-width:220px" aria-label="file name">
+        <button type="button" class="primary" id="save-imported">Save scenario</button></div>
+    </div>`
+
+  let source = 'curl'
+  const tabs = content.querySelectorAll('.tab')
+  tabs.forEach(tab => tab.addEventListener('click', function () {
+    source = tab.dataset.src
+    tabs.forEach(other => other.classList.toggle('active', other === tab))
+    document.getElementById('src-curl').hidden = source !== 'curl'
+    document.getElementById('src-jmx').hidden = source !== 'jmx'
+  }))
+
+  const importStatus = document.getElementById('import-status')
+  const warnings = document.getElementById('warnings')
+  const generated = document.getElementById('generated')
+
+  document.getElementById('convert').addEventListener('click', async function () {
+    let payload = ''
+    let suggested = 'imported.yaml'
+    if (source === 'curl') {
+      payload = document.getElementById('curl').value.trim()
+      if (!payload) { importStatus.textContent = 'paste a cURL first'; return }
+    } else {
+      const file = document.getElementById('jmx').files[0]
+      if (!file) { importStatus.textContent = 'choose a .jmx first'; return }
+      payload = await file.text()
+      suggested = file.name.replace(/\.jmx$/i, '') + '.yaml'
+    }
+    this.disabled = true
+    importStatus.textContent = 'converting…'
+    const answer = await ask(`/import/${source}`, { method: 'POST', body: payload })
+    this.disabled = false
+    importStatus.textContent = ''
+    if (!answer.ok) {
+      warnings.innerHTML = `<div class="notice error"><h3>I could not import it</h3><pre>${escape(errorMessage(answer))}</pre></div>`
+      generated.hidden = true
+      return
+    }
+    const list = answer.body.warnings || []
+    warnings.innerHTML = list.length
+      ? `<div class="notice"><h3>${list.length} thing(s) to check before running</h3>
+          <ul>${list.map(one => `<li>${escape(one)}</li>`).join('')}</ul></div>`
+      : ''
+    document.getElementById('yaml').value = answer.body.yaml
+    document.getElementById('filename').value = suggested
+    generated.hidden = false
+  })
+
+  document.getElementById('save-imported').addEventListener('click', async function () {
+    let file = document.getElementById('filename').value.trim()
+    if (!file) { importStatus.textContent = 'name the file first'; return }
+    if (!file.endsWith('.yaml') && !file.endsWith('.yml')) file += '.yaml'
+    const answer = await ask(`/scenarios/${encodeURIComponent(file)}/text`,
+      { method: 'PUT', body: document.getElementById('yaml').value })
+    if (!answer.ok) {
+      warnings.innerHTML = `<div class="notice error"><h3>I did not save it</h3><pre>${escape(errorMessage(answer))}</pre></div>`
+      return
+    }
+    await reloadSides()
+    location.hash = `#/scenario/${encodeURIComponent(file)}`
+  })
 }
 
-const scenarioTemplate = ({ name, target, method, path, rate, duration, p95, errors }) =>
-`# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+const schemaLine = '# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json'
+
+const scenarioTemplateHTTP = ({ name, target, method, path, rate, duration, p95, errors }) =>
+`${schemaLine}
 name: ${name}
 target: ${target}
 
@@ -163,6 +262,61 @@ slo:
   - global: { p95: < ${p95}, errors: < ${errors} }
 `
 
+const scenarioTemplateKafka = ({ name, brokers, topic, rate, duration, p95, errors }) =>
+`${schemaLine}
+name: ${name}
+target: ${brokers}
+requires: [kafka]
+
+load:
+  profiles:
+    - steady: { rate: ${rate}/s, duration: ${duration} }
+
+scenario:
+  - kafka:
+      topic: ${topic}
+      key: "1"
+      value: { id: "1" }
+    name: ${name.toLowerCase()}
+
+# Broker with authentication? Uncomment and give the values in the session field
+# on the scenario page — they resolve from the environment, never from the file.
+# messaging:
+#   kafka:
+#     brokers: [${brokers}]
+#     auth: { type: scramSha512, user: "\${KAFKA_USER}", password: "\${KAFKA_PASSWORD}" }
+
+slo:
+  - global: { p95: < ${p95}, errors: < ${errors} }
+`
+
+const scenarioTemplateAMQP = ({ name, address, queue, rate, duration, p95, errors }) =>
+`${schemaLine}
+name: ${name}
+target: ${address}
+requires: [amqp]
+
+load:
+  profiles:
+    - steady: { rate: ${rate}/s, duration: ${duration} }
+
+scenario:
+  - amqp:
+      queue: ${queue}
+      body: { id: "1" }
+    name: ${name.toLowerCase()}
+
+# messaging:
+#   amqp:
+#     addresses: [${address}]
+#     auth: { user: "\${AMQP_USER}", password: "\${AMQP_PASSWORD}" }
+
+slo:
+  - global: { p95: < ${p95}, errors: < ${errors} }
+`
+
+const templates = { http: scenarioTemplateHTTP, kafka: scenarioTemplateKafka, amqp: scenarioTemplateAMQP }
+
 function newScreen () {
   showCommand('braunrate new scenario.yaml')
   content.innerHTML = `
@@ -174,35 +328,56 @@ function newScreen () {
         <div class="help">Goes into <code>${escape(state.directory)}</code>.</div></label>
       <label><span>Scenario name</span><input name="name" value="Order lookup" required>
         <div class="help">Shows up at the top of the report.</div></label>
-      <label><span>Target</span><input name="target" value="http://127.0.0.1:8080" required>
-        <div class="help">The service to measure. With no service at hand, <code>braunrate target</code> starts one.</div></label>
-      <div class="pair">
-        <label><span>Method</span>
-          <select name="method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></label>
-        <label><span>Path</span><input name="path" value="/orders/1" required>
-          <div class="teaches">A path with a fixed value measures the target's cache, not the target:
-            every request will be identical. After saving, swap <code>/orders/1</code> for
-            <code>/orders/${'$'}{orders.id}</code> and declare where <code>${'$'}{orders.id}</code> comes from.</div></label>
+      <label><span>Protocol</span>
+        <select name="kind" id="kind"><option value="http">HTTP</option><option value="kafka">Kafka</option><option value="amqp">RabbitMQ (AMQP)</option></select></label>
+
+      <div id="g-http">
+        <label><span>Target</span><input name="target" value="http://127.0.0.1:8080">
+          <div class="help">The service to measure. With none at hand, <code>braunrate target</code> starts one.</div></label>
+        <div class="pair">
+          <label><span>Method</span>
+            <select name="method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></label>
+          <label><span>Path</span><input name="path" value="/orders/1">
+            <div class="teaches">A fixed path measures the target's cache, not the target. After saving, swap
+              <code>/orders/1</code> for <code>/orders/${'$'}{orders.id}</code> and declare where it comes from.</div></label>
+        </div>
       </div>
+      <div id="g-kafka" hidden>
+        <label><span>Brokers</span><input name="brokers" value="127.0.0.1:9092">
+          <div class="help">host:port of the broker. A broker with auth is added on the scenario page.</div></label>
+        <label><span>Topic</span><input name="topic" value="orders"></label>
+      </div>
+      <div id="g-amqp" hidden>
+        <label><span>Address</span><input name="address" value="127.0.0.1:5672">
+          <div class="help">host:port of RabbitMQ.</div></label>
+        <label><span>Queue</span><input name="queue" value="orders"></label>
+      </div>
+
       <div class="pair">
-        <label><span>Rate (requests per second)</span><input name="rate" value="100" required>
-          <div class="teaches">Rate is the pace the generator fires at, whether the target is fast or
-            slow — the way real users behave. A tool that waits for the previous response eases off the
-            system exactly when it is struggling.</div></label>
+        <label><span>Rate (per second)</span><input name="rate" value="100" required>
+          <div class="teaches">The pace the generator fires at, fast target or slow — the way real users
+            behave. A tool that waits for the previous response eases off exactly when the system struggles.</div></label>
         <label><span>Duration</span><input name="duration" value="30s" required></label>
       </div>
       <div class="pair">
         <label><span>95% of the responses within</span><input name="p95" value="500ms" required>
-          <div class="teaches">"95% within 500ms" means 5% of the people waited longer than that.
-            The average stays out of the report because it hides exactly those.</div></label>
+          <div class="teaches">"95% within 500ms" means 5% waited longer. The average stays out of the
+            report because it hides exactly those.</div></label>
         <label><span>Maximum error rate (%)</span><input name="errors" value="0.1" required>
-          <div class="teaches">These two limits are the acceptance criterion: if either goes over,
-            braunrate exits with code 1 and the pipeline fails the build.</div></label>
+          <div class="teaches">These two are the acceptance criterion: if either goes over, braunrate exits
+            with code 1 and the pipeline fails the build.</div></label>
       </div>
       <div class="bar"><button class="primary" type="submit">Save scenario</button>
         <a class="button" href="#/">cancel</a></div>
       <div id="result"></div>
     </form>`
+
+  const kind = document.getElementById('kind')
+  function showGroups () {
+    ['http', 'kafka', 'amqp'].forEach(one => { document.getElementById('g-' + one).hidden = kind.value !== one })
+  }
+  kind.addEventListener('change', showGroups)
+  showGroups()
 
   document.getElementById('form').addEventListener('submit', async function (event) {
     event.preventDefault()
@@ -210,8 +385,8 @@ function newScreen () {
     let file = fields.file.trim()
     if (!file.endsWith('.yaml') && !file.endsWith('.yml')) file += '.yaml'
 
-    const response = await ask(`/scenarios/${encodeURIComponent(file)}/text`,
-      { method: 'PUT', body: scenarioTemplate(fields) })
+    const body = (templates[fields.kind] || scenarioTemplateHTTP)(fields)
+    const response = await ask(`/scenarios/${encodeURIComponent(file)}/text`, { method: 'PUT', body })
     const result = document.getElementById('result')
     if (!response.ok) {
       result.innerHTML = `<div class="notice error"><h3>I did not save it</h3><p>${escape(errorMessage(response))}</p></div>`
@@ -226,14 +401,16 @@ function editorScreen (name) {
   showCommand(`braunrate validate ${name}`)
   content.innerHTML = `
     <h1>${escape(name)}</h1>
-    <p class="caption">This is the file, with the comments you wrote. Editing it from outside is seen
-      here: reload the page.</p>
+    <p class="caption">The file itself, comments and all — edits from outside show up on reload.</p>
     <div class="bar">
-      <button id="save">Save</button>
       <button id="debug">Debug one iteration</button>
       <button id="execute" class="primary">Run with load</button>
+      <button id="save">Save</button>
       <span class="right" id="status">loading…</span>
     </div>
+    <p class="teaches">Debug fires one request to watch the scenario reach its end — do this first.
+      Run with load fires the real test at the declared rate. Both save the file before they run;
+      Save on its own only writes it.</p>
     <div id="verdict"></div>
     <div id="credentials"></div>
     <textarea id="text" spellcheck="false" aria-label="scenario in YAML"></textarea>
@@ -410,22 +587,54 @@ function runsScreen () {
 async function runScreen (id) {
   const run = state.runs.find(one => one.id === id)
   showCommand(`braunrate execute ${run ? run.scenario : '<scenario>.yaml'} -html report.html`)
+  const running = run && run.status === 'running'
   content.innerHTML = `
     <h1>Run ${escape(id)}</h1>
     <p class="caption" id="from-which-scenario">${run ? escape(run.scenario) : 'loading…'}</p>
-    <div id="progress"></div>
-    <div id="report"></div>`
+    <div class="bar">
+      <span id="note">${running ? 'in progress — closing this page interrupts nothing' : ''}</span>
+      <button type="button" id="cancel" class="button danger"${running ? '' : ' hidden'}>Cancel the run</button>
+      <span class="right actions" id="actions"${running ? ' hidden' : ''}>
+        <a class="button" id="download" download="${escape(id)}-report.html"
+           href="/runs/${encodeURIComponent(id)}/report">Download</a>
+        <button type="button" class="button" id="save-report">Save to folder</button>
+      </span>
+    </div>
+    <p class="teaches" id="save-note" hidden></p>
+    <div class="tabs">
+      <button type="button" class="tab" data-panel="log">Log</button>
+      <button type="button" class="tab" data-panel="report">Report</button>
+    </div>
+    <div class="panel" id="panel-log"><pre id="lines">${running ? 'waiting for the first line…' : ''}</pre></div>
+    <div class="panel" id="panel-report"><div id="report"></div></div>`
 
-  const progress = document.getElementById('progress')
   const report = document.getElementById('report')
+  const tabs = content.querySelectorAll('.tab')
+  function activate (which) {
+    tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.panel === which))
+    document.getElementById('panel-log').hidden = which !== 'log'
+    document.getElementById('panel-report').hidden = which !== 'report'
+  }
+  tabs.forEach(tab => tab.addEventListener('click', () => activate(tab.dataset.panel)))
+  activate(running ? 'log' : 'report')
 
-  if (run && run.status === 'running') {
-    progress.innerHTML = `
-      <div class="bar">
-        <span class="right">in progress — closing this page interrupts nothing</span>
-        <button type="button" id="cancel" class="button danger">Cancel the run</button>
-      </div>
-      <pre id="lines">waiting for the first line…</pre>`
+  document.getElementById('save-report').addEventListener('click', async function () {
+    this.disabled = true
+    const label = this.textContent
+    this.textContent = 'saving…'
+    const answer = await ask(`/runs/${encodeURIComponent(id)}/save`, { method: 'POST' })
+    this.disabled = false
+    this.textContent = label
+    const note = document.getElementById('save-note')
+    note.hidden = false
+    note.classList.toggle('failed-text', !answer.ok)
+    note.textContent = answer.ok ? `saved to ${answer.body.path}` : errorMessage(answer)
+  })
+
+  // follow replays past lines before closing, so a finished run fills its Log too.
+  const replayed = follow(id, document.getElementById('lines'))
+
+  if (running) {
     // Apontar a carga para o ambiente errado e o erro mais caro deste tipo de
     // teste, e ate aqui a unica saida derrubava o servidor junto.
     document.getElementById('cancel').addEventListener('click', async function () {
@@ -435,15 +644,19 @@ async function runScreen (id) {
       if (!answer.ok) {
         this.textContent = 'Cancel the run'
         this.disabled = false
-        progress.querySelector('.right').textContent = errorMessage(answer)
+        document.getElementById('note').textContent = errorMessage(answer)
       }
     })
-    await follow(id, document.getElementById('lines'))
+    await replayed
     await reloadSides()
     const finished = state.runs.find(one => one.id === id)
-    progress.querySelector('.right').textContent = finished && finished.verdict
+    // An ended run cannot be canceled; the report exists now, so its actions appear.
+    document.getElementById('cancel').remove()
+    document.getElementById('actions').hidden = false
+    document.getElementById('note').textContent = finished && finished.verdict
       ? `finished: ${finished.verdict}`
       : 'finished'
+    activate('report')
   }
 
   const response = await ask(`/runs/${id}`)

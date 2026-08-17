@@ -25,6 +25,7 @@ A regra de credencial fica inteira porque a distinção do projeto se mantém: *
 2. **O valor vive na memória do processo** e some quando o servidor reinicia — o mesmo ciclo de vida de uma variável de ambiente num shell. Não há armazenamento persistente de segredo, e é assim de propósito.
 3. **A saída não mostra segredo.** O valor de sessão passa pelo mesmo corte que já existe: terminal, HTML, JSON e depuração mostram `Bearer eyJhbG…`, nunca o token inteiro. A leitura de volta (`GET /environment`) devolve só os **nomes** preenchidos, nunca os valores.
 4. **Só em `127.0.0.1`.** A interface já se planta no loopback e avisa que expor noutra interface é uma decisão à parte. O valor cruza HTTP em claro, e por isso só no loopback.
+5. **Credencial de broker também.** Kafka e AMQP: o valor de sessão vai ao campo de conexão que o cliente lê, não aos valores de runtime — é lá que o broker o lê. O arquivo mantém `${KAFKA_SENHA}`. A primeira versão restringiu o campo ao `${TOKEN}` de HTTP porque a credencial de broker resolvia no parse; entregá-la no `ResolveWith`, no `Auth`, faz o valor chegar e mantém o aviso honesto quando falta.
 
 A injeção acontece num ponto só, `ExecuteSpec`, que é o caminho tanto do YAML quanto do cenário em Go — o mesmo veredito para os dois, como o [ADR 0009](0009-equivalencia-entre-yaml-e-dsl.md) exige.
 

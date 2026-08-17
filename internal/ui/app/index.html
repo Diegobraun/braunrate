@@ -3,13 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>braunrate</title>
+<title>braunrate · load testing</title>
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header>
-  <a class="brand" href="#/">braunrate</a>
+  <a class="brand" href="#/">
+    <svg class="logo" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 20 L20 20"/><path d="M4 20 L20 5"/>
+      <circle cx="20" cy="5" r="1.7" fill="currentColor" stroke="none"/>
+    </svg>
+    braunrate</a>
   <span class="version" id="version">…</span>
+  <button type="button" class="chip" id="theme">dark</button>
   <label class="explanations"><input type="checkbox" id="explanations" checked> explanations</label>
   <div class="equivalent">
     <span class="label">the same from the terminal</span>
@@ -22,7 +30,7 @@
   <nav>
     <div class="list-title">
       <span>Scenarios</span>
-      <a class="action" href="#/new">new</a>
+      <span class="actions"><a class="action" href="#/new">new</a><a class="action" href="#/import">import</a></span>
     </div>
     <ol id="scenarios"><li class="loading">loading…</li></ol>
     <div class="list-title">

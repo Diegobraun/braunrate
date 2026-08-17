@@ -49,7 +49,7 @@ func TestAnyRouteAnswersWithThePage(t *testing.T) {
 	address := serve(t)
 
 	status, body := get(t, address, "/cenario/qualquer")
-	if status != http.StatusOK || !strings.Contains(body, "<title>braunrate</title>") {
+	if status != http.StatusOK || !strings.Contains(body, "<title>braunrate · load testing</title>") {
 		t.Fatalf("rota desconhecida respondeu %d: %s", status, body)
 	}
 }
@@ -97,8 +97,8 @@ func TestTheScreenTeachesTheSameFiveIdeasTheTerminalTeaches(t *testing.T) {
 	_, script := get(t, address, "/app.js")
 
 	for _, idea := range []string{
-		"Rate is the pace the generator fires at",
-		"means 5% of the people waited longer than that",
+		"The pace the generator fires at",
+		"means 5% waited longer",
 		"are the acceptance criterion",
 		"measures the target's cache, not the target",
 		"No number of this run counts as an answer",

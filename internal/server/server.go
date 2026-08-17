@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/Diegobraun/braunrate/internal/engine"
+	"github.com/Diegobraun/braunrate/internal/importer"
 	"github.com/Diegobraun/braunrate/internal/metrics"
 	"github.com/Diegobraun/braunrate/internal/report"
 	"github.com/Diegobraun/braunrate/internal/report/comparison"
@@ -80,6 +81,8 @@ func (server *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /runs/{before}/comparison/{after}/report", server.compareReport)
 	if server.options.Writable {
 		mux.HandleFunc("PUT /scenarios/{name}/text", server.writeScenario)
+		mux.HandleFunc("POST /runs/{id}/save", server.saveReport)
+		mux.HandleFunc("POST /import/{format}", server.importScenario)
 	}
 	if server.options.UI != nil {
 		mux.Handle("GET /", server.options.UI)
@@ -487,6 +490,71 @@ func (server *Server) getReport(writer http.ResponseWriter, request *http.Reques
 		// what is left is not pretending the report was complete.
 		_, _ = fmt.Fprintf(writer, "\n<!-- report interrupted: %v -->\n", err)
 	}
+}
+
+// Runs die with the process; saving writes the -html report under reports/,
+// beside the scenarios, as the deliberate act of keeping one.
+func (server *Server) saveReport(writer http.ResponseWriter, request *http.Request) {
+	run, found := server.runs.get(request.PathValue("id"))
+	if !found {
+		writeProblem(writer, http.StatusNotFound, unknownRun(request.PathValue("id")))
+		return
+	}
+	state := run.state()
+	if state.Status != statusDone {
+		writeProblem(writer, http.StatusConflict, "the report only exists after the run finishes; the state right now is "+state.Status)
+		return
+	}
+	folder := filepath.Join(server.options.Directory, "reports")
+	if err := os.MkdirAll(folder, 0o755); err != nil {
+		writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("I could not create %s: %v", folder, err))
+		return
+	}
+	path := filepath.Join(folder, run.ID+"-report.html")
+	file, err := os.Create(path)
+	if err != nil {
+		writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("I could not write %s: %v", path, err))
+		return
+	}
+	if err := report.HTML(file, state.Document); err != nil {
+		_ = file.Close()
+		writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("I started %s but the report did not finish: %v", path, err))
+		return
+	}
+	if err := file.Close(); err != nil {
+		writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("I could not finish writing %s: %v", path, err))
+		return
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		absolute = path
+	}
+	writeJSON(writer, http.StatusOK, map[string]string{"path": absolute})
+}
+
+// Import hands back the YAML instead of writing it: the imported scenario is a
+// draft to read the warnings on and name before saving, not an answer.
+func (server *Server) importScenario(writer http.ResponseWriter, request *http.Request) {
+	payload, err := io.ReadAll(request.Body)
+	if err != nil {
+		writeProblem(writer, http.StatusBadRequest, "I could not read what you sent to import: "+err.Error())
+		return
+	}
+	var result importer.Import
+	switch format := request.PathValue("format"); format {
+	case "curl":
+		result, err = importer.FromCurl(string(payload))
+	case "jmx":
+		result, err = importer.FromJMX(payload)
+	default:
+		writeProblem(writer, http.StatusNotFound, fmt.Sprintf("I do not import %q; the formats are curl and jmx", format))
+		return
+	}
+	if err != nil {
+		writeProblem(writer, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	writeJSON(writer, http.StatusOK, map[string]any{"yaml": result.YAML, "warnings": result.Warnings})
 }
 
 // The stream is plain text, one line per progress tick, the same line the
