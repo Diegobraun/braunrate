@@ -996,8 +996,15 @@ func migrate(args []string) int {
 		fmt.Fprintf(os.Stderr, "\n%s would change. Run without -dry-run to write.\n", text.Count(int64(converted), "file", "files"))
 		return runner.ExitPassed
 	}
+	// With -output the converted scenario is somewhere else, and pointing the
+	// next step at the original would send the reader to validate the file that
+	// was not converted.
+	next := files[0]
+	if *output != "" {
+		next = *output
+	}
 	fmt.Fprintf(os.Stderr, "\n%s converted. Next step:\n  braunrate validate %s\n",
-		text.Count(int64(converted), "file", "files"), files[0])
+		text.Count(int64(converted), "file", "files"), next)
 	return runner.ExitPassed
 }
 
