@@ -219,3 +219,17 @@ cabe, e as das fases seguintes.
   árvore, e sem uma forma inteira por perto o encaixe é adivinhado.
 - **Reversibilidade**: alta.
 - **Toca o usuário**: sim, no topo da página.
+
+## 17. O que é nome de credencial se decide num lugar só
+
+- **Decisão**: `transport.IsSecretName` responde por toda a ferramenta — a recusa
+  no parse, a máscara do cabeçalho, o corte do parâmetro de consulta, o do campo
+  de corpo e o da variável capturada.
+- **Alternativa**: manter a lista de nomes de cada lado, como estava.
+- **Por que esta**: estavam em dois lugares e discordavam. `apiToken` era cortado
+  na impressão e aceito literal no arquivo, porque um comparava por pedaço do
+  nome e o outro por nome inteiro. Foi a terceira vez que uma proteção cobriu uma
+  saída e deixou a vizinha de fora.
+- **Reversibilidade**: alta.
+- **Toca o usuário**: sim: nome de variável que contém `token`, `password`,
+  `secret` ou `api-key` passou a ser recusado com valor literal, e antes passava.
