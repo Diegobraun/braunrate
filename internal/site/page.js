@@ -60,6 +60,15 @@ document.querySelectorAll('article.reference td code').forEach(function (value) 
   })
 })
 
+/* -------------------------------------------------------------------- menu */
+
+// O 'open' vem no HTML para a pagina sem script continuar navegavel, e fechar em
+// CSS nao da: 'details' aberto nao volta a fechar por folha de estilo.
+var menu = document.getElementById('menu')
+if (menu && window.matchMedia('(max-width: 860px)').matches) {
+  menu.open = false
+}
+
 /* -------------------------------------------------------------------- tema */
 
 var themeButton = document.getElementById('theme')

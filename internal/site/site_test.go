@@ -519,3 +519,57 @@ func TestEveryPageSaysWhereItComesFrom(t *testing.T) {
 		}
 	}
 }
+
+// Medido em 375 px antes desta regra: o menu ocupava a primeira tela e o titulo
+// so comecava a 629 px. Recolher e uma decisao que some sem alarde, porque nao
+// quebra nada quando volta a nascer aberto.
+func TestTheMenuArrivesFoldedOnANarrowScreen(t *testing.T) {
+	built := build(t)
+	page := built["index.html"]
+
+	if !strings.Contains(page, `<details class="menu" id="menu" open>`) {
+		t.Error("o menu não é recolhível, ou não nasce aberto para quem está sem script")
+	}
+	if !strings.Contains(page, "<summary>") {
+		t.Error("o menu recolhido não tem barra para abrir")
+	}
+	if !strings.Contains(built["page.js"], "menu.open = false") {
+		t.Error("nada recolhe o menu no estreito")
+	}
+
+	narrow := narrowRules(t, built["style.css"])
+	if !strings.Contains(narrow, "details.menu > summary {") {
+		t.Error("a barra de abrir não aparece no estreito")
+	}
+	for _, control := range []string{"nav.sections a", "header .brand", ".block .copy", ".anchor"} {
+		if !strings.Contains(narrow, control) {
+			t.Errorf("%s não ganha alvo de toque no estreito", control)
+		}
+	}
+	for _, rule := range regexp.MustCompile(`min-height:\s*(\d+)px`).FindAllStringSubmatch(narrow, -1) {
+		if rule[1] != "44" {
+			t.Errorf("alvo de toque de %spx no estreito; a recomendação das duas plataformas é 44", rule[1])
+		}
+	}
+}
+
+func narrowRules(t *testing.T, css string) string {
+	t.Helper()
+	start := strings.Index(css, "@media (max-width: 860px) {")
+	if start < 0 {
+		t.Fatal("a folha não tem a faixa estreita")
+	}
+	depth := 0
+	for index := start; index < len(css); index++ {
+		switch css[index] {
+		case '{':
+			depth++
+		case '}':
+			if depth--; depth == 0 {
+				return css[start : index+1]
+			}
+		}
+	}
+	t.Fatal("a faixa estreita não fecha")
+	return ""
+}

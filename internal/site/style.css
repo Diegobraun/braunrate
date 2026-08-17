@@ -102,6 +102,8 @@ kbd {
   max-width: 1400px; margin: 0 auto; align-items: start;
 }
 
+details.menu > summary { display: none; }
+
 nav.sections {
   position: sticky; top: 60px; max-height: calc(100vh - 60px); overflow-y: auto;
   padding: 26px 16px 60px; border-right: 1px solid var(--border);
@@ -369,10 +371,35 @@ footer code { font-size: 12px; }
   .page { grid-template-columns: 1fr; }
   header { position: static; }
   header .version, header .repository { display: none; }
+
+  /* Medido em 375 px: o menu ocupava a primeira tela, e o titulo comecava a
+     629 px. */
+  details.menu > summary {
+    display: flex; align-items: center; gap: 8px;
+    min-height: 44px; padding: 0 20px; cursor: pointer;
+    font-size: 15px; color: var(--soft);
+    border-bottom: 1px solid var(--border);
+  }
+  details.menu > summary::marker, details.menu > summary::-webkit-details-marker { color: var(--soft); }
+  details.menu[open] > summary { color: var(--text); }
+
   nav.sections {
     position: static; max-height: none; border-right: 0;
-    border-bottom: 1px solid var(--border); padding: 18px 16px;
+    border-bottom: 1px solid var(--border); padding: 8px 16px;
   }
+  /* 44 px e a recomendacao de alvo de toque das duas plataformas; os links do
+     menu tinham 18. Fica de fora o link dentro de paragrafo e de tabela: ali a
+     altura e a da linha do texto, e engorda-la quebraria a leitura. */
+  nav.sections a { min-height: 44px; display: flex; align-items: center; }
+  nav.sections .section { margin-top: 14px; }
+  header .brand, header .language, header .open-search, header .theme,
+  .hero .secondary, .pagination a, footer a, .block .copy {
+    min-height: 44px; display: inline-flex; align-items: center;
+  }
+  .block .copy { top: 4px; right: 4px; }
+  /* A ancora so aparecia no ponteiro, e no toque nao ha ponteiro: era um alvo de
+     20 px invisivel. Aqui ela fica sempre visivel, ou nao serve. */
+  .anchor { opacity: 1; min-height: 44px; display: inline-flex; align-items: center; padding: 0 8px; }
   main { padding: 28px 20px 20px; }
   h1 { font-size: 30px; }
   h2 { font-size: 21px; }

@@ -408,8 +408,11 @@ window.SITE_TEXT = %s
   <a class="repository" href="https://github.com/Diegobraun/braunrate">GitHub</a>
 </header>
 <div class="page">
-  <nav class="sections" aria-label="%s">
-%s  </nav>
+  <details class="menu" id="menu" open>
+    <summary>%s</summary>
+    <nav class="sections" aria-label="%s">
+%s    </nav>
+  </details>
   <main>
 %s    <article%s>
 %s    </article>
@@ -431,7 +434,7 @@ window.SITE_TEXT = %s
 		html.EscapeString(version), html.EscapeString(text.SearchLabel), text.Search,
 		html.EscapeString(text.UseDarkTheme), text.Theme,
 		otherLanguageHref(language, file), language.other().Code, language.other().Code, text.OtherLanguage,
-		html.EscapeString(text.Sections["reference"]),
+		html.EscapeString(text.Pages), html.EscapeString(text.Sections["reference"]),
 		menu(pages, index), hero, articleClass(page), body, pagination(pages, index, text), tableOfContents(page, text),
 		footer(page, version, text), html.EscapeString(text.SearchLabel),
 		html.EscapeString(text.Placeholder), text.SearchHint, language.toRoot())
