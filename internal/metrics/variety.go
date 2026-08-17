@@ -311,7 +311,7 @@ func thousands(value int64) string {
 		text = text[:len(text)-3]
 	}
 	parts = append([]string{text}, parts...)
-	return join(parts, ".")
+	return join(parts, ",")
 }
 
 func join(parts []string, separator string) string {

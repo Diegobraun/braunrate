@@ -34,7 +34,7 @@ func TestConsumerLagAppearsInTheTerminalAndInTheHTML(t *testing.T) {
 		if !strings.Contains(output, "cobranca") || !strings.Contains(output, "faturas") {
 			t.Fatalf("o %s não nomeou o grupo e o tópico observados", name)
 		}
-		if !strings.Contains(output, "4.200 messages") {
+		if !strings.Contains(output, "4,200 messages") {
 			t.Fatalf("o %s não disse quantas mensagens o consumidor ficou para trás", name)
 		}
 		if !strings.Contains(output, "ended the run behind") {

@@ -333,7 +333,7 @@ func thousands(value int64) string {
 		text = text[:len(text)-3]
 	}
 	parts = append([]string{text}, parts...)
-	return strings.Join(parts, ".")
+	return strings.Join(parts, ",")
 }
 
 // Wide enough for a short cause, narrow enough to keep the table readable.
