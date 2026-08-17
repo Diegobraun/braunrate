@@ -63,6 +63,24 @@ func TestEverySchemaExampleIsAcceptedByTheParser(t *testing.T) {
 	}
 }
 
+// A referencia sai do schema, entao chave sem descricao e sem exemplo e chave
+// que aparece na pagina como uma linha vazia. O teste trava o resultado da
+// auditoria: chave nova nasce documentada ou reprova aqui.
+func TestEverySchemaKeyIsDescribedAndExemplified(t *testing.T) {
+	keys := documentedKeys(t)
+	if len(keys) < 100 {
+		t.Fatalf("achei %d chaves no schema: o teste não estaria provando nada", len(keys))
+	}
+	for _, path := range sortedNames(keys) {
+		if !keys[path].described {
+			t.Errorf("%s não tem description", path)
+		}
+		if !keys[path].exemplified {
+			t.Errorf("%s não tem examples", path)
+		}
+	}
+}
+
 // Segredo escrito no exemplo ensina o contrario do que a ferramenta recusa na
 // validacao, e a documentacao e o lugar de onde o habito sai.
 func TestNoSchemaExampleCarriesALiteralCredential(t *testing.T) {
@@ -119,7 +137,7 @@ type schemaExample struct {
 	encoded string
 }
 
-func schemaExamples(t *testing.T) []schemaExample {
+func schemaDocument(t *testing.T) map[string]any {
 	t.Helper()
 	content, err := os.ReadFile(filepath.Join(root, "docs", "braunrate.schema.json"))
 	if err != nil {
@@ -129,6 +147,103 @@ func schemaExamples(t *testing.T) []schemaExample {
 	if err := json.Unmarshal(content, &document); err != nil {
 		t.Fatalf("o schema não carrega: %v", err)
 	}
+	return document
+}
+
+type documentedKey struct {
+	described   bool
+	exemplified bool
+}
+
+func documentedKeys(t *testing.T) map[string]documentedKey {
+	t.Helper()
+	document := schemaDocument(t)
+	keys := map[string]documentedKey{}
+	walkKeys(document, document, "", 0, keys)
+	return keys
+}
+
+// A chave que o usuario escreve e o caminho por onde ela e alcancada, e nao o
+// $defs onde ela mora: 'method' documentada uma vez no tipo http vale para
+// todos os passos que apontam para ele. Por isso a caminhada resolve o $ref, e
+// o limite de profundidade e o que a impede de girar em tipo que se referencia.
+func walkKeys(root, node any, path string, depth int, keys map[string]documentedKey) {
+	shape, is := resolveRef(root, node).(map[string]any)
+	if !is || depth > 12 {
+		return
+	}
+	for name, child := range mapOf(shape["properties"]) {
+		full := name
+		if path != "" {
+			full = path + "." + name
+		}
+		resolved, _ := resolveRef(root, child).(map[string]any)
+		_, described := resolved["description"].(string)
+		examples, _ := resolved["examples"].([]any)
+		keys[full] = documentedKey{described: described, exemplified: len(examples) > 0}
+		walkKeys(root, child, full, depth+1, keys)
+	}
+	walkKeys(root, shape["items"], path, depth+1, keys)
+	walkKeys(root, shape["additionalProperties"], path+".*", depth+1, keys)
+	for _, key := range []string{"oneOf", "anyOf", "allOf"} {
+		branches, _ := shape[key].([]any)
+		for _, branch := range branches {
+			walkKeys(root, branch, path, depth+1, keys)
+		}
+	}
+}
+
+// O que a chave diz sobre si mesma vence o que o tipo diz: 'auth.obtain.http'
+// aponta para o tipo http e acrescenta que ali so cabe ambiente e valor fixo.
+func resolveRef(root, node any) any {
+	for range 10 {
+		shape, is := node.(map[string]any)
+		if !is {
+			return node
+		}
+		reference, has := shape["$ref"].(string)
+		if !has {
+			return node
+		}
+		target := root
+		for _, part := range strings.Split(strings.TrimPrefix(reference, "#/"), "/") {
+			step, is := target.(map[string]any)
+			if !is {
+				return node
+			}
+			target = step[part]
+		}
+		merged := map[string]any{}
+		for name, value := range mapOf(target) {
+			merged[name] = value
+		}
+		for _, name := range []string{"description", "examples", "default"} {
+			if value, has := shape[name]; has {
+				merged[name] = value
+			}
+		}
+		node = merged
+	}
+	return node
+}
+
+func mapOf(node any) map[string]any {
+	shape, _ := node.(map[string]any)
+	return shape
+}
+
+func sortedNames(keys map[string]documentedKey) []string {
+	names := make([]string, 0, len(keys))
+	for name := range keys {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func schemaExamples(t *testing.T) []schemaExample {
+	t.Helper()
+	document := schemaDocument(t)
 	var found []schemaExample
 	collect(t, document, "", &found)
 	sort.Slice(found, func(first, second int) bool {
