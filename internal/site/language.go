@@ -52,17 +52,20 @@ type chrome struct {
 	StaleLabel     string
 	StaleNotice    string
 
-	ReferenceTitle    string
-	ReferenceSummary  string
-	ReferenceIntro    string
-	ReferenceTop      string
-	ReferenceColumns  string
-	ReferenceRequired [2]string
-	ReferenceTypes    map[string]string
-	ReferenceListOf   string
-	ReferenceEitherOr string
-	ReferenceShort    string
-	ReferenceObject   string
+	ReferenceTitle      string
+	ReferenceSummary    string
+	ReferenceIntro      string
+	ReferenceTop        string
+	ReferenceDefault    string
+	ReferenceWhole      string
+	ReferenceWholeIntro string
+	ReferenceColumns    string
+	ReferenceRequired   [2]string
+	ReferenceTypes      map[string]string
+	ReferenceListOf     string
+	ReferenceEitherOr   string
+	ReferenceShort      string
+	ReferenceObject     string
 
 	DecisionsTitle   string
 	DecisionsSummary string
@@ -110,9 +113,12 @@ var english = Language{
 		ReferenceSummary: "Every key of the scenario file, generated from the schema.",
 		ReferenceIntro: "This page is generated from `docs/braunrate.schema.json`, the same file your " +
 			"editor uses to complete the keys. A key braunrate accepts and does not show up here fails the build.",
-		ReferenceTop:      "Top of the file",
-		ReferenceColumns:  "| key | type | required | what it does | example |",
-		ReferenceRequired: [2]string{"yes", "no"},
+		ReferenceTop:        "Top of the file",
+		ReferenceDefault:    "default",
+		ReferenceWhole:      "A whole scenario",
+		ReferenceWholeIntro: "Every key below appears in this file. It runs against the built-in target, and a test loads it and validates it on every build.",
+		ReferenceColumns:    "| key | type | required | what it does | example |",
+		ReferenceRequired:   [2]string{"yes", "no"},
 		ReferenceTypes: map[string]string{
 			"string": "text", "integer": "integer", "number": "number",
 			"boolean": "true or false", "object": "object", "array": "list",
@@ -170,9 +176,12 @@ var brazilianPortuguese = Language{
 		ReferenceIntro: "Esta página é gerada de `docs/braunrate.schema.json`, o mesmo arquivo que o seu " +
 			"editor usa para completar as chaves. Chave que o braunrate aceita e não aparece aqui reprova o build. " +
 			"As descrições saem do schema, que é em inglês desde a 0.6.0.",
-		ReferenceTop:      "Topo do arquivo",
-		ReferenceColumns:  "| chave | tipo | obrigatória | o que faz | exemplo |",
-		ReferenceRequired: [2]string{"sim", "não"},
+		ReferenceTop:        "Topo do arquivo",
+		ReferenceDefault:    "padrão",
+		ReferenceWhole:      "Um cenário inteiro",
+		ReferenceWholeIntro: "Toda chave listada abaixo aparece neste arquivo. Ele roda contra o alvo embutido, e um teste o carrega e o valida a cada build.",
+		ReferenceColumns:    "| chave | tipo | obrigatória | o que faz | exemplo |",
+		ReferenceRequired:   [2]string{"sim", "não"},
 		ReferenceTypes: map[string]string{
 			"string": "texto", "integer": "inteiro", "number": "número",
 			"boolean": "sim ou não", "object": "objeto", "array": "lista",

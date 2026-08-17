@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -28,6 +29,7 @@ type schemaNode struct {
 	AnyOf       []schemaNode          `json:"anyOf"`
 	Definitions map[string]schemaNode `json:"$defs"`
 	Additional  *additional           `json:"additionalProperties"`
+	Default     any                   `json:"default"`
 }
 
 type additional struct{ shape *schemaNode }
@@ -72,6 +74,8 @@ func ReferencePage(repositoryRoot string, language Language) (Page, error) {
 	text := language.Text
 	var markdown strings.Builder
 	fmt.Fprintf(&markdown, "# %s\n\n%s\n\n", text.ReferenceTitle, text.ReferenceIntro)
+	fmt.Fprintf(&markdown, "## %s\n\n%s\n\n```yaml\n%s```\n\n",
+		text.ReferenceWhole, text.ReferenceWholeIntro, completeScenario)
 	writeBlock(&markdown, root, root, text.ReferenceTop, 2, text)
 	for _, name := range sortedNames(root.Definitions) {
 		definition := root.Definitions[name]
@@ -111,8 +115,8 @@ func writeBlock(out *strings.Builder, root, node schemaNode, path string, level 
 	for _, name := range sortedNames(properties) {
 		property := resolve(root, properties[name])
 		fmt.Fprintf(out, "| `%s` | %s | %s | %s | %s |\n",
-			name, kindOf(root, property, text), required(node, name, text),
-			cell(property.Description), example(property))
+			name, kindOf(root, property, text)+fallback(property, text), required(node, name, text),
+			cell(property.Description), examplesOf(property))
 	}
 	out.WriteString("\n")
 
@@ -170,7 +174,22 @@ func resolve(root, node schemaNode) schemaNode {
 	if node.Description != "" {
 		target.Description = node.Description
 	}
+	if len(node.Examples) > 0 {
+		target.Examples = node.Examples
+	}
+	if node.Default != nil {
+		target.Default = node.Default
+	}
 	return target
+}
+
+// O padrao ao lado do tipo, e nao numa coluna propria: a maioria das chaves nao
+// tem um, e uma coluna quase vazia empurra a descricao para fora da tela.
+func fallback(node schemaNode, text chrome) string {
+	if node.Default == nil {
+		return ""
+	}
+	return " · " + text.ReferenceDefault + " `" + literals([]any{node.Default})[0] + "`"
 }
 
 func kindOf(root, node schemaNode, text chrome) string {
@@ -210,30 +229,84 @@ func required(parent schemaNode, name string, text chrome) string {
 	return text.ReferenceRequired[1]
 }
 
-func example(node schemaNode) string {
+// Ate tres: o primeiro mostra a forma comum, e os outros mostram que a chave
+// aceita mais de uma. A quarta linha ja e a referencia inteira dentro de uma
+// celula.
+func examplesOf(node schemaNode) string {
 	if len(node.Examples) == 0 {
 		return ""
 	}
-	return "`" + literals(node.Examples)[0] + "`"
+	written := literals(node.Examples)
+	if len(written) > 3 {
+		written = written[:3]
+	}
+	for index, value := range written {
+		written[index] = "`" + value + "`"
+	}
+	return strings.Join(written, " · ")
 }
 
-// A formatacao padrao do Go vira map[$.status:PROCESSADO], que nao da para colar
-// em lugar nenhum.
+// A formatacao padrao do Go vira map[$.status:PROCESSED], que nao da para colar
+// em lugar nenhum, e a do JSON enche a celula de aspas que o YAML nao pede. O
+// que sai daqui e YAML de fluxo: cabe em uma linha e cola no cenario como esta.
 func literals(values []any) []string {
 	written := make([]string, 0, len(values))
 	for _, value := range values {
-		switch value.(type) {
-		case string, float64, bool, nil:
-			written = append(written, strings.TrimSpace(fmt.Sprintf("%v", value)))
-			continue
-		}
-		encoded, err := json.Marshal(value)
-		if err != nil {
-			encoded = []byte(fmt.Sprintf("%v", value))
-		}
-		written = append(written, string(encoded))
+		written = append(written, flow(value))
 	}
 	return written
+}
+
+func flow(value any) string {
+	switch typed := value.(type) {
+	case string:
+		return quoted(typed)
+	case map[string]any:
+		names := make([]string, 0, len(typed))
+		for name := range typed {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		parts := make([]string, 0, len(names))
+		for _, name := range names {
+			parts = append(parts, quoted(name)+": "+flow(typed[name]))
+		}
+		return "{ " + strings.Join(parts, ", ") + " }"
+	case []any:
+		parts := make([]string, 0, len(typed))
+		for _, item := range typed {
+			parts = append(parts, flow(item))
+		}
+		return "[" + strings.Join(parts, ", ") + "]"
+	case nil:
+		return "null"
+	}
+	return strings.TrimSpace(fmt.Sprintf("%v", value))
+}
+
+// Aspas so onde o YAML precisa delas: dentro de um mapa em linha, a virgula e as
+// chaves fecham o valor antes da hora, e um texto que parece numero voltaria
+// como numero.
+func needsQuotes(text string) bool {
+	if text == "" || strings.ContainsAny(text, ",{}[]&*!|>%@`\"'") || strings.Contains(text, ": ") ||
+		strings.HasPrefix(text, "#") || text != strings.TrimSpace(text) {
+		return true
+	}
+	if _, err := strconv.ParseFloat(text, 64); err == nil {
+		return true
+	}
+	switch strings.ToLower(text) {
+	case "true", "false", "null", "yes", "no", "on", "off":
+		return true
+	}
+	return false
+}
+
+func quoted(text string) string {
+	if !needsQuotes(text) {
+		return text
+	}
+	return `"` + strings.ReplaceAll(text, `"`, `\"`) + `"`
 }
 
 // Uma barra vertical na descricao partiria a tabela em uma coluna a mais.
@@ -249,3 +322,50 @@ func sortedNames(values map[string]schemaNode) []string {
 	sort.Strings(names)
 	return names
 }
+
+// O cenario que abre a pagina e um cenario de verdade, e nao um recorte: quem
+// chega na referencia procurando "como e um arquivo inteiro" nao encontra isso
+// em nenhuma tabela de chaves. Um teste o carrega e o valida.
+const completeScenario = `# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+name: Billing journey
+target: ${TARGET:-http://127.0.0.1:8080}
+
+variables:
+  tenant: acme
+
+auth:
+  type: token
+  obtain:
+    http: { method: POST, path: /auth/token, body: { user: ana, password: "${PASSWORD}" } }
+    capture: { token: $.access_token }
+  refreshAfter: 25m
+
+data:
+  subscribers: { file: data/subscribers.csv, consume: circular }
+
+load:
+  profiles:
+    - ramp: { from: 50/s, to: 300/s, duration: 5s }
+    - steady: { rate: 300/s, duration: 30s }
+
+scenario:
+  - name: look up order
+    http:
+      method: GET
+      path: /orders/${subscribers.id}
+      headers: { X-Tenant: "${tenant}" }
+    expect: { status: 200, json: { $.status: OPEN } }
+    capture: { invoiceId: $.lastInvoice.id }
+
+  - name: pay invoice
+    http:
+      method: POST
+      path: /invoices/${invoiceId}/pay
+      body: { amount: 199.90 }
+    expect: { status: 200 }
+
+slo:
+  - look up order: { p95: "< 150ms" }
+  - journey: { p95: "< 2s" }
+  - global: { errors: "< 0.1" }
+`

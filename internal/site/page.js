@@ -37,6 +37,29 @@ document.querySelectorAll('.copy-command').forEach(function (button) {
   })
 })
 
+/* --------------------------------------------------------------- referencia */
+
+// A referencia e a unica pagina cujas celulas carregam valor para colar no
+// cenario, e ir ate o exemplo com o mouse para selecionar texto de uma celula
+// estreita e onde a pessoa desiste e digita de novo.
+document.querySelectorAll('article.reference td code').forEach(function (value) {
+  value.className = 'copyable'
+  value.title = TEXT.copy
+  value.addEventListener('click', function () {
+    var previous = value.title
+    navigator.clipboard.writeText(value.textContent).then(function () {
+      value.title = TEXT.copied
+      value.classList.add('copied')
+      setTimeout(function () {
+        value.title = previous
+        value.classList.remove('copied')
+      }, 1200)
+    }, function () {
+      value.title = TEXT.copyByHand
+    })
+  })
+})
+
 /* -------------------------------------------------------------------- tema */
 
 var themeButton = document.getElementById('theme')

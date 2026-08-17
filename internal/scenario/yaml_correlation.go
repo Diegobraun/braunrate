@@ -10,7 +10,7 @@ import (
 )
 
 // The shape of the expression picks the origin: "$.field" is JSON,
-// "cabecalho:X-Id" is a header, "/pattern/" is a regular expression. QA writes
+// "header:X-Id" is a header, "/pattern/" is a regular expression. QA writes
 // one line and is done.
 func readCaptures(node *yaml.Node) ([]Capture, error) {
 	if node.Kind != yaml.MappingNode {

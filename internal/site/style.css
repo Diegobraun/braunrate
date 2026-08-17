@@ -272,6 +272,14 @@ thead th {
 tbody tr:hover { background: var(--background-soft); }
 td code { white-space: nowrap; }
 
+/* A obrigatoria e a coluna que decide o que a pessoa precisa escrever; a
+   opcional some para o fundo em vez de competir com ela. */
+td.required { color: var(--brand); font-weight: 640; }
+td.optional { color: var(--soft); }
+td code.copyable { cursor: pointer; }
+td code.copyable:hover { border-color: var(--brand); color: var(--text); }
+td code.copied { border-color: var(--passed); color: var(--passed); }
+
 /* -------------------------------------------------------------------- notas */
 .note {
   margin: 0 0 22px; padding: 14px 18px; border-radius: 10px; max-width: var(--reading-width);

@@ -116,6 +116,9 @@ func writeLanguage(destination string, language Language, pages []Page, version 
 			// tela so.
 			page.WithoutContents = true
 		}
+		if page.Slug == "reference" {
+			body = markRequired(body, language.Text)
+		}
 		if page.Stale {
 			body = staleNotice(language) + body
 		}
@@ -125,6 +128,15 @@ func writeLanguage(destination string, language Language, pages []Page, version 
 		}
 	}
 	return nil
+}
+
+// A coluna "obrigatoria" e a que decide o que a pessoa precisa escrever, e um
+// "sim" e um "nao" em cinza igual nao separam nada a distancia de leitura. A
+// troca vale so na referencia, que e a unica pagina com essa coluna.
+func markRequired(body string, text chrome) string {
+	body = strings.ReplaceAll(body, "<td>"+text.ReferenceRequired[0]+"</td>",
+		`<td class="required">`+text.ReferenceRequired[0]+"</td>")
+	return strings.ReplaceAll(body, "<td>"+text.ReferenceRequired[1]+"</td>", `<td class="optional">—</td>`)
 }
 
 func staleNotice(language Language) string {
@@ -399,7 +411,7 @@ window.SITE_TEXT = %s
   <nav class="sections" aria-label="%s">
 %s  </nav>
   <main>
-%s    <article>
+%s    <article%s>
 %s    </article>
 %s  </main>
 %s</div>
@@ -420,13 +432,22 @@ window.SITE_TEXT = %s
 		html.EscapeString(text.UseDarkTheme), text.Theme,
 		otherLanguageHref(language, file), language.other().Code, language.other().Code, text.OtherLanguage,
 		html.EscapeString(text.Sections["reference"]),
-		menu(pages, index), hero, body, pagination(pages, index, text), tableOfContents(page, text),
+		menu(pages, index), hero, articleClass(page), body, pagination(pages, index, text), tableOfContents(page, text),
 		footer(page, version, text), html.EscapeString(text.SearchLabel),
 		html.EscapeString(text.Placeholder), text.SearchHint, language.toRoot())
 }
 
 // O seletor troca de lingua sem trocar de pagina: quem esta lendo protocolos em
 // ingles cai em protocolos em portugues, e nao na pagina inicial.
+// A referencia e a unica pagina cujas celulas carregam valor para copiar, e o
+// script so liga o clique-para-copiar onde ele serve.
+func articleClass(page Page) string {
+	if page.Slug == "reference" {
+		return ` class="reference"`
+	}
+	return ""
+}
+
 func otherLanguageHref(language Language, file string) string {
 	other := language.other()
 	if other.Directory == "" {

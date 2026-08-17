@@ -14,7 +14,11 @@
   "properties": {
     "name": {
       "type": "string",
-      "description": "The scenario name. It appears at the top of the report."
+      "description": "The scenario name. It appears at the top of the report.",
+      "examples": [
+        "Order lookup",
+        "Billing journey"
+      ]
     },
     "target": {
       "type": "string",
@@ -50,14 +54,44 @@
           "number",
           "boolean"
         ]
-      }
+      },
+      "examples": [
+        {
+          "tenant": "acme",
+          "region": "${REGION:-us-east-1}"
+        }
+      ]
     },
     "auth": {
-      "$ref": "#/$defs/auth"
+      "$ref": "#/$defs/auth",
+      "description": "How the credential is obtained, once, before the load starts, and how it is sent on every step.",
+      "examples": [
+        {
+          "type": "token",
+          "obtain": {
+            "http": {
+              "method": "POST",
+              "path": "/auth/token",
+              "body": {
+                "user": "ana",
+                "password": "${PASSWORD}"
+              }
+            },
+            "capture": {
+              "token": "$.access_token"
+            }
+          }
+        }
+      ]
     },
     "tls": {
       "$ref": "#/$defs/tls",
-      "description": "TLS to reach an HTTPS target: a private CA when the certificate is not signed by one the machine already trusts, and a client certificate when the target asks for mTLS."
+      "description": "TLS to reach an HTTPS target: a private CA when the certificate is not signed by one the machine already trusts, and a client certificate when the target asks for mTLS.",
+      "examples": [
+        {
+          "ca": "/etc/ssl/staging/ca.pem"
+        }
+      ]
     },
     "messaging": {
       "type": "object",
@@ -65,22 +99,81 @@
       "additionalProperties": false,
       "properties": {
         "kafka": {
-          "$ref": "#/$defs/broker"
+          "$ref": "#/$defs/broker",
+          "description": "The Kafka cluster the kafka and await steps talk to.",
+          "examples": [
+            {
+              "brokers": [
+                "kafka.staging:9093"
+              ],
+              "auth": {
+                "type": "scramSha512",
+                "user": "${KAFKA_USER}",
+                "password": "${KAFKA_PASSWORD}"
+              }
+            }
+          ]
         },
         "amqp": {
-          "$ref": "#/$defs/broker"
+          "$ref": "#/$defs/broker",
+          "description": "The RabbitMQ server the amqp and await steps talk to.",
+          "examples": [
+            {
+              "brokers": [
+                "amqps://rabbit.staging:5671/"
+              ],
+              "auth": {
+                "type": "saslPlain",
+                "user": "${AMQP_USER}",
+                "password": "${AMQP_PASSWORD}"
+              }
+            }
+          ]
         }
-      }
+      },
+      "examples": [
+        {
+          "kafka": {
+            "brokers": [
+              "kafka.staging:9093"
+            ]
+          }
+        }
+      ]
     },
     "data": {
       "type": "object",
       "description": "Data sources. Each key becomes a prefix usable as ${name.column}.",
       "additionalProperties": {
         "$ref": "#/$defs/dataSource"
-      }
+      },
+      "examples": [
+        {
+          "subscribers": {
+            "file": "data/subscribers.csv"
+          },
+          "orders": {
+            "generate": {
+              "id": "uuid"
+            }
+          }
+        }
+      ]
     },
     "load": {
-      "$ref": "#/$defs/load"
+      "$ref": "#/$defs/load",
+      "examples": [
+        {
+          "profiles": [
+            {
+              "steady": {
+                "rate": "300/s",
+                "duration": "5m"
+              }
+            }
+          ]
+        }
+      ]
     },
     "scenario": {
       "type": "array",
@@ -88,14 +181,36 @@
       "minItems": 1,
       "items": {
         "$ref": "#/$defs/step"
-      }
+      },
+      "examples": [
+        [
+          {
+            "http": "GET /orders/1001",
+            "name": "look up order"
+          }
+        ]
+      ]
     },
     "slo": {
       "type": "array",
       "description": "The rules that decide whether the run passed. A failing rule makes the command exit with code 1.",
       "items": {
         "$ref": "#/$defs/sloRule"
-      }
+      },
+      "examples": [
+        [
+          {
+            "look up order": {
+              "p95": "< 150ms"
+            }
+          },
+          {
+            "global": {
+              "errors": "< 0.1"
+            }
+          }
+        ]
+      ]
     }
   },
   "$defs": {
@@ -127,7 +242,12 @@
             "open",
             "closed"
           ],
-          "description": "'open' (the default) declares an arrival rate. 'closed' declares users in a loop: the rate becomes a consequence of the response time, and the report says a freeze in the target does not show up in the numbers."
+          "description": "'open' (the default) declares an arrival rate. 'closed' declares users in a loop: the rate becomes a consequence of the response time, and the report says a freeze in the target does not show up in the numbers.",
+          "examples": [
+            "open",
+            "closed"
+          ],
+          "default": "open"
         },
         "profiles": {
           "type": "array",
@@ -135,7 +255,24 @@
           "description": "Stretches run in sequence. Open model only.",
           "items": {
             "$ref": "#/$defs/profile"
-          }
+          },
+          "examples": [
+            [
+              {
+                "ramp": {
+                  "from": "100/s",
+                  "to": "800/s",
+                  "duration": "5s"
+                }
+              },
+              {
+                "steady": {
+                  "rate": "800/s",
+                  "duration": "10s"
+                }
+              }
+            ]
+          ]
         },
         "users": {
           "type": "integer",
@@ -193,7 +330,13 @@
           ],
           "properties": {
             "model": {
-              "const": "closed"
+              "const": "closed",
+              "examples": [
+                "open",
+                "closed"
+              ],
+              "default": "open",
+              "description": "'open' (the default) declares an arrival rate. 'closed' declares users in a loop."
             }
           },
           "not": {
@@ -221,15 +364,34 @@
           ],
           "properties": {
             "from": {
-              "$ref": "#/$defs/rate"
+              "$ref": "#/$defs/rate",
+              "description": "The rate at the start of the stretch.",
+              "examples": [
+                "100/s"
+              ]
             },
             "to": {
-              "$ref": "#/$defs/rate"
+              "$ref": "#/$defs/rate",
+              "description": "The rate at the end of the stretch.",
+              "examples": [
+                "800/s"
+              ]
             },
             "duration": {
-              "$ref": "#/$defs/duration"
+              "$ref": "#/$defs/duration",
+              "description": "How long the rise lasts.",
+              "examples": [
+                "5s"
+              ]
             }
-          }
+          },
+          "examples": [
+            {
+              "from": "100/s",
+              "to": "800/s",
+              "duration": "5s"
+            }
+          ]
         },
         "steady": {
           "type": "object",
@@ -241,12 +403,26 @@
           ],
           "properties": {
             "rate": {
-              "$ref": "#/$defs/rate"
+              "$ref": "#/$defs/rate",
+              "description": "The rate held for the whole stretch.",
+              "examples": [
+                "300/s"
+              ]
             },
             "duration": {
-              "$ref": "#/$defs/duration"
+              "$ref": "#/$defs/duration",
+              "description": "How long the stretch lasts.",
+              "examples": [
+                "5m"
+              ]
             }
-          }
+          },
+          "examples": [
+            {
+              "rate": "300/s",
+              "duration": "5m"
+            }
+          ]
         },
         "spike": {
           "type": "object",
@@ -258,12 +434,26 @@
           ],
           "properties": {
             "rate": {
-              "$ref": "#/$defs/rate"
+              "$ref": "#/$defs/rate",
+              "description": "The rate jumped to.",
+              "examples": [
+                "2000/s"
+              ]
             },
             "duration": {
-              "$ref": "#/$defs/duration"
+              "$ref": "#/$defs/duration",
+              "description": "How long the spike lasts.",
+              "examples": [
+                "3s"
+              ]
             }
-          }
+          },
+          "examples": [
+            {
+              "rate": "2000/s",
+              "duration": "3s"
+            }
+          ]
         }
       }
     },
@@ -274,7 +464,11 @@
       "properties": {
         "name": {
           "type": "string",
-          "description": "The step name in the report and in the SLO rules. With no name, the protocol aggregation key is used."
+          "description": "The step name in the report and in the SLO rules. With no name, the protocol aggregation key is used.",
+          "examples": [
+            "look up order",
+            "pay invoice"
+          ]
         },
         "weight": {
           "type": "integer",
@@ -297,6 +491,16 @@
             {
               "$ref": "#/$defs/http"
             }
+          ],
+          "examples": [
+            "GET /orders/${subscribers.id}",
+            {
+              "method": "POST",
+              "path": "/orders",
+              "body": {
+                "amount": 199.9
+              }
+            }
           ]
         },
         "capture": {
@@ -308,19 +512,36 @@
                 "type": "string",
                 "description": "A JSON path, a header, a cookie or a regular expression.",
                 "examples": [
-                  "$.ultimaFatura.id",
+                  "$.lastInvoice.id",
                   "header:Location",
-                  "cookie:sessao"
+                  "cookie:session"
                 ]
               },
               {
                 "$ref": "#/$defs/detailedCapture"
               }
             ]
-          }
+          },
+          "examples": [
+            {
+              "invoiceId": "$.lastInvoice.id"
+            }
+          ]
         },
         "expect": {
-          "$ref": "#/$defs/expect"
+          "$ref": "#/$defs/expect",
+          "description": "What has to hold for the step to count as a success. Without it, only a network failure or a timeout counts as an error.",
+          "examples": [
+            {
+              "status": 200
+            },
+            {
+              "status": 200,
+              "json": {
+                "$.status": "OPEN"
+              }
+            }
+          ]
         },
         "graphql": {
           "description": "A GraphQL operation. The query can come on its own (the operation name is read from it) or inside a map with variables.",
@@ -334,19 +555,54 @@
             {
               "$ref": "#/$defs/graphql"
             }
+          ],
+          "examples": [
+            {
+              "query": "query LookUpOrder($id: ID!) { order(id: $id) { status } }",
+              "variables": {
+                "id": "${subscribers.id}"
+              }
+            }
           ]
         },
         "kafka": {
           "$ref": "#/$defs/kafka",
-          "description": "Produces a message on the topic. The key decides the partition, so it has to vary per iteration."
+          "description": "Produces a message on the topic. The key decides the partition, so it has to vary per iteration.",
+          "examples": [
+            {
+              "topic": "orders",
+              "key": "${orders.id}",
+              "value": {
+                "order": "${orders.id}"
+              }
+            }
+          ]
         },
         "amqp": {
           "$ref": "#/$defs/amqp",
-          "description": "Publishes a message to a queue or an exchange."
+          "description": "Publishes a message to a queue or an exchange.",
+          "examples": [
+            {
+              "queue": "orders",
+              "messageId": "${orders.id}",
+              "body": {
+                "order": "${orders.id}"
+              }
+            }
+          ]
         },
         "await": {
           "$ref": "#/$defs/await",
-          "description": "Waits for this iteration's message to show up at the destination, closing the measurement of the asynchronous chain."
+          "description": "Waits for this iteration's message to show up at the destination, closing the measurement of the asynchronous chain.",
+          "examples": [
+            {
+              "kafka": {
+                "topic": "orders-processed"
+              },
+              "key": "${orders.id}",
+              "timeout": "10s"
+            }
+          ]
         }
       }
     },
@@ -363,17 +619,28 @@
             "DELETE",
             "HEAD",
             "OPTIONS"
-          ]
+          ],
+          "examples": [
+            "GET",
+            "POST"
+          ],
+          "default": "GET",
+          "description": "The HTTP method."
         },
         "path": {
           "type": "string",
           "examples": [
+            "/orders/${subscribers.id}",
             "/invoices/${invoiceId}/pay"
-          ]
+          ],
+          "description": "The path, appended to the target. ${} references make every request different from the last."
         },
         "url": {
           "type": "string",
-          "description": "Same as path."
+          "description": "Same as path.",
+          "examples": [
+            "https://api.example.com/v1/orders/1001"
+          ]
         },
         "headers": {
           "type": "object",
@@ -383,7 +650,13 @@
               "number",
               "boolean"
             ]
-          }
+          },
+          "description": "Headers of this step. The credential header is injected by the auth block and does not need to be repeated here.",
+          "examples": [
+            {
+              "X-Tenant": "${tenant}"
+            }
+          ]
         },
         "body": {
           "description": "An object becomes JSON. Text goes as it is.",
@@ -393,13 +666,28 @@
             "string",
             "number",
             "boolean"
+          ],
+          "examples": [
+            {
+              "amount": 199.9,
+              "description": "monthly subscription"
+            }
           ]
         },
         "timeout": {
-          "$ref": "#/$defs/duration"
+          "$ref": "#/$defs/duration",
+          "description": "How long to wait for the response before counting the request as a timeout.",
+          "examples": [
+            "10s"
+          ]
         },
         "followRedirects": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether to follow 3xx. Following changes what is measured: the number becomes the sum of the hops.",
+          "examples": [
+            false
+          ],
+          "default": true
         }
       }
     },
@@ -414,16 +702,25 @@
         "from": {
           "type": "string",
           "examples": [
-            "$.access_token"
-          ]
+            "$.access_token",
+            "header:Location"
+          ],
+          "description": "Where the value comes from in the response: a JSONPath, a header, or a regular expression."
         },
         "default": {
           "type": "string",
-          "description": "The value used when the capture finds nothing."
+          "description": "The value used when the capture finds nothing.",
+          "examples": [
+            "unknown"
+          ]
         },
         "required": {
           "type": "boolean",
-          "description": "True by default. A required capture that fails ends the iteration with a correlation error."
+          "description": "True by default. A required capture that fails ends the iteration with a correlation error.",
+          "examples": [
+            true
+          ],
+          "default": true
         }
       }
     },
@@ -433,26 +730,14 @@
       "additionalProperties": false,
       "properties": {
         "status": {
-          "oneOf": [
-            {
-              "type": "integer",
-              "minimum": 100,
-              "maximum": 599
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
-            {
-              "type": "string",
-              "examples": [
-                "2xx",
-                "< 400"
-              ]
-            }
-          ]
+          "description": "The status that counts as a success. One number: a step that accepts more than one status is two steps.",
+          "examples": [
+            200,
+            201
+          ],
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599
         },
         "json": {
           "type": "object",
@@ -463,7 +748,12 @@
               "number",
               "boolean"
             ]
-          }
+          },
+          "examples": [
+            {
+              "$.status": "OPEN"
+            }
+          ]
         },
         "header": {
           "type": "object",
@@ -473,14 +763,27 @@
               "number",
               "boolean"
             ]
-          }
+          },
+          "description": "A header that has to come back, with the value it has to have.",
+          "examples": [
+            {
+              "Content-Type": "application/json"
+            }
+          ]
         },
         "bodyContains": {
-          "type": "string"
+          "type": "string",
+          "description": "Text that has to appear in the response body.",
+          "examples": [
+            "PAID"
+          ]
         },
         "bodyMatches": {
           "type": "string",
-          "description": "A regular expression."
+          "description": "A regular expression.",
+          "examples": [
+            "\"id\":\"f-[0-9]+\""
+          ]
         }
       }
     },
@@ -497,6 +800,11 @@
             "token",
             "basic",
             "header"
+          ],
+          "description": "token obtains a credential and sends it on every step; basic sends user and password; header sends a fixed line, for an API key already in the environment.",
+          "examples": [
+            "token",
+            "header"
           ]
         },
         "obtain": {
@@ -505,29 +813,77 @@
           "additionalProperties": false,
           "properties": {
             "http": {
-              "$ref": "#/$defs/http"
+              "$ref": "#/$defs/http",
+              "description": "The login request. Only the environment and fixed values fit here: the login happens before the journeys, so a value captured by a step does not exist yet.",
+              "examples": [
+                {
+                  "method": "POST",
+                  "path": "/auth/token",
+                  "body": {
+                    "user": "ana",
+                    "password": "${PASSWORD}"
+                  }
+                }
+              ]
             },
             "capture": {
               "type": "object",
               "additionalProperties": {
                 "type": "string"
+              },
+              "description": "What is taken from the login response. The name declared here is what ${token} refers to.",
+              "examples": [
+                {
+                  "token": "$.access_token"
+                }
+              ]
+            }
+          },
+          "examples": [
+            {
+              "http": {
+                "method": "POST",
+                "path": "/auth/token",
+                "body": {
+                  "user": "ana",
+                  "password": "${PASSWORD}"
+                }
+              },
+              "capture": {
+                "token": "$.access_token"
               }
             }
-          }
+          ]
         },
         "refreshAfter": {
-          "$ref": "#/$defs/duration"
+          "$ref": "#/$defs/duration",
+          "description": "How long before the credential is obtained again. Without it, the same credential lasts the whole run.",
+          "examples": [
+            "25m"
+          ]
         },
         "header": {
           "type": "string",
           "description": "The whole header line, name and value.",
-          "default": "Authorization: Bearer ${token}"
+          "default": "Authorization: Bearer ${token}",
+          "examples": [
+            "Authorization: Bearer ${token}",
+            "X-API-Key: ${API_KEY}"
+          ]
         },
         "user": {
-          "type": "string"
+          "type": "string",
+          "description": "The user, for type: basic.",
+          "examples": [
+            "ana"
+          ]
         },
         "password": {
-          "type": "string"
+          "type": "string",
+          "description": "The password, for type: basic. Only the name of an environment variable: a literal value fails validation.",
+          "examples": [
+            "${PASSWORD}"
+          ]
         }
       }
     },
@@ -540,7 +896,8 @@
           "type": "string",
           "examples": [
             "data/subscribers.csv"
-          ]
+          ],
+          "description": "A CSV file, read relative to the scenario. The header line names the columns, and each one becomes ${source.column}."
         },
         "consume": {
           "enum": [
@@ -549,7 +906,12 @@
             "circular",
             "uniquePerUser"
           ],
-          "description": "circular loops from the start to the end of the file; uniquePerUser never repeats a value."
+          "description": "circular loops from the start to the end of the file; uniquePerUser never repeats a value.",
+          "examples": [
+            "circular",
+            "uniquePerUser"
+          ],
+          "default": "circular"
         },
         "seed": {
           "type": [
@@ -567,7 +929,13 @@
           "description": "Synthetic fields. One value per iteration, stable across the whole journey.",
           "additionalProperties": {
             "$ref": "#/$defs/generatedField"
-          }
+          },
+          "examples": [
+            {
+              "id": "uuid",
+              "amount": "number(10,500)"
+            }
+          ]
         }
       }
     },
@@ -581,25 +949,53 @@
         "additionalProperties": false,
         "properties": {
           "p50": {
-            "$ref": "#/$defs/limit"
+            "$ref": "#/$defs/limit",
+            "description": "The limit for half of the requests of this step.",
+            "examples": [
+              "< 150ms"
+            ]
           },
           "p75": {
-            "$ref": "#/$defs/limit"
+            "$ref": "#/$defs/limit",
+            "description": "The limit for 75% of the requests of this step.",
+            "examples": [
+              "< 150ms"
+            ]
           },
           "p90": {
-            "$ref": "#/$defs/limit"
+            "$ref": "#/$defs/limit",
+            "description": "The limit for 90% of the requests of this step.",
+            "examples": [
+              "< 150ms"
+            ]
           },
           "p95": {
-            "$ref": "#/$defs/limit"
+            "$ref": "#/$defs/limit",
+            "description": "The limit for 95% of the requests of this step.",
+            "examples": [
+              "< 150ms"
+            ]
           },
           "p99": {
-            "$ref": "#/$defs/limit"
+            "$ref": "#/$defs/limit",
+            "description": "The limit for 99% of the requests of this step.",
+            "examples": [
+              "< 150ms"
+            ]
           },
           "p99.9": {
-            "$ref": "#/$defs/limit"
+            "$ref": "#/$defs/limit",
+            "description": "The limit for 99.9% of the requests of this step.",
+            "examples": [
+              "< 150ms"
+            ]
           },
           "max": {
-            "$ref": "#/$defs/limit"
+            "$ref": "#/$defs/limit",
+            "description": "The limit for the worst request of this step.",
+            "examples": [
+              "< 5s"
+            ]
           },
           "errors": {
             "$ref": "#/$defs/limit",
@@ -691,7 +1087,10 @@
       "properties": {
         "query": {
           "type": "string",
-          "description": "Same as query."
+          "description": "Same as query.",
+          "examples": [
+            "query LookUpOrder($id: ID!) { order(id: $id) { id status } }"
+          ]
         },
         "operation": {
           "type": "string",
@@ -715,11 +1114,17 @@
         "path": {
           "type": "string",
           "default": "/graphql",
-          "description": "The GraphQL endpoint. The default fits almost every service."
+          "description": "The GraphQL endpoint. The default fits almost every service.",
+          "examples": [
+            "/graphql"
+          ]
         },
         "url": {
           "type": "string",
-          "description": "Same as path."
+          "description": "Same as path.",
+          "examples": [
+            "https://api.example.com/graphql"
+          ]
         },
         "headers": {
           "type": "object",
@@ -729,10 +1134,20 @@
               "number",
               "boolean"
             ]
-          }
+          },
+          "description": "Headers of this step.",
+          "examples": [
+            {
+              "X-Tenant": "${tenant}"
+            }
+          ]
         },
         "timeout": {
-          "$ref": "#/$defs/duration"
+          "$ref": "#/$defs/duration",
+          "description": "How long to wait for the response before counting the request as a timeout.",
+          "examples": [
+            "10s"
+          ]
         }
       }
     },
@@ -748,7 +1163,8 @@
           "type": "string",
           "examples": [
             "orders"
-          ]
+          ],
+          "description": "The topic the message is produced to. It is also the name the report aggregates the step under."
         },
         "key": {
           "type": "string",
@@ -765,6 +1181,12 @@
             "string",
             "number",
             "boolean"
+          ],
+          "examples": [
+            {
+              "order": "${orders.id}",
+              "amount": "${orders.amount}"
+            }
           ]
         },
         "headers": {
@@ -775,7 +1197,13 @@
               "number",
               "boolean"
             ]
-          }
+          },
+          "description": "Message headers.",
+          "examples": [
+            {
+              "x-correlation": "${orders.id}"
+            }
+          ]
         },
         "brokers": {
           "description": "Default: the scenario target.",
@@ -785,7 +1213,13 @@
           ],
           "items": {
             "type": "string"
-          }
+          },
+          "examples": [
+            [
+              "127.0.0.1:9092"
+            ],
+            "kafka.staging:9093"
+          ]
         },
         "acks": {
           "enum": [
@@ -794,7 +1228,10 @@
             "none"
           ],
           "default": "all",
-          "description": "How many replicas acknowledge before the message counts as delivered."
+          "description": "How many replicas acknowledge before the message counts as delivered.",
+          "examples": [
+            "all"
+          ]
         },
         "partition": {
           "type": "integer",
@@ -812,7 +1249,11 @@
           ]
         },
         "timeout": {
-          "$ref": "#/$defs/duration"
+          "$ref": "#/$defs/duration",
+          "description": "How long to wait for the confirmation before counting the produce as a timeout.",
+          "examples": [
+            "10s"
+          ]
         }
       }
     },
@@ -825,13 +1266,24 @@
       "properties": {
         "queue": {
           "type": "string",
-          "description": "The common case: publishes straight to the queue, which is declared if it does not exist."
+          "description": "The common case: publishes straight to the queue, which is declared if it does not exist.",
+          "examples": [
+            "orders"
+          ]
         },
         "exchange": {
-          "type": "string"
+          "type": "string",
+          "description": "The exchange the message is published to. Without it, the message goes to the default exchange and 'queue' is the routing key.",
+          "examples": [
+            "orders"
+          ]
         },
         "routingKey": {
-          "type": "string"
+          "type": "string",
+          "description": "The routing key, when an exchange is declared.",
+          "examples": [
+            "orders.created"
+          ]
         },
         "body": {
           "type": [
@@ -840,7 +1292,13 @@
             "string",
             "number",
             "boolean"
-          ]
+          ],
+          "examples": [
+            {
+              "order": "${orders.id}"
+            }
+          ],
+          "description": "The message body. An object comes out as JSON."
         },
         "messageId": {
           "type": "string",
@@ -857,25 +1315,44 @@
               "number",
               "boolean"
             ]
-          }
+          },
+          "description": "Message headers.",
+          "examples": [
+            {
+              "x-correlation": "${orders.id}"
+            }
+          ]
         },
         "url": {
           "type": "string",
           "examples": [
-            "amqp://guest:guest@127.0.0.1:5672/"
-          ]
+            "amqp://127.0.0.1:5672/",
+            "${AMQP_URL}"
+          ],
+          "description": "The RabbitMQ server. With a credential in it, declare the whole URL through an environment variable."
         },
         "persistent": {
           "type": "boolean",
-          "default": true
+          "default": true,
+          "description": "Whether the broker writes the message to disk before confirming.",
+          "examples": [
+            true
+          ]
         },
         "confirm": {
           "type": "boolean",
           "default": true,
-          "description": "Waits for the broker to confirm. Turning it off measures the write to the socket, not the delivery."
+          "description": "Waits for the broker to confirm. Turning it off measures the write to the socket, not the delivery.",
+          "examples": [
+            true
+          ]
         },
         "timeout": {
-          "$ref": "#/$defs/duration"
+          "$ref": "#/$defs/duration",
+          "description": "How long to wait for the confirmation before counting the publish as a timeout.",
+          "examples": [
+            "10s"
+          ]
         }
       }
     },
@@ -891,7 +1368,11 @@
           "additionalProperties": false,
           "properties": {
             "topic": {
-              "type": "string"
+              "type": "string",
+              "examples": [
+                "orders-processed"
+              ],
+              "description": "The topic where the effect shows up."
             },
             "brokers": {
               "type": [
@@ -900,9 +1381,22 @@
               ],
               "items": {
                 "type": "string"
-              }
+              },
+              "examples": [
+                [
+                  "127.0.0.1:9092"
+                ]
+              ],
+              "description": "The cluster, when it is not the one in the messaging block."
             }
-          }
+          },
+          "description": "The topic where the effect shows up.",
+          "examples": [
+            {
+              "topic": "orders-processed"
+            },
+            "orders-processed"
+          ]
         },
         "amqp": {
           "type": [
@@ -912,10 +1406,18 @@
           "additionalProperties": false,
           "properties": {
             "queue": {
-              "type": "string"
+              "type": "string",
+              "examples": [
+                "orders-processed"
+              ],
+              "description": "The queue where the effect shows up."
             },
             "topic": {
-              "type": "string"
+              "type": "string",
+              "examples": [
+                "orders-processed"
+              ],
+              "description": "The topic where the effect shows up."
             },
             "url": {
               "type": [
@@ -924,9 +1426,20 @@
               ],
               "items": {
                 "type": "string"
-              }
+              },
+              "examples": [
+                "amqp://127.0.0.1:5672/"
+              ],
+              "description": "The server, when it is not the one in the messaging block."
             }
-          }
+          },
+          "description": "The queue where the effect shows up.",
+          "examples": [
+            {
+              "queue": "orders-processed"
+            },
+            "orders-processed"
+          ]
         },
         "http": {
           "type": [
@@ -940,13 +1453,23 @@
               "type": "string",
               "examples": [
                 "/orders/${orders.id}"
-              ]
+              ],
+              "description": "The path polled until the condition in 'to' holds."
             },
             "url": {
               "type": "string",
-              "description": "Same as path."
+              "description": "Same as path.",
+              "examples": [
+                "https://api.example.com/orders/1001"
+              ]
             }
-          }
+          },
+          "examples": [
+            {
+              "path": "/orders/${orders.id}"
+            },
+            "/orders/${orders.id}"
+          ]
         },
         "key": {
           "type": "string",
@@ -957,7 +1480,10 @@
         },
         "equals": {
           "type": "string",
-          "description": "Same as key."
+          "description": "Same as key.",
+          "examples": [
+            "PROCESSED"
+          ]
         },
         "field": {
           "type": "string",
@@ -968,9 +1494,21 @@
         },
         "timeout": {
           "$ref": "#/$defs/duration",
-          "default": "30s"
+          "default": "30s",
+          "description": "How long to wait for the effect before counting the step as a timeout.",
+          "examples": [
+            "30s"
+          ]
         },
-        "to": {
+        "interval": {
+          "$ref": "#/$defs/duration",
+          "default": "500ms",
+          "description": "How often to poll. The measured latency has that granularity.",
+          "examples": [
+            "200ms"
+          ]
+        },
+        "until": {
           "type": "object",
           "description": "The condition that ends the wait over http: status, bodyContains or a JSON path with the expected value.",
           "examples": [
@@ -988,11 +1526,6 @@
               "boolean"
             ]
           }
-        },
-        "interval": {
-          "$ref": "#/$defs/duration",
-          "default": "500ms",
-          "description": "How often to poll. The measured latency has that granularity."
         }
       }
     },
@@ -1033,6 +1566,11 @@
                 "pattern",
                 "cpf",
                 "cnpj"
+              ],
+              "description": "The generator. pattern builds a value in the shape declared in 'format'; cpf and cnpj come out with a valid check digit.",
+              "examples": [
+                "uuid",
+                "pattern"
               ]
             },
             "format": {
@@ -1050,7 +1588,11 @@
                 "use"
               ],
               "default": "iteration",
-              "description": "iteration keeps the same value across the whole journey, which is what an idempotency key needs."
+              "description": "iteration keeps the same value across the whole journey, which is what an idempotency key needs.",
+              "examples": [
+                "iteration",
+                "use"
+              ]
             }
           }
         }
@@ -1088,11 +1630,18 @@
                 "mskIam",
                 "certificate"
               ],
-              "description": "saslPlain and scramSha* use a user and a password. mskIam signs with the standard AWS chain and never asks for a key. certificate is mTLS. OAUTHBEARER is not in v1."
+              "description": "saslPlain and scramSha* use a user and a password. mskIam signs with the standard AWS chain and never asks for a key. certificate is mTLS. OAUTHBEARER is not in v1.",
+              "examples": [
+                "scramSha512",
+                "mskIam"
+              ]
             },
             "user": {
               "type": "string",
-              "description": "The broker user. It can come from ${VARIABLE}."
+              "description": "The broker user. It can come from ${VARIABLE}.",
+              "examples": [
+                "${KAFKA_USER}"
+              ]
             },
             "password": {
               "type": "string",
@@ -1109,10 +1658,29 @@
                 "us-east-1"
               ]
             }
-          }
+          },
+          "description": "How the broker authenticates. A literal password fails validation: only the name of an environment variable, or the standard cloud chain.",
+          "examples": [
+            {
+              "type": "scramSha512",
+              "user": "${KAFKA_USER}",
+              "password": "${KAFKA_PASSWORD}"
+            },
+            {
+              "type": "mskIam",
+              "region": "us-east-1"
+            }
+          ]
         },
         "tls": {
-          "$ref": "#/$defs/tls"
+          "$ref": "#/$defs/tls",
+          "description": "TLS to reach the broker. true uses the system authorities; the object form declares a private CA or a client certificate.",
+          "examples": [
+            true,
+            {
+              "ca": "/etc/ssl/staging/ca.pem"
+            }
+          ]
         }
       }
     },
@@ -1127,15 +1695,24 @@
           "properties": {
             "ca": {
               "type": "string",
-              "description": "A private CA, in PEM."
+              "description": "A private CA, in PEM.",
+              "examples": [
+                "/etc/ssl/staging/ca.pem"
+              ]
             },
             "certificate": {
               "type": "string",
-              "description": "A client certificate, for mTLS."
+              "description": "A client certificate, for mTLS.",
+              "examples": [
+                "/etc/ssl/staging/client.pem"
+              ]
             },
             "key": {
               "type": "string",
-              "description": "The key of the client certificate."
+              "description": "The key of the client certificate.",
+              "examples": [
+                "/etc/ssl/staging/client.key"
+              ]
             }
           }
         }
