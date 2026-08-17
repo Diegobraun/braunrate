@@ -261,3 +261,49 @@ func TestInlinePatternWithoutFormatSaysWhatIsMissing(t *testing.T) {
 		t.Fatalf("o erro não ensina o format: %v", err)
 	}
 }
+
+// Somar semente e sequencia fazia a semente 1 na sequencia 2 cair na mesma fonte
+// que a semente 2 na sequencia 1: duas execucoes com sementes diferentes
+// percorriam a mesma lista deslocada de um. O relatorio manda variar a semente
+// para explorar dados diferentes, e essa promessa dependia disto.
+func TestDifferentSeedsProduceUnrelatedStreamsAndNotTheSameOneShifted(t *testing.T) {
+	stream := func(seed int64, howMany int) []string {
+		t.Helper()
+		source, err := data.Open(scenario.DataSource{
+			Name:   "orders",
+			Seed:   seed,
+			Fields: map[string]scenario.Generator{"id": scenario.ParseGenerator("number(1,1000000)")},
+		}, "")
+		if err != nil {
+			t.Fatalf("fonte não montou: %v", err)
+		}
+		values := make([]string, 0, howMany)
+		for range howMany {
+			produced, err := source.Next(1)
+			if err != nil {
+				t.Fatalf("não consegui gerar: %v", err)
+			}
+			values = append(values, produced["orders.id"])
+		}
+		return values
+	}
+
+	const length = 12
+	first, second := stream(1, length), stream(2, length)
+
+	if first[0] == second[0] {
+		t.Errorf("sementes 1 e 2 começam no mesmo valor: %s", first[0])
+	}
+	// O sintoma exato do defeito: a lista de uma semente e a da seguinte, um
+	// passo atras.
+	shifted := 0
+	for index := 0; index+1 < length; index++ {
+		if first[index+1] == second[index] {
+			shifted++
+		}
+	}
+	if shifted > 1 {
+		t.Errorf("a semente 2 repete a semente 1 deslocada de um em %d das %d posições:\n  seed 1: %v\n  seed 2: %v",
+			shifted, length-1, first, second)
+	}
+}

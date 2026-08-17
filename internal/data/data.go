@@ -168,9 +168,24 @@ func (syntheticSource *syntheticSource) Available() map[string]int64 {
 // The seed goes into the environment block and fields are generated in a fixed
 // order: without both the run is not reproducible, and a non-reproducible
 // result is useless for comparing two runs.
+// Semente e sequencia entram misturadas, e nao somadas. Somar faz a semente 1 na
+// sequencia 2 e a semente 2 na sequencia 1 caírem na mesma fonte: duas execucoes
+// com sementes diferentes percorriam os mesmos valores deslocados de um, e a
+// promessa de variar a semente para explorar dados diferentes valia muito menos
+// do que o relatorio dizia. O misturador separa entradas vizinhas.
+func streamSeed(seed, sequence int64) int64 {
+	mixed := uint64(seed)*0x9E3779B97F4A7C15 + uint64(sequence)
+	mixed ^= mixed >> 30
+	mixed *= 0xBF58476D1CE4E5B9
+	mixed ^= mixed >> 27
+	mixed *= 0x94D049BB133111EB
+	mixed ^= mixed >> 31
+	return int64(mixed)
+}
+
 func (syntheticSource *syntheticSource) Next(virtualUser int64) (map[string]string, error) {
 	sequence := syntheticSource.sequence.Add(1)
-	random := rand.New(rand.NewSource(syntheticSource.seed + sequence))
+	random := rand.New(rand.NewSource(streamSeed(syntheticSource.seed, sequence)))
 	values := make(map[string]string, len(syntheticSource.fields))
 	for _, field := range syntheticSource.sortedNames {
 		value, err := generate(syntheticSource.fields[field], random, sequence)
@@ -193,7 +208,7 @@ func (syntheticSource *syntheticSource) PerUse() map[string]func() (string, erro
 		}
 		perUse[syntheticSource.name+"."+field] = func() (string, error) {
 			sequence := syntheticSource.sequence.Add(1)
-			return generate(generator, rand.New(rand.NewSource(syntheticSource.seed+sequence)), sequence)
+			return generate(generator, rand.New(rand.NewSource(streamSeed(syntheticSource.seed, sequence))), sequence)
 		}
 	}
 	return perUse
