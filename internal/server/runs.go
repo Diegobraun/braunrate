@@ -205,7 +205,7 @@ func (store *runStore) list() []runLine {
 func verdictOf(state outcome) string {
 	switch state.Status {
 	case statusRunning:
-		return "em andamento"
+		return "in progress"
 	case statusFailed:
 		return "did not run"
 	case statusDone:
