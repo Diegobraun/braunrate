@@ -47,74 +47,13 @@ jobs:
           go-version: '1.26'
           cache: true
 
-      - name: formatacao
-        run: |
-          arquivos=$(gofmt -l $(go list -f '{{.Dir}}' ./...))
-          if [ -n "$arquivos" ]; then
-            echo "arquivos fora do gofmt:"
-            echo "$arquivos"
-            exit 1
-          fi
-
-      - name: vet
-        run: go vet ./...
-
-      - name: lint
-        run: |
-          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
-          golangci-lint run ./... --timeout 5m
-
-      - name: build
-        run: go build ./...
-
-      - name: testes
-        run: go test ./... -count=1
-
-      - name: testes de mensageria contra brokers reais
+      # Um portao so, chamado daqui e pela pessoa antes de empurrar. Duas listas
+      # de passos divergem sozinhas, e foi assim que o CI ficou vermelho oito
+      # commits enquanto 'go test ./...' passava na maquina.
+      - name: portao
         env:
           BRAUNRATE_KAFKA: 127.0.0.1:9092
           BRAUNRATE_AMQP: amqp://guest:guest@127.0.0.1:5672/
-        run: go test ./internal/messaging/... ./internal/testsupport/... -count=1 -v -timeout 5m
-
-      - name: broker que exige credencial de verdade
         run: |
-          chmod +x .github/broker-autenticado.sh
-          .github/broker-autenticado.sh /tmp/certificados-ci
-
-      - name: testes contra o broker autenticado
-        env:
-          BRAUNRATE_KAFKA_TLS: localhost:9095
-          BRAUNRATE_KAFKA_USER: ana
-          BRAUNRATE_KAFKA_PASSWORD: segredo-do-ci
-          BRAUNRATE_KAFKA_CA: /tmp/certificados-ci/ca.pem
-        run: go test ./internal/messaging/... -count=1 -v -timeout 5m
-
-      - name: teste de auto-validacao de medicao
-        run: go test ./internal/selfcheck/... -count=1 -v
-
-      # O site e gerado dos guias do proprio repositorio. Gerar aqui, no portao,
-      # e o que garante que um guia quebrado reprova o commit em vez de reprovar
-      # a publicacao depois que o commit ja entrou.
-      - name: o site de documentacao gera
-        run: go run ./cmd/site -out site
-
-      - name: exemplo publicado esta atualizado
-        run: |
-          go build -o braunrate ./cmd/braunrate
-          ./braunrate report docs/exemplo-resultado.json -html=docs/exemplo-relatorio.html
-          if ! git diff --quiet -- docs/exemplo-relatorio.html; then
-            echo "docs/exemplo-relatorio.html esta desatualizado; regenere com:"
-            echo "  go run ./cmd/braunrate report docs/exemplo-resultado.json -html=docs/exemplo-relatorio.html"
-            git --no-pager diff --stat -- docs/exemplo-relatorio.html
-            exit 1
-          fi
-
-      - name: todos os exemplos publicados rodam
-        env:
-          BRAUNRATE_KAFKA: 127.0.0.1:9092
-        run: |
-          ./braunrate target -address=127.0.0.1:8080 -latency=5ms \
-            -kafka=127.0.0.1:9092 -input=orders-chain -output=orders-processed &
-          sleep 3
-          chmod +x .github/executar-exemplos.sh
-          .github/executar-exemplos.sh
+          chmod +x portao.sh
+          ./portao.sh

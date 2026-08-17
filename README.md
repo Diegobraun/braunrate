@@ -114,9 +114,17 @@ decision with the weight of each criterion in
 
 ```bash
 go build -o braunrate ./cmd/braunrate
-go test ./...
+go test ./...                    # the fast loop, not the gate
 go run ./cmd/site -out site      # generates the published documentation
+
+./portao.sh                      # the gate: exactly what CI runs
 ```
+
+`go test ./...` skips the twelve tests that need a real broker and still prints
+`ok`, so a green there is not a green build. `portao.sh` starts Kafka and
+RabbitMQ in Docker, runs the suite under the race detector, generates the site
+and runs every published example — and CI calls the same file, so the two cannot
+drift apart.
 
 The site content lives in [`docs/guides/`](docs/guides), one file per language
 (`.en.md` and `.pt-BR.md`); the scenario reference and the index of decisions are
