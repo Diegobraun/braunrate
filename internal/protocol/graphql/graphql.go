@@ -127,9 +127,9 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 		return Finish(config)
 	}
 	if node.Kind != yaml.MappingNode {
-		return nil, errors.New(`passo graphql precisa ser a consulta ou um mapa, por exemplo:
+		return nil, errors.New(`a graphql step has to be the query or a map, like this:
   - graphql: |
-      query ConsultarPedido { pedido(id: "1") { status } }`)
+      query LookUpOrder { order(id: "1") { status } }`)
 	}
 
 	for index := 0; index+1 < len(node.Content); index += 2 {
@@ -176,9 +176,9 @@ func Default() *Config {
 
 func Finish(config *Config) (protocol.Config, error) {
 	if strings.TrimSpace(config.Query) == "" {
-		return nil, errors.New(`passo graphql sem consulta, por exemplo:
+		return nil, errors.New(`graphql step with no query, like this:
   - graphql: |
-      query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }`)
+      query LookUpOrder($id: ID!) { order(id: $id) { status } }`)
 	}
 
 	parts := operationPattern.FindStringSubmatch(config.Query)
@@ -192,10 +192,10 @@ func Finish(config *Config) (protocol.Config, error) {
 		config.Kind = "query"
 	}
 	if config.Operation == "" {
-		return nil, errors.New(`a operação graphql precisa de nome: e o nome que vira a linha do relatório.
-Sem nome, todas as operações cairiam na mesma linha e a mais cara ficaria escondida na média.
+		return nil, errors.New(`a graphql operation needs a name: it is the name that becomes the report line.
+Without one, every operation would fall on the same line and the most expensive would hide in the average.
   - graphql: |
-      query ConsultarPedido($id: ID!) { pedido(id: $id) { status } }`)
+      query LookUpOrder($id: ID!) { order(id: $id) { status } }`)
 	}
 	if config.Path == "" {
 		config.Path = defaultPath

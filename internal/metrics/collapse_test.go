@@ -11,13 +11,13 @@ import (
 
 // A frase de colapso agora e composta: o dominio vem de quem sabe, a decisao de
 // avisar e a gravidade ficam na medicao. Antes disso a medicao reconhecia o
-// prefixo "kafka.particao." e escrevia a frase inteira.
+// prefix "kafka.partition." and wrote the whole sentence itself.
 func TestCollapseSentenceComesFromWhoeverOwnsTheDimension(t *testing.T) {
 	collector := metrics.NewCollector(time.Now(), 10*time.Millisecond)
 	for range 40 {
 		collector.RecordDimensions(
-			map[string]string{"kafka.particao.pedidos": "0"},
-			map[string]protocol.Collapse{"kafka.particao.pedidos": {
+			map[string]string{"kafka.partition.pedidos": "0"},
+			map[string]protocol.Collapse{"kafka.partition.pedidos": {
 				Subject: "uma partição só de pedidos",
 				Meaning: "o resto do cluster ficou parado e o número não representa produção",
 				Remedy:  "Faça a chave da mensagem variar por iteração",
@@ -26,7 +26,7 @@ func TestCollapseSentenceComesFromWhoeverOwnsTheDimension(t *testing.T) {
 	}
 	collector.Close()
 
-	varieties := collector.Varieties(metrics.Availability{"kafka.particao.pedidos": 3})
+	varieties := collector.Varieties(metrics.Availability{"kafka.partition.pedidos": 3})
 	warnings := metrics.VarietyWarnings(varieties)
 	if len(warnings) != 1 {
 		t.Fatalf("esperava um aviso de variedade, vieram %d: %+v", len(warnings), warnings)
@@ -46,18 +46,18 @@ func TestDeclaredCollapseIsLessGraveAndSaysSo(t *testing.T) {
 	collector := metrics.NewCollector(time.Now(), 10*time.Millisecond)
 	for range 40 {
 		collector.RecordDimensions(
-			map[string]string{"kafka.particao.declarada.pedidos": "2"},
-			map[string]protocol.Collapse{"kafka.particao.declarada.pedidos": {
+			map[string]string{"kafka.declaredPartition.pedidos": "2"},
+			map[string]protocol.Collapse{"kafka.declaredPartition.pedidos": {
 				Subject:  "a partição declarada de pedidos",
 				Meaning:  "e o número de uma partição, não o do tópico",
-				Remedy:   "Tire 'particao' do passo para distribuir",
+				Remedy:   "Drop 'partition' from the step to spread the load",
 				Declared: true,
 			}},
 		)
 	}
 	collector.Close()
 
-	warnings := metrics.VarietyWarnings(collector.Varieties(metrics.Availability{"kafka.particao.declarada.pedidos": 3}))
+	warnings := metrics.VarietyWarnings(collector.Varieties(metrics.Availability{"kafka.declaredPartition.pedidos": 3}))
 	if len(warnings) != 1 {
 		t.Fatalf("esperava um aviso, vieram %d", len(warnings))
 	}

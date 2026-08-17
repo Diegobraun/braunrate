@@ -160,7 +160,7 @@ scenario:
 	if problem == nil {
 		t.Fatal("validação aprovou um passo kafka sem endereço de broker em lugar nenhum")
 	}
-	for _, expected := range []string{"publicar evento", "mensageria", "brokers"} {
+	for _, expected := range []string{"publicar evento", "messaging", "brokers"} {
 		if !strings.Contains(problem.Error(), expected) {
 			t.Errorf("a mensagem não ensina o path: falta %q em\n%s", expected, problem)
 		}

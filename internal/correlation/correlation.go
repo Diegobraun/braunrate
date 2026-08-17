@@ -72,7 +72,7 @@ func Extract(capture scenario.Capture, response protocol.Response) (string, erro
 	case scenario.CaptureBody:
 		return string(response.Body), nil
 	default:
-		return "", CaptureError{capture.Variable, capture.Expression, "origem de captura desconhecida"}
+		return "", CaptureError{capture.Variable, capture.Expression, "unknown capture source"}
 	}
 }
 

@@ -187,18 +187,18 @@ func (implementation *Protocol) varietyName(topic string) string {
 
 func (implementation *Protocol) name(topic string) string {
 	if implementation.declared[topic] {
-		return "kafka.particao.declarada." + topic
+		return "kafka.declaredPartition." + topic
 	}
-	return "kafka.particao." + topic
+	return "kafka.partition." + topic
 }
 
 func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
 	if node == nil || node.Kind != yaml.MappingNode {
-		return nil, errors.New(`passo kafka precisa ser um mapa, por exemplo:
+		return nil, errors.New(`a kafka step has to be a map, like this:
   - kafka:
-      topico: pedidos
-      chave: "${assinantes.id}"
-      valor: { id: "${assinantes.id}", total: 199.90 }`)
+      topic: orders
+      key: "${subscribers.id}"
+      value: { id: "${subscribers.id}", total: 199.90 }`)
 	}
 
 	config := Default()
@@ -271,12 +271,12 @@ func Default() *Config {
 
 func Validate(config *Config) error {
 	if config.Topic == "" {
-		return errors.New(`passo kafka sem tópico, por exemplo:
-  - kafka: { topico: pedidos, valor: { id: "${assinantes.id}" } }`)
+		return errors.New(`kafka step with no topic, like this:
+  - kafka: { topic: orders, value: { id: "${subscribers.id}" } }`)
 	}
 	if len(config.Value) == 0 {
-		return errors.New(`passo kafka sem valor: uma mensagem vazia não exercita o consumidor.
-  - kafka: { topico: pedidos, valor: { id: "${assinantes.id}" } }`)
+		return errors.New(`kafka step with no value: an empty message does not exercise the consumer.
+  - kafka: { topic: orders, value: { id: "${subscribers.id}" } }`)
 	}
 	return nil
 }
@@ -358,7 +358,8 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 	return response
 }
 
-// O que significa a execucao inteira cair numa particao so, dito por quem sabe.
+// What it means for the whole run to land on a single partition, said by the
+// one that knows.
 // The measurement decides whether to warn and how severely; it has no way of
 // knowing what a partition is, nor what makes the load spread across them.
 func collapseOf(config *Config) protocol.Collapse {

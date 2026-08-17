@@ -339,4 +339,4 @@ func normalizeAMQP(address string) string {
 	return "amqp://" + address
 }
 
-func consumedPartition(topic string) string { return "kafka.particao.consumida." + topic }
+func consumedPartition(topic string) string { return "kafka.consumedPartition." + topic }

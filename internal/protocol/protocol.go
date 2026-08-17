@@ -95,7 +95,7 @@ type Response struct {
 // a medicao passa a conhecer um protocolo em particular, que e o que o ADR 0003
 // §3 proibe.
 type Collapse struct {
-	// "particao de pedidos-eventos"
+	// "partition of orders-events"
 	Subject string
 	// "o resto do cluster ficou parado e o numero nao representa producao"
 	Meaning string

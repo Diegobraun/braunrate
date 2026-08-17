@@ -38,7 +38,7 @@ func checkBrokers(spec *Spec) []string {
 		said[technology] = true
 		problems = append(problems, fmt.Sprintf(
 			"the step %q talks to %s and there is no broker address anywhere: not in the step, not in 'messaging', and the scenario target is %q\n"+
-				"    declare:  mensageria:\n"+
+				"    declare:  messaging:\n"+
 				"                %s:\n"+
 				"                  brokers: [%s.homolog:9092]",
 			step.Name, technology, spec.Target, technology, technology))

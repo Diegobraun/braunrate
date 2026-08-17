@@ -78,7 +78,7 @@ func (config *Config) Describe() []string {
 		lines = append(lines, "Content-Type: "+config.ContentType)
 	}
 	if len(config.Body) > 0 {
-		lines = append(lines, "corpo: "+string(config.Body))
+		lines = append(lines, "body: "+string(config.Body))
 	}
 	if config.Timeout > 0 {
 		lines = append(lines, "timeout: "+config.Timeout.String())

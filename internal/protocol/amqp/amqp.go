@@ -107,10 +107,10 @@ func (implementation *Protocol) Close() error {
 
 func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
 	if node == nil || node.Kind != yaml.MappingNode {
-		return nil, errors.New(`passo amqp precisa ser um mapa, por exemplo:
+		return nil, errors.New(`an amqp step has to be a map, like this:
   - amqp:
-      fila: pedidos
-      corpo: { id: "${assinantes.id}" }`)
+      queue: orders
+      body: { id: "${subscribers.id}" }`)
 	}
 
 	config := Default()
@@ -171,12 +171,12 @@ func Default() *Config {
 
 func Validate(config *Config) error {
 	if config.Route == "" && config.Queue == "" {
-		return errors.New(`passo amqp sem destino: declare 'fila' (caso comum) ou 'troca' com 'rota'.
-  - amqp: { fila: pedidos, corpo: { id: "${assinantes.id}" } }`)
+		return errors.New(`amqp step with no destination: declare 'queue' (the usual case) or 'exchange' with 'routingKey'.
+  - amqp: { queue: orders, body: { id: "${subscribers.id}" } }`)
 	}
 	if len(config.Body) == 0 {
-		return errors.New(`passo amqp sem corpo: uma mensagem vazia não exercita o consumidor.
-  - amqp: { fila: pedidos, corpo: { id: "${assinantes.id}" } }`)
+		return errors.New(`amqp step with no body: an empty message does not exercise the consumer.
+  - amqp: { queue: orders, body: { id: "${subscribers.id}" } }`)
 	}
 	return nil
 }

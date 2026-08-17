@@ -68,23 +68,23 @@ func FromJMX(content []byte) (Import, error) {
 
 	samplers := root.findAll("HTTPSamplerProxy")
 	if len(samplers) == 0 {
-		return Import{}, fmt.Errorf(`não achei nenhuma requisição HTTP no .jmx.
-Hoje o importador traduz HTTPSamplerProxy (requisição HTTP), HeaderManager, CSVDataSet,
-extratores JSON e regex, e assercao de resposta. Sampler de JDBC, JMS ou script não entra`)
+		return Import{}, fmt.Errorf(`no HTTP request found in the .jmx.
+Today the importer translates HTTPSamplerProxy (HTTP request), HeaderManager, CSVDataSet,
+JSON and regex extractors, and response assertions. JDBC, JMS and script samplers stay out`)
 	}
 
 	script := Script{Name: planName(&root), Steps: nil}
-	cabecalhosGlobais := map[string]string{}
+	globalHeaders := map[string]string{}
 	for _, manager := range root.findAll("HeaderManager") {
 		for name, value := range headersOf(manager) {
-			cabecalhosGlobais[name] = value
+			globalHeaders[name] = value
 		}
 	}
 
 	targets := map[string]int{}
 	used := map[string]int{}
 	for _, sampler := range samplers {
-		step, target := stepFromSampler(sampler, cabecalhosGlobais)
+		step, target := stepFromSampler(sampler, globalHeaders)
 		if target != "" {
 			targets[target]++
 		}
@@ -129,10 +129,10 @@ extratores JSON e regex, e assercao de resposta. Sampler de JDBC, JMS ou script 
 func planName(root *element) string {
 	for _, plan := range root.findAll("TestPlan") {
 		if name := strings.TrimSpace(plan.attribute("testname")); name != "" {
-			return "Importado de JMeter: " + name
+			return "Imported from JMeter: " + name
 		}
 	}
-	return "Importado de JMeter"
+	return "Imported from JMeter"
 }
 
 func stepFromSampler(sampler *element, global map[string]string) (ImportedStep, string) {
@@ -207,11 +207,11 @@ func sourceFromCSV(set *element) ImportedSource {
 	file := set.property("filename")
 	name := strings.TrimSpace(set.attribute("testname"))
 	if name == "" || strings.Contains(name, " ") {
-		name = "dados"
+		name = "data"
 	}
 	consume := "circular"
 	if set.property("recycle") == "false" {
-		consume = "sequencial"
+		consume = "sequential"
 	}
 	return ImportedSource{Name: name, File: file, Consume: consume}
 }

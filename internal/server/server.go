@@ -324,7 +324,7 @@ func (server *Server) debug(writer http.ResponseWriter, request *http.Request) {
 
 	var text strings.Builder
 	for _, line := range scenario.DescribeMessaging(spec.Messaging) {
-		fmt.Fprintf(&text, "mensageria: %s\n", line)
+		fmt.Fprintf(&text, "messaging: %s\n", line)
 	}
 	answer := debugAnswer{Complete: iteration.Complete(), Vars: iteration.Vars}
 	for index, observation := range iteration.Observations {

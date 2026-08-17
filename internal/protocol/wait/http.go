@@ -37,7 +37,7 @@ func (condition Condition) describe() string {
 	case condition.Path != "":
 		return fmt.Sprintf("%s = %q", condition.Path, condition.Value)
 	case condition.BodyContains != "":
-		return fmt.Sprintf("o corpo conter %q", condition.BodyContains)
+		return fmt.Sprintf("the body to contain %q", condition.BodyContains)
 	default:
 		return fmt.Sprintf("status %d", condition.Status)
 	}

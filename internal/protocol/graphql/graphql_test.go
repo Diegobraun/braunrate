@@ -60,10 +60,10 @@ func TestOperationNameComesFromQuery(t *testing.T) {
 
 func TestAnonymousOperationIsRefusedWithTeachingMessage(t *testing.T) {
 	err := decodeErr(t, "|\n  { pedido(id: \"1\") { status } }\n")
-	if !strings.Contains(err.Error(), "precisa de nome") {
+	if !strings.Contains(err.Error(), "needs a name") {
 		t.Errorf("mensagem = %q", err.Error())
 	}
-	if !strings.Contains(err.Error(), "query ConsultarPedido") {
+	if !strings.Contains(err.Error(), "query LookUpOrder") {
 		t.Errorf("a mensagem precisa mostrar a forma certa: %q", err.Error())
 	}
 }

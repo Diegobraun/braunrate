@@ -339,7 +339,7 @@ func (executor *Executor) runIteration(runContext context.Context, virtualUser, 
 		record, err := source.Next(iteration)
 		if err != nil {
 			collector.Record(metrics.Sample{
-				Step: "dados: " + source.Name(), Key: source.Name(), Protocol: "dados",
+				Step: "data: " + source.Name(), Key: source.Name(), Protocol: "data",
 				ScheduledAt: scheduled, SentAt: scheduled, FinishedAt: executor.options.Clock.Now(),
 				Class: protocol.ErrConfig, Detail: err.Error(),
 			})
