@@ -33,12 +33,17 @@ const (
 
 type Options struct {
 	WithFailure bool
+	Explain     bool
 	Directory   string
 	Version     string
 	Output      io.Writer
+
+	explaining bool
 }
 
 func Run(runContext context.Context, options Options) error {
+	options.explaining = options.Explain || firstTime()
+	defer remember()
 	if options.WithFailure {
 		return runFreezing(runContext, options)
 	}
@@ -68,16 +73,15 @@ try it out without affecting anything.
 		return err
 	}
 
-	say(options, `[2/3] Running: %s requests per second, for %s.
-
-      That is the rate: braunrate fires at that pace whether the service is
+	say(options, "[2/3] Running: %s requests per second, for %s.\n\n",
+		strings.TrimSuffix(rate, "/s"), duration)
+	teach(options, `      That is the rate: braunrate fires at that pace whether the service is
       fast or slow — the way real users do. Tools that wait for the previous
       response before sending the next one go easy on the system exactly when
       it is struggling.
 
-      The scenario that is running was left at %s, commented.
-
-`, strings.TrimSuffix(rate, "/s"), duration, scenarioPath)
+`)
+	say(options, "      The scenario that is running was left at %s, commented.\n\n", scenarioPath)
 
 	result, err := runner.Execute(runContext, scenarioPath, runner.DefaultOptions(options.Version))
 	if err != nil {
@@ -95,6 +99,7 @@ try it out without affecting anything.
 		return err
 	}
 
+	sayWhereTheExplanationWent(options)
 	say(options, `Full report: %s
 Both files were left in the current directory; delete them whenever you want.
 
@@ -165,17 +170,18 @@ each one reports.
 
       %.1f ms the closed loop never counted.
 
-      The closed loop does not lie because of a bug. When the target freezes it
+`, closed.P99, closed.Samples, open.P99, document.Overall.Count, open.P99-closed.P99)
+	teach(options, `      The closed loop does not lie because of a bug. When the target freezes it
       stops sending, and the requests that should have gone out never enter the
       count — including the ones a real user would have sent. braunrate counts
       from the instant the request should have gone out, so the freeze shows up.
 
-`, closed.P99, closed.Samples, open.P99, document.Overall.Count, open.P99-closed.P99)
+`)
 
 	sayMeasurement(options, document)
 	sayVerdict(options, document)
 	if result.Exit == runner.ExitSLO {
-		say(options, `      If this were your CI, braunrate would have exited with code 1 and the
+		teach(options, `      If this were your CI, braunrate would have exited with code 1 and the
       pipeline would fail. With a closed-loop measurement, the same criterion
       would pass.
 
@@ -186,6 +192,7 @@ each one reports.
 	if err := runner.WriteHTML(htmlPath, document); err != nil {
 		return err
 	}
+	sayWhereTheExplanationWent(options)
 	say(options, "Full report: %s\n\n", htmlPath)
 	return nil
 }
@@ -197,13 +204,14 @@ func sayMeasurement(options Options, document metrics.Document) {
 	say(options, `  %d requests in %s, %.0f per second, %.2f%% of them errors
   Half the responses within %.1f ms; 95%% within %.1f ms; the worst took %.0f ms
 
-      Notice there is no average on that line. An average hides things: if 95
+`, overall.Count, elapsed, overall.EffectiveRate, overall.ErrorRate*100,
+		latency.P50, latency.P95, latency.Max)
+	teach(options, `      Notice there is no average on that line. An average hides things: if 95
       responses take 5 ms and 5 take 2 seconds, the average reads 105 ms and
       nobody notices the five slow ones. "95%% within %.1f ms" means 5%% of the
       people waited longer than that.
 
-`, overall.Count, elapsed, overall.EffectiveRate, overall.ErrorRate*100,
-		latency.P50, latency.P95, latency.Max, latency.P95)
+`, latency.P95)
 }
 
 func sayVerdict(options Options, document metrics.Document) {
@@ -212,8 +220,8 @@ func sayVerdict(options Options, document metrics.Document) {
 		for _, finding := range document.Sanity.Findings {
 			say(options, "      %s\n", finding.Message)
 		}
-		say(options, `
-      An invalid result is not the same as a bad result: it means the run did
+		say(options, "\n")
+		teach(options, `      An invalid result is not the same as a bad result: it means the run did
       not measure what it set out to measure, and no number above works as an
       answer.
 
@@ -228,8 +236,8 @@ func sayVerdict(options Options, document metrics.Document) {
 		say(options, "  %-5s %s\n", mark, evaluation.Sentence)
 	}
 	if len(document.SLO.Evaluations) > 0 {
-		say(options, `
-      That is an acceptance criterion: a limit you declare in the file. If the
+		say(options, "\n")
+		teach(options, `      That is an acceptance criterion: a limit you declare in the file. If the
       run goes over it, braunrate exits with code 1 — you can wire it straight
       into your CI.
 
@@ -245,12 +253,12 @@ func sayFixedDataCaveat(options Options, document metrics.Document, scenarioPath
 		if warning.Kind != "stepWithoutVariation" && warning.Kind != "fixedValue" && warning.Kind != "missingVariety" {
 			continue
 		}
-		say(options, `  A caveat the report itself raises:
-      %s
-      An always-identical request measures the target cache, not the target. In
+		say(options, "  A caveat the report itself raises:\n      %s\n", warning.Message)
+		teach(options, `      An always-identical request measures the target cache, not the target. In
       %s, swap /orders/1 for /orders/${id} and declare where ${id} comes from.
 
-`, warning.Message, scenarioPath)
+`, scenarioPath)
+		say(options, "\n")
 		return
 	}
 }
@@ -296,4 +304,20 @@ func say(options Options, format string, args ...any) {
 		return
 	}
 	_, _ = fmt.Fprintf(options.Output, format, args...)
+}
+
+func teach(options Options, format string, args ...any) {
+	if !options.explaining {
+		return
+	}
+	say(options, format, args...)
+}
+
+// A explicacao sumiu sem ninguem ter pedido, entao a linha diz por que sumiu e
+// como traze-la de volta. Sem ela a demonstracao encolhe do nada.
+func sayWhereTheExplanationWent(options Options) {
+	if options.explaining {
+		return
+	}
+	say(options, "The explanations next to each number are not here because this is not the\nfirst run on this machine. To read them again: braunrate demo --explain\n\n")
 }

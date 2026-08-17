@@ -134,7 +134,7 @@ func usage(out io.Writer) {
 	_, _ = fmt.Fprintf(out, `braunrate %s
 
 usage:
-  braunrate demo [--with-failure]               starts a target, runs a scenario and explains the numbers
+  braunrate demo [--with-failure] [--explain]   starts a target, runs a scenario and explains the numbers
   braunrate new [scenario.yaml]                 creates a starting scenario, commented
   braunrate migrate <scenario.yaml|dir>         converts a scenario in the Portuguese format to English
   braunrate debug <scenario.yaml>               one user, one iteration, everything visible
@@ -163,6 +163,7 @@ execute options:
 func runDemo(args []string) int {
 	set := newFlagSet("demo")
 	withFailure := set.Bool("with-failure", false, "runs against a target that freezes halfway, and compares with the closed loop")
+	explain := set.Bool("explain", false, "explains every number, the way the first run does")
 	_ = parseArguments(set, args)
 
 	runContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -170,6 +171,7 @@ func runDemo(args []string) int {
 
 	err := demo.Run(runContext, demo.Options{
 		WithFailure: *withFailure,
+		Explain:     *explain,
 		Directory:   ".",
 		Version:     build.Version,
 		Output:      os.Stdout,
