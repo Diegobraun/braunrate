@@ -22,21 +22,43 @@ const (
 
 // Runs live in memory and die with the process. A database would be a second
 // source of truth next to the YAML files, and the YAML files are the truth.
+// A execucao roda em uma goroutine e os manipuladores HTTP leem o resultado
+// dela enquanto ela acontece. O mutex que ja guardava as linhas guarda tambem o
+// desfecho: dois mutexes e como metade do estado acaba sem nenhum.
+//
+// Identidade e inicio sao escritos antes de a execucao ser publicada na loja, e
+// nunca mudam depois — esses sao lidos sem trava.
 type run struct {
 	ID       string
 	Scenario string
 	Name     string
-	Status   string
-	Exit     int
-	Message  string
 	Started  time.Time
-	Finished time.Time
-	Document metrics.Document
 
+	mutex    sync.Mutex
+	outcome  outcome
 	closed   bool
 	lines    []string
 	watchers []chan string
-	mutex    sync.Mutex
+}
+
+type outcome struct {
+	Status   string
+	Exit     int
+	Message  string
+	Finished time.Time
+	Document metrics.Document
+}
+
+func (created *run) state() outcome {
+	created.mutex.Lock()
+	defer created.mutex.Unlock()
+	return created.outcome
+}
+
+func (created *run) settle(settled outcome) {
+	created.mutex.Lock()
+	created.outcome = settled
+	created.mutex.Unlock()
 }
 
 type runStore struct {
@@ -57,8 +79,8 @@ func (store *runStore) start(scenarioName string, spec scenario.Spec, plan engin
 	store.next++
 	id := fmt.Sprintf("r%03d", store.next)
 	created := &run{
-		ID: id, Scenario: scenarioName, Name: spec.Name,
-		Status: statusRunning, Started: time.Now(),
+		ID: id, Scenario: scenarioName, Name: spec.Name, Started: time.Now(),
+		outcome: outcome{Status: statusRunning},
 	}
 	created.append(headline(spec, plan))
 	store.byID[id] = created
@@ -109,21 +131,19 @@ func (store *runStore) finish(id string, result runner.Result, err error) {
 		return
 	}
 
-	found.Finished = time.Now()
 	if err != nil {
-		found.Status = statusFailed
-		found.Message = err.Error()
-		found.Exit = runner.ExitBadFile
+		failure := outcome{Status: statusFailed, Message: err.Error(),
+			Exit: runner.ExitBadFile, Finished: time.Now()}
 		if fault, is := err.(runner.Fault); is {
-			found.Exit = fault.Exit
+			failure.Exit = fault.Exit
 		}
-		found.append(found.Message)
+		found.settle(failure)
+		found.append(failure.Message)
 		found.close()
 		return
 	}
-	found.Status = statusDone
-	found.Document = result.Document
-	found.Exit = result.Exit
+	found.settle(outcome{Status: statusDone, Exit: result.Exit,
+		Document: result.Document, Finished: time.Now()})
 	found.append(verdictLine(result))
 	found.close()
 }
@@ -165,13 +185,14 @@ func (store *runStore) list() []runLine {
 	lines := make([]runLine, 0, len(store.order))
 	for _, id := range store.order {
 		found := store.byID[id]
+		state := found.state()
 		line := runLine{
 			ID: found.ID, Scenario: found.Scenario, Name: found.Name,
-			Status: found.Status, Exit: found.Exit, Started: found.Started,
-			Verdict: verdictOf(found),
+			Status: state.Status, Exit: state.Exit, Started: found.Started,
+			Verdict: verdictOf(state),
 		}
-		if found.Status == statusDone {
-			line.Summary = summaryOf(found.Document)
+		if state.Status == statusDone {
+			line.Summary = summaryOf(state.Document)
 		}
 		lines = append(lines, line)
 	}
@@ -181,22 +202,22 @@ func (store *runStore) list() []runLine {
 	return lines
 }
 
-func verdictOf(found *run) string {
-	switch found.Status {
+func verdictOf(state outcome) string {
+	switch state.Status {
 	case statusRunning:
 		return "em andamento"
 	case statusFailed:
 		return "did not run"
 	case statusDone:
-		if !found.Document.Valid() {
+		if !state.Document.Valid() {
 			return "invalid result"
 		}
-		if !found.Document.SLO.Passed {
+		if !state.Document.SLO.Passed {
 			return "failed the SLO"
 		}
 		return "passed"
 	}
-	return found.Status
+	return state.Status
 }
 
 // follow replays what already happened before delivering what comes next: a

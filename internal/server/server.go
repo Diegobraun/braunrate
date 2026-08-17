@@ -411,16 +411,17 @@ func (server *Server) getRun(writer http.ResponseWriter, request *http.Request) 
 		writeProblem(writer, http.StatusNotFound, unknownRun(request.PathValue("id")))
 		return
 	}
-	if run.Status == statusRunning {
-		writeJSON(writer, http.StatusOK, map[string]any{"id": run.ID, "status": run.Status,
+	state := run.state()
+	if state.Status == statusRunning {
+		writeJSON(writer, http.StatusOK, map[string]any{"id": run.ID, "status": state.Status,
 			"message": "the run is still in progress; follow it at /runs/" + run.ID + "/stream"})
 		return
 	}
-	if run.Status == statusFailed {
-		writeProblem(writer, http.StatusUnprocessableEntity, run.Message)
+	if state.Status == statusFailed {
+		writeProblem(writer, http.StatusUnprocessableEntity, state.Message)
 		return
 	}
-	writeJSON(writer, http.StatusOK, run.Document)
+	writeJSON(writer, http.StatusOK, state.Document)
 }
 
 func (server *Server) getReport(writer http.ResponseWriter, request *http.Request) {
@@ -429,12 +430,13 @@ func (server *Server) getReport(writer http.ResponseWriter, request *http.Reques
 		writeProblem(writer, http.StatusNotFound, unknownRun(request.PathValue("id")))
 		return
 	}
-	if run.Status != statusDone {
-		writeProblem(writer, http.StatusConflict, "the report only exists after the run finishes; the state right now is "+run.Status)
+	state := run.state()
+	if state.Status != statusDone {
+		writeProblem(writer, http.StatusConflict, "the report only exists after the run finishes; the state right now is "+state.Status)
 		return
 	}
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := report.HTML(writer, run.Document); err != nil {
+	if err := report.HTML(writer, state.Document); err != nil {
 		// The status line is already on the wire, so there is no error to send:
 		// what is left is not pretending the report was complete.
 		_, _ = fmt.Fprintf(writer, "\n<!-- report interrupted: %v -->\n", err)
@@ -471,7 +473,7 @@ func (server *Server) compare(writer http.ResponseWriter, request *http.Request)
 	if !ok {
 		return
 	}
-	writeJSON(writer, http.StatusOK, comparison.Compare(before.Document, after.Document))
+	writeJSON(writer, http.StatusOK, comparison.Compare(before.state().Document, after.state().Document))
 }
 
 func (server *Server) compareReport(writer http.ResponseWriter, request *http.Request) {
@@ -479,9 +481,10 @@ func (server *Server) compareReport(writer http.ResponseWriter, request *http.Re
 	if !ok {
 		return
 	}
-	result := comparison.Compare(before.Document, after.Document)
+	newer := after.state().Document
+	result := comparison.Compare(before.state().Document, newer)
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := report.ComparisonHTML(writer, result, after.Document.Version); err != nil {
+	if err := report.ComparisonHTML(writer, result, newer.Version); err != nil {
 		// The status line is already on the wire, so there is no error to send:
 		// what is left is not pretending the page was complete.
 		_, _ = fmt.Fprintf(writer, "\n<!-- comparison interrupted: %v -->\n", err)
@@ -497,7 +500,7 @@ func (server *Server) pairToCompare(writer http.ResponseWriter, request *http.Re
 			return nil, nil, false
 		}
 	}
-	if before.Status != statusDone || after.Status != statusDone {
+	if before.state().Status != statusDone || after.state().Status != statusDone {
 		writeProblem(writer, http.StatusConflict, "only finished runs can be compared; one of the two has not finished")
 		return nil, nil, false
 	}
