@@ -217,7 +217,7 @@ func DescribeMessaging(settings *messaging.Settings) []string {
 		if len(pair.broker.Addresses) > 0 {
 			addresses = strings.Join(pair.broker.Addresses, ", ")
 		}
-		lines = append(lines, fmt.Sprintf("%s em %s: %s", pair.name, addresses, pair.broker.Describe()))
+		lines = append(lines, fmt.Sprintf("%s at %s: %s", pair.name, addresses, pair.broker.Describe()))
 	}
 	return lines
 }
