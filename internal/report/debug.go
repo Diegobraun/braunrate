@@ -7,6 +7,7 @@ import (
 
 	"github.com/Diegobraun/braunrate/internal/engine"
 	"github.com/Diegobraun/braunrate/internal/protocol"
+	"github.com/Diegobraun/braunrate/internal/protocol/transport"
 )
 
 const bodyLimit = 1200
@@ -70,7 +71,9 @@ func IterationVars(out io.Writer, vars map[string]string) error {
 	output.writef("")
 	output.writef("variables at the end of the iteration")
 	for _, name := range sortNames(vars) {
-		output.writef("  %s = %s", name, shorten(vars[name]))
+		// O cabecalho ja sai cortado, e a captura que o alimenta saia inteira
+		// duas linhas abaixo. O corte e o mesmo: depuracao vira anexo de ticket.
+		output.writef("  %s = %s", name, shorten(transport.MaskSecret(name, vars[name])))
 	}
 	return output.err
 }

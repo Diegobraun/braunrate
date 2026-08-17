@@ -1,6 +1,7 @@
 package report_test
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -108,5 +109,25 @@ func TestEmptyStepTableSaysWhatHappenedInsteadOfPrintingAHeader(t *testing.T) {
 	}
 	if !strings.Contains(text, "braunrate debug") {
 		t.Fatalf("nada diz qual e o próximo passo:\n%s", text)
+	}
+}
+
+// A captura de um token e uma credencial como o cabecalho que ela alimenta, e o
+// depurar sai colado em ticket.
+func TestTheDebugVariableListCutsACapturedCredential(t *testing.T) {
+	var out bytes.Buffer
+	err := report.IterationVars(&out, map[string]string{
+		"token":     "eyJhbGciOiJIUzI1NiJ9.super-secret",
+		"orders.id": "2ad3f3c5",
+	})
+	if err != nil {
+		t.Fatalf("não consegui escrever a lista: %v", err)
+	}
+	printed := out.String()
+	if strings.Contains(printed, "super-secret") {
+		t.Errorf("o token saiu inteiro na depuração:\n%s", printed)
+	}
+	if !strings.Contains(printed, "orders.id = 2ad3f3c5") {
+		t.Errorf("a variável comum foi cortada junto:\n%s", printed)
 	}
 }
