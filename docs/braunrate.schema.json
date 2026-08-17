@@ -793,7 +793,7 @@
             "leader",
             "none"
           ],
-          "default": "todos",
+          "default": "all",
           "description": "How many replicas acknowledge before the message counts as delivered."
         },
         "partition": {
@@ -1030,7 +1030,7 @@
                 "name",
                 "email",
                 "text",
-                "default",
+                "pattern",
                 "cpf",
                 "cnpj"
               ]
@@ -1049,7 +1049,7 @@
                 "iteration",
                 "use"
               ],
-              "default": "iteracao",
+              "default": "iteration",
               "description": "iteration keeps the same value across the whole journey, which is what an idempotency key needs."
             }
           }
