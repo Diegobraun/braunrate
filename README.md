@@ -4,7 +4,7 @@ Load testing with an honest measurement: open arrival model, HDR histogram and
 back-pressure detection.
 
 **Documentation: <https://diegobraun.github.io/braunrate/>** — the site is
-generated from `docs/guias/` in this repository, and every code block in it goes
+generated from `docs/guides/` in this repository, and every code block in it goes
 through the test suite.
 
 ## See it working
@@ -107,10 +107,11 @@ go test ./...
 go run ./cmd/site -out site      # generates the published documentation
 ```
 
-The site content lives in [`docs/guias/`](docs/guias); the scenario reference and
-the index of decisions are generated from the schema and from the ADRs. Editing
-the documentation is editing those files, and the test fails the build if a
-published code block stops being valid.
+The site content lives in [`docs/guides/`](docs/guides), one file per language
+(`.en.md` and `.pt-BR.md`); the scenario reference and the index of decisions are
+generated from the schema and from the ADRs. Editing the documentation is editing
+those files, and the test fails the build if a published code block stops being
+valid or if a translation falls behind its English source.
 
 Documents in this repository are written in Portuguese: the ADRs, the commits and
 the internal reports record decisions for whoever maintains the tool. What
