@@ -124,6 +124,7 @@ type StepResult struct {
 	Successes      int64            `json:"successes"`
 	Errors         int64            `json:"errors"`
 	Bytes          int64            `json:"bytes"`
+	Messages       int64            `json:"messages,omitempty"`
 	ErrorsByClass  map[string]int64 `json:"errorsByClass"`
 	StatusByCode   map[string]int64 `json:"statusByCode"`
 	Details        map[string]int64 `json:"errorDetails"`
@@ -358,6 +359,7 @@ func convertStep(a *Aggregate) StepResult {
 		Successes:      a.Successes,
 		Errors:         a.Errors(),
 		Bytes:          a.Bytes,
+		Messages:       a.Messages,
 		ErrorsByClass:  errorsByClass,
 		StatusByCode:   statusPorCodigo,
 		Details:        a.Details,

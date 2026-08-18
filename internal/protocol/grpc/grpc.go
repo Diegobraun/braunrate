@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -42,6 +43,7 @@ type Config struct {
 	Metadata      map[string]string
 	Target        string
 	DescriptorSet string
+	MaxMessages   int64
 	Timeout       time.Duration
 }
 
@@ -165,6 +167,12 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 			config.Target = value.Value
 		case "descriptorSet", "descriptor_set", "proto":
 			config.DescriptorSet = value.Value
+		case "maxMessages", "max_messages":
+			count, err := strconv.ParseInt(strings.TrimSpace(value.Value), 10, 64)
+			if err != nil || count < 0 {
+				return nil, fmt.Errorf("maxMessages has to be a whole number, got %q", value.Value)
+			}
+			config.MaxMessages = count
 		case "metadata", "headers":
 			if value.Kind != yaml.MappingNode {
 				return nil, errors.New("metadata has to be a map")
@@ -179,7 +187,7 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 			}
 			config.Timeout = duration
 		default:
-			return nil, fmt.Errorf("unknown key in the grpc step: %q (use method, service, message, target, descriptorSet, metadata or timeout)", key.Value)
+			return nil, fmt.Errorf("unknown key in the grpc step: %q (use method, service, message, target, descriptorSet, maxMessages, metadata or timeout)", key.Value)
 		}
 	}
 	return finish(config)
@@ -254,6 +262,10 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		runContext = metadata.AppendToOutgoingContext(runContext, pairs...)
 	}
 
+	if method.IsStreamingServer() {
+		return implementation.drainServerStream(runContext, conn, config, method, message)
+	}
+
 	reply := dynamicpb.NewMessage(method.Output())
 	if err := conn.Invoke(runContext, "/"+config.Service+"/"+config.Method, message, reply); err != nil {
 		class, detail := classify(err)
@@ -266,6 +278,49 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		out.Bytes = int64(len(content))
 	}
 	return out
+}
+
+// drainServerStream sends the single request and reads the server's messages
+// until it closes, maxMessages is reached, or the context ends. The iteration's
+// latency is the whole stream's lifetime; Messages carries the count.
+func (implementation *Protocol) drainServerStream(runContext context.Context, conn *grpc.ClientConn, config *Config, method protoreflect.MethodDescriptor, message *dynamicpb.Message) protocol.Response {
+	runContext, cancel := context.WithCancel(runContext)
+	defer cancel()
+
+	stream, err := conn.NewStream(runContext, &grpc.StreamDesc{ServerStreams: true}, "/"+config.Service+"/"+config.Method)
+	if err != nil {
+		class, detail := classify(err)
+		return protocol.Response{Class: class, Detail: detail}
+	}
+	if err := stream.SendMsg(message); err != nil {
+		class, detail := classify(err)
+		return protocol.Response{Class: class, Detail: detail}
+	}
+	_ = stream.CloseSend()
+
+	var count, bytes int64
+	var first []byte
+	for {
+		reply := dynamicpb.NewMessage(method.Output())
+		if err := stream.RecvMsg(reply); err != nil {
+			if err == io.EOF {
+				break
+			}
+			class, detail := classify(err)
+			return protocol.Response{Class: class, Detail: detail, Messages: count, Bytes: bytes}
+		}
+		count++
+		if content, err := protojson.Marshal(reply); err == nil {
+			bytes += int64(len(content))
+			if first == nil {
+				first = content
+			}
+		}
+		if config.MaxMessages > 0 && count >= config.MaxMessages {
+			break
+		}
+	}
+	return protocol.Response{Class: protocol.Success, Messages: count, Bytes: bytes, Body: first}
 }
 
 func (implementation *Protocol) connect(address string) (*grpc.ClientConn, error) {
@@ -319,8 +374,8 @@ func (implementation *Protocol) resolve(runContext context.Context, address stri
 	if method == nil {
 		return nil, fmt.Errorf("the service %q has no method %q", config.Service, config.Method)
 	}
-	if method.IsStreamingClient() || method.IsStreamingServer() {
-		return nil, fmt.Errorf("%s is a streaming method; the load model sends one message per iteration", config.fullMethod())
+	if method.IsStreamingClient() {
+		return nil, fmt.Errorf("%s is client-streaming; braunrate sends one request and drains the reply, so only unary and server-streaming methods are supported", config.fullMethod())
 	}
 
 	implementation.mu.Lock()

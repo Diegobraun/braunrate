@@ -37,6 +37,7 @@ type Sample struct {
 	Detail      string
 	Status      int
 	Bytes       int64
+	Messages    int64
 }
 
 func (sample Sample) CorrectedLatency() time.Duration {
@@ -59,6 +60,7 @@ type Aggregate struct {
 	ErrorsByClass    map[protocol.ErrorClass]int64
 	StatusByCode     map[int]int64
 	Bytes            int64
+	Messages         int64
 	Details          map[string]int64
 }
 
@@ -81,6 +83,7 @@ func (aggregate *Aggregate) Record(sample Sample) {
 	}
 	aggregate.Count++
 	aggregate.Bytes += sample.Bytes
+	aggregate.Messages += sample.Messages
 	if sample.Status > 0 {
 		aggregate.StatusByCode[sample.Status]++
 	}
@@ -120,6 +123,7 @@ func (aggregate *Aggregate) Add(other *Aggregate) {
 	aggregate.Count += other.Count
 	aggregate.Successes += other.Successes
 	aggregate.Bytes += other.Bytes
+	aggregate.Messages += other.Messages
 	for class, count := range other.ErrorsByClass {
 		aggregate.ErrorsByClass[class] += count
 	}

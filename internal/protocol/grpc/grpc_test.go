@@ -143,3 +143,35 @@ func TestGRPCCallsThroughDescriptorSet(t *testing.T) {
 		t.Fatalf("reply = %q", response.Body)
 	}
 }
+
+// Health/Watch is server-streaming: it pushes the current status right away and
+// then waits for changes. maxMessages: 1 takes that first message, exercising the
+// drain without blocking on the never-arriving second.
+func TestGRPCDrainsAServerStream(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	server := grpc.NewServer()
+	checker := health.NewServer()
+	checker.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
+	healthpb.RegisterHealthServer(server, checker)
+	reflection.Register(server)
+	go func() { _ = server.Serve(listener) }()
+	defer server.Stop()
+
+	config := decode(t, "method: grpc.health.v1.Health/Watch\nmessage: '{}'\nmaxMessages: 1")
+	response := New(protocol.DefaultOptions()).Execute(
+		context.Background(),
+		protocol.Request{URLBase: listener.Addr().String(), Config: config},
+	)
+	if response.Class != protocol.Success {
+		t.Fatalf("class = %s, detail = %q", response.Class, response.Detail)
+	}
+	if response.Messages != 1 {
+		t.Fatalf("messages = %d, want 1", response.Messages)
+	}
+	if !strings.Contains(string(response.Body), "SERVING") {
+		t.Fatalf("reply = %q", response.Body)
+	}
+}
