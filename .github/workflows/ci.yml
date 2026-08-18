@@ -50,7 +50,7 @@ jobs:
       # Um portao so, chamado daqui e pela pessoa antes de empurrar. Duas listas
       # de passos divergem sozinhas, e foi assim que o CI ficou vermelho oito
       # commits enquanto 'go test ./...' passava na maquina.
-      - name: portao
+      - name: gate
         env:
           BRAUNRATE_KAFKA: 127.0.0.1:9092
           BRAUNRATE_AMQP: amqp://guest:guest@127.0.0.1:5672/
