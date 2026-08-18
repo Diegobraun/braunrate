@@ -69,7 +69,7 @@ subir_brokers() {
   fi
   command -v docker >/dev/null || { echo "sem docker: nao ha como subir broker"; return 1; }
 
-  docker rm -f portao-kafka portao-rabbit >/dev/null 2>&1
+  docker rm -f portao-kafka portao-rabbit portao-mqtt >/dev/null 2>&1
   docker run -d --name portao-kafka -p 9092:9092 \
     -e KAFKA_NODE_ID=1 -e KAFKA_PROCESS_ROLES=broker,controller \
     -e KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093 \
@@ -84,10 +84,13 @@ subir_brokers() {
     -e KAFKA_AUTO_CREATE_TOPICS_ENABLE=true \
     apache/kafka:3.8.0 >/dev/null || return 1
   docker run -d --name portao-rabbit -p 5672:5672 rabbitmq:3.13-alpine >/dev/null || return 1
+  docker run -d --name portao-mqtt -p 1883:1883 eclipse-mosquitto:2 \
+    sh -c 'printf "listener 1883 0.0.0.0\nallow_anonymous true\n" > /mosquitto/config/mosquitto.conf && exec mosquitto -c /mosquitto/config/mosquitto.conf' >/dev/null || return 1
 
   export BRAUNRATE_KAFKA=127.0.0.1:9092
   export BRAUNRATE_AMQP=amqp://guest:guest@127.0.0.1:5672/
-  trap 'docker rm -f portao-kafka portao-rabbit >/dev/null 2>&1' EXIT
+  export BRAUNRATE_MQTT=tcp://127.0.0.1:1883
+  trap 'docker rm -f portao-kafka portao-rabbit portao-mqtt >/dev/null 2>&1' EXIT
   echo "esperando os brokers responderem"
   sleep 20
 }
