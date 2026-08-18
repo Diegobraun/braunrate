@@ -616,6 +616,16 @@
               }
             }
           ]
+        },
+        "sse": {
+          "$ref": "#/$defs/sse",
+          "description": "Subscribes to a Server-Sent Events stream and counts the events it delivers.",
+          "examples": [
+            {
+              "path": "/events",
+              "maxMessages": 20
+            }
+          ]
         }
       }
     },
@@ -1814,6 +1824,57 @@
         "timeout": {
           "$ref": "#/$defs/duration",
           "description": "How long to wait for the connection and the acknowledgement before counting a timeout.",
+          "examples": [
+            "10s"
+          ]
+        }
+      }
+    },
+    "sse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The path of the event stream on the target. Defaults to /.",
+          "examples": [
+            "/events"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "description": "The full stream URL, when it is not on the scenario target.",
+          "examples": [
+            "https://api.example.com/events"
+          ]
+        },
+        "maxMessages": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many events to read before ending the iteration. Without it, the stream is drained until the server closes or the timeout arrives.",
+          "examples": [
+            20
+          ]
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          },
+          "description": "Request headers, for example the last id seen when resuming.",
+          "examples": [
+            {
+              "Last-Event-ID": "0"
+            }
+          ]
+        },
+        "timeout": {
+          "$ref": "#/$defs/duration",
+          "description": "How long to keep reading the stream before ending the iteration.",
           "examples": [
             "10s"
           ]

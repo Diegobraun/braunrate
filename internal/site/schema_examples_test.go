@@ -15,6 +15,7 @@ import (
 	_ "github.com/Diegobraun/braunrate/internal/protocol/http"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/kafka"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/mqtt"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/sse"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/wait"
 	"github.com/Diegobraun/braunrate/internal/scenario"
 	"github.com/Diegobraun/braunrate/internal/site"
@@ -482,10 +483,18 @@ var hosts = map[string]string{
 	"$await.amqp.url":      step(`await: { amqp: { queue: orders-processed, url: ` + placeholder + ` }, key: "1001" }`),
 	"$await.key":           step(`await: { kafka: { topic: orders-processed }, key: ` + placeholder + ` }`),
 	"$await.until":         step(`await: { http: { path: /orders/1001 }, until: ` + placeholder + ` }`),
-	"$await.field":         step(`await: { kafka: { topic: orders-processed }, key: "1001", field: ` + placeholder + `, equals: PROCESSED }`),
-	"$await.equals":        step(`await: { kafka: { topic: orders-processed }, key: "1001", field: $.status, equals: ` + placeholder + ` }`),
-	"$await.interval":      step(`await: { http: { path: /orders/1001 }, until: { status: 200 }, interval: ` + placeholder + ` }`),
-	"$await.timeout":       step(`await: { http: { path: /orders/1001 }, until: { status: 200 }, timeout: ` + placeholder + ` }`),
+
+	// sse
+	"$step.sse":        step(`sse: ` + placeholder),
+	"$sse.path":        step(`sse: { path: ` + placeholder + ` }`),
+	"$sse.url":         step(`sse: { url: ` + placeholder + ` }`),
+	"$sse.maxMessages": step(`sse: { path: /events, maxMessages: ` + placeholder + ` }`),
+	"$sse.headers":     step(`sse: { path: /events, headers: ` + placeholder + ` }`),
+	"$sse.timeout":     step(`sse: { path: /events, timeout: ` + placeholder + ` }`),
+	"$await.field":     step(`await: { kafka: { topic: orders-processed }, key: "1001", field: ` + placeholder + `, equals: PROCESSED }`),
+	"$await.equals":    step(`await: { kafka: { topic: orders-processed }, key: "1001", field: $.status, equals: ` + placeholder + ` }`),
+	"$await.interval":  step(`await: { http: { path: /orders/1001 }, until: { status: 200 }, interval: ` + placeholder + ` }`),
+	"$await.timeout":   step(`await: { http: { path: /orders/1001 }, until: { status: 200 }, timeout: ` + placeholder + ` }`),
 
 	// expect
 	"$expect.status":       step(`http: GET /orders/1001` + "\n    expect: { status: " + placeholder + " }"),

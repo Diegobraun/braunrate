@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+name: Order events over SSE
+target: http://127.0.0.1:8080
+
+load:
+  profiles:
+    - steady: { rate: 40/s, duration: 5s }
+
+scenario:
+  - sse:
+      path: /events
+      maxMessages: 5
+
+slo:
+  - sse /events: { p95: < 200ms }
+  - global: { errors: < 1 }
