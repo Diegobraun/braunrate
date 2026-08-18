@@ -553,6 +553,23 @@ func TestImportReturnsAScenarioToReview(t *testing.T) {
 	if status, _ := send(t, http.MethodPost, base+"/import/postman", "x"); status != http.StatusNotFound {
 		t.Fatalf("formato desconhecido respondeu %d, esperava 404", status)
 	}
+
+	har := `{"log":{"entries":[{"_resourceType":"xhr",` +
+		`"request":{"method":"POST","url":"https://api.example.com/orders","headers":[{"name":"Authorization","value":"Bearer x"}],"postData":{"mimeType":"application/json","text":"{\"id\":1}"}},` +
+		`"response":{"status":201,"content":{"mimeType":"application/json"}}}]}}`
+	status, body = send(t, http.MethodPost, base+"/import/har", har)
+	if status != http.StatusOK {
+		t.Fatalf("import de har respondeu %d: %s", status, body)
+	}
+	if err := json.Unmarshal(body, &answer); err != nil {
+		t.Fatalf("resposta do har não e JSON: %s", body)
+	}
+	if !strings.Contains(answer.YAML, "target: ${TARGET:-https://api.example.com}") {
+		t.Fatalf("o har não traduziu o alvo:\n%s", answer.YAML)
+	}
+	if strings.Contains(answer.YAML, "Bearer x") {
+		t.Fatalf("o token vazou no YAML do har:\n%s", answer.YAML)
+	}
 }
 
 // Sem Writable a porta e so de leitura: o import faz parte do fluxo de criar

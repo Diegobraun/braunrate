@@ -144,6 +144,7 @@ usage:
   braunrate validate <scenario.yaml>
   braunrate import curl "<curl command>"        generates a scenario from a curl
   braunrate import jmx <plan.jmx>               translates the common subset of a JMeter plan
+  braunrate import har <capture.har>            keeps the API calls from a browser's HAR export
   braunrate record -output <scenario.yaml>      records a scenario from whatever goes through the proxy
   braunrate report <result.json> [options]      generates HTML or CSV from a result already saved
   braunrate compare <before.json> <after.json> [-html <file.html>]
@@ -612,19 +613,20 @@ func importCommand(args []string) int {
 		}
 	}
 
-	if len(rest) < 1 || (rest[0] != "curl" && rest[0] != "jmx") {
-		fmt.Fprintln(os.Stderr, `say what to import. There are two formats today:
+	if len(rest) < 1 || (rest[0] != "curl" && rest[0] != "jmx" && rest[0] != "har") {
+		fmt.Fprintln(os.Stderr, `say what to import. There are three formats today:
   braunrate import curl "curl -X POST https://example/orders -d '{}'" -output scenario.yaml
   pbpaste | braunrate import curl
-  braunrate import jmx plan.jmx -output scenario.yaml`)
+  braunrate import jmx plan.jmx -output scenario.yaml
+  braunrate import har capture.har -output scenario.yaml`)
 		return 2
 	}
 
 	var importResult importer.Import
 	var err error
-	if rest[0] == "jmx" {
+	if rest[0] == "jmx" || rest[0] == "har" {
 		if len(rest) < 2 {
-			fmt.Fprintln(os.Stderr, "name the .jmx file:\n  braunrate import jmx plan.jmx -output scenario.yaml")
+			fmt.Fprintf(os.Stderr, "name the .%s file:\n  braunrate import %s file.%s -output scenario.yaml\n", rest[0], rest[0], rest[0])
 			return 2
 		}
 		content, readErr := os.ReadFile(rest[1])
@@ -632,7 +634,11 @@ func importCommand(args []string) int {
 			fmt.Fprintf(os.Stderr, "I could not read %s: %v\n", rest[1], readErr)
 			return 2
 		}
-		importResult, err = importer.FromJMX(content)
+		if rest[0] == "har" {
+			importResult, err = importer.FromHAR(content)
+		} else {
+			importResult, err = importer.FromJMX(content)
+		}
 	} else {
 		command := strings.Join(rest[1:], " ")
 		if strings.TrimSpace(command) == "" {

@@ -187,11 +187,12 @@ function importScreen () {
   showCommand('braunrate import jmx plan.jmx -output scenario.yaml')
   content.innerHTML = `
     <h1>Import a scenario</h1>
-    <p class="caption">Either format becomes a <code>.yaml</code> in <code>${escape(state.directory)}</code>.
+    <p class="caption">Any of these becomes a <code>.yaml</code> in <code>${escape(state.directory)}</code>.
       The import is a draft: read the warnings, then it is the file that is the truth, edited right here.</p>
     <div class="tabs">
       <button type="button" class="tab active" data-src="curl">Paste a cURL</button>
       <button type="button" class="tab" data-src="jmx">Upload a .jmx</button>
+      <button type="button" class="tab" data-src="har">Upload a .har</button>
     </div>
     <div class="panel" id="src-curl">
       <textarea id="curl" spellcheck="false" placeholder='curl https://your-api/orders -H "Authorization: Bearer ..."'></textarea>
@@ -202,6 +203,12 @@ function importScreen () {
       <label><span>JMeter plan</span><input type="file" id="jmx" accept=".jmx,application/xml,text/xml"></label>
       <p class="teaches">The common subset of a JMeter plan translates; whatever is left out comes back as a
         warning instead of a silent gap. The busiest domain becomes the target.</p>
+    </div>
+    <div class="panel" id="src-har" hidden>
+      <label><span>HAR capture</span><input type="file" id="har" accept=".har,application/json"></label>
+      <p class="teaches">Export it from the browser's network panel ("Save all as HAR"). The API calls are
+        kept; images, styles and fonts come back as a warning, not a silent gap. The busiest domain
+        becomes the target.</p>
     </div>
     <div class="bar"><button type="button" class="primary" id="convert">Convert</button>
       <a class="button" href="#/">cancel</a>
@@ -220,8 +227,7 @@ function importScreen () {
   tabs.forEach(tab => tab.addEventListener('click', function () {
     source = tab.dataset.src
     tabs.forEach(other => other.classList.toggle('active', other === tab))
-    document.getElementById('src-curl').hidden = source !== 'curl'
-    document.getElementById('src-jmx').hidden = source !== 'jmx'
+    ;['curl', 'jmx', 'har'].forEach(one => { document.getElementById('src-' + one).hidden = source !== one })
   }))
 
   const importStatus = document.getElementById('import-status')
@@ -235,10 +241,10 @@ function importScreen () {
       payload = document.getElementById('curl').value.trim()
       if (!payload) { importStatus.textContent = 'paste a cURL first'; return }
     } else {
-      const file = document.getElementById('jmx').files[0]
-      if (!file) { importStatus.textContent = 'choose a .jmx first'; return }
+      const file = document.getElementById(source).files[0]
+      if (!file) { importStatus.textContent = `choose a .${source} first`; return }
       payload = await file.text()
-      suggested = file.name.replace(/\.jmx$/i, '') + '.yaml'
+      suggested = file.name.replace(new RegExp('\\.' + source + '$', 'i'), '') + '.yaml'
     }
     this.disabled = true
     importStatus.textContent = 'converting…'

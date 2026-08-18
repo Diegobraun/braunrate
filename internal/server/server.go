@@ -558,8 +558,10 @@ func (server *Server) importScenario(writer http.ResponseWriter, request *http.R
 		result, err = importer.FromCurl(string(payload))
 	case "jmx":
 		result, err = importer.FromJMX(payload)
+	case "har":
+		result, err = importer.FromHAR(payload)
 	default:
-		writeProblem(writer, http.StatusNotFound, fmt.Sprintf("I do not import %q; the formats are curl and jmx", format))
+		writeProblem(writer, http.StatusNotFound, fmt.Sprintf("I do not import %q; the formats are curl, jmx and har", format))
 		return
 	}
 	if err != nil {
