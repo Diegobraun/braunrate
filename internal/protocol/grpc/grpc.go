@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -35,12 +36,13 @@ func init() {
 }
 
 type Config struct {
-	Service  string
-	Method   string
-	Message  string
-	Metadata map[string]string
-	Target   string
-	Timeout  time.Duration
+	Service       string
+	Method        string
+	Message       string
+	Metadata      map[string]string
+	Target        string
+	DescriptorSet string
+	Timeout       time.Duration
 }
 
 func (config *Config) Protocol() string { return "grpc" }
@@ -161,6 +163,8 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 			config.Message = value.Value
 		case "target":
 			config.Target = value.Value
+		case "descriptorSet", "descriptor_set", "proto":
+			config.DescriptorSet = value.Value
 		case "metadata", "headers":
 			if value.Kind != yaml.MappingNode {
 				return nil, errors.New("metadata has to be a map")
@@ -175,7 +179,7 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 			}
 			config.Timeout = duration
 		default:
-			return nil, fmt.Errorf("unknown key in the grpc step: %q (use method, service, message, target, metadata or timeout)", key.Value)
+			return nil, fmt.Errorf("unknown key in the grpc step: %q (use method, service, message, target, descriptorSet, metadata or timeout)", key.Value)
 		}
 	}
 	return finish(config)
@@ -283,7 +287,7 @@ func (implementation *Protocol) connect(address string) (*grpc.ClientConn, error
 }
 
 func (implementation *Protocol) resolve(runContext context.Context, address string, conn *grpc.ClientConn, config *Config) (protoreflect.MethodDescriptor, error) {
-	key := address + "|" + config.fullMethod()
+	key := address + "|" + config.DescriptorSet + "|" + config.fullMethod()
 	implementation.mu.Lock()
 	if method, ok := implementation.methods[key]; ok {
 		implementation.mu.Unlock()
@@ -291,13 +295,21 @@ func (implementation *Protocol) resolve(runContext context.Context, address stri
 	}
 	implementation.mu.Unlock()
 
-	files, err := descriptorsBySymbol(runContext, conn, config.Service)
+	// A compiled descriptor set lets targets without server reflection still be
+	// called; reflection stays the default when no set is given.
+	var files *protoregistry.Files
+	var err error
+	if config.DescriptorSet != "" {
+		files, err = descriptorsFromFile(config.DescriptorSet)
+	} else {
+		files, err = descriptorsBySymbol(runContext, conn, config.Service)
+	}
 	if err != nil {
 		return nil, err
 	}
 	descriptor, err := files.FindDescriptorByName(protoreflect.FullName(config.Service))
 	if err != nil {
-		return nil, fmt.Errorf("the target's reflection has no service %q: %v", config.Service, err)
+		return nil, fmt.Errorf("no service %q in the descriptors: %v", config.Service, err)
 	}
 	service, ok := descriptor.(protoreflect.ServiceDescriptor)
 	if !ok {
@@ -388,6 +400,33 @@ func descriptorsBySymbol(runContext context.Context, conn *grpc.ClientConn, symb
 		return nil, fmt.Errorf("the descriptors from reflection did not assemble: %v", err)
 	}
 	return registry, nil
+}
+
+// descriptorsFromFile loads a FileDescriptorSet built by
+// `protoc --descriptor_set_out=... --include_imports`, so a target that does not
+// expose server reflection can still be called.
+func descriptorsFromFile(path string) (*protoregistry.Files, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("could not read the descriptor set %q: %v", path, err)
+	}
+	set := &descriptorpb.FileDescriptorSet{}
+	if err := proto.Unmarshal(raw, set); err != nil {
+		return nil, fmt.Errorf("%q is not a FileDescriptorSet (build it with protoc --descriptor_set_out --include_imports): %v", path, err)
+	}
+	byName := map[string]*descriptorpb.FileDescriptorProto{}
+	for _, file := range set.GetFile() {
+		byName[file.GetName()] = file
+	}
+	ordered, err := topological(byName)
+	if err != nil {
+		return nil, err
+	}
+	files, err := protodesc.NewFiles(&descriptorpb.FileDescriptorSet{File: ordered})
+	if err != nil {
+		return nil, fmt.Errorf("the descriptor set did not assemble (pass --include_imports so every import is inside it): %v", err)
+	}
+	return files, nil
 }
 
 func topological(files map[string]*descriptorpb.FileDescriptorProto) ([]*descriptorpb.FileDescriptorProto, error) {
