@@ -129,7 +129,7 @@ func GateWarnings(spec Spec) []string {
 // KnownRequirements is the closed list on purpose: an unknown name would be
 // declared, printed and never checked by anyone, which is worse than not
 // declaring it.
-var KnownRequirements = []string{"kafka", "amqp", "credential"}
+var KnownRequirements = []string{"kafka", "amqp", "mqtt", "credential"}
 
 func readRequirements(no *yaml.Node) ([]string, error) {
 	if no.Kind != yaml.SequenceNode {
