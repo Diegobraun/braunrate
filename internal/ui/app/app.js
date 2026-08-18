@@ -373,7 +373,27 @@ slo:
   - global: { p95: < ${p95}, errors: < ${errors} }
 `
 
-const templates = { http: scenarioTemplateHTTP, kafka: scenarioTemplateKafka, amqp: scenarioTemplateAMQP, graphql: scenarioTemplateGraphQL }
+const scenarioTemplateWebSocket = ({ name, target, wsPath, wsSend, rate, duration, p95, errors }) =>
+`${schemaLine}
+name: ${name}
+target: ${target}
+
+load:
+  profiles:
+    - steady: { rate: ${rate}/s, duration: ${duration} }
+
+scenario:
+  - websocket:
+      path: ${wsPath || '/ws'}
+      send: '${wsSend || ''}'
+      awaitReply: true
+    name: ${name.toLowerCase()}
+
+slo:
+  - global: { p95: < ${p95}, errors: < ${errors} }
+`
+
+const templates = { http: scenarioTemplateHTTP, kafka: scenarioTemplateKafka, amqp: scenarioTemplateAMQP, graphql: scenarioTemplateGraphQL, websocket: scenarioTemplateWebSocket }
 
 function newScreen () {
   showCommand('braunrate new scenario.yaml')
@@ -387,7 +407,7 @@ function newScreen () {
       <label><span>Scenario name</span><input name="name" value="Order lookup" required>
         <div class="help">Shows up at the top of the report.</div></label>
       <label><span>Protocol</span>
-        <select name="kind" id="kind"><option value="http">HTTP</option><option value="graphql">GraphQL</option><option value="kafka">Kafka</option><option value="amqp">RabbitMQ (AMQP)</option></select></label>
+        <select name="kind" id="kind"><option value="http">HTTP</option><option value="graphql">GraphQL</option><option value="websocket">WebSocket</option><option value="kafka">Kafka</option><option value="amqp">RabbitMQ (AMQP)</option></select></label>
 
       <div id="g-target">
         <label><span>Target</span><input name="target" value="http://127.0.0.1:8080">
@@ -412,6 +432,12 @@ function newScreen () {
           <div class="help">host:port of RabbitMQ.</div></label>
         <label><span>Queue</span><input name="queue" value="orders"></label>
       </div>
+      <div id="g-websocket" hidden>
+        <label><span>Path</span><input name="wsPath" value="/ws">
+          <div class="help">The websocket path. ws:// and wss:// come from the target's scheme.</div></label>
+        <label><span>Message to send</span><input name="wsSend" value='{"subscribe":"orders"}'>
+          <div class="help">Sent on connect, then it waits for one reply. Leave empty to only open the connection.</div></label>
+      </div>
 
       <div class="pair">
         <label><span>Rate (per second)</span><input name="rate" value="100" required>
@@ -434,8 +460,8 @@ function newScreen () {
 
   const kind = document.getElementById('kind')
   function showGroups () {
-    document.getElementById('g-target').hidden = kind.value !== 'http' && kind.value !== 'graphql'
-    ;['http', 'kafka', 'amqp'].forEach(one => { document.getElementById('g-' + one).hidden = kind.value !== one })
+    document.getElementById('g-target').hidden = kind.value !== 'http' && kind.value !== 'graphql' && kind.value !== 'websocket'
+    ;['http', 'kafka', 'amqp', 'websocket'].forEach(one => { document.getElementById('g-' + one).hidden = kind.value !== one })
   }
   kind.addEventListener('change', showGroups)
   showGroups()
