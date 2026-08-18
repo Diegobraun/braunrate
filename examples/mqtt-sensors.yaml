@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Diegobraun/braunrate/main/docs/braunrate.schema.json
+name: Sensor readings over MQTT
+target: ${BRAUNRATE_MQTT:-tcp://127.0.0.1:1883}
+
+# Without an MQTT broker this scenario does not run. Declared here for whoever
+# runs it and for the CI loop over the examples, which skips with a warning
+# instead of breaking in silence.
+requires: [mqtt]
+
+data:
+  readings:
+    generate:
+      sensor: number(1,50)
+      celsius: number(15,32)
+
+load:
+  profiles:
+    - steady: { rate: 40/s, duration: 5s }
+
+scenario:
+  - mqtt:
+      topic: sensors/temperature
+      qos: 1
+      payload: { sensor: "${readings.sensor}", celsius: "${readings.celsius}" }
+
+slo:
+  - mqtt publish sensors/temperature: { p95: < 100ms }
+  - global: { errors: < 1 }

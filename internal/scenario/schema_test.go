@@ -13,6 +13,7 @@ import (
 	_ "github.com/Diegobraun/braunrate/internal/protocol/graphql"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/http"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/kafka"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/mqtt"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/wait"
 )
 

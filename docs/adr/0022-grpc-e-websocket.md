@@ -31,7 +31,7 @@ Os dois saem completos. O que os separa é a dependência:
        headers: { Authorization: "Bearer ${TOKEN}" }
    ```
 
-2. **gRPC sai completo, pela reflexão do servidor.** O passo não pede `.proto` nem stub gerado: o cliente disca, lê o descritor do método pela **server reflection** do alvo, monta a mensagem a partir do JSON com mensagem dinâmica e invoca. É o mesmo caminho do grpcurl (`google.golang.org/grpc` + `jhump/protoreflect`).
+2. **gRPC sai completo, pela reflexão do servidor.** O passo não pede `.proto` nem stub gerado: o cliente disca, lê o descritor do método pela **server reflection** do alvo, monta a mensagem a partir do JSON com mensagem dinâmica e invoca. É o mesmo caminho do grpcurl, sobre a API v2 do `google.golang.org/protobuf` (descritores dinâmicos, sem stub gerado).
 
    ```yaml
    - grpc:
@@ -53,5 +53,5 @@ O código do gRPC vira classe de erro pela própria semântica: `Unauthenticated
 
 ## O que reabre esta decisao
 
-- Um alvo de produção sem reflexão precisar ser testado: aí entra o descriptor set como caminho alternativo (um `.proto` compilado que a pessoa sobe), ao lado da reflexão. Foi descartado agora por atrito na superfície sem-código, não por não servir.
+- ~~Um alvo de produção sem reflexão precisar ser testado: aí entra o descriptor set como caminho alternativo.~~ **Entregue.** O passo `grpc` aceita `descriptorSet: arquivo.protoset` (um `FileDescriptorSet` de `protoc --descriptor_set_out --include_imports`); quando presente, os descritores vêm do arquivo em vez da reflexão. A reflexão segue o padrão quando a chave é omitida.
 - Streaming bidirecional de verdade (server-stream, client-stream) precisar virar medição própria — hoje o modelo é uma mensagem por iteração, como o resto.
