@@ -141,6 +141,7 @@ function scenariosScreen () {
     return
   }
   content.innerHTML = `
+    <div id="target-panel"></div>
     <h1>Scenarios</h1>
     <p class="caption">${state.scenarios.length} file(s) in <code>${escape(state.directory)}</code>.
       Opening a scenario opens the file itself: what you save here is what the terminal reads.</p>
@@ -166,8 +167,7 @@ function scenariosScreen () {
         <span>a "Copy as cURL", a JMeter .jmx or a browser .har</span></a>
       <a class="option" href="#/examples"><b>Browse examples</b>
         <span>published scenarios to read and copy from</span></a>
-    </div>
-    <div id="target-panel"></div>`
+    </div>`
   drawTarget()
 }
 
@@ -179,17 +179,17 @@ async function drawTarget () {
   render(current.body)
   function render (target) {
     if (target.running) {
-      panel.innerHTML = `<div class="notice"><h3>Practice target running</h3>
-        <p>Point a scenario's <code>target</code> at <code>${escape(target.address)}</code> — it answers in about 10ms.</p>
-        <button class="button" id="target-stop">Stop it</button></div>`
+      panel.innerHTML = `<div class="target-note"><b>Practice target running</b>
+        <p>Point a scenario's <code>target</code> at <code>${escape(target.address)}</code> — answers in ~10ms.</p>
+        <button class="button sm" id="target-stop">Stop it</button></div>`
       document.getElementById('target-stop').addEventListener('click', async function () {
         this.disabled = true
         render((await ask('/target', { method: 'DELETE' })).body)
       })
     } else {
-      panel.innerHTML = `<div class="notice"><h3>No service to test against?</h3>
+      panel.innerHTML = `<div class="target-note"><b>No service to test against?</b>
         <p>Start a built-in practice target — a small HTTP server to point a scenario at.</p>
-        <button class="button" id="target-start">Start a practice target</button></div>`
+        <button class="button sm" id="target-start">Start a practice target</button></div>`
       document.getElementById('target-start').addEventListener('click', async function () {
         this.disabled = true
         render((await ask('/target', { method: 'POST' })).body)
