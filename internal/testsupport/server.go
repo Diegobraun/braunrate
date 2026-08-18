@@ -66,6 +66,7 @@ func (server *Server) Start(address string) error {
 	mux.HandleFunc("/invoices/", server.wrap(server.requireToken(server.handlePayment)))
 	mux.HandleFunc("/graphql", server.wrap(server.requireToken(server.handleGraphQL)))
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+	mux.HandleFunc("/events", server.wrap(server.handleEvents))
 	mux.HandleFunc("/freeze", server.handleFreeze)
 	server.server = &http.Server{Handler: mux}
 
@@ -112,6 +113,23 @@ func (server *Server) waitForResume() {
 	server.mutexPausa.RUnlock()
 	if remaining := time.Until(end); remaining > 0 {
 		time.Sleep(remaining)
+	}
+}
+
+// handleEvents streams a short burst of server-sent events and closes, so an
+// sse step reads a handful of events per iteration instead of hanging on a feed
+// that never ends.
+func (server *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	flusher, canFlush := w.(http.Flusher)
+	for seq := 0; seq < 10; seq++ {
+		if r.Context().Err() != nil {
+			return
+		}
+		_, _ = fmt.Fprintf(w, "data: {\"seq\":%d}\n\n", seq)
+		if canFlush {
+			flusher.Flush()
+		}
 	}
 }
 

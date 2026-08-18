@@ -33,6 +33,7 @@ import (
 	_ "github.com/Diegobraun/braunrate/internal/protocol/grpc"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/http"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/kafka"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/sse"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/wait"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/websocket"
 )
