@@ -5,9 +5,12 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,12 +25,13 @@ func init() {
 }
 
 type Config struct {
-	Path       string
-	Send       string
-	AwaitReply bool
-	Origin     string
-	Headers    map[string]string
-	Timeout    time.Duration
+	Path        string
+	Send        string
+	AwaitReply  bool
+	MaxMessages int64
+	Origin      string
+	Headers     map[string]string
+	Timeout     time.Duration
 }
 
 func (config *Config) Protocol() string { return "websocket" }
@@ -63,7 +67,10 @@ func (config *Config) WithHeader(name, value string) protocol.Config {
 
 func (config *Config) Describe() []string {
 	action := "send"
-	if config.AwaitReply {
+	switch {
+	case config.MaxMessages > 0:
+		action = fmt.Sprintf("send and drain up to %d messages", config.MaxMessages)
+	case config.AwaitReply:
 		action = "send and await one reply"
 	}
 	lines := []string{fmt.Sprintf("connect %s, %s", config.Path, action)}
@@ -125,6 +132,12 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 			config.Send = value.Value
 		case "awaitReply", "await":
 			config.AwaitReply = value.Value == "true"
+		case "maxMessages", "max_messages":
+			count, err := strconv.ParseInt(strings.TrimSpace(value.Value), 10, 64)
+			if err != nil || count < 0 {
+				return nil, fmt.Errorf("maxMessages has to be a whole number, got %q", value.Value)
+			}
+			config.MaxMessages = count
 		case "origin":
 			config.Origin = value.Value
 		case "headers":
@@ -141,7 +154,7 @@ func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error)
 			}
 			config.Timeout = duration
 		default:
-			return nil, fmt.Errorf("unknown key in the websocket step: %q (use path, send, awaitReply, origin, headers or timeout)", key.Value)
+			return nil, fmt.Errorf("unknown key in the websocket step: %q (use path, send, awaitReply, maxMessages, origin, headers or timeout)", key.Value)
 		}
 	}
 	return finish(config)
@@ -215,6 +228,31 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 	}
 
 	out := protocol.Response{Class: protocol.Success, Bytes: int64(len(config.Send))}
+	if config.MaxMessages > 0 {
+		var count, bytes int64
+		var first []byte
+		for {
+			var reply []byte
+			if err := xws.Message.Receive(conn, &reply); err != nil {
+				if isStreamEnd(err) {
+					break
+				}
+				return protocol.Response{Class: transport.Classify(err), Detail: transport.SummarizeError(err), Messages: count, Bytes: out.Bytes + bytes}
+			}
+			count++
+			bytes += int64(len(reply))
+			if first == nil {
+				first = reply
+			}
+			if count >= config.MaxMessages {
+				break
+			}
+		}
+		out.Messages = count
+		out.Bytes += bytes
+		out.Body = first
+		return out
+	}
 	if config.AwaitReply {
 		var reply []byte
 		if err := xws.Message.Receive(conn, &reply); err != nil {
@@ -224,6 +262,16 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 		out.Bytes += int64(len(reply))
 	}
 	return out
+}
+
+// isStreamEnd tells the two clean ways a drained stream stops — the server
+// closed, or the deadline that bounds the stream arrived — from a real failure.
+func isStreamEnd(err error) bool {
+	if errors.Is(err, io.EOF) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
 }
 
 func wsURL(base, path string) (string, error) {

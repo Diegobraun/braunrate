@@ -455,6 +455,7 @@ func (executor *Executor) runStep(runContext context.Context, step scenario.Step
 	sample.FinishedAt = clock.Now()
 	sample.Status = response.Status
 	sample.Bytes = response.Bytes
+	sample.Messages = response.Messages
 	sample.Class = response.Class
 	sample.Detail = response.Detail
 	observation.Response = response

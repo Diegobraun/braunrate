@@ -129,6 +129,7 @@ func addStep(into *StepResult, other StepResult) error {
 	into.Successes += other.Successes
 	into.Errors += other.Errors
 	into.Bytes += other.Bytes
+	into.Messages += other.Messages
 	into.ErrorsByClass = addCounts(into.ErrorsByClass, other.ErrorsByClass)
 	into.StatusByCode = addCounts(into.StatusByCode, other.StatusByCode)
 	into.Details = addCounts(into.Details, other.Details)

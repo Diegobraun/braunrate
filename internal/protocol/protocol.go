@@ -74,9 +74,12 @@ type Response struct {
 	Body    []byte
 	Headers map[string][]string
 	Bytes   int64
-	Class   ErrorClass
-	Detail  string
-	Key     string
+	// Messages the step exchanged when it is a stream (server/client/bidi);
+	// zero for the one-shot protocols, which then costs them nothing.
+	Messages int64
+	Class    ErrorClass
+	Detail   string
+	Key      string
 	// Facts about the destination only the protocol knows, feeding observed
 	// variety: Kafka partition, AMQP queue. Empty for protocols with nothing
 	// to declare, and then it costs nothing.
