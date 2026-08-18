@@ -604,6 +604,19 @@
             }
           ]
         },
+        "mqtt": {
+          "$ref": "#/$defs/mqtt",
+          "description": "Publishes a message to an MQTT topic.",
+          "examples": [
+            {
+              "topic": "sensors/temperature",
+              "qos": 1,
+              "payload": {
+                "celsius": "${orders.amount}"
+              }
+            }
+          ]
+        },
         "sse": {
           "$ref": "#/$defs/sse",
           "description": "Subscribes to a Server-Sent Events stream and counts the events it delivers.",
@@ -1728,6 +1741,94 @@
         }
       ],
       "description": "true for TLS with the system CAs, or a map with a private CA and a client certificate."
+    },
+    "mqtt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "topic"
+      ],
+      "properties": {
+        "topic": {
+          "type": "string",
+          "description": "The topic the message is published to.",
+          "examples": [
+            "sensors/temperature"
+          ]
+        },
+        "payload": {
+          "type": [
+            "object",
+            "array",
+            "string",
+            "number",
+            "boolean"
+          ],
+          "description": "The message payload. An object comes out as JSON.",
+          "examples": [
+            {
+              "celsius": "${orders.amount}"
+            }
+          ]
+        },
+        "qos": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2
+          ],
+          "default": 0,
+          "description": "Delivery guarantee: 0 fire-and-forget, 1 at-least-once (waits for the broker's acknowledgement), 2 exactly-once.",
+          "examples": [
+            1
+          ]
+        },
+        "retain": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the broker keeps the message as the topic's last known value for future subscribers.",
+          "examples": [
+            true
+          ]
+        },
+        "broker": {
+          "type": "string",
+          "description": "The MQTT broker, when it is not the scenario target. tcp:// for plain, ssl:// for TLS.",
+          "examples": [
+            "tcp://127.0.0.1:1883",
+            "${MQTT_URL}"
+          ]
+        },
+        "clientId": {
+          "type": "string",
+          "description": "The client id the broker sees. Defaults to a single stable id for the run.",
+          "examples": [
+            "braunrate"
+          ]
+        },
+        "username": {
+          "type": "string",
+          "description": "Username, when the broker asks for one.",
+          "examples": [
+            "${MQTT_USER}"
+          ]
+        },
+        "password": {
+          "type": "string",
+          "description": "Password, declared through an environment variable.",
+          "examples": [
+            "${MQTT_PASSWORD}"
+          ]
+        },
+        "timeout": {
+          "$ref": "#/$defs/duration",
+          "description": "How long to wait for the connection and the acknowledgement before counting a timeout.",
+          "examples": [
+            "10s"
+          ]
+        }
+      }
     },
     "sse": {
       "type": "object",

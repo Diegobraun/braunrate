@@ -14,6 +14,7 @@ import (
 	_ "github.com/Diegobraun/braunrate/internal/protocol/graphql"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/http"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/kafka"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/mqtt"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/sse"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/wait"
 	"github.com/Diegobraun/braunrate/internal/scenario"
@@ -35,6 +36,7 @@ func TestEverySchemaExampleIsAcceptedByTheParser(t *testing.T) {
 		"TARGET": "http://127.0.0.1:8080", "PASSWORD": "x", "API_KEY": "x",
 		"KAFKA_USER": "ana", "KAFKA_PASSWORD": "x", "AMQP_USER": "ana", "AMQP_PASSWORD": "x",
 		"AMQP_URL": "amqp://127.0.0.1:5672/", "REGION": "us-east-1", "SEED": "42",
+		"MQTT_URL": "tcp://127.0.0.1:1883", "MQTT_USER": "ana", "MQTT_PASSWORD": "x",
 	} {
 		t.Setenv(name, value)
 	}
@@ -455,6 +457,18 @@ var hosts = map[string]string{
 	"$amqp.persistent": step(`amqp: { queue: orders, body: { order: "1001" }, persistent: ` + placeholder + ` }`),
 	"$amqp.confirm":    step(`amqp: { queue: orders, body: { order: "1001" }, confirm: ` + placeholder + ` }`),
 	"$amqp.timeout":    step(`amqp: { queue: orders, body: { order: "1001" }, timeout: ` + placeholder + ` }`),
+
+	// mqtt
+	"$step.mqtt":     step(`mqtt: ` + placeholder),
+	"$mqtt.topic":    step(`mqtt: { topic: ` + placeholder + ` }`),
+	"$mqtt.payload":  step(`mqtt: { topic: sensors/temperature, payload: ` + placeholder + ` }`),
+	"$mqtt.qos":      step(`mqtt: { topic: sensors/temperature, qos: ` + placeholder + ` }`),
+	"$mqtt.retain":   step(`mqtt: { topic: sensors/temperature, retain: ` + placeholder + ` }`),
+	"$mqtt.broker":   step(`mqtt: { topic: sensors/temperature, broker: ` + placeholder + ` }`),
+	"$mqtt.clientId": step(`mqtt: { topic: sensors/temperature, clientId: ` + placeholder + ` }`),
+	"$mqtt.username": step(`mqtt: { topic: sensors/temperature, username: ` + placeholder + ` }`),
+	"$mqtt.password": step(`mqtt: { topic: sensors/temperature, password: ` + placeholder + ` }`),
+	"$mqtt.timeout":  step(`mqtt: { topic: sensors/temperature, timeout: ` + placeholder + ` }`),
 
 	// await
 	"$await.http":          step(`await: { http: ` + placeholder + `, until: { status: 200 } }`),

@@ -660,19 +660,31 @@ function editorScreen (name) {
     <div id="credentials"></div>
     <div class="editor"><div class="ebar"><span class="d"></span>YAML</div>
       <div class="code"><div class="gutter" id="gutter" aria-hidden="true"></div>
-        <textarea id="text" spellcheck="false" aria-label="scenario in YAML"></textarea></div></div>
+        <div class="layers"><pre class="highlight" id="highlight" aria-hidden="true"></pre>
+          <textarea id="text" spellcheck="false" aria-label="scenario in YAML"></textarea>
+          <ul class="ac" id="ac" role="listbox" hidden></ul></div></div></div>
     <div id="output"></div>`
 
   const text = document.getElementById('text')
   const gutter = document.getElementById('gutter')
+  const highlight = document.getElementById('highlight')
   function updateGutter () {
     const lines = text.value.split('\n').length || 1
     let numbers = ''
     for (let line = 1; line <= lines; line++) numbers += '<span>' + line + '</span>'
     gutter.innerHTML = numbers
+    // The trailing newline keeps the last line painted when the file ends on one.
+    highlight.innerHTML = colorizeYAML(text.value) + '\n'
     gutter.scrollTop = text.scrollTop
+    highlight.scrollTop = text.scrollTop
+    highlight.scrollLeft = text.scrollLeft
   }
-  text.addEventListener('scroll', function () { gutter.scrollTop = text.scrollTop })
+  text.addEventListener('scroll', function () {
+    gutter.scrollTop = text.scrollTop
+    highlight.scrollTop = text.scrollTop
+    highlight.scrollLeft = text.scrollLeft
+  })
+  autocomplete(text, updateGutter)
   const status = document.getElementById('status')
   const verdict = document.getElementById('verdict')
   const credentials = document.getElementById('credentials')
@@ -716,6 +728,7 @@ function editorScreen (name) {
       const answer = await ask('/migrate', { method: 'POST', body: text.value })
       if (!answer.ok) { this.disabled = false; this.textContent = 'Convert to English'; return }
       text.value = answer.body.yaml
+      updateGutter()
       box.innerHTML = ''
       delete box.dataset.on
       status.textContent = 'not saved'
@@ -1048,6 +1061,167 @@ async function start () {
   state.directory = health.body.directory || '.'
   await reloadSides()
   await draw()
+}
+
+// colorizeYAML paints the read-only layer behind the editor's textarea. It runs
+// line by line so a stray quote never bleeds colour past its own line.
+function colorizeYAML (source) {
+  return source.split('\n').map(colorizeLine).join('\n')
+}
+
+function colorizeLine (line) {
+  let quote = null
+  let commentAt = -1
+  for (let i = 0; i < line.length; i++) {
+    const character = line[i]
+    if (quote) {
+      if (character === quote) quote = null
+    } else if (character === '"' || character === "'") {
+      quote = character
+    } else if (character === '#' && (i === 0 || /\s/.test(line[i - 1]))) {
+      commentAt = i
+      break
+    }
+  }
+  const code = commentAt >= 0 ? line.slice(0, commentAt) : line
+  let html = colorizeCode(code)
+  if (commentAt >= 0) html += '<span class="c-com">' + escape(line.slice(commentAt)) + '</span>'
+  return html
+}
+
+function colorizeCode (code) {
+  let out = ''
+  let rest = code
+  const key = /^(\s*(?:- +)?)([\w.$@/-]+)(:)(?=\s|$)/.exec(code)
+  if (key) {
+    out += escape(key[1]) + '<span class="c-key">' + escape(key[2]) + '</span><span class="c-punct">:</span>'
+    rest = code.slice(key[0].length)
+  }
+  const token = /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\$\{[^}]*\})|\b(true|false|null)\b|(-?\d+(?:\.\d+)?)/g
+  let last = 0
+  let match
+  while ((match = token.exec(rest))) {
+    out += escape(rest.slice(last, match.index))
+    if (match[1]) out += '<span class="c-str">' + escape(match[1]) + '</span>'
+    else if (match[2]) out += '<span class="c-var">' + escape(match[2]) + '</span>'
+    else if (match[3]) out += '<span class="c-bool">' + escape(match[0]) + '</span>'
+    else out += '<span class="c-num">' + escape(match[0]) + '</span>'
+    last = token.lastIndex
+  }
+  out += escape(rest.slice(last))
+  return out
+}
+
+const PROTOCOLS = ['http', 'graphql', 'grpc', 'websocket', 'kafka', 'amqp', 'mqtt', 'sse', 'await']
+const TOP_KEYS = ['name', 'target', 'requires', 'variables', 'auth', 'tls', 'messaging', 'data', 'load', 'scenario', 'slo']
+const STEP_KEYS = ['name', 'weight', 'capture', 'expect', 'method', 'path', 'url', 'headers', 'body', 'timeout',
+  'topic', 'payload', 'qos', 'retain', 'broker', 'clientId', 'queue', 'exchange', 'routingKey', 'messageId',
+  'brokers', 'key', 'value', 'partition', 'group', 'acks', 'send', 'awaitReply', 'maxMessages', 'origin',
+  'service', 'message', 'metadata', 'query', 'operation', 'variables', 'until']
+
+// The pool the completion draws from depends on where the caret sits: right after
+// a dash it is a protocol, at column zero a top-level key, indented a step key.
+function suggestionPool (lineToCaret) {
+  if (/^\s*-\s*[\w]*$/.test(lineToCaret)) return PROTOCOLS
+  if (/^[\w]*$/.test(lineToCaret)) return TOP_KEYS
+  return STEP_KEYS
+}
+
+// autocomplete offers the keys and protocols the schema knows, anchored at the
+// caret. It only ever inserts a word the person was already typing, so it never
+// fights the file's being the single source of truth (ADR 0018).
+function autocomplete (area, repaint) {
+  const list = document.getElementById('ac')
+  let items = []
+  let active = -1
+
+  function close () {
+    list.hidden = true
+    active = -1
+  }
+
+  function currentWord () {
+    const start = area.selectionStart
+    const lineStart = area.value.lastIndexOf('\n', start - 1) + 1
+    const lineToCaret = area.value.slice(lineStart, start)
+    const word = /[\w]+$/.exec(lineToCaret)
+    return { lineToCaret, word: word ? word[0] : '', at: word ? start - word[0].length : start }
+  }
+
+  function refresh () {
+    const { lineToCaret, word } = currentWord()
+    if (!word) { close(); return }
+    const pool = suggestionPool(lineToCaret)
+    const lower = word.toLowerCase()
+    items = pool.filter(function (candidate) {
+      return candidate.toLowerCase().startsWith(lower) && candidate.toLowerCase() !== lower
+    }).slice(0, 8)
+    if (!items.length) { close(); return }
+    active = 0
+    render()
+    place()
+  }
+
+  function render () {
+    list.innerHTML = items.map(function (candidate, index) {
+      return '<li role="option"' + (index === active ? ' class="on"' : '') + '>' + escape(candidate) + '</li>'
+    }).join('')
+    Array.prototype.forEach.call(list.children, function (node, index) {
+      node.addEventListener('mousedown', function (event) { event.preventDefault(); accept(index) })
+    })
+  }
+
+  function place () {
+    const point = caretCoords(area)
+    list.style.left = (point.x - area.scrollLeft) + 'px'
+    list.style.top = (point.y - area.scrollTop + point.line) + 'px'
+    list.hidden = false
+  }
+
+  function accept (index) {
+    const chosen = items[index]
+    if (!chosen) return
+    const { word, at } = currentWord()
+    const start = area.selectionStart
+    area.value = area.value.slice(0, at) + chosen + area.value.slice(start)
+    const caret = at + chosen.length
+    area.selectionStart = area.selectionEnd = caret
+    close()
+    repaint()
+    area.focus()
+  }
+
+  area.addEventListener('input', refresh)
+  area.addEventListener('keydown', function (event) {
+    if (list.hidden) return
+    if (event.key === 'ArrowDown') { active = (active + 1) % items.length; render(); event.preventDefault() }
+    else if (event.key === 'ArrowUp') { active = (active - 1 + items.length) % items.length; render(); event.preventDefault() }
+    else if (event.key === 'Enter' || event.key === 'Tab') { accept(active); event.preventDefault() }
+    else if (event.key === 'Escape') { close(); event.preventDefault() }
+  })
+  area.addEventListener('blur', function () { setTimeout(close, 120) })
+  area.addEventListener('scroll', function () { if (!list.hidden) place() })
+}
+
+// caretCoords measures where the caret is by rendering the text up to it in a
+// hidden twin of the textarea and reading the mark's position.
+function caretCoords (area) {
+  const mirror = document.createElement('div')
+  const style = getComputedStyle(area)
+  const copy = ['boxSizing', 'width', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+    'borderTopWidth', 'borderLeftWidth', 'fontFamily', 'fontSize', 'lineHeight', 'letterSpacing', 'tabSize']
+  copy.forEach(function (property) { mirror.style[property] = style[property] })
+  mirror.style.position = 'absolute'
+  mirror.style.visibility = 'hidden'
+  mirror.style.whiteSpace = 'pre'
+  mirror.textContent = area.value.slice(0, area.selectionStart)
+  const mark = document.createElement('span')
+  mark.textContent = '​'
+  mirror.appendChild(mark)
+  document.body.appendChild(mirror)
+  const point = { x: mark.offsetLeft, y: mark.offsetTop, line: parseFloat(style.lineHeight) || 18 }
+  document.body.removeChild(mirror)
+  return point
 }
 
 start()

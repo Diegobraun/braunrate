@@ -19,6 +19,7 @@ disponivel() {
   case "$1" in
     kafka) [ -n "${BRAUNRATE_KAFKA:-}" ] ;;
     amqp) [ -n "${BRAUNRATE_AMQP:-}" ] ;;
+    mqtt) [ -n "${BRAUNRATE_MQTT:-}" ] ;;
     credential) [ -n "${BRAUNRATE_CREDENCIAL:-}" ] ;;
     *) return 1 ;;
   esac
