@@ -459,6 +459,7 @@ function newScreen () {
 }
 
 function cssId (text) { return text.replace(/[^a-z0-9]/gi, '-') }
+function techLabel (name) { return ({ http: 'REST', graphql: 'GraphQL', kafka: 'Kafka', amqp: 'RabbitMQ' })[name] || name }
 
 async function examplesScreen () {
   showCommand('braunrate new scenario.yaml   # starting from an example')
@@ -477,13 +478,15 @@ async function examplesScreen () {
   list.className = 'examples'
   list.innerHTML = (response.body.examples || []).map(function (example) {
     const id = cssId(example.file)
+    const tags = (example.tech || []).map(one => `<span class="tag ${escape(one)}">${escape(techLabel(one))}</span>`).join('')
     const badges = (example.requires || []).map(one => `<span class="badge req">${escape(one)}</span>`).join('')
     return `<div class="example">
       <div class="ex-head">
-        <div><b>${escape(example.name || example.file)}</b> ${badges}
+        <div><b>${escape(example.name || example.file)}</b> ${tags}${badges}
           <div class="ex-sub"><code>${escape(example.file)}</code> · ${example.steps} step(s)</div></div>
         <div class="ex-acts">
           <button class="button" data-view-file="${escape(example.file)}">view</button>
+          <input class="ex-name" data-name-for="${escape(example.file)}" value="${escape(example.file)}" aria-label="save as" hidden>
           <button class="button primary" data-use="${escape(example.file)}">Use this</button></div>
       </div>
       <pre class="ex-src" id="src-${id}" hidden></pre></div>`
@@ -499,12 +502,22 @@ async function examplesScreen () {
   }))
   list.querySelectorAll('[data-use]').forEach(button => button.addEventListener('click', async function () {
     const file = button.dataset.use
+    const field = list.querySelector(`[data-name-for="${file.replace(/"/g, '\\"')}"]`)
+    if (field && field.hidden) {
+      field.hidden = false
+      field.focus()
+      field.select()
+      button.textContent = 'Save as this'
+      return
+    }
+    let name = (field && field.value.trim()) || file
+    if (!name.endsWith('.yaml') && !name.endsWith('.yml')) name += '.yaml'
     const raw = await ask('/examples/' + encodeURIComponent(file))
     if (!raw.ok) return
-    const saved = await ask('/scenarios/' + encodeURIComponent(file) + '/text', { method: 'PUT', body: raw.body })
+    const saved = await ask('/scenarios/' + encodeURIComponent(name) + '/text', { method: 'PUT', body: raw.body })
     if (!saved.ok) { button.textContent = 'could not copy'; return }
     await reloadSides()
-    location.hash = '#/scenario/' + encodeURIComponent(file)
+    location.hash = '#/scenario/' + encodeURIComponent(name)
   }))
 }
 

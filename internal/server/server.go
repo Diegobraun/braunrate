@@ -597,6 +597,7 @@ func (server *Server) listExamples(writer http.ResponseWriter, request *http.Req
 		File     string   `json:"file"`
 		Name     string   `json:"name"`
 		Requires []string `json:"requires,omitempty"`
+		Tech     []string `json:"tech,omitempty"`
 		Steps    int      `json:"steps"`
 	}
 	lines := make([]exampleLine, 0, len(entries))
@@ -608,11 +609,31 @@ func (server *Server) listExamples(writer http.ResponseWriter, request *http.Req
 		if content, err := examples.Files.ReadFile(entry.Name()); err == nil {
 			if spec, err := scenario.Parse(content); err == nil {
 				line.Name, line.Requires, line.Steps = spec.Name, spec.Requires, len(spec.Steps)
+				line.Tech = technologies(spec)
 			}
 		}
 		lines = append(lines, line)
 	}
 	writeJSON(writer, http.StatusOK, map[string]any{"examples": lines})
+}
+
+func technologies(spec scenario.Spec) []string {
+	seen := map[string]bool{}
+	var tech []string
+	for _, step := range spec.Steps {
+		name := step.Protocol
+		if name == "" {
+			name = "http"
+		}
+		if name == "await" || name == "wait" {
+			continue
+		}
+		if !seen[name] {
+			seen[name] = true
+			tech = append(tech, name)
+		}
+	}
+	return tech
 }
 
 func (server *Server) getExample(writer http.ResponseWriter, request *http.Request) {
