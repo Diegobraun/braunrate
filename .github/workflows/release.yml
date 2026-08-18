@@ -141,11 +141,11 @@ jobs:
           if [ "${{ matrix.extensao }}" = "zip" ]; then binario=./braunrate.exe; else binario=./braunrate; fi
           "$binario" target -address=127.0.0.1:8080 -latency=5ms &
           sleep 3
-          "$binario" validate examples/http-basico.yaml
+          "$binario" validate examples/http-basic.yaml
           "$binario" execute examples/ci.yaml -quiet -result resultado.json
           # A versao viaja dentro do documento de resultado, e e por ela que a
           # comparacao entre duas execucoes decide se tem veredito.
-          grep -q "\"versao\": \"${GITHUB_REF_NAME#v}\"" resultado.json
+          grep -q "\"version\": \"${GITHUB_REF_NAME#v}\"" resultado.json
 
   # So aqui a release deixa de ser rascunho. O que o usuario baixa da pagina de
   # releases e, sempre, um artefato que ja foi baixado e executado.
