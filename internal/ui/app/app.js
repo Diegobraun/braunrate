@@ -659,10 +659,20 @@ function editorScreen (name) {
     <div id="verdict"></div>
     <div id="credentials"></div>
     <div class="editor"><div class="ebar"><span class="d"></span>YAML</div>
-      <textarea id="text" spellcheck="false" aria-label="scenario in YAML"></textarea></div>
+      <div class="code"><div class="gutter" id="gutter" aria-hidden="true"></div>
+        <textarea id="text" spellcheck="false" aria-label="scenario in YAML"></textarea></div></div>
     <div id="output"></div>`
 
   const text = document.getElementById('text')
+  const gutter = document.getElementById('gutter')
+  function updateGutter () {
+    const lines = text.value.split('\n').length || 1
+    let numbers = ''
+    for (let line = 1; line <= lines; line++) numbers += '<span>' + line + '</span>'
+    gutter.innerHTML = numbers
+    gutter.scrollTop = text.scrollTop
+  }
+  text.addEventListener('scroll', function () { gutter.scrollTop = text.scrollTop })
   const status = document.getElementById('status')
   const verdict = document.getElementById('verdict')
   const credentials = document.getElementById('credentials')
@@ -675,6 +685,7 @@ function editorScreen (name) {
       return
     }
     text.value = response.body
+    updateGutter()
     status.textContent = 'saved'
     status.className = 'right saved'
     offerMigrate()
@@ -683,6 +694,7 @@ function editorScreen (name) {
 
   let delay = null
   text.addEventListener('input', function () {
+    updateGutter()
     status.textContent = 'not saved'
     status.className = 'right'
     offerMigrate()
