@@ -152,6 +152,7 @@ body.without-explanations .teaches { display: none; }
 .verdict.pass { background: rgba(73,208,126,.13); color: var(--passed); }
 .verdict.fail { background: rgba(255,107,107,.13); color: var(--failed); }
 .verdict.other { color: var(--soft); background: var(--surface2); }
+#metrics .verdict { margin-bottom: 12px; }
 
 /* tables */
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }

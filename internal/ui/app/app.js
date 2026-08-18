@@ -487,6 +487,27 @@ function newScreen () {
 function cssId (text) { return text.replace(/[^a-z0-9]/gi, '-') }
 function techLabel (name) { return ({ http: 'REST', graphql: 'GraphQL', kafka: 'Kafka', amqp: 'RabbitMQ' })[name] || name }
 
+function runMetrics (doc) {
+  const overall = doc.global || {}
+  const corrected = overall.correctedLatency
+  const latency = corrected && corrected.samples ? corrected : (overall.serviceLatency || {})
+  const slo = doc.slo || {}
+  const declared = (slo.evaluations || []).length > 0
+  const verdictClass = !declared ? 'other' : (slo.passed ? 'pass' : 'fail')
+  const verdictText = !declared ? 'no SLO declared' : (slo.passed ? 'passed' : 'failed')
+  const ms = value => value >= 1000 ? (value / 1000).toFixed(2) + ' s' : Math.round(value) + ' ms'
+  const cell = (key, value, unit) =>
+    `<div class="metric"><div class="k">${key}</div><div class="v">${value}${unit ? ` <span>${unit}</span>` : ''}</div></div>`
+  return `<div class="verdict ${verdictClass}">${escape(verdictText)}</div>
+    <div class="metrics">
+      ${cell('requests', (overall.count || 0).toLocaleString())}
+      ${cell('throughput', Math.round(overall.effectiveRatePerSecond || 0), '/s')}
+      ${cell('errors', ((overall.errorRate || 0) * 100).toFixed(2) + '%')}
+      ${cell('p95', ms(latency.p95Ms || 0))}
+      ${cell('p99', ms(latency.p99Ms || 0))}
+    </div>`
+}
+
 async function examplesScreen () {
   showCommand('braunrate new scenario.yaml   # starting from an example')
   content.innerHTML = `
@@ -779,6 +800,7 @@ async function runScreen (id) {
       </span>
     </div>
     <p class="teaches" id="save-note" hidden></p>
+    <div id="metrics" hidden></div>
     <div class="tabs">
       <button type="button" class="tab" data-panel="log">Log</button>
       <button type="button" class="tab" data-panel="report">Report</button>
@@ -859,6 +881,10 @@ async function runScreen (id) {
         the exit code is 3. Fix what is below and run it again.</div></div>` +
       (sanity.findings || []).map(finding =>
         `<div class="notice error"><p>${escape(finding.message)}</p><p><small>${escape(finding.evidence)}</small></p></div>`).join('')
+  } else {
+    const grid = document.getElementById('metrics')
+    grid.innerHTML = runMetrics(document_)
+    grid.hidden = false
   }
   report.innerHTML += `<h2>Report</h2><iframe src="/runs/${encodeURIComponent(id)}/report" title="report"></iframe>`
 }
