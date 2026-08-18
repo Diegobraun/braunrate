@@ -3,7 +3,7 @@
   --soft: #5b6676; --dim: #8a94a4; --border: #dce2ec; --line: #e9edf3;
   --passed: #12924e; --failed: #d23f3f; --warning: #9a6300; --neutral: #2f6fe0;
   --accent-soft: rgba(47,111,224,.10); --accent-line: rgba(47,111,224,.30);
-  --card-background: #f7f9fb; --str: #2f7d4a; --var: #2f6fe0;
+  --card-background: #f7f9fb; --str: #2f7d4a; --var: #2f6fe0; --key: #8338a8;
   --radius: 12px;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
@@ -14,7 +14,7 @@
     --soft: #9aa5b6; --dim: #6c7788; --border: #252d3a; --line: #1b222d;
     --passed: #49d07e; --failed: #ff6b6b; --warning: #f0b429; --neutral: #6aa6ff;
     --accent-soft: rgba(106,166,255,.13); --accent-line: rgba(106,166,255,.32);
-    --card-background: #161b22; --str: #8fd8a0; --var: #7fc0ff;
+    --card-background: #161b22; --str: #8fd8a0; --var: #7fc0ff; --key: #d3a0f0;
   }
 }
 :root[data-theme="dark"] {
@@ -22,7 +22,7 @@
   --soft: #9aa5b6; --dim: #6c7788; --border: #252d3a; --line: #1b222d;
   --passed: #49d07e; --failed: #ff6b6b; --warning: #f0b429; --neutral: #6aa6ff;
   --accent-soft: rgba(106,166,255,.13); --accent-line: rgba(106,166,255,.32);
-  --card-background: #161b22; --str: #8fd8a0; --var: #7fc0ff;
+  --card-background: #161b22; --str: #8fd8a0; --var: #7fc0ff; --key: #d3a0f0;
 }
 
 * { box-sizing: border-box; }
@@ -177,8 +177,28 @@ body.without-explanations .teaches { display: none; }
   border-right: 1px solid var(--line); background: var(--background); overflow: hidden;
   font-family: var(--mono); font-size: 12.5px; line-height: 1.85; }
 .editor .gutter span { display: block; padding-right: 12px; }
-.editor textarea { border: 0; border-radius: 0; background: var(--surface); min-height: 46vh;
-  white-space: pre; overflow-wrap: normal; word-break: normal; }
+.editor .layers { position: relative; }
+.editor .highlight, .editor .layers textarea {
+  margin: 0; padding: 14px 18px; border: 0; min-height: 46vh;
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.85;
+  white-space: pre; overflow-wrap: normal; word-break: normal; tab-size: 2; }
+.editor .highlight { position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  background: var(--surface); color: var(--text); }
+.editor .layers textarea { position: relative; display: block; width: 100%; border-radius: 0;
+  background: transparent; color: transparent; caret-color: var(--text); resize: vertical; }
+.editor .highlight .c-key { color: var(--key); }
+.editor .highlight .c-str { color: var(--str); }
+.editor .highlight .c-var { color: var(--var); font-weight: 600; }
+.editor .highlight .c-num { color: var(--warning); }
+.editor .highlight .c-bool { color: var(--var); }
+.editor .highlight .c-com { color: var(--dim); font-style: italic; }
+.editor .highlight .c-punct { color: var(--soft); }
+.ac { position: absolute; z-index: 20; margin: 0; padding: 4px; list-style: none;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18); font-family: var(--mono); font-size: 12.5px;
+  min-width: 150px; max-height: 220px; overflow: auto; }
+.ac li { padding: 4px 10px; border-radius: 5px; cursor: pointer; color: var(--text); white-space: nowrap; }
+.ac li.on { background: var(--accent-soft); color: var(--neutral); }
 textarea { width: 100%; min-height: 52vh; padding: 14px 18px; border-radius: 12px;
   border: 1px solid var(--border); background: var(--surface); color: var(--text);
   font-family: var(--mono); font-size: 12.5px; line-height: 1.85; resize: vertical; }
