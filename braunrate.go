@@ -30,9 +30,11 @@ import (
 	// Go falharia com "protocolo nao compilado neste binario".
 	_ "github.com/Diegobraun/braunrate/internal/protocol/amqp"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/graphql"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/grpc"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/http"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/kafka"
 	_ "github.com/Diegobraun/braunrate/internal/protocol/wait"
+	_ "github.com/Diegobraun/braunrate/internal/protocol/websocket"
 )
 
 // Scenario e o que o dsl monta e o que o YAML produz: a mesma estrutura, que e
