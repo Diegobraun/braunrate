@@ -205,8 +205,9 @@ func (server *Server) health(writer http.ResponseWriter, _ *http.Request) {
 }
 
 type scenarioLine struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
+	Name string   `json:"name"`
+	Path string   `json:"path"`
+	Tech []string `json:"tech,omitempty"`
 }
 
 func (server *Server) listScenarios(writer http.ResponseWriter, _ *http.Request) {
@@ -221,7 +222,14 @@ func (server *Server) listScenarios(writer http.ResponseWriter, _ *http.Request)
 		if entry.IsDir() || (!strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml")) {
 			continue
 		}
-		found = append(found, scenarioLine{Name: name, Path: filepath.Join(server.options.Directory, name)})
+		path := filepath.Join(server.options.Directory, name)
+		line := scenarioLine{Name: name, Path: path}
+		if content, err := os.ReadFile(path); err == nil {
+			if spec, err := scenario.Parse(content); err == nil {
+				line.Tech = technologies(spec)
+			}
+		}
+		found = append(found, line)
 	}
 	writeJSON(writer, http.StatusOK, map[string]any{"scenarios": found})
 }

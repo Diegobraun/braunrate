@@ -32,7 +32,7 @@ function nowDark () {
   return chosen ? chosen === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
 }
 function labelTheme () {
-  document.getElementById('theme').textContent = nowDark() ? 'light' : 'dark'
+  document.getElementById('theme').textContent = nowDark() ? '☾' : '☀'
 }
 labelTheme()
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', labelTheme)
@@ -79,6 +79,16 @@ async function reloadSides () {
   drawSides()
 }
 
+function lastRunFor (name) {
+  const run = state.runs.find(one => one.scenario === name)
+  if (!run) return null
+  const verdict = run.verdict || run.status
+  const kind = verdict === 'passed' ? 'pass'
+    : (run.status === 'running' || verdict === 'in progress') ? 'run'
+      : /fail|invalid/.test(verdict) ? 'fail' : 'other'
+  return { id: run.id, verdict, kind }
+}
+
 function drawSides () {
   const current = decodeURIComponent((location.hash.split('/')[2] || ''))
   if (state.scenarios.length === 0) {
@@ -86,7 +96,9 @@ function drawSides () {
   } else {
     scenarioList.innerHTML = state.scenarios.map(function (scenario) {
       const mark = scenario.name === current ? ' aria-current="page"' : ''
-      return `<li><a class="item" href="#/scenario/${encodeURIComponent(scenario.name)}"${mark}>${escape(scenario.name)}</a></li>`
+      const last = lastRunFor(scenario.name)
+      const dot = last && last.kind !== 'other' ? last.kind : 'idle'
+      return `<li><a class="item" href="#/scenario/${encodeURIComponent(scenario.name)}"${mark}><span class="rdot ${dot}"></span>${escape(scenario.name)}</a></li>`
     }).join('')
   }
 
@@ -133,12 +145,28 @@ function scenariosScreen () {
     <p class="caption">${state.scenarios.length} file(s) in <code>${escape(state.directory)}</code>.
       Opening a scenario opens the file itself: what you save here is what the terminal reads.</p>
     <table>
-      <tr><th>file</th><th>path</th></tr>
+      <thead><tr><th>file</th><th>protocol</th><th>last run</th></tr></thead>
+      <tbody>
       ${state.scenarios.map(function (scenario) {
+        const proto = (scenario.tech || []).map(techLabel).join(', ') || '<span class="dim">—</span>'
+        const last = lastRunFor(scenario.name)
+        const run = last
+          ? `<a href="#/run/${escape(last.id)}"><span class="pill ${last.kind === 'run' ? 'other' : last.kind}">${escape(last.id)} · ${escape(last.verdict)}</span></a>`
+          : '<span class="dim">—</span>'
         return `<tr><td><a href="#/scenario/${encodeURIComponent(scenario.name)}">${escape(scenario.name)}</a></td>
-          <td><code>${escape(scenario.path)}</code></td></tr>`
+          <td>${proto}</td><td>${run}</td></tr>`
       }).join('')}
+      </tbody>
     </table>
+    <h2>Start something new</h2>
+    <div class="options">
+      <a class="option" href="#/new"><b>Start from scratch</b>
+        <span>a short form for HTTP, GraphQL, WebSocket, gRPC, Kafka or RabbitMQ</span></a>
+      <a class="option" href="#/import"><b>Import</b>
+        <span>a "Copy as cURL", a JMeter .jmx or a browser .har</span></a>
+      <a class="option" href="#/examples"><b>Browse examples</b>
+        <span>published scenarios to read and copy from</span></a>
+    </div>
     <div id="target-panel"></div>`
   drawTarget()
 }
@@ -432,7 +460,15 @@ function newScreen () {
       <label><span>Scenario name</span><input name="name" value="Order lookup" required>
         <div class="help">Shows up at the top of the report.</div></label>
       <label><span>Protocol</span>
-        <select name="kind" id="kind"><option value="http">HTTP</option><option value="graphql">GraphQL</option><option value="websocket">WebSocket</option><option value="grpc">gRPC</option><option value="kafka">Kafka</option><option value="amqp">RabbitMQ (AMQP)</option></select></label>
+        <div class="seg" id="kind-seg">
+          <button type="button" data-p="http" class="on">HTTP</button>
+          <button type="button" data-p="graphql">GraphQL</button>
+          <button type="button" data-p="websocket">WebSocket</button>
+          <button type="button" data-p="grpc">gRPC</button>
+          <button type="button" data-p="kafka">Kafka</button>
+          <button type="button" data-p="amqp">RabbitMQ</button>
+        </div>
+        <input type="hidden" name="kind" id="kind" value="http"></label>
 
       <div id="g-target">
         <label><span>Target</span><input name="target" value="http://127.0.0.1:8080">
@@ -494,7 +530,11 @@ function newScreen () {
     document.getElementById('g-target').hidden = !['http', 'graphql', 'websocket', 'grpc'].includes(kind.value)
     ;['http', 'kafka', 'amqp', 'websocket', 'grpc'].forEach(one => { document.getElementById('g-' + one).hidden = kind.value !== one })
   }
-  kind.addEventListener('change', showGroups)
+  document.querySelectorAll('#kind-seg button').forEach(button => button.addEventListener('click', function () {
+    document.querySelectorAll('#kind-seg button').forEach(other => other.classList.toggle('on', other === this))
+    kind.value = this.dataset.p
+    showGroups()
+  }))
   showGroups()
 
   document.getElementById('form').addEventListener('submit', async function (event) {
@@ -618,7 +658,8 @@ function editorScreen (name) {
     <div id="migrate"></div>
     <div id="verdict"></div>
     <div id="credentials"></div>
-    <textarea id="text" spellcheck="false" aria-label="scenario in YAML"></textarea>
+    <div class="editor"><div class="ebar"><span class="d"></span>YAML</div>
+      <textarea id="text" spellcheck="false" aria-label="scenario in YAML"></textarea></div>
     <div id="output"></div>`
 
   const text = document.getElementById('text')
@@ -635,6 +676,7 @@ function editorScreen (name) {
     }
     text.value = response.body
     status.textContent = 'saved'
+    status.className = 'right saved'
     offerMigrate()
     validate()
   })
@@ -642,6 +684,7 @@ function editorScreen (name) {
   let delay = null
   text.addEventListener('input', function () {
     status.textContent = 'not saved'
+    status.className = 'right'
     offerMigrate()
     clearTimeout(delay)
     delay = setTimeout(validate, 700)
@@ -722,6 +765,7 @@ function editorScreen (name) {
 
   async function save () {
     status.textContent = 'saving…'
+    status.className = 'right'
     const response = await ask(`/scenarios/${encodeURIComponent(name)}/text`,
       { method: 'PUT', body: text.value })
     if (!response.ok) {
@@ -730,6 +774,7 @@ function editorScreen (name) {
       return false
     }
     status.textContent = 'saved'
+    status.className = 'right saved'
     return true
   }
 
@@ -786,11 +831,13 @@ function runsScreen () {
     <table>
       <tr><th></th><th>id</th><th>scenario</th><th>verdict</th><th>when</th></tr>
       ${state.runs.map(function (run) {
+        const verdict = run.verdict || run.status
+        const kind = verdict === 'passed' ? 'pass' : /fail|invalid/.test(verdict) ? 'fail' : 'other'
         return `<tr class="selectable" data-id="${escape(run.id)}">
           <td><input type="checkbox" style="width:auto" data-tick="${escape(run.id)}"></td>
           <td><a href="#/run/${escape(run.id)}">${escape(run.id)}</a></td>
           <td>${escape(run.scenario)}</td>
-          <td>${escape(run.verdict || run.status)}</td>
+          <td><span class="pill ${kind}">${escape(verdict)}</span></td>
           <td>${escape(new Date(run.started_at).toLocaleString())}</td></tr>`
       }).join('')}
     </table>
@@ -952,9 +999,16 @@ function comparisonScreen (before, after) {
 
 // ---------------------------------------------------------------- routing
 
+function markTopNav (view) {
+  const active = (view === 'runs' || view === 'run') ? 'runs' : 'scenarios'
+  document.querySelectorAll('#topnav a').forEach(link =>
+    link.classList.toggle('on', link.dataset.nav === active))
+}
+
 async function draw () {
   const parts = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent)
   drawSides()
+  markTopNav(parts[0] || 'scenarios')
   switch (parts[0]) {
     case 'new': return newScreen()
     case 'import': return importScreen()

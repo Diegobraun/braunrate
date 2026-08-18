@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>braunrate · load testing</title>
 <script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=refined2">
 </head>
 <body>
 <header>
@@ -17,31 +17,34 @@
     </svg>
     braunrate</a>
   <span class="version" id="version">…</span>
-  <button type="button" class="chip" id="theme">dark</button>
-  <label class="explanations"><input type="checkbox" id="explanations" checked> explanations</label>
-  <div class="equivalent">
-    <span class="label">the same from the terminal</span>
-    <code id="command">braunrate ui</code>
-    <button type="button" id="copy">copy</button>
+  <nav class="topnav" id="topnav">
+    <a href="#/" data-nav="scenarios">Scenarios</a>
+    <a href="#/runs" data-nav="runs">Runs</a>
+  </nav>
+  <div class="right">
+    <span class="termchip">the same from the terminal <code id="command">braunrate ui</code>
+      <button type="button" id="copy">copy</button></span>
+    <label class="explanations" title="show the teaching notes"><input type="checkbox" id="explanations" checked> explanations</label>
+    <button type="button" class="icon" id="theme" title="theme" aria-label="theme">☾</button>
   </div>
 </header>
 
 <div class="page">
-  <nav>
-    <div class="list-title">
+  <nav class="side">
+    <div class="grouphead">
       <span>Scenarios</span>
-      <span class="actions"><a class="action" href="#/new">new</a><a class="action" href="#/import">import</a><a class="action" href="#/examples">examples</a></span>
+      <span class="actions"><a href="#/new">new</a><a href="#/import">import</a><a href="#/examples">examples</a></span>
     </div>
-    <ol id="scenarios"><li class="loading">loading…</li></ol>
-    <div class="list-title">
+    <ol class="navlist" id="scenarios"><li class="loading">loading…</li></ol>
+    <div class="grouphead">
       <span>Runs</span>
-      <a class="action" href="#/runs">all</a>
+      <a href="#/runs">all</a>
     </div>
-    <ol id="runs"><li class="empty">none yet</li></ol>
+    <ol class="navlist" id="runs"><li class="empty">none yet</li></ol>
   </nav>
   <main id="content"><p class="loading">loading…</p></main>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=refined2"></script>
 </body>
 </html>
