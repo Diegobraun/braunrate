@@ -274,6 +274,11 @@ thead th {
 tbody tr:hover { background: var(--background-soft); }
 td code { white-space: nowrap; }
 
+/* Um link de texto na celula so tinha a cor como pista e parecia texto solto; o
+   sublinhado o marca. O que ja e chip tem a caixa, entao dispensa. */
+td a { text-decoration: underline; text-underline-offset: 2px; }
+td a:has(code) { text-decoration: none; }
+
 /* A obrigatoria e a coluna que decide o que a pessoa precisa escrever; a
    opcional some para o fundo em vez de competir com ela. */
 td.required { color: var(--brand); font-weight: 640; }

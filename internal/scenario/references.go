@@ -240,9 +240,8 @@ func walkScalars(node *yaml.Node, visit func(*yaml.Node) error) error {
 // como ausente — sem isso a execucao seria recusada por falta de uma variavel que
 // a sessao acabou de fornecer.
 //
-// Credencial de broker fica de fora: ela se resolve na leitura do arquivo, do
-// ambiente, e nao passa pelo runtime.Values. Injetar aqui limparia o aviso sem
-// entregar o valor, e o run comecaria para falhar na conexao — pior que recusar.
+// Credencial de broker vai para o campo de conexao, nao para os Vars: e de la que
+// o cliente a le. Pos-la nos Vars limparia o aviso e ainda falharia ao conectar.
 func (spec *Spec) ResolveWith(environment map[string]string) {
 	if len(environment) == 0 {
 		return
@@ -259,11 +258,11 @@ func (spec *Spec) ResolveWith(environment map[string]string) {
 		merged[name] = value
 	}
 	spec.Vars = merged
+	spec.fillBrokerCredentials(environment)
 
 	kept := spec.MissingEnvironment[:0]
 	for _, name := range spec.MissingEnvironment {
-		_, provided := environment[name]
-		if provided && !broker[name] {
+		if _, provided := environment[name]; provided {
 			continue
 		}
 		kept = append(kept, name)
@@ -271,18 +270,27 @@ func (spec *Spec) ResolveWith(environment map[string]string) {
 	spec.MissingEnvironment = kept
 }
 
-// SessionCredentials sao as variaveis que faltam e que o campo de sessao da
-// interface consegue de fato entregar — as de HTTP, resolvidas pelo runtime. As
-// de broker ficam de fora: so o ambiente na subida do servidor as preenche.
-func (spec *Spec) SessionCredentials() []string {
-	broker := spec.brokerCredentialNames()
-	var fillable []string
-	for _, name := range spec.MissingEnvironment {
-		if !broker[name] {
-			fillable = append(fillable, name)
+func (spec *Spec) fillBrokerCredentials(environment map[string]string) {
+	if spec.Messaging == nil {
+		return
+	}
+	for _, broker := range []*messaging.Broker{spec.Messaging.Kafka, spec.Messaging.AMQP} {
+		if broker == nil {
+			continue
+		}
+		if value, ok := environment[broker.Auth.UserVar]; ok && broker.Auth.UserVar != "" {
+			broker.Auth.User = value
+		}
+		if value, ok := environment[broker.Auth.PasswordVar]; ok && broker.Auth.PasswordVar != "" {
+			broker.Auth.Password = value
 		}
 	}
-	return fillable
+}
+
+// SessionCredentials sao as variaveis que faltam e que o campo de sessao entrega:
+// as de HTTP pelos Vars do runtime, as de broker no campo de conexao.
+func (spec *Spec) SessionCredentials() []string {
+	return append([]string(nil), spec.MissingEnvironment...)
 }
 
 func (spec *Spec) brokerCredentialNames() map[string]bool {

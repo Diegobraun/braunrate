@@ -25,6 +25,8 @@ func Handler() http.Handler {
 		if request.URL.Path == "/" || !strings.Contains(request.URL.Path, ".") {
 			request = request.Clone(request.Context())
 			request.URL.Path = "/"
+			// Revalidate the document each load; its ?v= assets stay cacheable.
+			writer.Header().Set("Cache-Control", "no-cache")
 		}
 		assets.ServeHTTP(writer, request)
 	})

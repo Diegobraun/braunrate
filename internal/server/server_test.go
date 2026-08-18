@@ -474,6 +474,197 @@ func TestWithoutWritableNothingIsWritten(t *testing.T) {
 	}
 }
 
+// Uma execucao vive na memoria e morre com o processo; salvar o relatorio e o
+// ato deliberado de guardar um, numa pasta reports/ ao lado dos cenarios.
+func TestTheReportCanBeSavedToDisk(t *testing.T) {
+	fake := target(t)
+	directory := directoryWith(t, map[string]string{"cenario.yaml": scenarioText(fake.Address())})
+	base := writableServerOn(t, directory).URL
+
+	id := startRun(t, base, "cenario.yaml")
+	waitForRun(t, base, id)
+
+	status, body := call(t, http.MethodPost, base+"/runs/"+id+"/save")
+	if status != http.StatusOK {
+		t.Fatalf("salvar respondeu %d: %s", status, body)
+	}
+	var answer struct{ Path string }
+	if err := json.Unmarshal(body, &answer); err != nil {
+		t.Fatalf("resposta não e JSON: %s", body)
+	}
+	if filepath.Base(answer.Path) != id+"-report.html" {
+		t.Fatalf("o caminho devolvido não é o do relatório: %s", answer.Path)
+	}
+	saved, err := os.ReadFile(filepath.Join(directory, "reports", id+"-report.html"))
+	if err != nil {
+		t.Fatalf("o relatório não foi gravado: %v", err)
+	}
+	if !strings.Contains(strings.ToLower(string(saved)), "<html") {
+		t.Fatalf("o arquivo gravado não é o relatório HTML")
+	}
+}
+
+// Sem Writable a porta e so de leitura: salvar o relatorio grava um arquivo no
+// diretorio servido, entao cai na mesma trava da edicao do cenario.
+func TestWithoutWritableTheReportIsNotSaved(t *testing.T) {
+	fake := target(t)
+	directory := directoryWith(t, map[string]string{"cenario.yaml": scenarioText(fake.Address())})
+	base := serverOn(t, directory, false).URL
+
+	id := startRun(t, base, "cenario.yaml")
+	waitForRun(t, base, id)
+
+	status, _ := call(t, http.MethodPost, base+"/runs/"+id+"/save")
+	if status == http.StatusOK {
+		t.Fatal("o save passou num servidor sem Writable")
+	}
+	if _, err := os.Stat(filepath.Join(directory, "reports")); !os.IsNotExist(err) {
+		t.Fatal("a pasta reports/ apareceu num servidor sem Writable")
+	}
+}
+
+// O import traduz para um rascunho e devolve o YAML sem gravar: quem importou le
+// os avisos e nomeia o arquivo antes de salvar.
+func TestImportReturnsAScenarioToReview(t *testing.T) {
+	directory := directoryWith(t, map[string]string{})
+	base := writableServerOn(t, directory).URL
+
+	status, body := send(t, http.MethodPost, base+"/import/curl",
+		`curl https://example.com/api/orders -H "Authorization: Bearer x"`)
+	if status != http.StatusOK {
+		t.Fatalf("import respondeu %d: %s", status, body)
+	}
+	var answer struct {
+		YAML     string
+		Warnings []string
+	}
+	if err := json.Unmarshal(body, &answer); err != nil {
+		t.Fatalf("resposta não e JSON: %s", body)
+	}
+	if !strings.Contains(answer.YAML, "https://example.com") {
+		t.Fatalf("o YAML não traduziu o alvo:\n%s", answer.YAML)
+	}
+	if _, err := os.ReadDir(directory); err == nil {
+		if entries, _ := os.ReadDir(directory); len(entries) != 0 {
+			t.Fatalf("o import gravou arquivo sem ninguém salvar: %v", entries)
+		}
+	}
+
+	if status, _ := send(t, http.MethodPost, base+"/import/postman", "x"); status != http.StatusNotFound {
+		t.Fatalf("formato desconhecido respondeu %d, esperava 404", status)
+	}
+
+	har := `{"log":{"entries":[{"_resourceType":"xhr",` +
+		`"request":{"method":"POST","url":"https://api.example.com/orders","headers":[{"name":"Authorization","value":"Bearer x"}],"postData":{"mimeType":"application/json","text":"{\"id\":1}"}},` +
+		`"response":{"status":201,"content":{"mimeType":"application/json"}}}]}}`
+	status, body = send(t, http.MethodPost, base+"/import/har", har)
+	if status != http.StatusOK {
+		t.Fatalf("import de har respondeu %d: %s", status, body)
+	}
+	if err := json.Unmarshal(body, &answer); err != nil {
+		t.Fatalf("resposta do har não e JSON: %s", body)
+	}
+	if !strings.Contains(answer.YAML, "target: ${TARGET:-https://api.example.com}") {
+		t.Fatalf("o har não traduziu o alvo:\n%s", answer.YAML)
+	}
+	if strings.Contains(answer.YAML, "Bearer x") {
+		t.Fatalf("o token vazou no YAML do har:\n%s", answer.YAML)
+	}
+}
+
+// Sem Writable a porta e so de leitura: o import faz parte do fluxo de criar
+// arquivo, entao a rota nem existe.
+func TestWithoutWritableImportIsClosed(t *testing.T) {
+	base := serverOn(t, directoryWith(t, map[string]string{}), false).URL
+	if status, _ := send(t, http.MethodPost, base+"/import/curl", "curl https://example.com"); status == http.StatusOK {
+		t.Fatal("o import passou num servidor sem Writable")
+	}
+}
+
+func TestExamplesAreListedAndReadable(t *testing.T) {
+	base := writableServerOn(t, directoryWith(t, map[string]string{})).URL
+
+	status, body := call(t, http.MethodGet, base+"/examples")
+	if status != http.StatusOK {
+		t.Fatalf("listar exemplos respondeu %d: %s", status, body)
+	}
+	var listed struct {
+		Examples []struct {
+			File, Name string
+			Steps      int
+		}
+	}
+	if err := json.Unmarshal(body, &listed); err != nil {
+		t.Fatalf("resposta não e JSON: %s", body)
+	}
+	if len(listed.Examples) < 5 {
+		t.Fatalf("esperava os exemplos publicados, veio %d", len(listed.Examples))
+	}
+	first := listed.Examples[0].File
+	status, raw := call(t, http.MethodGet, base+"/examples/"+first)
+	if status != http.StatusOK || !strings.Contains(string(raw), "name:") {
+		t.Fatalf("ler o exemplo %q respondeu %d: %s", first, status, raw)
+	}
+	if s, _ := call(t, http.MethodGet, base+"/examples/../server.go"); s == http.StatusOK {
+		t.Error("o endpoint de exemplo serviu um caminho fora da pasta embutida")
+	}
+}
+
+func TestMigrateConvertsOldKeys(t *testing.T) {
+	base := writableServerOn(t, directoryWith(t, map[string]string{})).URL
+	old := "nome: Consulta\nalvo: http://127.0.0.1:8080\n"
+	status, body := send(t, http.MethodPost, base+"/migrate", old)
+	if status != http.StatusOK {
+		t.Fatalf("migrar respondeu %d: %s", status, body)
+	}
+	var answer struct {
+		YAML    string
+		Changes []string
+	}
+	if err := json.Unmarshal(body, &answer); err != nil {
+		t.Fatalf("resposta não e JSON: %s", body)
+	}
+	if !strings.Contains(answer.YAML, "name:") || !strings.Contains(answer.YAML, "target:") {
+		t.Fatalf("a migração não traduziu as chaves:\n%s", answer.YAML)
+	}
+	if len(answer.Changes) == 0 {
+		t.Error("a migração não relatou nenhuma mudança")
+	}
+}
+
+func TestRunProducesCSV(t *testing.T) {
+	fake := target(t)
+	directory := directoryWith(t, map[string]string{"cenario.yaml": scenarioText(fake.Address())})
+	base := serverOn(t, directory, false).URL
+	id := startRun(t, base, "cenario.yaml")
+	waitForRun(t, base, id)
+
+	status, body := call(t, http.MethodGet, base+"/runs/"+id+"/csv")
+	if status != http.StatusOK || !strings.Contains(string(body), ",") {
+		t.Fatalf("csv respondeu %d: %s", status, body)
+	}
+}
+
+func TestBuiltInTargetStartsAndStops(t *testing.T) {
+	base := writableServerOn(t, directoryWith(t, map[string]string{})).URL
+
+	_, body := send(t, http.MethodPost, base+"/target", "")
+	var state struct {
+		Running bool
+		Address string
+	}
+	_ = json.Unmarshal(body, &state)
+	if !state.Running || !strings.HasPrefix(state.Address, "http://") {
+		t.Fatalf("o alvo não subiu: %s", body)
+	}
+
+	_, body = send(t, http.MethodDelete, base+"/target", "")
+	_ = json.Unmarshal(body, &state)
+	if state.Running {
+		t.Fatalf("o alvo não parou: %s", body)
+	}
+}
+
 // O rascunho e conferido pela mesma leitura do terminal, entao o editor nunca
 // aprova o que 'braunrate validate' reprovaria.
 func TestTheDraftIsCheckedByTheSameReadingAsTheTerminal(t *testing.T) {

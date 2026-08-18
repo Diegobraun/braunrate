@@ -19,12 +19,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Diegobraun/braunrate/examples"
 	"github.com/Diegobraun/braunrate/internal/engine"
+	"github.com/Diegobraun/braunrate/internal/importer"
 	"github.com/Diegobraun/braunrate/internal/metrics"
 	"github.com/Diegobraun/braunrate/internal/report"
 	"github.com/Diegobraun/braunrate/internal/report/comparison"
 	"github.com/Diegobraun/braunrate/internal/runner"
 	"github.com/Diegobraun/braunrate/internal/scenario"
+	"github.com/Diegobraun/braunrate/internal/testsupport"
 )
 
 type Options struct {
@@ -55,6 +58,9 @@ type Server struct {
 	// the default and letting it through is a declared choice.
 	busy   bool
 	busyMu sync.Mutex
+	// The built-in target the interface can start, so nobody is sent to the terminal.
+	target   *testsupport.Server
+	targetMu sync.Mutex
 }
 
 func New(options Options) *Server {
@@ -78,8 +84,17 @@ func (server *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /runs/{id}/stream", server.streamRun)
 	mux.HandleFunc("GET /runs/{before}/comparison/{after}", server.compare)
 	mux.HandleFunc("GET /runs/{before}/comparison/{after}/report", server.compareReport)
+	mux.HandleFunc("GET /runs/{id}/csv", server.runCSV)
+	mux.HandleFunc("GET /examples", server.listExamples)
+	mux.HandleFunc("GET /examples/{name}", server.getExample)
 	if server.options.Writable {
 		mux.HandleFunc("PUT /scenarios/{name}/text", server.writeScenario)
+		mux.HandleFunc("POST /runs/{id}/save", server.saveReport)
+		mux.HandleFunc("POST /import/{format}", server.importScenario)
+		mux.HandleFunc("POST /migrate", server.migrateScenario)
+		mux.HandleFunc("GET /target", server.getTarget)
+		mux.HandleFunc("POST /target", server.startTarget)
+		mux.HandleFunc("DELETE /target", server.stopTarget)
 	}
 	if server.options.UI != nil {
 		mux.Handle("GET /", server.options.UI)
@@ -190,8 +205,9 @@ func (server *Server) health(writer http.ResponseWriter, _ *http.Request) {
 }
 
 type scenarioLine struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
+	Name string   `json:"name"`
+	Path string   `json:"path"`
+	Tech []string `json:"tech,omitempty"`
 }
 
 func (server *Server) listScenarios(writer http.ResponseWriter, _ *http.Request) {
@@ -206,7 +222,14 @@ func (server *Server) listScenarios(writer http.ResponseWriter, _ *http.Request)
 		if entry.IsDir() || (!strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml")) {
 			continue
 		}
-		found = append(found, scenarioLine{Name: name, Path: filepath.Join(server.options.Directory, name)})
+		path := filepath.Join(server.options.Directory, name)
+		line := scenarioLine{Name: name, Path: path}
+		if content, err := os.ReadFile(path); err == nil {
+			if spec, err := scenario.Parse(content); err == nil {
+				line.Tech = technologies(spec)
+			}
+		}
+		found = append(found, line)
 	}
 	writeJSON(writer, http.StatusOK, map[string]any{"scenarios": found})
 }
@@ -487,6 +510,211 @@ func (server *Server) getReport(writer http.ResponseWriter, request *http.Reques
 		// what is left is not pretending the report was complete.
 		_, _ = fmt.Fprintf(writer, "\n<!-- report interrupted: %v -->\n", err)
 	}
+}
+
+// Runs die with the process; saving writes the -html report under reports/,
+// beside the scenarios, as the deliberate act of keeping one.
+func (server *Server) saveReport(writer http.ResponseWriter, request *http.Request) {
+	run, found := server.runs.get(request.PathValue("id"))
+	if !found {
+		writeProblem(writer, http.StatusNotFound, unknownRun(request.PathValue("id")))
+		return
+	}
+	state := run.state()
+	if state.Status != statusDone {
+		writeProblem(writer, http.StatusConflict, "the report only exists after the run finishes; the state right now is "+state.Status)
+		return
+	}
+	folder := filepath.Join(server.options.Directory, "reports")
+	if err := os.MkdirAll(folder, 0o755); err != nil {
+		writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("I could not create %s: %v", folder, err))
+		return
+	}
+	path := filepath.Join(folder, run.ID+"-report.html")
+	file, err := os.Create(path)
+	if err != nil {
+		writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("I could not write %s: %v", path, err))
+		return
+	}
+	if err := report.HTML(file, state.Document); err != nil {
+		_ = file.Close()
+		writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("I started %s but the report did not finish: %v", path, err))
+		return
+	}
+	if err := file.Close(); err != nil {
+		writeProblem(writer, http.StatusInternalServerError, fmt.Sprintf("I could not finish writing %s: %v", path, err))
+		return
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		absolute = path
+	}
+	writeJSON(writer, http.StatusOK, map[string]string{"path": absolute})
+}
+
+// Import hands back the YAML instead of writing it: the imported scenario is a
+// draft to read the warnings on and name before saving, not an answer.
+func (server *Server) importScenario(writer http.ResponseWriter, request *http.Request) {
+	payload, err := io.ReadAll(request.Body)
+	if err != nil {
+		writeProblem(writer, http.StatusBadRequest, "I could not read what you sent to import: "+err.Error())
+		return
+	}
+	var result importer.Import
+	switch format := request.PathValue("format"); format {
+	case "curl":
+		result, err = importer.FromCurl(string(payload))
+	case "jmx":
+		result, err = importer.FromJMX(payload)
+	case "har":
+		result, err = importer.FromHAR(payload)
+	default:
+		writeProblem(writer, http.StatusNotFound, fmt.Sprintf("I do not import %q; the formats are curl, jmx and har", format))
+		return
+	}
+	if err != nil {
+		writeProblem(writer, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	writeJSON(writer, http.StatusOK, map[string]any{"yaml": result.YAML, "warnings": result.Warnings})
+}
+
+func (server *Server) runCSV(writer http.ResponseWriter, request *http.Request) {
+	run, found := server.runs.get(request.PathValue("id"))
+	if !found {
+		writeProblem(writer, http.StatusNotFound, unknownRun(request.PathValue("id")))
+		return
+	}
+	state := run.state()
+	if state.Status != statusDone {
+		writeProblem(writer, http.StatusConflict, "the CSV only exists after the run finishes; the state right now is "+state.Status)
+		return
+	}
+	writer.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	if err := report.CSV(writer, state.Document); err != nil {
+		_, _ = fmt.Fprintf(writer, "\n# csv interrupted: %v\n", err)
+	}
+}
+
+// Examples are read to learn from; the interface copies one into -dir before running it.
+func (server *Server) listExamples(writer http.ResponseWriter, request *http.Request) {
+	entries, err := examples.Files.ReadDir(".")
+	if err != nil {
+		writeProblem(writer, http.StatusInternalServerError, "I could not read the examples: "+err.Error())
+		return
+	}
+	type exampleLine struct {
+		File     string   `json:"file"`
+		Name     string   `json:"name"`
+		Requires []string `json:"requires,omitempty"`
+		Tech     []string `json:"tech,omitempty"`
+		Steps    int      `json:"steps"`
+	}
+	lines := make([]exampleLine, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") {
+			continue
+		}
+		line := exampleLine{File: entry.Name()}
+		if content, err := examples.Files.ReadFile(entry.Name()); err == nil {
+			if spec, err := scenario.Parse(content); err == nil {
+				line.Name, line.Requires, line.Steps = spec.Name, spec.Requires, len(spec.Steps)
+				line.Tech = technologies(spec)
+			}
+		}
+		lines = append(lines, line)
+	}
+	writeJSON(writer, http.StatusOK, map[string]any{"examples": lines})
+}
+
+func technologies(spec scenario.Spec) []string {
+	seen := map[string]bool{}
+	var tech []string
+	for _, step := range spec.Steps {
+		name := step.Protocol
+		if name == "" {
+			name = "http"
+		}
+		if name == "await" || name == "wait" {
+			continue
+		}
+		if !seen[name] {
+			seen[name] = true
+			tech = append(tech, name)
+		}
+	}
+	return tech
+}
+
+func (server *Server) getExample(writer http.ResponseWriter, request *http.Request) {
+	name := request.PathValue("name")
+	if strings.ContainsAny(name, `/\`) || !strings.HasSuffix(name, ".yaml") {
+		writeProblem(writer, http.StatusBadRequest, fmt.Sprintf("%q is not an example name", name))
+		return
+	}
+	content, err := examples.Files.ReadFile(name)
+	if err != nil {
+		writeProblem(writer, http.StatusNotFound, fmt.Sprintf("there is no example named %q", name))
+		return
+	}
+	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = writer.Write(content)
+}
+
+func (server *Server) migrateScenario(writer http.ResponseWriter, request *http.Request) {
+	content, err := io.ReadAll(request.Body)
+	if err != nil {
+		writeProblem(writer, http.StatusBadRequest, "I could not read what you sent to migrate: "+err.Error())
+		return
+	}
+	converted, changes, err := scenario.Migrate(content)
+	if err != nil {
+		writeProblem(writer, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	notes := make([]string, 0, len(changes))
+	for _, change := range changes {
+		notes = append(notes, change.String())
+	}
+	writeJSON(writer, http.StatusOK, map[string]any{"yaml": string(converted), "changes": notes})
+}
+
+func (server *Server) getTarget(writer http.ResponseWriter, request *http.Request) {
+	server.targetMu.Lock()
+	defer server.targetMu.Unlock()
+	server.writeTargetState(writer)
+}
+
+func (server *Server) startTarget(writer http.ResponseWriter, request *http.Request) {
+	server.targetMu.Lock()
+	defer server.targetMu.Unlock()
+	if server.target == nil {
+		created := testsupport.New(testsupport.Options{Latency: 10 * time.Millisecond, Jitter: 5 * time.Millisecond})
+		if err := created.Start("127.0.0.1:0"); err != nil {
+			writeProblem(writer, http.StatusInternalServerError, "I could not start the practice target: "+err.Error())
+			return
+		}
+		server.target = created
+	}
+	server.writeTargetState(writer)
+}
+
+func (server *Server) stopTarget(writer http.ResponseWriter, request *http.Request) {
+	server.targetMu.Lock()
+	defer server.targetMu.Unlock()
+	if server.target != nil {
+		_ = server.target.Close()
+		server.target = nil
+	}
+	server.writeTargetState(writer)
+}
+
+func (server *Server) writeTargetState(writer http.ResponseWriter) {
+	address := ""
+	if server.target != nil {
+		address = server.target.Address()
+	}
+	writeJSON(writer, http.StatusOK, map[string]any{"running": server.target != nil, "address": address})
 }
 
 // The stream is plain text, one line per progress tick, the same line the
