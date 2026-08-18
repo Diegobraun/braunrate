@@ -18,7 +18,7 @@ Não tê-los era uma lacuna real de mercado, não uma escolha de design.
 
 **gRPC e WebSocket entram como protocolos registrados, com a mesma fronteira dos demais (ADR 0003): o protocolo traz o domínio, a medição decide.** Cada um é um pacote em `internal/protocol/` com `init()` que se registra, e o step do cenário usa o nome como chave, como todo protocolo já faz.
 
-A entrega é **encenada**, e a razão é o custo de dependência:
+Os dois saem completos. O que os separa é a dependência:
 
 1. **WebSocket sai completo.** O transporte usa `golang.org/x/net/websocket`, que já está no grafo do módulo — nenhuma dependência nova. O step disca, envia a mensagem, e opcionalmente lê uma resposta:
 
@@ -31,7 +31,7 @@ A entrega é **encenada**, e a razão é o custo de dependência:
        headers: { Authorization: "Bearer ${TOKEN}" }
    ```
 
-2. **gRPC sai com a superfície pronta e o transporte por vir.** O `Decode` valida o cenário inteiro — método, mensagem JSON, metadados — e o `Describe` mostra o que rodaria. O `Execute` recusa com mensagem clara enquanto o transporte não é compilado:
+2. **gRPC sai completo, pela reflexão do servidor.** O passo não pede `.proto` nem stub gerado: o cliente disca, lê o descritor do método pela **server reflection** do alvo, monta a mensagem a partir do JSON com mensagem dinâmica e invoca. É o mesmo caminho do grpcurl (`google.golang.org/grpc` + `jhump/protoreflect`).
 
    ```yaml
    - grpc:
@@ -41,17 +41,17 @@ A entrega é **encenada**, e a razão é o custo de dependência:
        timeout: 10s
    ```
 
-   O transporte gRPC exige `google.golang.org/grpc` mais o runtime de protobuf e reflexão de servidor para transcodar JSON sem stub gerado — peso de dependência e uma decisão de design (reflexão vs. descriptor set) que merecem o próprio passo. Registrar a superfície agora fixa o formato do cenário e a validação; o transporte é um follow-up focado que não mexe em nenhum arquivo de cenário.
+   A escolha por reflexão, e não por descriptor set, segue a superfície sem-código (ADR 0018): a pessoa não sobe artefato nenhum, o esquema vem do próprio alvo. O custo é exigir reflexão ligada no alvo — comum em dev e homologação, que é para onde o teste de carga aponta. A conexão e o descritor são resolvidos uma vez por alvo/método e reusados pelas iterações; método de streaming é recusado, porque o modelo de carga envia uma mensagem por iteração.
 
-A recusa do `Execute` do gRPC é **honesta, não silenciosa**: retorna `ErrConfig` dizendo que o passo foi declarado mas este build não traz o transporte, apontando este ADR. Um cenário gRPC valida e salva; ao rodar, diz exatamente o que falta em vez de aprovar um serviço que nunca foi tocado — o erro que o ADR 0003 §3 mais teme.
+O código do gRPC vira classe de erro pela própria semântica: `Unauthenticated` para credencial, `PermissionDenied` para autorização, `DeadlineExceeded` para timeout, `Unavailable` para rede. Aprovar um erro gRPC como sucesso porque o transporte respondeu é o erro que o ADR 0003 §3 mais teme.
 
 ## Alternativas descartadas
 
 - **Esperar os dois ficarem completos antes de mexer no código**: adiaria o WebSocket, que não custa dependência nenhuma, por causa do gRPC, que custa. Encenar entrega o que já dá para entregar.
-- **gRPC com stub gerado por cenário**: exigiria o `.proto` e um passo de codegen no fluxo — atrito que a superfície "sem código" (ADR 0018) existe para não ter. A transcodificação por reflexão é o caminho, e é o que o follow-up decide.
+- **gRPC com stub gerado por cenário**: exigiria o `.proto` e um passo de codegen no fluxo — atrito que a superfície "sem código" (ADR 0018) existe para não ter. A transcodificação por reflexão é o caminho escolhido.
 - **WebSocket com biblioteca mais nova (coder/nhooyr)**: melhor lib, mas dependência nova para o mesmo resultado no escopo de carga. `x/net/websocket` já está no módulo e disca, envia e recebe — suficiente para o passo de carga.
 
 ## O que reabre esta decisao
 
-- O transporte gRPC entrar: sai a recusa, entra a dependência, e este ADR ganha o registro do que foi decidido sobre reflexão vs. descriptor set.
+- Um alvo de produção sem reflexão precisar ser testado: aí entra o descriptor set como caminho alternativo (um `.proto` compilado que a pessoa sobe), ao lado da reflexão. Foi descartado agora por atrito na superfície sem-código, não por não servir.
 - Streaming bidirecional de verdade (server-stream, client-stream) precisar virar medição própria — hoje o modelo é uma mensagem por iteração, como o resto.

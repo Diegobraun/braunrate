@@ -399,7 +399,26 @@ slo:
   - global: { p95: < ${p95}, errors: < ${errors} }
 `
 
-const templates = { http: scenarioTemplateHTTP, kafka: scenarioTemplateKafka, amqp: scenarioTemplateAMQP, graphql: scenarioTemplateGraphQL, websocket: scenarioTemplateWebSocket }
+const scenarioTemplateGRPC = ({ name, target, grpcMethod, grpcMessage, rate, duration, p95, errors }) =>
+`${schemaLine}
+name: ${name}
+target: ${target}
+
+load:
+  profiles:
+    - steady: { rate: ${rate}/s, duration: ${duration} }
+
+scenario:
+  - grpc:
+      method: ${grpcMethod || 'grpc.health.v1.Health/Check'}
+      message: '${grpcMessage || '{}'}'
+    name: ${name.toLowerCase()}
+
+slo:
+  - global: { p95: < ${p95}, errors: < ${errors} }
+`
+
+const templates = { http: scenarioTemplateHTTP, kafka: scenarioTemplateKafka, amqp: scenarioTemplateAMQP, graphql: scenarioTemplateGraphQL, websocket: scenarioTemplateWebSocket, grpc: scenarioTemplateGRPC }
 
 function newScreen () {
   showCommand('braunrate new scenario.yaml')
@@ -413,7 +432,7 @@ function newScreen () {
       <label><span>Scenario name</span><input name="name" value="Order lookup" required>
         <div class="help">Shows up at the top of the report.</div></label>
       <label><span>Protocol</span>
-        <select name="kind" id="kind"><option value="http">HTTP</option><option value="graphql">GraphQL</option><option value="websocket">WebSocket</option><option value="kafka">Kafka</option><option value="amqp">RabbitMQ (AMQP)</option></select></label>
+        <select name="kind" id="kind"><option value="http">HTTP</option><option value="graphql">GraphQL</option><option value="websocket">WebSocket</option><option value="grpc">gRPC</option><option value="kafka">Kafka</option><option value="amqp">RabbitMQ (AMQP)</option></select></label>
 
       <div id="g-target">
         <label><span>Target</span><input name="target" value="http://127.0.0.1:8080">
@@ -444,6 +463,12 @@ function newScreen () {
         <label><span>Message to send</span><input name="wsSend" value='{"subscribe":"orders"}'>
           <div class="help">Sent on connect, then it waits for one reply. Leave empty to only open the connection.</div></label>
       </div>
+      <div id="g-grpc" hidden>
+        <label><span>Method</span><input name="grpcMethod" value="grpc.health.v1.Health/Check">
+          <div class="help">package.Service/Method. The schema is read from the target by server reflection.</div></label>
+        <label><span>Message (JSON)</span><input name="grpcMessage" value="{}">
+          <div class="help">The request, as JSON. The target is host:port — set it above.</div></label>
+      </div>
 
       <div class="pair">
         <label><span>Rate (per second)</span><input name="rate" value="100" required>
@@ -466,8 +491,8 @@ function newScreen () {
 
   const kind = document.getElementById('kind')
   function showGroups () {
-    document.getElementById('g-target').hidden = kind.value !== 'http' && kind.value !== 'graphql' && kind.value !== 'websocket'
-    ;['http', 'kafka', 'amqp', 'websocket'].forEach(one => { document.getElementById('g-' + one).hidden = kind.value !== one })
+    document.getElementById('g-target').hidden = !['http', 'graphql', 'websocket', 'grpc'].includes(kind.value)
+    ;['http', 'kafka', 'amqp', 'websocket', 'grpc'].forEach(one => { document.getElementById('g-' + one).hidden = kind.value !== one })
   }
   kind.addEventListener('change', showGroups)
   showGroups()

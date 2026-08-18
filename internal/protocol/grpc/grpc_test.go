@@ -2,9 +2,15 @@ package grpc
 
 import (
 	"context"
+	"net"
+	"strings"
 	"testing"
 
 	"github.com/Diegobraun/braunrate/internal/protocol"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 	"gopkg.in/yaml.v3"
 )
 
@@ -37,10 +43,40 @@ func TestGRPCSplitsServiceAndMethod(t *testing.T) {
 	}
 }
 
-func TestGRPCRefusesToRunWithoutTransport(t *testing.T) {
-	config := decode(t, "method: order.OrderService/Lookup\nmessage: '{\"id\":\"1\"}'")
-	response := New(protocol.DefaultOptions()).Execute(context.Background(), protocol.Request{Config: config})
-	if response.Class != protocol.ErrConfig {
+// A local server with the health service and reflection turned on exercises the
+// whole path: dial, resolve the method by reflection, build the request from
+// JSON, invoke, and read the reply back as JSON.
+func TestGRPCCallsThroughReflection(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	server := grpc.NewServer()
+	healthpb.RegisterHealthServer(server, health.NewServer())
+	reflection.Register(server)
+	go func() { _ = server.Serve(listener) }()
+	defer server.Stop()
+
+	config := decode(t, "method: grpc.health.v1.Health/Check\nmessage: '{}'")
+	response := New(protocol.DefaultOptions()).Execute(
+		context.Background(),
+		protocol.Request{URLBase: listener.Addr().String(), Config: config},
+	)
+	if response.Class != protocol.Success {
 		t.Fatalf("class = %s, detail = %q", response.Class, response.Detail)
+	}
+	if !strings.Contains(string(response.Body), "SERVING") {
+		t.Fatalf("reply = %q", response.Body)
+	}
+}
+
+func TestGRPCReportsAnUnreachableTarget(t *testing.T) {
+	config := decode(t, "method: order.OrderService/Lookup\ntimeout: 300ms")
+	response := New(protocol.DefaultOptions()).Execute(
+		context.Background(),
+		protocol.Request{URLBase: "127.0.0.1:1", Config: config},
+	)
+	if response.Class == protocol.Success {
+		t.Fatal("a call to a dead port should not succeed")
 	}
 }

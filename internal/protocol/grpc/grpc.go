@@ -2,14 +2,31 @@ package grpc
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Diegobraun/braunrate/internal/protocol"
 	"github.com/Diegobraun/braunrate/internal/protocol/transport"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+	reflectionpb "google.golang.org/grpc/reflection/grpc_reflection_v1"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/dynamicpb"
 	"gopkg.in/yaml.v3"
 )
 
@@ -74,7 +91,6 @@ func (config *Config) Describe() []string {
 	if config.Message != "" {
 		lines = append(lines, "message: "+summarize(config.Message))
 	}
-	lines = append(lines, "note: this build has no gRPC transport compiled in (ADR 0022)")
 	return lines
 }
 
@@ -82,13 +98,35 @@ func (config *Config) RequestBody() []byte { return []byte(config.Message) }
 
 type Protocol struct {
 	options protocol.Options
+	tls     *tls.Config
+
+	mu      sync.Mutex
+	conns   map[string]*grpc.ClientConn
+	methods map[string]protoreflect.MethodDescriptor
 }
 
-func New(options protocol.Options) *Protocol { return &Protocol{options: options} }
+func New(options protocol.Options) *Protocol {
+	return &Protocol{
+		options: options,
+		conns:   map[string]*grpc.ClientConn{},
+		methods: map[string]protoreflect.MethodDescriptor{},
+	}
+}
 
 func (implementation *Protocol) Name() string { return "grpc" }
 
-func (implementation *Protocol) Close() error { return nil }
+func (implementation *Protocol) UseTLS(settings *tls.Config) { implementation.tls = settings }
+
+func (implementation *Protocol) Close() error {
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	for _, conn := range implementation.conns {
+		_ = conn.Close()
+	}
+	implementation.conns = map[string]*grpc.ClientConn{}
+	implementation.methods = map[string]protoreflect.MethodDescriptor{}
+	return nil
+}
 
 func (implementation *Protocol) Decode(node *yaml.Node) (protocol.Config, error) {
 	if node == nil {
@@ -170,10 +208,261 @@ func (implementation *Protocol) Execute(runContext context.Context, request prot
 	if !ok {
 		return protocol.Response{Class: protocol.ErrConfig, Detail: "the configuration is not a grpc one"}
 	}
-	return protocol.Response{
-		Class:  protocol.ErrConfig,
-		Detail: fmt.Sprintf("grpc %s is declared but this build has no gRPC transport compiled in (ADR 0022)", config.fullMethod()),
+	address := stripScheme(config.Target)
+	if address == "" {
+		address = stripScheme(request.URLBase)
 	}
+	if address == "" {
+		return protocol.Response{Class: protocol.ErrConfig, Detail: "no target for the grpc call (set the scenario target or the step's target)"}
+	}
+
+	if config.Timeout > 0 {
+		var cancel context.CancelFunc
+		runContext, cancel = context.WithTimeout(runContext, config.Timeout)
+		defer cancel()
+	} else if implementation.options.Timeout > 0 {
+		var cancel context.CancelFunc
+		runContext, cancel = context.WithTimeout(runContext, implementation.options.Timeout)
+		defer cancel()
+	}
+
+	conn, err := implementation.connect(address)
+	if err != nil {
+		return protocol.Response{Class: protocol.ErrNetwork, Detail: transport.SummarizeError(err)}
+	}
+	method, err := implementation.resolve(runContext, address, conn, config)
+	if err != nil {
+		return protocol.Response{Class: protocol.ErrConfig, Detail: transport.SummarizeError(err)}
+	}
+
+	message := dynamicpb.NewMessage(method.Input())
+	if body := strings.TrimSpace(config.Message); body != "" {
+		if err := protojson.Unmarshal([]byte(config.Message), message); err != nil {
+			return protocol.Response{Class: protocol.ErrConfig, Detail: "the message is not valid JSON for " + string(method.Input().FullName()) + ": " + err.Error()}
+		}
+	}
+
+	if len(config.Metadata) > 0 {
+		pairs := make([]string, 0, len(config.Metadata)*2)
+		for name, value := range config.Metadata {
+			pairs = append(pairs, name, value)
+		}
+		runContext = metadata.AppendToOutgoingContext(runContext, pairs...)
+	}
+
+	reply := dynamicpb.NewMessage(method.Output())
+	if err := conn.Invoke(runContext, "/"+config.Service+"/"+config.Method, message, reply); err != nil {
+		class, detail := classify(err)
+		return protocol.Response{Class: class, Detail: detail}
+	}
+
+	out := protocol.Response{Class: protocol.Success}
+	if content, err := protojson.Marshal(reply); err == nil {
+		out.Body = content
+		out.Bytes = int64(len(content))
+	}
+	return out
+}
+
+func (implementation *Protocol) connect(address string) (*grpc.ClientConn, error) {
+	implementation.mu.Lock()
+	defer implementation.mu.Unlock()
+	if conn, ok := implementation.conns[address]; ok {
+		return conn, nil
+	}
+	creds := insecure.NewCredentials()
+	if implementation.tls != nil {
+		creds = credentials.NewTLS(implementation.tls)
+	}
+	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(creds))
+	if err != nil {
+		return nil, err
+	}
+	implementation.conns[address] = conn
+	return conn, nil
+}
+
+func (implementation *Protocol) resolve(runContext context.Context, address string, conn *grpc.ClientConn, config *Config) (protoreflect.MethodDescriptor, error) {
+	key := address + "|" + config.fullMethod()
+	implementation.mu.Lock()
+	if method, ok := implementation.methods[key]; ok {
+		implementation.mu.Unlock()
+		return method, nil
+	}
+	implementation.mu.Unlock()
+
+	files, err := descriptorsBySymbol(runContext, conn, config.Service)
+	if err != nil {
+		return nil, err
+	}
+	descriptor, err := files.FindDescriptorByName(protoreflect.FullName(config.Service))
+	if err != nil {
+		return nil, fmt.Errorf("the target's reflection has no service %q: %v", config.Service, err)
+	}
+	service, ok := descriptor.(protoreflect.ServiceDescriptor)
+	if !ok {
+		return nil, fmt.Errorf("%q is not a service", config.Service)
+	}
+	method := service.Methods().ByName(protoreflect.Name(config.Method))
+	if method == nil {
+		return nil, fmt.Errorf("the service %q has no method %q", config.Service, config.Method)
+	}
+	if method.IsStreamingClient() || method.IsStreamingServer() {
+		return nil, fmt.Errorf("%s is a streaming method; the load model sends one message per iteration", config.fullMethod())
+	}
+
+	implementation.mu.Lock()
+	implementation.methods[key] = method
+	implementation.mu.Unlock()
+	return method, nil
+}
+
+// descriptorsBySymbol asks the target's server reflection for the file holding a
+// symbol and every file it imports, then builds a registry from them. The
+// dependency closure is fetched by name because reflection returns the file with
+// the symbol but not, on its own, the files that one imports.
+func descriptorsBySymbol(runContext context.Context, conn *grpc.ClientConn, symbol string) (*protoregistry.Files, error) {
+	client := reflectionpb.NewServerReflectionClient(conn)
+	stream, err := client.ServerReflectionInfo(runContext)
+	if err != nil {
+		return nil, fmt.Errorf("server reflection is not available on the target: %v", err)
+	}
+	defer func() { _ = stream.CloseSend() }()
+
+	collected := map[string]*descriptorpb.FileDescriptorProto{}
+	request := func(message *reflectionpb.ServerReflectionRequest) error {
+		if err := stream.Send(message); err != nil {
+			return err
+		}
+		response, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+		if failure := response.GetErrorResponse(); failure != nil {
+			return fmt.Errorf("%s", failure.GetErrorMessage())
+		}
+		for _, raw := range response.GetFileDescriptorResponse().GetFileDescriptorProto() {
+			file := &descriptorpb.FileDescriptorProto{}
+			if err := proto.Unmarshal(raw, file); err != nil {
+				return err
+			}
+			collected[file.GetName()] = file
+		}
+		return nil
+	}
+
+	if err := request(&reflectionpb.ServerReflectionRequest{
+		MessageRequest: &reflectionpb.ServerReflectionRequest_FileContainingSymbol{FileContainingSymbol: symbol},
+	}); err != nil {
+		return nil, fmt.Errorf("reflection could not resolve %q (is it enabled on the target?): %v", symbol, err)
+	}
+	for {
+		missing := ""
+		for _, file := range collected {
+			for _, dependency := range file.GetDependency() {
+				if _, have := collected[dependency]; !have {
+					missing = dependency
+					break
+				}
+			}
+			if missing != "" {
+				break
+			}
+		}
+		if missing == "" {
+			break
+		}
+		if err := request(&reflectionpb.ServerReflectionRequest{
+			MessageRequest: &reflectionpb.ServerReflectionRequest_FileByFilename{FileByFilename: missing},
+		}); err != nil {
+			return nil, fmt.Errorf("reflection could not fetch the imported file %q: %v", missing, err)
+		}
+	}
+
+	ordered, err := topological(collected)
+	if err != nil {
+		return nil, err
+	}
+	registry, err := protodesc.NewFiles(&descriptorpb.FileDescriptorSet{File: ordered})
+	if err != nil {
+		return nil, fmt.Errorf("the descriptors from reflection did not assemble: %v", err)
+	}
+	return registry, nil
+}
+
+func topological(files map[string]*descriptorpb.FileDescriptorProto) ([]*descriptorpb.FileDescriptorProto, error) {
+	var ordered []*descriptorpb.FileDescriptorProto
+	placed := map[string]bool{}
+	var visit func(name string, path map[string]bool) error
+	visit = func(name string, path map[string]bool) error {
+		if placed[name] {
+			return nil
+		}
+		file, ok := files[name]
+		if !ok {
+			return nil
+		}
+		if path[name] {
+			return fmt.Errorf("the proto files import each other in a cycle at %q", name)
+		}
+		path[name] = true
+		for _, dependency := range file.GetDependency() {
+			if err := visit(dependency, path); err != nil {
+				return err
+			}
+		}
+		delete(path, name)
+		placed[name] = true
+		ordered = append(ordered, file)
+		return nil
+	}
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if err := visit(name, map[string]bool{}); err != nil {
+			return nil, err
+		}
+	}
+	return ordered, nil
+}
+
+func classify(err error) (protocol.ErrorClass, string) {
+	state, ok := status.FromError(err)
+	if !ok {
+		if err == io.EOF {
+			return protocol.ErrNetwork, "the connection closed before a reply"
+		}
+		return protocol.ErrNetwork, transport.SummarizeError(err)
+	}
+	detail := state.Code().String()
+	if state.Message() != "" {
+		detail += ": " + state.Message()
+	}
+	switch state.Code() {
+	case codes.Unauthenticated:
+		return protocol.ErrAuth, detail
+	case codes.PermissionDenied:
+		return protocol.ErrAuthorization, detail
+	case codes.DeadlineExceeded:
+		return protocol.ErrTimeout, detail
+	case codes.Unavailable:
+		return protocol.ErrNetwork, detail
+	default:
+		return protocol.ErrStatus, detail
+	}
+}
+
+func stripScheme(target string) string {
+	target = strings.TrimSpace(target)
+	for _, scheme := range []string{"grpc://", "grpcs://", "http://", "https://"} {
+		if strings.HasPrefix(target, scheme) {
+			return strings.TrimSuffix(strings.TrimPrefix(target, scheme), "/")
+		}
+	}
+	return target
 }
 
 func summarize(value string) string {
