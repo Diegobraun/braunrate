@@ -31,7 +31,7 @@ for cenario in examples/*.yaml; do
     disponivel "$requisito" || faltando="$faltando $requisito"
   done
   if [ -n "$faltando" ]; then
-    echo "PULADO: $cenario declara 'requires:$faltando' e esta maquina nao tem"
+    echo "SKIPPED: $cenario declares 'requires:$faltando' and this machine has none"
     pulados+=("$cenario")
     continue
   fi
@@ -49,16 +49,16 @@ for cenario in examples/*.yaml; do
       if [ "$motivos" = "generatorSaturated" ]; then
         # O runner e maquina compartilhada e a regra de saturacao corta em 1% de
         # despachos atrasados. Ali exit 3 e a resposta certa da ferramenta.
-        echo "aceito: $cenario saiu 3 porque o gerador nao sustentou a carga nesta maquina"
+        echo "accepted: $cenario exited 3 because the generator did not sustain the load on this machine"
         jq -r '.warnings[]? | select(.severity=="high") | "  " + .evidence' "$resultado"
       else
-        echo "FALHOU: $cenario saiu invalido por outro motivo: $motivos"
+        echo "FAILED: $cenario exited invalid for another reason: $motivos"
         jq -r '.sanity.findings[]? | "  - " + .message + "\n    " + .evidence' "$resultado"
         falhou=1
       fi
       ;;
     *)
-      echo "FALHOU: $cenario saiu com codigo $codigo"
+      echo "FAILED: $cenario exited with code $codigo"
       ./braunrate execute "$cenario" -quiet 2>&1 | tail -25
       falhou=1
       ;;
@@ -67,7 +67,7 @@ done
 
 if [ ${#pulados[@]} -gt 0 ]; then
   echo
-  echo "${#pulados[@]} exemplo(s) pulado(s) por falta de infraestrutura declarada: ${pulados[*]}"
+  echo "${#pulados[@]} example(s) skipped for missing declared infrastructure: ${pulados[*]}"
 fi
 
 exit $falhou

@@ -19,7 +19,7 @@ passo() {
   echo "=== $1"
   shift
   if ! "$@"; then
-    echo "FALHOU: $*"
+    echo "FAILED: $*"
     falhou=1
   fi
 }
@@ -28,7 +28,7 @@ verificar_formatacao() {
   local arquivos
   arquivos=$(gofmt -l $(go list -f '{{.Dir}}' ./...))
   if [ -n "$arquivos" ]; then
-    echo "arquivos fora do gofmt:"
+    echo "files not gofmt-clean:"
     echo "$arquivos"
     return 1
   fi
@@ -52,7 +52,7 @@ verificar_exemplo_publicado() {
   recem=$(mktemp)
   ./braunrate report docs/exemplo-resultado.json -html="$recem" >/dev/null || return 1
   if ! diff -q "$recem" docs/exemplo-relatorio.html >/dev/null; then
-    echo "docs/exemplo-relatorio.html esta desatualizado; regenere com:"
+    echo "docs/exemplo-relatorio.html is out of date; regenerate it with:"
     echo "  go run ./cmd/braunrate report docs/exemplo-resultado.json -html=docs/exemplo-relatorio.html"
     rm -f "$recem"
     return 1
@@ -64,10 +64,10 @@ verificar_exemplo_publicado() {
 # subir outro por cima daria conflito de porta.
 subir_brokers() {
   if [ -n "${BRAUNRATE_KAFKA:-}" ] && [ -n "${BRAUNRATE_AMQP:-}" ]; then
-    echo "brokers vieram do ambiente; nao subo nada"
+    echo "brokers came from the environment; not starting any"
     return 0
   fi
-  command -v docker >/dev/null || { echo "sem docker: nao ha como subir broker"; return 1; }
+  command -v docker >/dev/null || { echo "no docker: cannot start a broker"; return 1; }
 
   docker rm -f portao-kafka portao-rabbit portao-mqtt >/dev/null 2>&1
   docker run -d --name portao-kafka -p 9092:9092 \
@@ -91,16 +91,16 @@ subir_brokers() {
   export BRAUNRATE_AMQP=amqp://guest:guest@127.0.0.1:5672/
   export BRAUNRATE_MQTT=tcp://127.0.0.1:1883
   trap 'docker rm -f portao-kafka portao-rabbit portao-mqtt >/dev/null 2>&1' EXIT
-  echo "esperando os brokers responderem"
+  echo "waiting for the brokers to answer"
   sleep 20
 }
 
 subir_broker_autenticado() {
   if [ -n "${BRAUNRATE_KAFKA_TLS:-}" ]; then
-    echo "broker autenticado veio do ambiente; nao subo nada"
+    echo "the authenticated broker came from the environment; not starting any"
     return 0
   fi
-  command -v docker >/dev/null || { echo "sem docker: nao ha como subir broker"; return 1; }
+  command -v docker >/dev/null || { echo "no docker: cannot start a broker"; return 1; }
   chmod +x .github/broker-autenticado.sh
   .github/broker-autenticado.sh /tmp/certificados-ci || return 1
   export BRAUNRATE_KAFKA_TLS=localhost:9095
@@ -121,44 +121,44 @@ rodar_exemplos() {
   return $codigo
 }
 
-passo "formatacao" verificar_formatacao
+passo "formatting" verificar_formatacao
 passo "vet" go vet ./...
 passo "lint" verificar_lint
 passo "build" go build ./...
 
 # -race e o portao, e nao um extra: as duas ultimas corridas de verdade do
 # projeto — a do servidor e a da semente — so aparecem com ele ligado.
-passo "testes com detector de corrida" go test ./... -count=1 -race
-passo "auto-validacao da medicao" go test ./internal/selfcheck/... -count=1
-passo "o site de documentacao gera" go run ./cmd/site -out site
+passo "tests with the race detector" go test ./... -count=1 -race
+passo "measurement self-check" go test ./internal/selfcheck/... -count=1
+passo "the documentation site builds" go run ./cmd/site -out site
 
 if [ $rapido -eq 1 ]; then
   echo
-  echo "--rapido: os passos de broker e de exemplo publicado nao rodaram. Isto nao e o portao."
+  echo "--rapido: the broker and published-example steps did not run. This is not the gate."
   exit $falhou
 fi
 
-passo "brokers de verdade sobem" subir_brokers
+passo "real brokers come up" subir_brokers
 # BRAUNRATE_EXIGE_BROKER nomeia o que tem de existir. Sem ele, broker que nao
 # sobe vira teste pulado, e teste pulado vira portao verde sem nada medido.
 BRAUNRATE_EXIGE_BROKER=BRAUNRATE_KAFKA,BRAUNRATE_AMQP \
-  passo "testes de mensageria contra brokers reais" \
+  passo "messaging tests against real brokers" \
   go test ./internal/messaging/... ./internal/testsupport/... -count=1 -timeout 5m
 
-passo "broker que exige credencial de verdade" subir_broker_autenticado
+passo "broker that demands a real credential" subir_broker_autenticado
 BRAUNRATE_EXIGE_BROKER=BRAUNRATE_KAFKA_TLS \
-  passo "testes contra o broker autenticado" \
+  passo "tests against the authenticated broker" \
   go test ./internal/messaging/... -count=1 -timeout 5m
 
-passo "binario para os exemplos" go build -o braunrate ./cmd/braunrate
-passo "exemplo publicado esta atualizado" verificar_exemplo_publicado
-passo "todos os exemplos publicados rodam" rodar_exemplos
+passo "binary for the examples" go build -o braunrate ./cmd/braunrate
+passo "the published example is up to date" verificar_exemplo_publicado
+passo "every published example runs" rodar_exemplos
 rm -f braunrate
 
 echo
 if [ $falhou -eq 0 ]; then
-  echo "portao verde"
+  echo "gate green"
 else
-  echo "portao vermelho"
+  echo "gate red"
 fi
 exit $falhou
