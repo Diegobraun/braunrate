@@ -504,8 +504,9 @@ async function examplesScreen () {
   list.className = 'examples'
   list.innerHTML = (response.body.examples || []).map(function (example) {
     const id = cssId(example.file)
+    const techSet = new Set(example.tech || [])
     const tags = (example.tech || []).map(one => `<span class="tag ${escape(one)}">${escape(techLabel(one))}</span>`).join('')
-    const badges = (example.requires || []).map(one => `<span class="badge req">${escape(one)}</span>`).join('')
+    const badges = (example.requires || []).filter(one => !techSet.has(one)).map(one => `<span class="badge req">${escape(one)}</span>`).join('')
     return `<div class="example">
       <div class="ex-head">
         <div><b>${escape(example.name || example.file)}</b> ${tags}${badges}
